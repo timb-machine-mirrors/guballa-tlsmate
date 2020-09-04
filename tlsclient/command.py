@@ -3,9 +3,9 @@
 """
 import argparse
 
-from tlsclient.xxx import Xxx
-from tlsclient.version import __version__
+from tlsclient.dependencies import Container
 
+from tlsclient.version import __version__
 
 def command_version(args):
     """Prints the version.
@@ -45,10 +45,14 @@ def build_parser():
 def main():
     """The entry point for the command line interface
     """
-    parser = build_parser()
-    args = parser.parse_args()
+    container = Container()
 
-    if args.command is None:
-        parser.print_help()
-    else:
-        args.func(args)
+    container.test_suite().run()
+
+    # parser = build_parser()
+    # args = parser.parse_args()
+
+    # if args.command is None:
+    #     parser.print_help()
+    # else:
+    #     args.func(args)
