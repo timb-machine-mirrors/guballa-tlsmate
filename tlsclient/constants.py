@@ -5,6 +5,11 @@
 import enum
 
 
+class Entity(enum.Enum):
+    CLIENT = 0
+    SERVER = 1
+
+
 class Version(enum.IntEnum):
     SSL20 = 0x0200
     SSL30 = 0x0300
@@ -20,6 +25,10 @@ class ContentType(enum.Enum):
     HANDSHAKE = 22
     APPLICATION_DATA = 23
 
+
+class CompressionMethod(enum.Enum):
+    NULL = 0
+    DEFLATE = 1
 
 class Extension(enum.Enum):
     SERVER_NAME = 0
@@ -73,7 +82,7 @@ class Extension(enum.Enum):
     CONNECTION_ID = 53
     EXTERNAL_ID_HASH = 55
     EXTERNAL_SESSION_ID = 56
-
+    RENEGOTIATION_INFO = 65281
 
 class CipherSuite(enum.Enum):
     TLS_NULL_WITH_NULL_NULL = 0x0000
@@ -580,3 +589,8 @@ class SignatureScheme(enum.Enum):
     ECDSA_BRAINPOOLP256R1TLS13_SHA256 = 0x081A
     ECDSA_BRAINPOOLP384R1TLS13_SHA384 = 0x081B
     ECDSA_BRAINPOOLP512R1TLS13_SHA512 = 0x081C
+
+class EcPointFormat(enum.Enum):
+    UNCOMPRESSED = 0
+    ANSIX962_COMPRESSED_PRIME = 1
+    ANSIX962_COMPRESSED_CHAR2 = 2

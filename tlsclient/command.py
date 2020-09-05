@@ -3,7 +3,8 @@
 """
 import argparse
 
-from tlsclient.dependencies import Container
+import tlsclient.dependencies as dependencies
+
 
 from tlsclient.version import __version__
 
@@ -45,7 +46,9 @@ def build_parser():
 def main():
     """The entry point for the command line interface
     """
-    container = Container()
+    config = {"server": "localhost", "port": 44330}
+
+    container = dependencies.Container(config=config)
 
     container.test_suite().run()
 
