@@ -6,9 +6,13 @@ import os
 import time
 import socket
 import select
+import struct
 
 from tlsclient.protocol import ProtocolData
+from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
+from tlsclient.tls_message import Alert
+
 
 class TlsConnectionState(object):
 
@@ -29,6 +33,7 @@ class TlsConnection(object):
         self.tls_connection_state = tls_connection_state
         self.server = server
         self.port = port
+        self.received_data = ProtocolData()
 
     def __enter__(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -36,6 +41,10 @@ class TlsConnection(object):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type is FatalAlert:
+            self.send(Alert(level=tls.AlertLevel.FATAL, description=exc_value.description))
+            self.socket.close()
+            return True
         self.socket.close()
         return False
 
@@ -51,4 +60,31 @@ class TlsConnection(object):
             data.extend(msg_data)
         print("Serialized: ", " ".join("{:02x}".format(x) for x in data))
         self.socket.sendall(data)
+
+
+    def wait(self):
+        content_type, version, length, fragment = self.wait_fragment()
+        return fragment
+
+    def wait_fragment(self):
+        while len(self.received_data) < 5:
+            self.received_data.extend(self.wait_data())
+        content_type, version, length = struct.unpack("!BHH", self.received_data[:5])
+        content_type = tls.ContentType.int2enum(content_type, alert_on_failure=True)
+        version = tls.Version.int2enum(version, alert_on_failure=True)
+
+        while len(self.received_data) < (length + 5):
+            self.received_data.extend(self.wait_data())
+        msg = self.received_data[:5 + length]
+        self.received_data = ProtocolData(self.received_data[length + 5:])
+        return content_type, version, length, ProtocolData(msg)
+
+    def wait_data(self):
+        rfds, wfds, efds = select.select([self.socket], [], [], 5)
+        data = None
+        if rfds:
+            for fd in rfds:
+                if fd is self.socket:
+                    data = fd.recv(2048)
+        return data
 

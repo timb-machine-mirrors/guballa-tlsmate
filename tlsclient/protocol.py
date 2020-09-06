@@ -32,3 +32,10 @@ class ProtocolData(bytearray):
     def append_str(self, *strings):
         for string in strings:
             self.extend(map(ord, string))
+
+    def dump(self, bytes_per_row=16):
+        rows = []
+        for x in range(0, len(self), bytes_per_row):
+            chunk = self[x:x+bytes_per_row]
+            rows.append(" ".join("{:02x}".format(y) for y in chunk))
+        return "\n".join(rows)

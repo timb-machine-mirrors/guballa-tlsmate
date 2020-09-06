@@ -3,9 +3,29 @@
 """
 
 import enum
+from tlsclient.alert import FatalAlert
+class ExtendedEnum(enum.Enum):
+
+    @classmethod
+    def int2enum(cls, value, alert_on_failure=False):
+        enum = cls._value2member_map_.get(value)
+        if (enum is None) and alert_on_failure:
+            message = "Value {} not defined for {}".format(value, cls)
+            raise FatalAlert(message, AlertDescription.ILLEGAL_PARAMETER)
+        return enum
+
+class ExtendedIntEnum(enum.IntEnum):
+
+    @classmethod
+    def int2enum(cls, value, alert_on_failure=False):
+        enum = cls._value2member_map_.get(value)
+        if (enum is None) and alert_on_failure:
+            message = "Value {} not defined for {}".format(value, cls)
+            raise FatalAlert(message, AlertDescription.ILLEGAL_PARAMETER)
+        return enum
 
 
-class Entity(enum.Enum):
+class Entity(ExtendedIntEnum):
     CLIENT = 0
     SERVER = 1
 
@@ -19,18 +39,18 @@ class Version(enum.IntEnum):
     TLS13 = 0x0304
 
 
-class ContentType(enum.Enum):
+class ContentType(ExtendedEnum):
     CHANGE_CIPHER_SPEC = 20
     ALERT = 21
     HANDSHAKE = 22
     APPLICATION_DATA = 23
 
 
-class CompressionMethod(enum.Enum):
+class CompressionMethod(ExtendedEnum):
     NULL = 0
     DEFLATE = 1
 
-class Extension(enum.Enum):
+class Extension(ExtendedEnum):
     SERVER_NAME = 0
     MAX_FRAGMENT_LENGTH = 1
     CLIENT_CERTIFICATE_URL = 2
@@ -84,7 +104,7 @@ class Extension(enum.Enum):
     EXTERNAL_SESSION_ID = 56
     RENEGOTIATION_INFO = 65281
 
-class CipherSuite(enum.Enum):
+class CipherSuite(ExtendedEnum):
     TLS_NULL_WITH_NULL_NULL = 0x0000
     TLS_RSA_WITH_NULL_MD5 = 0x0001
     TLS_RSA_WITH_NULL_SHA = 0x0002
@@ -437,7 +457,7 @@ class CipherSuite(enum.Enum):
     TLS_ECDHE_PSK_WITH_AES_128_CCM_SHA256 = 0xD005
 
 
-class Alert(enum.Enum):
+class AlertDescription(ExtendedEnum):
     CLOSE_NOTIFY = 0
     UNEXPECTED_MESSAGE = 10
     BAD_RECORD_MAC = 20
@@ -466,8 +486,11 @@ class Alert(enum.Enum):
     CERTIFICATE_REQUIRED = 116
     NO_APPLICATION_PROTocol = 120
 
+class AlertLevel(ExtendedEnum):
+    WARNING = 1
+    FATAL = 2
 
-class HandshakeType(enum.Enum):
+class HandshakeType(ExtendedEnum):
     CLIENT_HELLO = 1
     SERVER_HELLO = 2
     NEW_SESSION_TICKET = 4
@@ -483,7 +506,7 @@ class HandshakeType(enum.Enum):
     MESSAGE_HASH = 254
 
 
-class SupportedGroups(enum.Enum):
+class SupportedGroups(ExtendedEnum):
     SECT163K1 = 1
     SECT163R1 = 2
     SECT163R2 = 3
@@ -534,7 +557,7 @@ class SupportedGroups(enum.Enum):
     ARBITRARY_EXPLICIT_CHAR2_CURVES = 65282
 
 
-class SignatureAlgorithm(enum.Enum):
+class SignatureAlgorithm(ExtendedEnum):
     ANONYMOUS = 0
     RSA = 1
     DSA = 2
@@ -543,7 +566,7 @@ class SignatureAlgorithm(enum.Enum):
     ED448 = 8
 
 
-class HashAlgorithm(enum.Enum):
+class HashAlgorithm(ExtendedEnum):
     NONE = 0
     MD5 = 1
     SHA1 = 2
@@ -554,7 +577,7 @@ class HashAlgorithm(enum.Enum):
     INTRINSIC = 8
 
 
-class SignatureScheme(enum.Enum):
+class SignatureScheme(ExtendedEnum):
     RSA_PKCS1_SHA1 = 0x0201
     ECDSA_SHA1 = 0x0203
     RSA_PKCS1_SHA256 = 0x0401
@@ -590,7 +613,7 @@ class SignatureScheme(enum.Enum):
     ECDSA_BRAINPOOLP384R1TLS13_SHA384 = 0x081B
     ECDSA_BRAINPOOLP512R1TLS13_SHA512 = 0x081C
 
-class EcPointFormat(enum.Enum):
+class EcPointFormat(ExtendedEnum):
     UNCOMPRESSED = 0
     ANSIX962_COMPRESSED_PRIME = 1
     ANSIX962_COMPRESSED_CHAR2 = 2

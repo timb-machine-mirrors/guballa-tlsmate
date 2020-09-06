@@ -90,4 +90,23 @@ class ClientHello(HandshakeMessage):
 
 
 
+class Alert(TlsMessage):
+
+    content_type = tls.ContentType.ALERT
+
+    def __init__(self, **kwargs):
+        self.level = kwargs.get("level", tls.AlertLevel.FATAL)
+        self.description = kwargs.get("description", tls.AlertDescription.HANDSHAKE_FAILURE)
+
+    def serialize(self, tls_connection_state):
+        alert = protocol.ProtocolData()
+        if self.level == int:
+            alert.append_uint8(self.level)
+        else:
+            alert.append_uint8(self.level.value)
+        if self.description == int:
+            alert.append_uint8(self.description)
+        else:
+            alert.append_uint8(self.description.value)
+        return alert
 

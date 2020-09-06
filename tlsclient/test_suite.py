@@ -68,3 +68,11 @@ class TestSuite(object):
 
         with self.create_connection() as conn:
             conn.send(client_hello)
+            msg1 = conn.wait()
+            print(msg1.dump())
+            msg1 = conn.wait()
+            print(msg1.dump())
+            msg1 = conn.wait()
+            print(msg1.dump())
+            msg1 = conn.wait()
+            print(msg1.dump())
