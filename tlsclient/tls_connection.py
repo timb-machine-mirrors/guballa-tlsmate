@@ -11,7 +11,7 @@ import struct
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
-from tlsclient.tls_message import Alert
+from tlsclient.tls_message import Alert, HandshakeMessage
 
 
 class TlsConnectionState(object):
@@ -63,21 +63,34 @@ class TlsConnection(object):
 
 
     def wait(self):
-        content_type, version, length, fragment = self.wait_fragment()
+        content_type, version, fragment = self.wait_fragment()
+        if content_type is tls.ContentType.HANDSHAKE:
+            return HandshakeMessage.deserialize(fragment)
+            #return self.deserialize_handshake_msg(length, fragment)
+        elif content_type is tls.ContentType.ALERT:
+            pass
+        elif content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
+            pass
+        elif content_type is tls.ContentType.APPLICATION_DATA:
+            pass
+
         return fragment
 
     def wait_fragment(self):
         while len(self.received_data) < 5:
             self.received_data.extend(self.wait_data())
-        content_type, version, length = struct.unpack("!BHH", self.received_data[:5])
+
+        content_type, offset = self.received_data.unpack_uint8(0)
         content_type = tls.ContentType.int2enum(content_type, alert_on_failure=True)
+        version, offset = self.received_data.unpack_uint16(offset)
         version = tls.Version.int2enum(version, alert_on_failure=True)
+        length, offset = self.received_data.unpack_uint16(offset)
 
         while len(self.received_data) < (length + 5):
             self.received_data.extend(self.wait_data())
-        msg = self.received_data[:5 + length]
+        msg = ProtocolData(self.received_data[5:5+length])
         self.received_data = ProtocolData(self.received_data[length + 5:])
-        return content_type, version, length, ProtocolData(msg)
+        return content_type, version, msg
 
     def wait_data(self):
         rfds, wfds, efds = select.select([self.socket], [], [], 5)

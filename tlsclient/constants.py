@@ -25,12 +25,12 @@ class ExtendedIntEnum(enum.IntEnum):
         return enum
 
 
-class Entity(ExtendedIntEnum):
+class Entity(ExtendedEnum):
     CLIENT = 0
     SERVER = 1
 
 
-class Version(enum.IntEnum):
+class Version(ExtendedIntEnum):
     SSL20 = 0x0200
     SSL30 = 0x0300
     TLS10 = 0x0301

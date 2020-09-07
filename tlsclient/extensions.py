@@ -19,6 +19,12 @@ class Extension(metaclass=abc.ABCMeta):
         ext.extend(ext_body)
         return ext
 
+    @classmethod
+    def deserialize(cls, ext_id, ext_body):
+        cls_name = deserialization_map[ext_id]
+        return cls_name().deserialize_ext_body(ext_body)
+
+
 class ExtServerNameIndication(Extension):
 
     extension_id = tls.Extension.SERVER_NAME
@@ -44,6 +50,10 @@ class ExtExtendedMasterSecret(Extension):
     def serialize_ext_body(self):
         return ProtocolData()
 
+    def deserialize_ext_body(self, ext_body):
+        if ext_body:
+            raise FatalAlert("Message length error", tls.AlertDescription.DECODE_ERROR)
+        return self
 
 class ExtRenegotiationInfo(Extension):
 
@@ -55,6 +65,9 @@ class ExtRenegotiationInfo(Extension):
     def serialize_ext_body(self):
         return self.opaque
 
+    def deserialize_ext_body(self, ext_body):
+        self.opaque, _ = ext_body.unpack_bytes(0, len(ext_body))
+        return self
 
 class ExtEcPointFormats(Extension):
 
@@ -74,6 +87,17 @@ class ExtEcPointFormats(Extension):
         ext_body.append_uint8(len(format_list))
         ext_body.extend(format_list)
         return ext_body
+
+    def deserialize_ext_body(self, ext_body):
+        self.point_formats = []
+        length, offset = ext_body.unpack_uint8(0)
+        if offset + length != len(ext_body):
+            raise FatalAlert("Message length error", tls.AlertDescription.DECODE_ERROR)
+        for i in range(length):
+            point_format, offset = ext_body.unpack_uint8(offset)
+            self.point_formats.append(tls.EcPointFormat.int2enum(point_format))
+        return self
+
 
 class ExtSupportedGroups(Extension):
 
@@ -116,3 +140,57 @@ class ExtSignatureAlgorithms(Extension):
         ext_body.extend(algo_list)
         return ext_body
 
+deserialization_map = {
+    # tls.Extension.SERVER_NAME = 0
+    # tls.Extension.MAX_FRAGMENT_LENGTH = 1
+    # tls.Extension.CLIENT_CERTIFICATE_URL = 2
+    # tls.Extension.TRUSTED_CA_KEYS = 3
+    # tls.Extension.TRUNCATED_HMAC = 4
+    # tls.Extension.STATUS_REQUEST = 5
+    # tls.Extension.USER_MAPPING = 6
+    # tls.Extension.CLIENT_AUTHZ = 7
+    # tls.Extension.SERVER_AUTHZ = 8
+    # tls.Extension.CERT_TYPE = 9
+    # tls.Extension.SUPPORTED_GROUPS = 10
+    tls.Extension.EC_POINT_FORMATS: ExtEcPointFormats,
+    # tls.Extension.SRP = 12
+    # tls.Extension.SIGNATURE_ALGORITHMS = 13
+    # tls.Extension.USE_SRTP = 14
+    # tls.Extension.HEARTBEAT = 15
+    # tls.Extension.APPLICATION_LAYER_PROTOCOL_NEGOTIATION = 16
+    # tls.Extension.STATUS_REQUEST_V2 = 17
+    # tls.Extension.SIGNED_CERTIFICATE_TIMESTAMP = 18
+    # tls.Extension.CLIENT_CERTIFICATE_TYPE = 19
+    # tls.Extension.SERVER_CERTIFICATE_TYPE = 20
+    # tls.Extension.PADDING = 21
+    # tls.Extension.ENCRYPT_THEN_MAC = 22
+    tls.Extension.EXTENDED_MASTER_SECRET: ExtExtendedMasterSecret,
+    # tls.Extension.TOKEN_BINDING = 24
+    # tls.Extension.CACHED_INFO = 25
+    # tls.Extension.TLS_LTS = 26
+    # tls.Extension.COMPRESS_CERTIFICATE = 27
+    # tls.Extension.RECORD_SIZE_LIMIT = 28
+    # tls.Extension.PWD_PROTECT = 29
+    # tls.Extension.PWD_CLEAR = 30
+    # tls.Extension.PASSWORD_SALT = 31
+    # tls.Extension.TICKET_PINNING = 32
+    # tls.Extension.TLS_CERT_WITH_EXTERN_PSK = 33
+    # tls.Extension.DELEGATED_CREDENTIALS = 34
+    # tls.Extension.SESSION_TICKET = 35
+    # tls.Extension.SUPPORTED_EKT_CIPHERS = 39
+    # tls.Extension.PRE_SHARED_KEY = 41
+    # tls.Extension.EARLY_DATA = 42
+    # tls.Extension.SUPPORTED_VERSIONS = 43
+    # tls.Extension.COOKIE = 44
+    # tls.Extension.PSK_KEY_EXCHANGE_MODES = 45
+    # tls.Extension.CERTIFICATE_AUTHORITIES = 47
+    # tls.Extension.OID_FILTERS = 48
+    # tls.Extension.POST_HANDSHAKE_AUTH = 49
+    # tls.Extension.SIGNATURE_ALGORITHMS_CERT = 50
+    # tls.Extension.KEY_SHARE = 51
+    # tls.Extension.TRANSPARENCY_INFO = 52
+    # tls.Extension.CONNECTION_ID = 53
+    # tls.Extension.EXTERNAL_ID_HASH = 55
+    # tls.Extension.EXTERNAL_SESSION_ID = 56
+    tls.Extension.RENEGOTIATION_INFO: ExtRenegotiationInfo
+}
