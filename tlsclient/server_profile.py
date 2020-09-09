@@ -4,6 +4,6 @@
 
 class ServerProfile(object):
 
-    def __init__(self, logger):
-        self.logger = logger
+    def __init__(self):
+        pass
 

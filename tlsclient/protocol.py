@@ -30,16 +30,16 @@ class ProtocolData(bytearray):
         return ProtocolData(self[offset:offset+length]), offset + length
 
 
-    def unshift_uint8(self):
-        return struct.unpack("!B", self[:1])[0], ProtocolData(self[1:])
-
-    def unshift_uint16(self):
-        return struct.unpack("!H", self[:2])[0], ProtocolData(self[2:])
-
-    def unshift_uint24(self):
-        high_byte, val = struct.unpack("!BH", self[:3])
-        return 0x10000 * high_byte + val, ProtocolData(self[3:])
-        #return struct.unpack("!I", self[:3])[0], ProtocolData(self[3:])
+#    def unshift_uint8(self):
+#        return struct.unpack("!B", self[:1])[0], ProtocolData(self[1:])
+#
+#    def unshift_uint16(self):
+#        return struct.unpack("!H", self[:2])[0], ProtocolData(self[2:])
+#
+#    def unshift_uint24(self):
+#        high_byte, val = struct.unpack("!BH", self[:3])
+#        return 0x10000 * high_byte + val, ProtocolData(self[3:])
+#        #return struct.unpack("!I", self[:3])[0], ProtocolData(self[3:])
 
     def append_uint8(self, *vals):
         for val in vals:

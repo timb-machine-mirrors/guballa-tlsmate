@@ -491,20 +491,23 @@ class AlertLevel(ExtendedEnum):
     FATAL = 2
 
 class HandshakeType(ExtendedEnum):
+    HELLO_REQUEST = 0
     CLIENT_HELLO = 1
     SERVER_HELLO = 2
     NEW_SESSION_TICKET = 4
     END_OF_EARLY_DATA = 5
     ENCRYPTED_EXTENSIONS = 8
     CERTIFICATE = 11
+    SERVER_KEY_EXCHANGE = 12
     CERTIFICATE_REQUEST = 13
+    SERVER_HELLO_DONE = 14
     CERTIFICATE_VERIFY = 15
+    CLIENT_KEY_EXCHANGE = 16
     FINISHED = 20
     KEY_UPDATE = 24
     COMPRESSED_CERTIFICATE = 25
     EKT_KEY = 26
     MESSAGE_HASH = 254
-
 
 class SupportedGroups(ExtendedEnum):
     SECT163K1 = 1
@@ -617,3 +620,19 @@ class EcPointFormat(ExtendedEnum):
     UNCOMPRESSED = 0
     ANSIX962_COMPRESSED_PRIME = 1
     ANSIX962_COMPRESSED_CHAR2 = 2
+
+class KeyExchangeAlgorithm(ExtendedEnum):
+    # RFC5246, 7.4.3.
+    DHE_DSS = 0
+    DHE_RSA = 1
+    DH_ANON = 2
+    RSA = 3
+    DH_DSS = 4
+    DH_RSA = 5
+    # RFC4492
+    EC_DIFFIE_HELLMAN = 6
+
+class EcCurveType(ExtendedEnum):
+    EXPLICIT_PRIME = 1
+    EXPLICIT_CHAR2 = 2
+    NAMED_CURVE = 3

@@ -8,8 +8,9 @@ import tlsclient.constants as tls
 
 class Extension(metaclass=abc.ABCMeta):
 
-    def serialize_body(self):
-        raise NotImplementedError("class {} does not implement method serialize_ext_body".format(type(self).__name__))
+    @abc.abstractmethod
+    def serialize_ext_body(self):
+        pass
 
     def serialize(self):
         ext = ProtocolData()
