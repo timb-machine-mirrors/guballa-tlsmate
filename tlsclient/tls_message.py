@@ -14,6 +14,7 @@ class TlsMessage(metaclass=abc.ABCMeta):
 
 class HandshakeMessage(TlsMessage):
 
+
     content_type = tls.ContentType.HANDSHAKE
     msg_type = None
 
@@ -27,7 +28,7 @@ class HandshakeMessage(TlsMessage):
                 "Length of {} incorrect".format(msg_type),
                 tls.AlertDescription.DECODE_ERROR,
             )
-        cls_name = deserialization_map[msg_type]
+        cls_name = hs_deserialization_map[msg_type]
         return cls_name().deserialize_msg_body(fragment, offset, connection_state)
 
     @abc.abstractmethod
@@ -38,7 +39,7 @@ class HandshakeMessage(TlsMessage):
     def serialize_msg_body(self, connection_state):
         pass
 
-    def from_profile(self):
+    def from_profile(self, profile):
         return self
 
     def serialize(self, tls_connection_state):
@@ -198,6 +199,7 @@ class KeyExchangeEC(object):
         if self.curve_type is tls.EcCurveType.NAMED_CURVE:
             named_curve, offset = fragment.unpack_uint16(offset)
             self.named_curve = tls.SupportedGroups.int2enum(named_curve)
+            connection_state.named_curve = self.named_curve
         # TODO: add other curve types
         return offset
 
@@ -264,6 +266,87 @@ class ServerHelloDone(HandshakeMessage):
             raise FatalAlert("Message length error", tls.AlertDescription.DECODE_ERROR)
         return self
 
+class ClientKeyExchange(HandshakeMessage):
+
+    msg_type = tls.HandshakeType.CLIENT_KEY_EXCHANGE
+
+    def serialize_msg_body(self, connection_state):
+        msg = protocol.ProtocolData()
+        msg.append_uint8(len(connection_state.client_public_key))
+        msg.extend(connection_state.client_public_key)
+        return msg
+
+
+    def deserialize_msg_body(self, fragment, offset, connection_state):
+        pass
+
+
+class Finished(HandshakeMessage):
+
+    msg_type = tls.HandshakeType.FINISHED
+
+    def serialize_msg_body(self, connection_state):
+        msg = protocol.ProtocolData(b"This is rubbish")
+        return msg
+
+
+    def deserialize_msg_body(self, fragment, offset, connection_state):
+        pass
+
+
+
+
+class ChangeCipherSpecMessage(TlsMessage):
+
+    content_type = tls.ContentType.CHANGE_CIPHER_SPEC
+
+    @classmethod
+    def deserialize(cls, fragment, connection_state):
+        msg_type, offset = fragment.unpack_uint8(0)
+        msg_type = tls.CCSType.int2enum(msg_type, alert_on_failure=True)
+        length, offset = fragment.unpack_uint24(offset)
+        if length + offset != len(fragment):
+            raise FatalAlert(
+                "Length of {} incorrect".format(msg_type),
+                tls.AlertDescription.DECODE_ERROR,
+            )
+        cls_name = ccs_deserialization_map[msg_type]
+        return cls_name().deserialize_msg_body(fragment, offset, connection_state)
+        pass
+
+    def serialize(self, tls_connection_state):
+        pass
+
+    @abc.abstractmethod
+    def deserialize_msg_body(self, msg_body, length, connection_state):
+        pass
+
+    @abc.abstractmethod
+    def serialize_msg_body(self, connection_state):
+        pass
+
+    def from_profile(self, profile):
+        return self
+
+    def serialize(self, tls_connection_state):
+        msg_body = self.serialize_msg_body(tls_connection_state)
+
+        ccs_msg = protocol.ProtocolData()
+        ccs_msg.append_uint8(self.msg_type.value)
+        #ccs_msg.append_uint24(len(msg_body))
+        #ccs_msg.extend(msg_body)
+        return ccs_msg
+
+class ChangeCipherSpec(ChangeCipherSpecMessage):
+
+    msg_type = tls.CCSType.CHANGE_CIPHER_SPEC
+
+    def deserialize_msg_body(self, msg_body, length, connection_state):
+        return self
+
+    def serialize_msg_body(self, connection_state):
+        return protocol.ProtocolData()
+
 class Alert(TlsMessage):
 
     content_type = tls.ContentType.ALERT
@@ -287,7 +370,7 @@ class Alert(TlsMessage):
         return alert
 
 
-deserialization_map = {
+hs_deserialization_map = {
     # tls.HandshakeType.HELLO_REQUEST = 0
     tls.HandshakeType.CLIENT_HELLO: ClientHello,
     tls.HandshakeType.SERVER_HELLO: ServerHello,
@@ -305,4 +388,8 @@ deserialization_map = {
     # tls.HandshakeType.COMPRESSED_CERTIFICATE = 25
     # tls.HandshakeType.EKT_KEY = 26
     # tls.HandshakeType.MESSAGE_HASH = 254
+}
+
+ccs_deserialization_map = {
+    tls.CCSType.CHANGE_CIPHER_SPEC: ChangeCipherSpec,
 }

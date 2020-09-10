@@ -69,7 +69,9 @@ class ProtocolData(bytearray):
         for string in strings:
             self.extend(map(ord, string))
 
-    def dump(self, bytes_per_row=16):
+    def dump(self, bytes_per_row=0):
+        if bytes_per_row == 0:
+            bytes_per_row = len(self)
         rows = []
         for x in range(0, len(self), bytes_per_row):
             chunk = self[x:x+bytes_per_row]

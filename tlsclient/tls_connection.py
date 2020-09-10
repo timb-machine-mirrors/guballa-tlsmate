@@ -14,6 +14,28 @@ from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
 from tlsclient.tls_message import Alert, HandshakeMessage
 
+from cryptography.hazmat.primitives import hashes, hmac
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+
+
+def my_hmac(secret, msg, hash_algo):
+    h = hmac.HMAC(secret, hash_algo)
+    h.update(msg)
+    return h.finalize()
+
+def expand(secret, seed, size, hash_algo):
+    out = b""
+    ax = bytes(seed)
+    while len(out) < size:
+        ax = my_hmac(secret, ax, hash_algo)
+        out = out + my_hmac(secret, ax + seed, hash_algo)
+    return out[:size]
+
+def prf(secret, label, seed, size, hash_algo):
+    return expand(secret, label + seed, size, hash_algo)
+
 
 class TlsConnectionState(object):
 
@@ -39,6 +61,7 @@ class TlsConnectionState(object):
         self.client_random = client_random
         self.server_random = None
         self.record_layer_version = tls.Version.TLS10
+        self.named_curve = None
 
     def set_version(self, version):
         self.version = version
@@ -55,6 +78,29 @@ class TlsConnectionState(object):
             if cipher_suite.name.startswith(key):
                 self.key_exchange_method = val
                 break
+
+    def update(self):
+        if self.key_exchange_method == tls.KeyExchangeAlgorithm.EC_DIFFIE_HELLMAN:
+            if self.named_curve == tls.SupportedGroups.X25519:
+                private_key = X25519PrivateKey.generate()
+                public_key = private_key.public_key()
+                self.client_public_key = public_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
+                server_public_key = X25519PublicKey.from_public_bytes(bytes(self.server_public_key))
+                premaster_secret = private_key.exchange(server_public_key)
+                print("Premaster secret:", ProtocolData.dump(premaster_secret))
+
+        self.master_secret = prf(
+            premaster_secret,
+            b"master secret",
+            self.client_random + self.server_random,
+            48,
+            hashes.SHA256()
+        )
+        print("Master secret: ", ProtocolData(self.master_secret).dump())
+
+        return
+
+
 
 class TlsConnectionMsgs(object):
 
@@ -162,7 +208,7 @@ class TlsConnection(object):
             elif content_type is tls.ContentType.ALERT:
                 pass
             elif content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
-                pass
+                msg = ChangeCipherSpec.deserialize(fragment, self.tls_connection_state)
             elif content_type is tls.ContentType.APPLICATION_DATA:
                 pass
 

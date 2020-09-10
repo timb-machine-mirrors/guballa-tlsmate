@@ -509,6 +509,9 @@ class HandshakeType(ExtendedEnum):
     EKT_KEY = 26
     MESSAGE_HASH = 254
 
+class CCSType(ExtendedEnum):
+    CHANGE_CIPHER_SPEC = 1
+
 class SupportedGroups(ExtendedEnum):
     SECT163K1 = 1
     SECT163R1 = 2

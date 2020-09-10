@@ -20,24 +20,25 @@ class TestSuite(object):
         client_profile = self.create_client_profile()
         client_profile.tls_versions = [tls.Version.TLS12]
         client_profile.cipher_suites = [
-            tls.CipherSuite.TLS_AES_128_GCM_SHA256,
-            tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
-            tls.CipherSuite.TLS_AES_256_GCM_SHA384,
-            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
-            tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
-            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
-            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
-            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-            tls.CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
-            tls.CipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384,
-            tls.CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
-            tls.CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA,
-            tls.CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+            #tls.CipherSuite.TLS_AES_128_GCM_SHA256,
+            #tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
+            #tls.CipherSuite.TLS_AES_256_GCM_SHA384,
+            #tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+            #tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+            #tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+            #tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+            #tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+            #tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+            #tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+            #tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+            #tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+            #tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+            #tls.CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
+            #tls.CipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384,
+            #tls.CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+            #tls.CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA,
+            #tls.CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
         ]
         client_profile.supported_groups = [
             tls.SupportedGroups.X25519,
@@ -68,4 +69,8 @@ class TestSuite(object):
             conn.wait(msg.Certificate, optional=True)
             conn.wait(msg.ServerKeyExchange, optional=True)
             conn.wait(msg.ServerHelloDone)
+            conn.tls_connection_state.update()
+            conn.send(msg.ClientKeyExchange, msg.ChangeCipherSpec, msg.Finished)
+            #conn.send(msg.ClientKeyExchange)
+            #conn.send(msg.ChangeCipherSpec)
 
