@@ -7,17 +7,25 @@ from tlsclient.alert import FatalAlert
 class ExtendedEnum(enum.Enum):
 
     @classmethod
-    def int2enum(cls, value, alert_on_failure=False):
+    def val2enum(cls, value, alert_on_failure=False):
         enum = cls._value2member_map_.get(value)
         if (enum is None) and alert_on_failure:
             message = "Value {} not defined for {}".format(value, cls)
             raise FatalAlert(message, AlertDescription.ILLEGAL_PARAMETER)
         return enum
 
+    @classmethod
+    def str2enum(cls, name, alert_on_failure=False):
+        enum = cls._member_map_.get(name)
+        if (enum is None) and alert_on_failure:
+            message = "Value {} not defined for {}".format(name, cls)
+            raise FatalAlert(message, AlertDescription.ILLEGAL_PARAMETER)
+        return enum
+
 class ExtendedIntEnum(enum.IntEnum):
 
     @classmethod
-    def int2enum(cls, value, alert_on_failure=False):
+    def val2enum(cls, value, alert_on_failure=False):
         enum = cls._value2member_map_.get(value)
         if (enum is None) and alert_on_failure:
             message = "Value {} not defined for {}".format(value, cls)
@@ -484,7 +492,7 @@ class AlertDescription(ExtendedEnum):
     BAD_CERTIFICATE_STATUS_RESPONSE = 113
     UNKNOWN_PSK_IDENTITY = 115
     CERTIFICATE_REQUIRED = 116
-    NO_APPLICATION_PROTocol = 120
+    NO_APPLICATION_PROTOCOL = 120
 
 class AlertLevel(ExtendedEnum):
     WARNING = 1
@@ -624,18 +632,63 @@ class EcPointFormat(ExtendedEnum):
     ANSIX962_COMPRESSED_PRIME = 1
     ANSIX962_COMPRESSED_CHAR2 = 2
 
-class KeyExchangeAlgorithm(ExtendedEnum):
-    # RFC5246, 7.4.3.
-    DHE_DSS = 0
-    DHE_RSA = 1
-    DH_ANON = 2
-    RSA = 3
-    DH_DSS = 4
-    DH_RSA = 5
-    # RFC4492
-    EC_DIFFIE_HELLMAN = 6
-
 class EcCurveType(ExtendedEnum):
     EXPLICIT_PRIME = 1
     EXPLICIT_CHAR2 = 2
     NAMED_CURVE = 3
+
+class KeyExchangeAlgorithm(ExtendedEnum):
+    # RFC5246, 7.4.3.
+    DHE_DSS = enum.auto()
+    DHE_RSA = enum.auto()
+    DH_ANON = enum.auto()
+    RSA = enum.auto()
+    DH_DSS = enum.auto()
+    DH_RSA = enum.auto()
+    # RFC4492
+    ECDH_ECDSA = enum.auto()
+    ECDHE_ECDSA = enum.auto()
+    ECDH_RSA = enum.auto()
+    ECDHE_RSA = enum.auto()
+
+    # do we actually need this
+    EC_DIFFIE_HELLMAN = enum.auto()
+
+
+class SupportedCipher(ExtendedEnum):
+    NULL = enum.auto()
+    AES_128_CBC = enum.auto()
+    AES_128_CCM = enum.auto()
+    AES_128_CCM_8 = enum.auto()
+    AES_128_GCM = enum.auto()
+    AES_256_CBC = enum.auto()
+    AES_256_CCM = enum.auto()
+    AES_256_GCM = enum.auto()
+    ARIA_128_CBC = enum.auto()
+    ARIA_128_GCM = enum.auto()
+    ARIA_256_CBC = enum.auto()
+    ARIA_256_GCM = enum.auto()
+    CAMELLIA_128_CBC = enum.auto()
+    CAMELLIA_128_GCM = enum.auto()
+    CAMELLIA_256_CBC = enum.auto()
+    CAMELLIA_256_GCM = enum.auto()
+    CHACHA20_POLY1305 = enum.auto()
+    IDEA_CBC = enum.auto()
+    RC4_128 = enum.auto()
+    RC4_40 = enum.auto()
+    SEED_CBC = enum.auto()
+
+class SupportedCipherMode(ExtendedEnum):
+    NULL = enum.auto()
+    CBC = enum.auto()
+    CCM = enum.auto()
+    CCM_8 = enum.auto()
+    GCM = enum.auto()
+
+class SupportedHash(ExtendedEnum):
+    NULL = enum.auto()
+    MD5 = enum.auto()
+    SHA = enum.auto()
+    SHA256 = enum.auto()
+    SHA384 = enum.auto()
+

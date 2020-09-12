@@ -96,7 +96,7 @@ class ExtEcPointFormats(Extension):
             raise FatalAlert("Message length error", tls.AlertDescription.DECODE_ERROR)
         for i in range(length):
             point_format, offset = ext_body.unpack_uint8(offset)
-            self.point_formats.append(tls.EcPointFormat.int2enum(point_format))
+            self.point_formats.append(tls.EcPointFormat.val2enum(point_format))
         return self
 
 

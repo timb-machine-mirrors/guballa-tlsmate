@@ -8,12 +8,12 @@ import tlsclient.constants as tls
 import tlsclient.protocol as protocol
 import tlsclient.extensions as ext
 
+
 class TlsMessage(metaclass=abc.ABCMeta):
     pass
 
 
 class HandshakeMessage(TlsMessage):
-
 
     content_type = tls.ContentType.HANDSHAKE
     msg_type = None
@@ -21,7 +21,7 @@ class HandshakeMessage(TlsMessage):
     @classmethod
     def deserialize(cls, fragment, connection_state):
         msg_type, offset = fragment.unpack_uint8(0)
-        msg_type = tls.HandshakeType.int2enum(msg_type, alert_on_failure=True)
+        msg_type = tls.HandshakeType.val2enum(msg_type, alert_on_failure=True)
         length, offset = fragment.unpack_uint24(offset)
         if length + offset != len(fragment):
             raise FatalAlert(
@@ -75,15 +75,25 @@ class ClientHello(HandshakeMessage):
         self.compression_methods = profile.compression_methods
         self.extensions = []
         if profile.support_sni:
-            self.extensions.append(ext.ExtServerNameIndication(host_name=profile.server_name))
+            self.extensions.append(
+                ext.ExtServerNameIndication(host_name=profile.server_name)
+            )
         if profile.support_extended_master_secret:
             self.extensions.append(ext.ExtExtendedMasterSecret())
         if profile.support_ec_point_formats:
-            self.extensions.append(ext.ExtEcPointFormats(ec_point_formats=profile.ec_point_formats))
+            self.extensions.append(
+                ext.ExtEcPointFormats(ec_point_formats=profile.ec_point_formats)
+            )
         if profile.support_supported_groups:
-            self.extensions.append(ext.ExtSupportedGroups(supported_groups=profile.supported_groups))
+            self.extensions.append(
+                ext.ExtSupportedGroups(supported_groups=profile.supported_groups)
+            )
         if profile.support_signature_algorithms:
-            self.extensions.append(ext.ExtSignatureAlgorithms(signature_algorithms=profile.signature_algorithms))
+            self.extensions.append(
+                ext.ExtSignatureAlgorithms(
+                    signature_algorithms=profile.signature_algorithms
+                )
+            )
         return self
 
     def serialize_msg_body(self, connection_state):
@@ -100,7 +110,7 @@ class ClientHello(HandshakeMessage):
         if self.random is None:
             self.random = connection_state.client_random
         else:
-            connection_state.client_random = self.random
+            connection_state.update(client_random=self.random)
         msg.extend(self.random)
 
         # session_id
@@ -147,19 +157,16 @@ class ServerHello(HandshakeMessage):
     def deserialize_msg_body(self, fragment, offset, connection_state):
 
         version, offset = fragment.unpack_uint16(offset)
-        self.version = tls.Version.int2enum(version, alert_on_failure=True)
-        connection_state.set_version(self.version)
+        self.version = tls.Version.val2enum(version, alert_on_failure=True)
         self.random, offset = fragment.unpack_bytes(offset, 32)
-        connection_state.set_server_random(self.random)
         session_id_len, offset = fragment.unpack_uint8(offset)
         self.session_id, offset = fragment.unpack_bytes(offset, session_id_len)
         cipher_suite, offset = fragment.unpack_uint16(offset)
-        self.cipher_suite = tls.CipherSuite.int2enum(
+        self.cipher_suite = tls.CipherSuite.val2enum(
             cipher_suite, alert_on_failure=True
         )
-        connection_state.set_cipher_suite(self.cipher_suite)
         compression_method, offset = fragment.unpack_uint8(offset)
-        self.compression_method = tls.CompressionMethod.int2enum(
+        self.compression_method = tls.CompressionMethod.val2enum(
             compression_method, alert_on_failure=True
         )
         self.extensions = []
@@ -168,11 +175,18 @@ class ServerHello(HandshakeMessage):
             ext_length, offset = fragment.unpack_uint16(offset)
             while offset < len(fragment):
                 ext_id, offset = fragment.unpack_uint16(offset)
-                ext_id = tls.Extension.int2enum(ext_id, alert_on_failure=True)
+                ext_id = tls.Extension.val2enum(ext_id, alert_on_failure=True)
                 ext_length, offset = fragment.unpack_uint16(offset)
                 ext_body, offset = fragment.unpack_bytes(offset, ext_length)
                 self.extensions.append(ext.Extension.deserialize(ext_id, ext_body))
+
+        connection_state.update(
+            tls_version=self.version,
+            cipher_suite=self.cipher_suite,
+            server_random=self.random,
+        )
         return self
+
 
 class Certificate(HandshakeMessage):
 
@@ -191,14 +205,14 @@ class Certificate(HandshakeMessage):
             self.certificates.append(cert)
         return self
 
-class KeyExchangeEC(object):
 
+class KeyExchangeEC(object):
     def deserialize_ECParameters(self, fragment, offset, connection_state):
         curve_type, offset = fragment.unpack_uint8(offset)
-        self.curve_type = tls.EcCurveType.int2enum(curve_type)
+        self.curve_type = tls.EcCurveType.val2enum(curve_type)
         if self.curve_type is tls.EcCurveType.NAMED_CURVE:
             named_curve, offset = fragment.unpack_uint16(offset)
-            self.named_curve = tls.SupportedGroups.int2enum(named_curve)
+            self.named_curve = tls.SupportedGroups.val2enum(named_curve)
             connection_state.named_curve = self.named_curve
         # TODO: add other curve types
         return offset
@@ -218,15 +232,16 @@ class KeyExchangeEC(object):
         offset = self.deserialize_ServerECDHParams(fragment, offset, connection_state)
         # Signature           signed_params;
         signature_scheme, offset = fragment.unpack_uint16(offset)
-        self.signature_scheme = tls.SignatureScheme.int2enum(signature_scheme)
+        self.signature_scheme = tls.SignatureScheme.val2enum(signature_scheme)
         signature_length, offset = fragment.unpack_uint16(offset)
         self.signature, offset = fragment.unpack_bytes(offset, signature_length)
         return self
 
-class KeyExchangeDH(object):
 
+class KeyExchangeDH(object):
     def deserialize_msg_body(self, fragment, offset, connection_state):
         pass
+
 
 class ServerKeyExchange(HandshakeMessage):
 
@@ -239,19 +254,33 @@ class ServerKeyExchange(HandshakeMessage):
     def deserialize_msg_body(self, fragment, offset, connection_state):
         self.ec = None
         self.dh = None
-        if connection_state.key_exchange_method == tls.KeyExchangeAlgorithm.EC_DIFFIE_HELLMAN:
+        key_exchange_method = connection_state.get_key_exchange_method()
+        if key_exchange_method in [
+            tls.KeyExchangeAlgorithm.ECDH_ECDSA,
+            tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
+            tls.KeyExchangeAlgorithm.ECDH_RSA,
+            tls.KeyExchangeAlgorithm.ECDHE_RSA,
+        ]:
             # RFC 4492
-            self.ec = KeyExchangeEC().deserialize_msg_body(fragment, offset, connection_state)
-        elif connection_state.key_exchange_method in [
-                tls.KeyExchangeAlgorithm.DHE_DSS,
-                tls.KeyExchangeAlgorithm.DHE_RSA,
-                tls.KeyExchangeAlgorithm.DH_ANON
-                ]:
+            self.ec = KeyExchangeEC().deserialize_msg_body(
+                fragment, offset, connection_state
+            )
+        elif key_exchange_method in [
+            tls.KeyExchangeAlgorithm.DHE_DSS,
+            tls.KeyExchangeAlgorithm.DHE_RSA,
+            tls.KeyExchangeAlgorithm.DH_ANON,
+        ]:
             # RFC5246
-            self.dh = KeyExchangeDH().deserialize_msg_body(fragment, offset, connection_state)
+            self.dh = KeyExchangeDH().deserialize_msg_body(
+                fragment, offset, connection_state
+            )
         else:
-            raise FatalAlert("Key exchange algorithm incompatible with ServerKeyExchange message", tls.AlertDescription.UNEXPECTED_MESSAGE)
+            raise FatalAlert(
+                "Key exchange algorithm incompatible with ServerKeyExchange message",
+                tls.AlertDescription.UNEXPECTED_MESSAGE,
+            )
         return self
+
 
 class ServerHelloDone(HandshakeMessage):
 
@@ -266,6 +295,7 @@ class ServerHelloDone(HandshakeMessage):
             raise FatalAlert("Message length error", tls.AlertDescription.DECODE_ERROR)
         return self
 
+
 class ClientKeyExchange(HandshakeMessage):
 
     msg_type = tls.HandshakeType.CLIENT_KEY_EXCHANGE
@@ -275,7 +305,6 @@ class ClientKeyExchange(HandshakeMessage):
         msg.append_uint8(len(connection_state.client_public_key))
         msg.extend(connection_state.client_public_key)
         return msg
-
 
     def deserialize_msg_body(self, fragment, offset, connection_state):
         pass
@@ -289,11 +318,8 @@ class Finished(HandshakeMessage):
         msg = protocol.ProtocolData(b"This is rubbish")
         return msg
 
-
     def deserialize_msg_body(self, fragment, offset, connection_state):
         pass
-
-
 
 
 class ChangeCipherSpecMessage(TlsMessage):
@@ -303,7 +329,7 @@ class ChangeCipherSpecMessage(TlsMessage):
     @classmethod
     def deserialize(cls, fragment, connection_state):
         msg_type, offset = fragment.unpack_uint8(0)
-        msg_type = tls.CCSType.int2enum(msg_type, alert_on_failure=True)
+        msg_type = tls.CCSType.val2enum(msg_type, alert_on_failure=True)
         length, offset = fragment.unpack_uint24(offset)
         if length + offset != len(fragment):
             raise FatalAlert(
@@ -333,9 +359,10 @@ class ChangeCipherSpecMessage(TlsMessage):
 
         ccs_msg = protocol.ProtocolData()
         ccs_msg.append_uint8(self.msg_type.value)
-        #ccs_msg.append_uint24(len(msg_body))
-        #ccs_msg.extend(msg_body)
+        # ccs_msg.append_uint24(len(msg_body))
+        # ccs_msg.extend(msg_body)
         return ccs_msg
+
 
 class ChangeCipherSpec(ChangeCipherSpecMessage):
 
@@ -346,6 +373,7 @@ class ChangeCipherSpec(ChangeCipherSpecMessage):
 
     def serialize_msg_body(self, connection_state):
         return protocol.ProtocolData()
+
 
 class Alert(TlsMessage):
 
@@ -390,6 +418,4 @@ hs_deserialization_map = {
     # tls.HandshakeType.MESSAGE_HASH = 254
 }
 
-ccs_deserialization_map = {
-    tls.CCSType.CHANGE_CIPHER_SPEC: ChangeCipherSpec,
-}
+ccs_deserialization_map = {tls.CCSType.CHANGE_CIPHER_SPEC: ChangeCipherSpec}

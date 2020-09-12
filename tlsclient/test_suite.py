@@ -69,7 +69,7 @@ class TestSuite(object):
             conn.wait(msg.Certificate, optional=True)
             conn.wait(msg.ServerKeyExchange, optional=True)
             conn.wait(msg.ServerHelloDone)
-            conn.tls_connection_state.update()
+            conn.tls_connection_state.update_keys()
             conn.send(msg.ClientKeyExchange, msg.ChangeCipherSpec, msg.Finished)
             #conn.send(msg.ClientKeyExchange)
             #conn.send(msg.ChangeCipherSpec)
