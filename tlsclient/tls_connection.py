@@ -24,12 +24,18 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import (
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
-Cipher = collections.namedtuple("Cipher", "enc_key_len block_size iv_len")
+Cipher = collections.namedtuple("Cipher", "cipher cipher_type enc_key_len block_size iv_length")
 Mac = collections.namedtuple("Mac", "hash_algo mac_len mac_key_len")
 
 supported_ciphers = {
-    tls.SupportedCipher.AES_128_CBC: Cipher(enc_key_len=16, block_size=16, iv_len=16),
-    tls.SupportedCipher.AES_256_CBC: Cipher(enc_key_len=32, block_size=32, iv_len=32),
+    tls.SupportedCipher.AES_128_CBC: Cipher(
+        cipher=tls.CipherPrimitive.AES,
+        cipher_type=tls.CipherType.BLOCK,
+        enc_key_len=16,
+        block_size=16,
+        iv_length=16
+    ),
+    tls.SupportedCipher.AES_256_CBC: Cipher(enc_key_len=32, block_size=32, iv_length=32),
 }
 
 supported_macs = {
@@ -207,7 +213,7 @@ class TlsConnectionState(object):
 
 class TlsConnectionMsgs(object):
 
-    map_mag2attr = {
+    map_msg2attr = {
         tls.HandshakeType.HELLO_REQUEST: None,
         tls.HandshakeType.CLIENT_HELLO: None,
         tls.HandshakeType.SERVER_HELLO: "server_hello",
@@ -244,7 +250,7 @@ class TlsConnectionMsgs(object):
 
     def store_received_msg(self, msg):
         if msg.content_type == tls.ContentType.HANDSHAKE:
-            attr = self.map_mag2attr.get(msg.msg_type, None)
+            attr = self.map_msg2attr.get(msg.msg_type, None)
             if attr is not None:
                 setattr(self, attr, msg)
         elif msg.content_type == tls.ContentType.CHANGE_CIPHER_SPEC:
@@ -254,7 +260,7 @@ class TlsConnectionMsgs(object):
 
 
 class TlsConnection(object):
-    def __init__(self, tls_connection_state, tls_connection_msgs, logger, server, port):
+    def __init__(self, tls_connection_state, tls_connection_msgs, security_parameters, record_layer, logger, server, port):
         self.logger = logger
         self.tls_connection_state = tls_connection_state
         self.msg = tls_connection_msgs
@@ -262,6 +268,8 @@ class TlsConnection(object):
         self.port = port
         self.received_data = ProtocolData()
         self.queued_msg = None
+        self.record_layer = record_layer
+        self.sec_param = security_parameters
 
     def __enter__(self):
         return self
@@ -271,9 +279,9 @@ class TlsConnection(object):
             self.send(
                 Alert(level=tls.AlertLevel.FATAL, description=exc_value.description)
             )
-            self.socket.close()
+            self.record_layer.close_socket()
             return True
-        self.socket.close()
+        self.record_layer.close_socket()
         return False
 
     def set_profile(self, client_profile):
@@ -289,16 +297,11 @@ class TlsConnection(object):
         for msg in messages:
             if inspect.isclass(msg):
                 msg = msg().from_profile(self.client_profile)
-            # we will skip fragmentation and compression here.
             msg_data = msg.serialize(self.tls_connection_state)
 
-            # payload protection skip at the moment
-            data.append_uint8(msg.content_type.value)
-            data.append_uint16(self.tls_connection_state.record_layer_version)
-            data.append_uint16(len(msg_data))
-            data.extend(msg_data)
-        print("Serialized: ", " ".join("{:02x}".format(x) for x in data))
-        self.socket.sendall(data)
+            self.record_layer.send_message(tls.MessageBlock(content_type=msg.content_type, version=self.tls_connection_state.record_layer_version, fragment=msg_data))
+
+        self.record_layer.flush()
 
     def wait(self, msg_class, optional=False):
         if self.queued_msg:

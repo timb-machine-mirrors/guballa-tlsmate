@@ -63,7 +63,7 @@ class TestSuite(object):
         ]
 
         with client_profile.create_connection() as conn:
-            conn.open_socket()
+            # conn.open_socket()
             conn.send(msg.ClientHello)
             conn.wait(msg.ServerHello)
             conn.wait(msg.Certificate, optional=True)

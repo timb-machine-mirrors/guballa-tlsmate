@@ -3,7 +3,12 @@
 """
 
 import enum
+import collections
 from tlsclient.alert import FatalAlert
+
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.ciphers import algorithms
+
 class ExtendedEnum(enum.Enum):
 
     @classmethod
@@ -655,6 +660,15 @@ class KeyExchangeAlgorithm(ExtendedEnum):
     EC_DIFFIE_HELLMAN = enum.auto()
 
 
+class CipherPrimitive(ExtendedEnum):
+    NULL = enum.auto()
+    AES = enum.auto()
+    CAMELLIA = enum.auto()
+    IDEA = enum.auto()
+    RC4 = enum.auto()
+    SEED = enum.auto()
+    TRIPPLE_DES = enum.auto()
+
 class SupportedCipher(ExtendedEnum):
     NULL = enum.auto()
     AES_128_CBC = enum.auto()
@@ -664,10 +678,6 @@ class SupportedCipher(ExtendedEnum):
     AES_256_CBC = enum.auto()
     AES_256_CCM = enum.auto()
     AES_256_GCM = enum.auto()
-    ARIA_128_CBC = enum.auto()
-    ARIA_128_GCM = enum.auto()
-    ARIA_256_CBC = enum.auto()
-    ARIA_256_GCM = enum.auto()
     CAMELLIA_128_CBC = enum.auto()
     CAMELLIA_128_GCM = enum.auto()
     CAMELLIA_256_CBC = enum.auto()
@@ -677,6 +687,7 @@ class SupportedCipher(ExtendedEnum):
     RC4_128 = enum.auto()
     RC4_40 = enum.auto()
     SEED_CBC = enum.auto()
+    TRIPPLE_DES_EDE_CBC = enum.auto()
 
 class SupportedCipherMode(ExtendedEnum):
     NULL = enum.auto()
@@ -691,4 +702,44 @@ class SupportedHash(ExtendedEnum):
     SHA = enum.auto()
     SHA256 = enum.auto()
     SHA384 = enum.auto()
+
+class CipherType(ExtendedEnum):
+    NULL = enum.auto()
+    BLOCK = enum.auto()
+    STREAM = enum.auto()
+    AEAD = enum.auto()
+
+def cipher2algorithm(cipher):
+    return{
+        CipherPrimitive.AES: algorithms.AES,
+        CipherPrimitive.CAMELLIA: algorithms.Camellia,
+        CipherPrimitive.IDEA: algorithms.IDEA,
+        CipherPrimitive.RC4: algorithms.ARC4,
+        CipherPrimitive.SEED: algorithms.SEED,
+        CipherPrimitive.TRIPPLE_DES: algorithms.TrippleDES
+    }.get(cipher)
+
+def hash2algorithm(hash_enum):
+    return {
+        SupportedHash.MD5: hashes.MD5,
+        SupportedHash.SHA: hashes.SHA1,
+        SupportedHash.SHA256: hashes.SHA256,
+        SupportedHash.SHA384: hashes.SHA384,
+    }.get(hash_enum)
+
+
+StateUpdateParams = collections.namedtuple("StateUpdateParams",
+    [
+        "cipher",       # tls.CipherPrimitive
+        "cipher_type",  # tls.CipherType
+        "enc_key",
+        "mac_key",
+        "iv_value",
+        "iv_length",
+        "hash_algo",    # tls.SupportedHash
+        "compression_algo",     # tls.CompressionMethod
+    ])
+
+MessageBlock = collections.namedtuple("MessageBlock", "content_type version fragment")
+
 

@@ -2,10 +2,13 @@
 """Module containing the dependencies
 """
 import logging
+import tlsclient.constants as tls
 from tlsclient.server_profile import ServerProfile
 from tlsclient.test_suite import TestSuite
 from tlsclient.tls_connection import TlsConnection, TlsConnectionState, TlsConnectionMsgs
 from tlsclient.client_profile import ClientProfile
+from tlsclient.record_layer import RecordLayer
+from tlsclient.security_parameters import SecurityParameters
 
 from dependency_injector import containers, providers
 
@@ -18,6 +21,17 @@ class Container(containers.DeclarativeContainer):
 
     server_profile = providers.Singleton(ServerProfile)
 
+    record_layer = providers.Factory(RecordLayer,
+        logger=logger,
+        server=config.server,
+        port=config.port,
+    )
+
+    security_parameters = providers.Factory(
+        SecurityParameters,
+        entity=tls.Entity.CLIENT
+    )
+
     tls_connection_state = providers.Factory(TlsConnectionState)
 
     tls_connection_msgs = providers.Factory(TlsConnectionMsgs)
@@ -26,6 +40,8 @@ class Container(containers.DeclarativeContainer):
         TlsConnection,
         tls_connection_state=tls_connection_state,
         tls_connection_msgs=tls_connection_msgs,
+        security_parameters=security_parameters,
+        record_layer=record_layer,
         logger=logger,
         server=config.server,
         port=config.port,

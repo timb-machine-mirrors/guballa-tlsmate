@@ -7,7 +7,7 @@ import time
 import tlsclient.constants as tls
 import tlsclient.protocol as protocol
 import tlsclient.extensions as ext
-
+from tlsclient.security_parameters import get_random_value
 
 class TlsMessage(metaclass=abc.ABCMeta):
     pass
@@ -39,7 +39,7 @@ class HandshakeMessage(TlsMessage):
     def serialize_msg_body(self, connection_state):
         pass
 
-    def from_profile(self, profile):
+    def init_from_profile(self, profile):
         return self
 
     def serialize(self, tls_connection_state):
@@ -58,15 +58,13 @@ class ClientHello(HandshakeMessage):
 
     def __init__(self):
         self.client_version = tls.Version.TLS12
-        self.random = protocol.ProtocolData()
-        self.random.append_uint32(int(time.time()))
-        self.random.extend(os.urandom(28))
+        self.random = get_random_value()
         self.session_id = protocol.ProtocolData()
         self.cipher_suites = [tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256]
         self.compression_methods = [tls.CompressionMethod.NULL]
         self.extensions = []
 
-    def from_profile(self, profile):
+    def init_from_profile(self, profile):
         self.client_version = max(profile.versions)
         if profile.support_session_id and profile.session_id:
             self.session_id = profile.session_id
@@ -100,17 +98,15 @@ class ClientHello(HandshakeMessage):
         msg = protocol.ProtocolData()
 
         # version
-        if type(self.client_version) == int:
-            version = self.client_version
-        else:
-            version = self.client_version.value
+        version = self.client_version
+        if type(version) == tls.Version:
+            version = version.value
         msg.append_uint16(version)
 
         # random
         if self.random is None:
-            self.random = connection_state.client_random
-        else:
-            connection_state.update(client_random=self.random)
+            self.random = get_random_value()
+        connection_state.update(client_random=self.random)
         msg.extend(self.random)
 
         # session_id
@@ -128,10 +124,9 @@ class ClientHello(HandshakeMessage):
         # compression methods
         msg.append_uint8(len(self.compression_methods))
         for comp_meth in self.compression_methods:
-            if type(comp_meth) == int:
-                msg.append_uint8(comp_meth)
-            else:
-                msg.append_uint8(comp_meth.value)
+            if type(comp_meth) == tls.CompressionMethod:
+                comp_meth = comp_meth.value
+            msg.append_uint8(comp_meth)
 
         # extensions
         ext_bytes = protocol.ProtocolData()
@@ -351,7 +346,7 @@ class ChangeCipherSpecMessage(TlsMessage):
     def serialize_msg_body(self, connection_state):
         pass
 
-    def from_profile(self, profile):
+    def init_from_profile(self, profile):
         return self
 
     def serialize(self, tls_connection_state):
@@ -372,6 +367,25 @@ class ChangeCipherSpec(ChangeCipherSpecMessage):
         return self
 
     def serialize_msg_body(self, connection_state):
+        if self.entity == tls.Entity.CLIENT:
+            enc_key = self.client_write_key
+            mac_key = self.client_write_mac_key
+            iv_value = self.client_write_iv
+        else:
+            enc_key = self.server_write_key
+            mac_key = self.server_write_mac_key
+            iv_value = self.server_write_iv
+        state = tls.StateUpdateParams(
+            cipher=connection_state.cipher.cipher,
+            cipher_type=connection_state.cipher.cipher_type,
+            enc_key=enc_key,
+            mac_key=mac_key,
+            iv_value=iv_value,
+            iv_length=connection_state.cipher.iv_length,
+            hash_algo=self.mac.hash_algo,
+            compression_algo=connection_state.compression_algo,
+        )
+        self.record_layer.update_write_state(state)
         return protocol.ProtocolData()
 
 
