@@ -17,32 +17,10 @@ import tlsclient.constants as tls
 from tlsclient.tls_message import Alert, HandshakeMessage
 
 from cryptography.hazmat.primitives import hashes, hmac
-from cryptography.hazmat.primitives.asymmetric.x25519 import (
-    X25519PrivateKey,
-    X25519PublicKey,
-)
+
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
-Cipher = collections.namedtuple("Cipher", "cipher cipher_type enc_key_len block_size iv_length")
-Mac = collections.namedtuple("Mac", "hash_algo mac_len mac_key_len")
-
-supported_ciphers = {
-    tls.SupportedCipher.AES_128_CBC: Cipher(
-        cipher=tls.CipherPrimitive.AES,
-        cipher_type=tls.CipherType.BLOCK,
-        enc_key_len=16,
-        block_size=16,
-        iv_length=16
-    ),
-    tls.SupportedCipher.AES_256_CBC: Cipher(enc_key_len=32, block_size=32, iv_length=32),
-}
-
-supported_macs = {
-    tls.SupportedHash.SHA256: Mac(hash_algo=hashes.SHA256, mac_len = 32, mac_key_len=32),
-    tls.SupportedHash.SHA: Mac(hash_algo=hashes.SHA1, mac_len = 20, mac_key_len=20),
-    tls.SupportedHash.MD5: Mac(hash_algo=hashes.MD5, mac_len = 16, mac_key_len=16),
-}
 
 def my_hmac(secret, msg, hash_algo):
     h = hmac.HMAC(secret, hash_algo)
@@ -64,7 +42,6 @@ def prf(secret, label, seed, size, hash_algo):
 
 
 class TlsConnectionState(object):
-
     def __init__(self):
         self.entity = tls.Entity.CLIENT
         self.master_secret = None
@@ -76,7 +53,7 @@ class TlsConnectionState(object):
         self.record_layer_version = tls.Version.TLS10
         self.named_curve = None
         self.handshake_msgs = ProtocolData()
-        self.tls_version = None
+        self.version = None
         self.cipher_suite = None
         self.mac = None
         self.cipher = None
@@ -91,68 +68,12 @@ class TlsConnectionState(object):
     def set_server_random(self, random):
         self.server_random = random
 
-
-
     def get_key_exchange_method(self):
         return self.key_exchange_method
-
-    def key_deriviation(self):
-        key_material = prf(
-            self.master_secret,
-            b"key expansion",
-            self.server_random + self.client_random,
-            2 * (self.mac.mac_key_len + self.cipher.enc_key_len + self.cipher.iv_len),
-            self.mac.hash_algo()
-        )
-        key_material = ProtocolData(key_material)
-        self.client_write_mac_key, offset = key_material.unpack_bytes(0, self.mac.mac_key_len)
-        self.server_write_mac_key, offset = key_material.unpack_bytes(offset, self.mac.mac_key_len)
-        self.client_write_key, offset = key_material.unpack_bytes(offset, self.cipher.enc_key_len)
-        self.server_write_key, offset = key_material.unpack_bytes(offset, self.cipher.enc_key_len)
-        self.client_write_iv, offset = key_material.unpack_bytes(offset, self.cipher.iv_len)
-        self.server_write_iv, offset = key_material.unpack_bytes(offset, self.cipher.iv_len)
-        print("client_write_mac_key: ", self.client_write_mac_key.dump())
-        print("server_write_mac_key: ", self.server_write_mac_key.dump())
-        print("client_write_key    : ", self.client_write_key.dump())
-        print("server_write_key    : ", self.server_write_key.dump())
-        print("client_write_iv     : ", self.client_write_iv.dump())
-        print("server_write_iv     : ", self.server_write_iv.dump())
-
-    def generate_master_secret(self):
-        if self.key_exchange_method in [
-            tls.KeyExchangeAlgorithm.ECDH_ECDSA,
-            tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
-            tls.KeyExchangeAlgorithm.ECDH_RSA,
-            tls.KeyExchangeAlgorithm.ECDHE_RSA,
-        ]:
-            if self.named_curve == tls.SupportedGroups.X25519:
-                private_key = X25519PrivateKey.generate()
-                public_key = private_key.public_key()
-                self.client_public_key = public_key.public_bytes(
-                    Encoding.Raw, PublicFormat.Raw
-                )
-                server_public_key = X25519PublicKey.from_public_bytes(
-                    bytes(self.server_public_key)
-                )
-                premaster_secret = private_key.exchange(server_public_key)
-                print("Premaster secret:", ProtocolData.dump(premaster_secret))
-
-        self.master_secret = prf(
-            premaster_secret,
-            b"master secret",
-            self.client_random + self.server_random,
-            48,
-            self.mac.hash_algo(),
-        )
-        print("Master secret: ", ProtocolData(self.master_secret).dump())
-
-        return
-
 
     def update_keys(self):
         self.generate_master_secret()
         self.key_deriviation()
-
 
     def update_value(self, attr_name, val):
         setattr(self, attr_name, val)
@@ -160,43 +81,16 @@ class TlsConnectionState(object):
     def update_handshake_msg(self, argname, handshake_msg):
         self.handshake_msgs.extend(handshake_msg)
 
-    def update_cipher_suite(self, argname, cipher_suite):
-        self.cipher_suite = cipher_suite
-
-        if self.tls_version == tls.Version.TLS13:
-            pass
-        else:
-            res = re.match(r"TLS_(.*)_WITH_(.+)_([^_]+)", cipher_suite.name)
-            if not res:
-                raise FatalAlert(
-                    "Negotiated cipher suite {} not supported".format(
-                        cipher_suite.name
-                    ),
-                    tls.AlertDescription.HandshakeFailure,
-                )
-            key_exchange_method = tls.KeyExchangeAlgorithm.str2enum(res.group(1))
-            cipher = tls.SupportedCipher.str2enum(res.group(2))
-            hash_algo = tls.SupportedHash.str2enum(res.group(3))
-            if key_exchange_method is None or cipher is None or hash_algo is None:
-                raise FatalAlert(
-                    "Negotiated cipher suite {} not supported".format(
-                        cipher_suite.name
-                    ),
-                    tls.AlertDescription.HandshakeFailure,
-                )
-            self.key_exchange_method = key_exchange_method
-            self.cipher = supported_ciphers[cipher]
-            self.mac = supported_macs[hash_algo]
-
     def update_version(self, argname, version):
-        self.tls_version = version
+        self.version = version
+        self.sec_param.version = version
         # stupid TLS1.3 RFC: let the message look like TLS1.2
         # to support not compliant middleboxes. :-(
         self.record_layer_version = min(version, tls.Version.TLS12)
 
     def update(self, **kwargs):
         argname2method = {
-            "tls_version": self.update_version,
+            "version": self.update_version,
             "cipher_suite": self.update_cipher_suite,
             "server_random": self.update_value,
             "client_random": self.update_value,
@@ -260,7 +154,16 @@ class TlsConnectionMsgs(object):
 
 
 class TlsConnection(object):
-    def __init__(self, tls_connection_state, tls_connection_msgs, security_parameters, record_layer, logger, server, port):
+    def __init__(
+        self,
+        tls_connection_state,
+        tls_connection_msgs,
+        security_parameters,
+        record_layer,
+        logger,
+        server,
+        port,
+    ):
         self.logger = logger
         self.tls_connection_state = tls_connection_state
         self.msg = tls_connection_msgs
@@ -270,6 +173,7 @@ class TlsConnection(object):
         self.queued_msg = None
         self.record_layer = record_layer
         self.sec_param = security_parameters
+        self.record_layer_version = tls.Version.TLS10
 
     def __enter__(self):
         return self
@@ -296,10 +200,16 @@ class TlsConnection(object):
         data = ProtocolData()
         for msg in messages:
             if inspect.isclass(msg):
-                msg = msg().from_profile(self.client_profile)
-            msg_data = msg.serialize(self.tls_connection_state)
+                msg = msg().init_from_profile(self.client_profile)
+            msg_data = msg.serialize(self)
 
-            self.record_layer.send_message(tls.MessageBlock(content_type=msg.content_type, version=self.tls_connection_state.record_layer_version, fragment=msg_data))
+            self.record_layer.send_message(
+                tls.MessageBlock(
+                    content_type=msg.content_type,
+                    version=self.record_layer_version,
+                    fragment=msg_data,
+                )
+            )
 
         self.record_layer.flush()
 
@@ -308,15 +218,17 @@ class TlsConnection(object):
             msg = self.queued_msg
             self.queued_msg = None
         else:
-            content_type, version, fragment = self.wait_fragment()
+            content_type, version, fragment = self.record_layer.wait_fragment()
             if content_type is tls.ContentType.HANDSHAKE:
-                msg = HandshakeMessage.deserialize(fragment, self.tls_connection_state)
+                msg = HandshakeMessage.deserialize(fragment, self)
             elif content_type is tls.ContentType.ALERT:
-                pass
+                raise NotImplementedError("Receiving an Alert is not yet implemented")
             elif content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
-                msg = ChangeCipherSpec.deserialize(fragment, self.tls_connection_state)
+                msg = ChangeCipherSpec.deserialize(fragment, self)
             elif content_type is tls.ContentType.APPLICATION_DATA:
                 pass
+            else:
+                raise ValueError("Content type unknow")
 
         self.msg.store_received_msg(msg)
 
@@ -362,3 +274,44 @@ class TlsConnection(object):
     def wait_server_hello_done(self):
         while True:
             self.wait()
+
+    def update_keys(self):
+        self.sec_param.generate_master_secret()
+        self.sec_param.key_deriviation()
+
+    def update(self, **kwargs):
+        for argname, val in kwargs.items():
+            if argname == "version":
+                self.version = val
+                self.sec_param.version = val
+                # stupid TLS1.3 RFC: let the message look like TLS1.2
+                # to support not compliant middleboxes. :-(
+                self.record_layer_version = min(val, tls.Version.TLS12)
+            elif argname == "cipher_suite":
+                self.sec_param.update_cipher_suite(val)
+            elif argname == "server_random":
+                self.sec_param.server_random = val
+            elif argname == "client_random":
+                self.sec_param.client_random = val
+            elif argname == "named_curve":
+                self.sec_param.named_curve = val
+            elif argname == "remote_public_key":
+                self.sec_param.remote_public_key = val
+            else:
+                raise ValueError(
+                    'Update connection: unknown argument "{}" given'.format(argname)
+                )
+
+    def update_write_state(self):
+        if self.sec_param.entity == tls.Entity.CLIENT:
+            state = self.sec_param.get_pending_write_state(tls.Entity.CLIENT)
+        else:
+            state = self.sec_param.get_pending_write_state(tls.Entity.SERVER)
+        self.record_layer.update_write_state(state)
+
+    def update_read_state(self):
+        if self.sec_param.entity == tls.Entity.CLIENT:
+            state = self.sec_param.get_pending_write_state(tls.Entity.SERVER)
+        else:
+            state = self.sec_param.get_pending_write_state(tls.Entity.CLIENT)
+        self.record_layer.update_write_state(state)

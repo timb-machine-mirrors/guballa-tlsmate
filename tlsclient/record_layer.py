@@ -7,6 +7,7 @@ import collections
 import struct
 import os
 import socket
+import select
 import tlsclient.constants as tls
 
 from cryptography.hazmat.primitives import hmac
@@ -18,15 +19,17 @@ class RecordLayerState(object):
 
     def __init__(self, param):
         self._seq_nbr = 0
-        self._cipher = tls.cipher2algorithm[param.cipher]
+        #self._cipher = tls.cipher2algorithm[param.cipher]
+        self._cipher_primitive = param.cipher_primitive
+        self._cipher_algp = param.cipher_algo
         self._cipher_type = param.cipher_type
         self._enc_key = param.enc_key
         self._mac_key = param.mac_key
-        self._mac_length = param.mac_length
+        self._mac_len = param.mac_len
         self._iv_value = param.iv_value
-        self._iv_length = param.iv_length
-        self._hash_algo = tls.hash2algorithm[param.hash_algo]
-        self._compression_algo = param.compression_algo
+        self._iv_len = param.iv_len
+        self._hash_algo = param.hash_algo
+        self._compression_method = param.compression_method
         self._socket = None
 
 class RecordLayer(object):
@@ -60,12 +63,12 @@ class RecordLayer(object):
 
         # MAC
         mac_input = ProtocolData()
-        mac_input.append_uint16(self.seq_nbr)
+        mac_input.append_uint16(self._seq_nbr)
         mac_input.append_uint8(content_type)
         mac_input.append_uint16(version.value)
         mac_input.append_uint16(len(fragment))
         mac_input.extend(fragment)
-        mac = hmac.HMAC(state.mac_key, state.hash_algo())
+        mac = hmac.HMAC(state._mac_key, state._hash_algo())
         mac.update(mac_input)
         enc_input = ProtocolData()
         enc_input.extend(fragment)
@@ -73,12 +76,12 @@ class RecordLayer(object):
 
         # padding
         length = len(enc_input) + 1
-        missing_bytes = state.write_enc_block_len - (length % state.write_enc_block_len)
+        missing_bytes = state.write_enc_block_len - (length % state._write_enc_block_len)
         enc_input.extend(struct.pack("!B", missing_bytes) * (missing_bytes + 1))
 
         # encryption
-        iv = os.urandom(state.iv_length)
-        cipher = Cipher(state.cipher(state.enc_key), modes.CBC(iv))
+        iv = os.urandom(state._iv_len)
+        cipher = Cipher(state.cipher_algo(state._enc_key), modes.CBC(iv))
         encryptor = cipher.encryptor()
         cipher_text = encryptor.update(enc_input) + encryptor.finalize()
 
@@ -88,7 +91,7 @@ class RecordLayer(object):
 
         self._add_to_sendbuffer(content_type, version, cipher_text)
 
-        self.seq_nbr += 1
+        self._seq_nbr += 1
 
     def _protect(self, content_type, version, fragment):
         wstate = self._write_state
@@ -122,9 +125,9 @@ class RecordLayer(object):
     def _unprotect_block_cipher(self, state, content_type, version, fragment):
         # Only TLS1.2 currently supported, encrypt_then_mac not yet supported
         # decryption
-        iv = fragment[:state.iv_length]
-        cipher_text = fragment[state.iv_length]
-        cipher = Cipher(state.cipher(state.enc_key), modes.CBC(iv))
+        iv = fragment[:state.iv_len]
+        cipher_text = fragment[state.iv_len]
+        cipher = Cipher(state.cipher_algo(state.enc_key), modes.CBC(iv))
         decryptor = cipher.decryptor()
         plain_text = decryptor.update(ct) + decryptor.finalize()
 
@@ -139,16 +142,16 @@ class RecordLayer(object):
                 raise FatalAlert("Wrong padding bytes", tls.AlertDescription.ILLEGAL_PARAMETER)
 
         # MAC
-        if len(plain_text) < state._mac_length:
+        if len(plain_text) < state._mac_len:
             raise FatalAlert("Decoded fragment too short", tls.AlertDescription.BAD_RECORD_MAC)
-        plain_text_length = len(plain_text) - state._mac_length
-        mac_received = plain_text[plain_text_length:]
-        plain_text = plain_text[:plain_text_length]
+        plain_text_len = len(plain_text) - state._mac_len
+        mac_received = plain_text[plain_text_len:]
+        plain_text = plain_text[:plain_text_len]
         mac_input = ProtocolData()
         mac_input.append_uint16(state._seq_nbr)
         mac_input.append_uint8(content_type.value)
         mac_input.append_uint16(version)
-        mac_input.append_uint16(plain_text_length)
+        mac_input.append_uint16(plain_text_len)
         mac_input.extend(plain_text)
         mac = hmac.HMAC(state.mac_key, state.hash_algo())
         mac.update(mac_input)
@@ -228,12 +231,12 @@ class RecordLayer(object):
             self._receive_buffer.extend(data)
 
         # here we have received at least a complete record layer fragment
-        fragment = ProtocolData(self._receive_buffer[:(length + 5)])
+        fragment = ProtocolData(self._receive_buffer[5:(length + 5)])
         self._receive_buffer = ProtocolData(self._receive_buffer[(length + 5):])
 
         fragment = self._unprotect(content_type, version, fragment)
         fragment = self._uncompress(fragment)
-        return MessageBlock(content_type=content_type, version=version, fragment=fragment)
+        return tls.MessageBlock(content_type=content_type, version=version, fragment=fragment)
 
     def update_write_state(self, new_state):
         self.write_state = RecordLayerState(new_state)

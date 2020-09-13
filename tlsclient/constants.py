@@ -709,35 +709,19 @@ class CipherType(ExtendedEnum):
     STREAM = enum.auto()
     AEAD = enum.auto()
 
-def cipher2algorithm(cipher):
-    return{
-        CipherPrimitive.AES: algorithms.AES,
-        CipherPrimitive.CAMELLIA: algorithms.Camellia,
-        CipherPrimitive.IDEA: algorithms.IDEA,
-        CipherPrimitive.RC4: algorithms.ARC4,
-        CipherPrimitive.SEED: algorithms.SEED,
-        CipherPrimitive.TRIPPLE_DES: algorithms.TrippleDES
-    }.get(cipher)
-
-def hash2algorithm(hash_enum):
-    return {
-        SupportedHash.MD5: hashes.MD5,
-        SupportedHash.SHA: hashes.SHA1,
-        SupportedHash.SHA256: hashes.SHA256,
-        SupportedHash.SHA384: hashes.SHA384,
-    }.get(hash_enum)
-
 
 StateUpdateParams = collections.namedtuple("StateUpdateParams",
     [
-        "cipher",       # tls.CipherPrimitive
+        "cipher_primitive",       # tls.CipherPrimitive
+        "cipher_algo",
         "cipher_type",  # tls.CipherType
         "enc_key",
         "mac_key",
         "iv_value",
-        "iv_length",
-        "hash_algo",    # tls.SupportedHash
-        "compression_algo",     # tls.CompressionMethod
+        "iv_len",
+        "mac_len",
+        "hash_algo",
+        "compression_method",     # tls.CompressionMethod
     ])
 
 MessageBlock = collections.namedtuple("MessageBlock", "content_type version fragment")
