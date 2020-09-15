@@ -715,6 +715,7 @@ StateUpdateParams = collections.namedtuple("StateUpdateParams",
         "cipher_primitive",       # tls.CipherPrimitive
         "cipher_algo",
         "cipher_type",  # tls.CipherType
+        "block_size",
         "enc_key",
         "mac_key",
         "iv_value",

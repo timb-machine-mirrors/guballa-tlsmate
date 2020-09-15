@@ -65,6 +65,13 @@ class ProtocolData(bytearray):
                 raise ValueError("Cannot pack {} into 4 bytes".format(val))
             self.extend(struct.pack("!I", val))
 
+    def append_uint64(self, *vals):
+        for val in vals:
+            if val > 0xffffffffffffffff:
+                raise ValueError("Cannot pack {} into 8 bytes".format(val))
+            self.extend(struct.pack("!Q", val))
+
+
     def append_str(self, *strings):
         for string in strings:
             self.extend(map(ord, string))

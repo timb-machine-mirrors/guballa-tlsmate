@@ -11,7 +11,7 @@ import select
 import tlsclient.constants as tls
 
 from cryptography.hazmat.primitives import hmac
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes, aead
 
 
 class RecordLayerState(object):
@@ -21,8 +21,9 @@ class RecordLayerState(object):
         self._seq_nbr = 0
         #self._cipher = tls.cipher2algorithm[param.cipher]
         self._cipher_primitive = param.cipher_primitive
-        self._cipher_algp = param.cipher_algo
+        self._cipher_algo = param.cipher_algo
         self._cipher_type = param.cipher_type
+        self._block_size = param.block_size
         self._enc_key = param.enc_key
         self._mac_key = param.mac_key
         self._mac_len = param.mac_len
@@ -63,35 +64,60 @@ class RecordLayer(object):
 
         # MAC
         mac_input = ProtocolData()
-        mac_input.append_uint16(self._seq_nbr)
-        mac_input.append_uint8(content_type)
+        mac_input.append_uint64(state._seq_nbr)
+        mac_input.append_uint8(content_type.value)
         mac_input.append_uint16(version.value)
         mac_input.append_uint16(len(fragment))
         mac_input.extend(fragment)
         mac = hmac.HMAC(state._mac_key, state._hash_algo())
         mac.update(mac_input)
+        hmac_bytes = mac.finalize()
         enc_input = ProtocolData()
         enc_input.extend(fragment)
-        enc_input.extend(mac.finalize())
+        enc_input.extend(hmac_bytes)
 
         # padding
         length = len(enc_input) + 1
-        missing_bytes = state.write_enc_block_len - (length % state._write_enc_block_len)
+        missing_bytes = state._block_size - (length % state._block_size)
         enc_input.extend(struct.pack("!B", missing_bytes) * (missing_bytes + 1))
 
         # encryption
         iv = os.urandom(state._iv_len)
-        cipher = Cipher(state.cipher_algo(state._enc_key), modes.CBC(iv))
+
+#        iv = bytes.fromhex(
+#"91 1a 71 48 5a da 1b f6 e2 f7 0d 15 6f 8e 7c 2e"
+#        )
+
+
+        cipher = Cipher(state._cipher_algo(state._enc_key), modes.CBC(iv))
         encryptor = cipher.encryptor()
         cipher_text = encryptor.update(enc_input) + encryptor.finalize()
 
-        msg = ProtocolData(iv)
-        msg.append_uint16()
+        #msg = ProtocolData(iv)
+        #msg.append_uint16()
 
 
-        self._add_to_sendbuffer(content_type, version, cipher_text)
+        self._add_to_sendbuffer(content_type, version, iv + cipher_text)
 
-        self._seq_nbr += 1
+        state._seq_nbr += 1
+
+    def _protect_aead_cipher(self, state, content_type, version, fragment):
+        aesgcm = aead.AESGCM(state._enc_key)
+        nonce = os.urandom(state._iv_len)
+        aad = ProtocolData()
+        aad.append_uint64(state._seq_nbr)
+        aad.append_uint8(content_type.value)
+        aad.append_uint16(version.value)
+        aad.append_uint16(len(fragment))
+        cipher_text = aesgcm.encrypt(nonce, bytes(fragment), bytes(aad))
+        aead_ciphered = ProtocolData()
+        aead_ciphered.extend(nonce)
+        aead_ciphered.extend(cipher_text)
+
+        self._add_to_sendbuffer(content_type, version, aead_ciphered)
+
+        state._seq_nbr += 1
+
 
     def _protect(self, content_type, version, fragment):
         wstate = self._write_state
@@ -99,12 +125,12 @@ class RecordLayer(object):
             # no record layer protection
             self._add_to_sendbuffer(content_type, version, fragment)
         else:
-            if wstate.cipher_type == tls.CipherType.BLOCK:
+            if wstate._cipher_type == tls.CipherType.BLOCK:
                 self._protect_block_cipher(wstate, content_type, version, fragment)
-            elif wstate.cipher_type == tls.CipherType.STREAM:
+            elif wstate._cipher_type == tls.CipherType.STREAM:
                 pass
-            elif wstate.cipher_type == tls.CipherType.AEAD:
-                pass
+            elif wstate._cipher_type == tls.CipherType.AEAD:
+                self._protect_aead_cipher(wstate, content_type, version, fragment)
             else:
                 raise FatalAlert("Unknown cipher type", tls.AlertDescription.INTERNAL_ERROR)
 
@@ -148,7 +174,7 @@ class RecordLayer(object):
         mac_received = plain_text[plain_text_len:]
         plain_text = plain_text[:plain_text_len]
         mac_input = ProtocolData()
-        mac_input.append_uint16(state._seq_nbr)
+        mac_input.append_uint64(state._seq_nbr)
         mac_input.append_uint8(content_type.value)
         mac_input.append_uint16(version)
         mac_input.append_uint16(plain_text_len)
@@ -239,8 +265,8 @@ class RecordLayer(object):
         return tls.MessageBlock(content_type=content_type, version=version, fragment=fragment)
 
     def update_write_state(self, new_state):
-        self.write_state = RecordLayerState(new_state)
+        self._write_state = RecordLayerState(new_state)
 
     def update_read_state(self, new_state):
-        self.read_state = RecordLayerState(new_state)
+        self._read_state = RecordLayerState(new_state)
 

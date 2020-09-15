@@ -174,6 +174,10 @@ class TlsConnection(object):
         self.record_layer = record_layer
         self.sec_param = security_parameters
         self.record_layer_version = tls.Version.TLS10
+        self._update_write_state = False
+        self._msg_hash = None
+        self._msg_hash_queue = None
+        self._msg_hash_active = False
 
     def __enter__(self):
         return self
@@ -210,6 +214,7 @@ class TlsConnection(object):
                     fragment=msg_data,
                 )
             )
+            self._check_update_write_state()
 
         self.record_layer.flush()
 
@@ -302,12 +307,17 @@ class TlsConnection(object):
                     'Update connection: unknown argument "{}" given'.format(argname)
                 )
 
+    def _check_update_write_state(self):
+        if self._update_write_state:
+            if self.sec_param.entity == tls.Entity.CLIENT:
+                state = self.sec_param.get_pending_write_state(tls.Entity.CLIENT)
+            else:
+                state = self.sec_param.get_pending_write_state(tls.Entity.SERVER)
+            self.record_layer.update_write_state(state)
+            self._update_write_state = False
+
     def update_write_state(self):
-        if self.sec_param.entity == tls.Entity.CLIENT:
-            state = self.sec_param.get_pending_write_state(tls.Entity.CLIENT)
-        else:
-            state = self.sec_param.get_pending_write_state(tls.Entity.SERVER)
-        self.record_layer.update_write_state(state)
+        self._update_write_state = True
 
     def update_read_state(self):
         if self.sec_param.entity == tls.Entity.CLIENT:
@@ -315,3 +325,33 @@ class TlsConnection(object):
         else:
             state = self.sec_param.get_pending_write_state(tls.Entity.CLIENT)
         self.record_layer.update_write_state(state)
+
+    def init_msg_hash(self):
+        self._msg_hash_queue = ProtocolData()
+        self._msg_hash = None
+        self._msg_hash_active = True
+
+    def update_msg_hash(self, msg):
+        if not self._msg_hash_active:
+            return
+        if self.sec_param.hash_algo is None:
+            # cipher suite not yet negotiated, no hash algo available yet
+            self._msg_hash_queue.extend(msg)
+        else:
+            if self._msg_hash is None:
+                self._msg_hash = hashes.Hash(self.sec_param.hash_algo())
+                self._msg_hash.update(self._msg_hash_queue)
+                print("Debug: ", self._msg_hash_queue.dump())
+                self._msg_hash_queue = None
+            self._msg_hash.update(msg)
+            print("Debug: ", msg.dump())
+
+    def finalize_msg_hash(self, intermediate=False):
+        if intermediate:
+            hash_tmp = self._msg_hash.copy()
+            return hash_tmp.finalize()
+        val = self._msg_hash.finalize()
+        self._msg_hash_active = False
+        self._msg_hash = None
+        self._msg_hash_queue = None
+        return val

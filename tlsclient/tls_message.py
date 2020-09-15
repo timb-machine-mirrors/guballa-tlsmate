@@ -29,7 +29,9 @@ class HandshakeMessage(TlsMessage):
                 tls.AlertDescription.DECODE_ERROR,
             )
         cls_name = hs_deserialization_map[msg_type]
-        return cls_name().deserialize_msg_body(fragment, offset, conn)
+        msg = cls_name().deserialize_msg_body(fragment, offset, conn)
+        conn.update_msg_hash(fragment)
+        return msg
 
     @abc.abstractmethod
     def deserialize_msg_body(self, msg_body, length, conn):
@@ -49,6 +51,7 @@ class HandshakeMessage(TlsMessage):
         handshake_msg.append_uint8(self.msg_type.value)
         handshake_msg.append_uint24(len(msg_body))
         handshake_msg.extend(msg_body)
+        conn.update_msg_hash(handshake_msg)
         return handshake_msg
 
 
@@ -135,6 +138,7 @@ class ClientHello(HandshakeMessage):
         msg.append_uint16(len(ext_bytes))
         msg.extend(ext_bytes)
 
+        conn.init_msg_hash()
         return msg
 
     def deserialize_msg_body(self, msg_body, length, conn):
@@ -311,7 +315,35 @@ class Finished(HandshakeMessage):
     msg_type = tls.HandshakeType.FINISHED
 
     def serialize_msg_body(self, conn):
-        msg = protocol.ProtocolData(b"This is rubbish")
+        if conn.sec_param.entity == tls.Entity.CLIENT:
+            hash_val = conn.finalize_msg_hash()
+            label = b"client finished"
+        else:
+            hash_val = conn.finalize_msg_hash()
+            label = b"server finished"
+
+#        # patch to fix values
+#        hash_val = bytes.fromhex("6492b05d5a5b165784ad89d3b1fca68928361601029a9489ced65591da4997d6")
+#        conn.sec_param.master_secret = bytes.fromhex(
+#"81 d3 22 cb 5d ff 62 f4 9b f0 f0 04 c1 46 46 c3 "
+#"a3 12 20 f0 90 52 10 de 29 cb df b5 86 94 e2 ba "
+#"87 f8 f0 85 23 10 3d 0b 9c 9e a4 ca 3e fc 8f 30 "
+#        )
+#
+#        conn.record_layer._write_state._enc_key = bytes.fromhex(
+#"1c a8 96 7e f4 82 2b 65 4c 77 17 0b ec 14 cf 9b "
+#        )
+#        conn.record_layer._write_state._mac_key = bytes.fromhex(
+#"55 d9 b5 1a cc d3 8a a7 71 8b 40 18 ef e5 7f d4 "
+#"b3 e5 a5 c1 ff a9 e2 7f 94 c1 9d 18 23 33 2a a9 "
+#        )
+
+
+        val = conn.sec_param.prf(conn.sec_param.master_secret, label, hash_val, 12)
+        print("Debug02:", hash_val)
+        print("Debug03:", val)
+        print("Debug04:", conn.sec_param.hash_algo)
+        msg = protocol.ProtocolData(val)
         return msg
 
     def deserialize_msg_body(self, fragment, offset, conn):
@@ -336,7 +368,7 @@ class ChangeCipherSpecMessage(TlsMessage):
         return cls_name().deserialize_msg_body(fragment, offset, conn)
 
     def serialize(self, conn):
-        pass
+        conn.update_write_state()
 
     @abc.abstractmethod
     def deserialize_msg_body(self, msg_body, length, conn):

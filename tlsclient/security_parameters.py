@@ -10,7 +10,7 @@ from tlsclient.protocol import ProtocolData
 import collections
 
 from cryptography.hazmat.primitives import hashes, hmac
-from cryptography.hazmat.primitives.ciphers import algorithms, modes
+from cryptography.hazmat.primitives.ciphers import algorithms, modes, aead
 from cryptography.hazmat.primitives.asymmetric.x25519 import (
     X25519PrivateKey,
     X25519PublicKey,
@@ -47,6 +47,22 @@ class SecurityParameters(object):
             cipher_primitive=tls.CipherPrimitive.AES,
             cipher_algo = algorithms.AES,
             cipher_type=tls.CipherType.BLOCK,
+            enc_key_len=32,
+            block_size=32,
+            iv_len=32,
+        ),
+        tls.SupportedCipher.AES_128_GCM: Cipher(
+            cipher_primitive=tls.CipherPrimitive.AES,
+            cipher_algo = aead.AESGCM,
+            cipher_type=tls.CipherType.AEAD,
+            enc_key_len=16,
+            block_size=16,
+            iv_len=16,
+        ),
+        tls.SupportedCipher.AES_256_GCM: Cipher(
+            cipher_primitive=tls.CipherPrimitive.AES,
+            cipher_algo = aead.AESGCM,
+            cipher_type=tls.CipherType.AEAD,
             enc_key_len=32,
             block_size=32,
             iv_len=32,
@@ -155,7 +171,7 @@ class SecurityParameters(object):
             out = out + self._hmac_func(secret, ax + seed)
         return out[:size]
 
-    def _prf(self, secret, label, seed, size):
+    def prf(self, secret, label, seed, size):
         return self._expand(secret, label + seed, size)
 
     def generate_master_secret(self):
@@ -177,7 +193,7 @@ class SecurityParameters(object):
                 premaster_secret = self.private_key.exchange(server_public_key)
                 print("Premaster secret:", ProtocolData.dump(premaster_secret))
 
-        self.master_secret = self._prf(
+        self.master_secret = self.prf(
             premaster_secret,
             b"master secret",
             self.client_random + self.server_random,
@@ -189,7 +205,7 @@ class SecurityParameters(object):
 
     def key_deriviation(self):
 
-        key_material = self._prf(
+        key_material = self.prf(
             self.master_secret,
             b"key expansion",
             self.server_random + self.client_random,
@@ -235,6 +251,7 @@ class SecurityParameters(object):
             cipher_primitive=self.cipher_primitive,
             cipher_algo=self.cipher_algo,
             cipher_type=self.cipher_type,
+            block_size=self.block_size,
             enc_key=enc_key,
             mac_key=mac_key,
             iv_value=iv_value,
