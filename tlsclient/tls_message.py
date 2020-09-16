@@ -316,7 +316,7 @@ class Finished(HandshakeMessage):
 
     def serialize_msg_body(self, conn):
         if conn.sec_param.entity == tls.Entity.CLIENT:
-            hash_val = conn.finalize_msg_hash()
+            hash_val = conn.finalize_msg_hash(intermediate=True)
             label = b"client finished"
         else:
             hash_val = conn.finalize_msg_hash()
@@ -347,31 +347,48 @@ class Finished(HandshakeMessage):
         return msg
 
     def deserialize_msg_body(self, fragment, offset, conn):
-        pass
+        verify_data = fragment[offset:]
+        if conn.sec_param.entity == tls.Entity.CLIENT:
+            hash_val = conn.finalize_msg_hash()
+            label = b"server finished"
+        else:
+            hash_val = conn.finalize_msg_hash(intermediate=True)
+            label = b"client finished"
+        val = conn.sec_param.prf(conn.sec_param.master_secret, label, hash_val, 12)
+        print("Debug02:", hash_val)
+        print("Debug03:", val)
+        print("Debug04:", conn.sec_param.hash_algo)
+        print("Debug05:", fragment.dump())
+        if verify_data != val:
+            FatalAlert("Received Finidhed: verify_data does not match", tls.AlertDescription.BAD_RECORD_MAC)
+        return self
+
 
 
 class ChangeCipherSpecMessage(TlsMessage):
 
     content_type = tls.ContentType.CHANGE_CIPHER_SPEC
+    msg_type = None
 
     @classmethod
     def deserialize(cls, fragment, conn):
+        if len(fragment) != 1:
+            FatalAlert("Received ChangedCipherSpec has unexpected length", tls.AlertDescription.DECODE_ERROR)
         msg_type, offset = fragment.unpack_uint8(0)
         msg_type = tls.CCSType.val2enum(msg_type, alert_on_failure=True)
-        length, offset = fragment.unpack_uint24(offset)
-        if length + offset != len(fragment):
-            raise FatalAlert(
-                "Length of {} incorrect".format(msg_type),
-                tls.AlertDescription.DECODE_ERROR,
-            )
         cls_name = ccs_deserialization_map[msg_type]
-        return cls_name().deserialize_msg_body(fragment, offset, conn)
+        msg = cls_name()
+        msg.deserialize_msg_body(conn)
+        return msg
 
     def serialize(self, conn):
-        conn.update_write_state()
+        self.serialize_msg_body(conn)
+        ccs_msg = protocol.ProtocolData()
+        ccs_msg.append_uint8(self.msg_type.value)
+        return ccs_msg
 
     @abc.abstractmethod
-    def deserialize_msg_body(self, msg_body, length, conn):
+    def deserialize_msg_body(self, conn):
         pass
 
     @abc.abstractmethod
@@ -381,26 +398,15 @@ class ChangeCipherSpecMessage(TlsMessage):
     def init_from_profile(self, profile):
         return self
 
-    def serialize(self, conn):
-        msg_body = self.serialize_msg_body(conn)
-
-        ccs_msg = protocol.ProtocolData()
-        ccs_msg.append_uint8(self.msg_type.value)
-        # ccs_msg.append_uint24(len(msg_body))
-        # ccs_msg.extend(msg_body)
-        return ccs_msg
-
-
 class ChangeCipherSpec(ChangeCipherSpecMessage):
 
     msg_type = tls.CCSType.CHANGE_CIPHER_SPEC
 
-    def deserialize_msg_body(self, msg_body, length, conn):
-        return self
+    def deserialize_msg_body(self, conn):
+        conn.update_read_state()
 
     def serialize_msg_body(self, conn):
         conn.update_write_state()
-        return protocol.ProtocolData()
 
 
 class Alert(TlsMessage):
@@ -439,11 +445,13 @@ hs_deserialization_map = {
     tls.HandshakeType.SERVER_HELLO_DONE: ServerHelloDone,
     # tls.HandshakeType.CERTIFICATE_VERIFY = 15
     # tls.HandshakeType.CLIENT_KEY_EXCHANGE = 16
-    # tls.HandshakeType.FINISHED = 20
+    tls.HandshakeType.FINISHED: Finished,
     # tls.HandshakeType.KEY_UPDATE = 24
     # tls.HandshakeType.COMPRESSED_CERTIFICATE = 25
     # tls.HandshakeType.EKT_KEY = 26
     # tls.HandshakeType.MESSAGE_HASH = 254
 }
 
-ccs_deserialization_map = {tls.CCSType.CHANGE_CIPHER_SPEC: ChangeCipherSpec}
+ccs_deserialization_map = {
+        tls.CCSType.CHANGE_CIPHER_SPEC: ChangeCipherSpec
+        }

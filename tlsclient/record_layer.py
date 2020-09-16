@@ -3,6 +3,7 @@
 """
 
 from tlsclient.protocol import ProtocolData
+from tlsclient.alert import FatalAlert
 import collections
 import struct
 import os
@@ -151,21 +152,22 @@ class RecordLayer(object):
     def _unprotect_block_cipher(self, state, content_type, version, fragment):
         # Only TLS1.2 currently supported, encrypt_then_mac not yet supported
         # decryption
-        iv = fragment[:state.iv_len]
-        cipher_text = fragment[state.iv_len]
-        cipher = Cipher(state.cipher_algo(state.enc_key), modes.CBC(iv))
+        iv = fragment[:state._iv_len]
+        cipher_text = fragment[state._iv_len:]
+        cipher = Cipher(state._cipher_algo(state._enc_key), modes.CBC(iv))
         decryptor = cipher.decryptor()
-        plain_text = decryptor.update(ct) + decryptor.finalize()
+        plain_text = decryptor.update(cipher_text) + decryptor.finalize()
 
         # padding
         pad = plain_text[-1]
-        if pad + 1 > len(plain_text):
-            raise FatalAlert("Wrong padding length", tls.AlertDescription.ILLEGAL_PARAMETER)
-        padding = fragment[-(pad + 1):]
-        plain_text = fragment[:-(pad + 1)]
+        pad_start = len(plain_text) - pad - 1
+        if pad_start < 0:
+            raise FatalAlert("Wrong padding length", tls.AlertDescription.BAD_RECORD_MAC)
+        padding = plain_text[pad_start:]
+        plain_text = plain_text[:pad_start]
         for pad_byte in padding:
             if pad_byte != pad:
-                raise FatalAlert("Wrong padding bytes", tls.AlertDescription.ILLEGAL_PARAMETER)
+                raise FatalAlert("Wrong padding bytes", tls.AlertDescription.BAD_RECORD_MAC)
 
         # MAC
         if len(plain_text) < state._mac_len:
@@ -179,23 +181,23 @@ class RecordLayer(object):
         mac_input.append_uint16(version)
         mac_input.append_uint16(plain_text_len)
         mac_input.extend(plain_text)
-        mac = hmac.HMAC(state.mac_key, state.hash_algo())
+        mac = hmac.HMAC(state._mac_key, state._hash_algo())
         mac.update(mac_input)
         mac_calculated = mac.finalize()
         if mac_calculated != mac_received:
             raise FatalAlert("MAC verification failed", tls.AlertDescription.BAD_RECORD_MAC)
-        return plain_text
+        return ProtocolData(plain_text)
 
     def _unprotect(self, content_type, version, fragment):
         rstate = self._read_state
         if rstate is None:
             return fragment
         else:
-            if rstate.cipher_type == tls.CipherType.BLOCK:
+            if rstate._cipher_type == tls.CipherType.BLOCK:
                 return self._unprotect_block_cipher(rstate, content_type, version, fragment)
-            elif rstate.cipher_type == tls.CipherType.STREAM:
+            elif rstate._cipher_type == tls.CipherType.STREAM:
                 pass
-            elif rstate.cipher_type == tls.CipherType.AEAD:
+            elif rstate._cipher_type == tls.CipherType.AEAD:
                 pass
             else:
                 raise FatalAlert("Unknown cipher type", tls.AlertDescription.INTERNAL_ERROR)

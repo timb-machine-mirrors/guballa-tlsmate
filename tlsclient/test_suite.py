@@ -71,6 +71,8 @@ class TestSuite(object):
             conn.wait(msg.ServerKeyExchange, optional=True)
             conn.wait(msg.ServerHelloDone)
             conn.send(msg.ClientKeyExchange, msg.ChangeCipherSpec, msg.Finished)
+            conn.wait(msg.ChangeCipherSpec)
+            conn.wait(msg.Finished)
             #conn.send(msg.ClientKeyExchange)
             #conn.send(msg.ChangeCipherSpec)
 

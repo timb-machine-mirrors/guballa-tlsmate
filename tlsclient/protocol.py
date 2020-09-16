@@ -7,6 +7,8 @@ import tlsclient.constants as tls
 
 class ProtocolData(bytearray):
 
+    def __str__(self):
+        return self.dump()
 
     def unpack_uint8(self, offset):
         if offset >= len(self):

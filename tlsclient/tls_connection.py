@@ -14,7 +14,7 @@ import collections
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
-from tlsclient.tls_message import Alert, HandshakeMessage
+from tlsclient.tls_message import Alert, HandshakeMessage, ChangeCipherSpecMessage
 
 from cryptography.hazmat.primitives import hashes, hmac
 
@@ -229,7 +229,7 @@ class TlsConnection(object):
             elif content_type is tls.ContentType.ALERT:
                 raise NotImplementedError("Receiving an Alert is not yet implemented")
             elif content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
-                msg = ChangeCipherSpec.deserialize(fragment, self)
+                msg = ChangeCipherSpecMessage.deserialize(fragment, self)
             elif content_type is tls.ContentType.APPLICATION_DATA:
                 pass
             else:
@@ -309,10 +309,7 @@ class TlsConnection(object):
 
     def _check_update_write_state(self):
         if self._update_write_state:
-            if self.sec_param.entity == tls.Entity.CLIENT:
-                state = self.sec_param.get_pending_write_state(tls.Entity.CLIENT)
-            else:
-                state = self.sec_param.get_pending_write_state(tls.Entity.SERVER)
+            state = self.sec_param.get_pending_write_state(self.sec_param.entity)
             self.record_layer.update_write_state(state)
             self._update_write_state = False
 
@@ -321,17 +318,21 @@ class TlsConnection(object):
 
     def update_read_state(self):
         if self.sec_param.entity == tls.Entity.CLIENT:
-            state = self.sec_param.get_pending_write_state(tls.Entity.SERVER)
+            entity = tls.Entity.SERVER
         else:
-            state = self.sec_param.get_pending_write_state(tls.Entity.CLIENT)
-        self.record_layer.update_write_state(state)
+            entity = tls.Entity.CLIENT
+        state = self.sec_param.get_pending_write_state(entity)
+        self.record_layer.update_read_state(state)
 
     def init_msg_hash(self):
         self._msg_hash_queue = ProtocolData()
         self._msg_hash = None
         self._msg_hash_active = True
 
+        self._debug = []
+
     def update_msg_hash(self, msg):
+        self._debug.append(msg)
         if not self._msg_hash_active:
             return
         if self.sec_param.hash_algo is None:
@@ -341,10 +342,8 @@ class TlsConnection(object):
             if self._msg_hash is None:
                 self._msg_hash = hashes.Hash(self.sec_param.hash_algo())
                 self._msg_hash.update(self._msg_hash_queue)
-                print("Debug: ", self._msg_hash_queue.dump())
                 self._msg_hash_queue = None
             self._msg_hash.update(msg)
-            print("Debug: ", msg.dump())
 
     def finalize_msg_hash(self, intermediate=False):
         if intermediate:
