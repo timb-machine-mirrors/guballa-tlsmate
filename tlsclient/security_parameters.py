@@ -6,11 +6,12 @@ import os
 import re
 import tlsclient.constants as tls
 from tlsclient.protocol import ProtocolData
+from tlsclient.alert import FatalAlert
 
 import collections
 
 from cryptography.hazmat.primitives import hashes, hmac
-from cryptography.hazmat.primitives.ciphers import algorithms, modes, aead
+from cryptography.hazmat.primitives.ciphers import algorithms, aead
 from cryptography.hazmat.primitives.asymmetric.x25519 import (
     X25519PrivateKey,
     X25519PublicKey,
@@ -37,7 +38,7 @@ class SecurityParameters(object):
     _supported_ciphers = {
         tls.SupportedCipher.AES_128_CBC: Cipher(
             cipher_primitive=tls.CipherPrimitive.AES,
-            cipher_algo = algorithms.AES,
+            cipher_algo=algorithms.AES,
             cipher_type=tls.CipherType.BLOCK,
             enc_key_len=16,
             block_size=16,
@@ -45,7 +46,7 @@ class SecurityParameters(object):
         ),
         tls.SupportedCipher.AES_256_CBC: Cipher(
             cipher_primitive=tls.CipherPrimitive.AES,
-            cipher_algo = algorithms.AES,
+            cipher_algo=algorithms.AES,
             cipher_type=tls.CipherType.BLOCK,
             enc_key_len=32,
             block_size=32,
@@ -53,7 +54,7 @@ class SecurityParameters(object):
         ),
         tls.SupportedCipher.AES_128_GCM: Cipher(
             cipher_primitive=tls.CipherPrimitive.AES,
-            cipher_algo = aead.AESGCM,
+            cipher_algo=aead.AESGCM,
             cipher_type=tls.CipherType.AEAD,
             enc_key_len=16,
             block_size=16,
@@ -61,7 +62,7 @@ class SecurityParameters(object):
         ),
         tls.SupportedCipher.AES_256_GCM: Cipher(
             cipher_primitive=tls.CipherPrimitive.AES,
-            cipher_algo = aead.AESGCM,
+            cipher_algo=aead.AESGCM,
             cipher_type=tls.CipherType.AEAD,
             enc_key_len=32,
             block_size=32,
@@ -224,12 +225,8 @@ class SecurityParameters(object):
         self.server_write_key, offset = key_material.unpack_bytes(
             offset, self.enc_key_len
         )
-        self.client_write_iv, offset = key_material.unpack_bytes(
-            offset, self.iv_len
-        )
-        self.server_write_iv, offset = key_material.unpack_bytes(
-            offset, self.iv_len
-        )
+        self.client_write_iv, offset = key_material.unpack_bytes(offset, self.iv_len)
+        self.server_write_iv, offset = key_material.unpack_bytes(offset, self.iv_len)
         print("client_write_mac_key: ", self.client_write_mac_key.dump())
         print("server_write_mac_key: ", self.server_write_mac_key.dump())
         print("client_write_key    : ", self.client_write_key.dump())

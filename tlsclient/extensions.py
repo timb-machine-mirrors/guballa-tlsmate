@@ -4,10 +4,11 @@
 
 import abc
 from tlsclient.protocol import ProtocolData
+from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
 
-class Extension(metaclass=abc.ABCMeta):
 
+class Extension(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def serialize_ext_body(self):
         pass
@@ -36,13 +37,14 @@ class ExtServerNameIndication(Extension):
     def serialize_ext_body(self):
         # we only support exacly one list element: host_name
         ext = ProtocolData()
-        ext.append_uint8(0) # host_name
+        ext.append_uint8(0)  # host_name
         ext.append_uint16(len(self.host_name))
         ext.append_str(self.host_name)
         name_list = ProtocolData()
         name_list.append_uint16(len(ext))
         name_list.extend(ext)
         return name_list
+
 
 class ExtExtendedMasterSecret(Extension):
 
@@ -55,6 +57,7 @@ class ExtExtendedMasterSecret(Extension):
         if ext_body:
             raise FatalAlert("Message length error", tls.AlertDescription.DECODE_ERROR)
         return self
+
 
 class ExtRenegotiationInfo(Extension):
 
@@ -70,12 +73,15 @@ class ExtRenegotiationInfo(Extension):
         self.opaque, _ = ext_body.unpack_bytes(0, len(ext_body))
         return self
 
+
 class ExtEcPointFormats(Extension):
 
     extension_id = tls.Extension.EC_POINT_FORMATS
 
     def __init__(self, **kwargs):
-        self.point_formats = kwargs.get("point_formats", [tls.EcPointFormat.UNCOMPRESSED])
+        self.point_formats = kwargs.get(
+            "point_formats", [tls.EcPointFormat.UNCOMPRESSED]
+        )
 
     def serialize_ext_body(self):
         format_list = ProtocolData()
@@ -135,11 +141,12 @@ class ExtSignatureAlgorithms(Extension):
             elif type(algo) == tls.SignatureScheme:
                 algo_list.append_uint16(algo.value)
             elif type(algo) == tuple:
-                pass # TODO
+                pass  # TODO
         ext_body = ProtocolData()
         ext_body.append_uint16(len(algo_list))
         ext_body.extend(algo_list)
         return ext_body
+
 
 deserialization_map = {
     # tls.Extension.SERVER_NAME = 0
@@ -193,5 +200,5 @@ deserialization_map = {
     # tls.Extension.CONNECTION_ID = 53
     # tls.Extension.EXTERNAL_ID_HASH = 55
     # tls.Extension.EXTERNAL_SESSION_ID = 56
-    tls.Extension.RENEGOTIATION_INFO: ExtRenegotiationInfo
+    tls.Extension.RENEGOTIATION_INFO: ExtRenegotiationInfo,
 }

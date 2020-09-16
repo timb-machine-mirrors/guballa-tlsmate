@@ -5,7 +5,11 @@ import logging
 import tlsclient.constants as tls
 from tlsclient.server_profile import ServerProfile
 from tlsclient.test_suite import TestSuite
-from tlsclient.tls_connection import TlsConnection, TlsConnectionState, TlsConnectionMsgs
+from tlsclient.tls_connection import (
+    TlsConnection,
+    TlsConnectionState,
+    TlsConnectionMsgs,
+)
 from tlsclient.client_profile import ClientProfile
 from tlsclient.record_layer import RecordLayer
 from tlsclient.security_parameters import SecurityParameters
@@ -21,15 +25,12 @@ class Container(containers.DeclarativeContainer):
 
     server_profile = providers.Singleton(ServerProfile)
 
-    record_layer = providers.Factory(RecordLayer,
-        logger=logger,
-        server=config.server,
-        port=config.port,
+    record_layer = providers.Factory(
+        RecordLayer, logger=logger, server=config.server, port=config.port
     )
 
     security_parameters = providers.Factory(
-        SecurityParameters,
-        entity=tls.Entity.CLIENT
+        SecurityParameters, entity=tls.Entity.CLIENT
     )
 
     tls_connection_state = providers.Factory(TlsConnectionState)
@@ -50,12 +51,12 @@ class Container(containers.DeclarativeContainer):
     client_profile = providers.Factory(
         ClientProfile,
         tls_connection_factory=tls_connection.provider,
-        server_name=config.server
+        server_name=config.server,
     )
 
     test_suite = providers.Factory(
         TestSuite,
         logger=logger,
         server_profile=server_profile,
-        client_profile_factory=client_profile.provider
+        client_profile_factory=client_profile.provider,
     )

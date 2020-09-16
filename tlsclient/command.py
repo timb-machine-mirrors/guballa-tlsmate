@@ -8,6 +8,7 @@ import tlsclient.dependencies as dependencies
 
 from tlsclient.version import __version__
 
+
 def command_version(args):
     """Prints the version.
 
@@ -34,10 +35,8 @@ def build_parser():
     :return: the parser object as created with argparse
     :rtype: :class:`argparse.ArgumentParser`
     """
-    parser = argparse.ArgumentParser(
-        description="Bla bla bla"
-    )
-    subparsers = parser.add_subparsers(help="subcommands to execute", dest="command",)
+    parser = argparse.ArgumentParser(description="Bla bla bla")
+    subparsers = parser.add_subparsers(help="subcommands to execute", dest="command")
 
     args_version(subparsers)
     return parser

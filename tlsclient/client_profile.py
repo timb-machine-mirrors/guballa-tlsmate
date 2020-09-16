@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Module containing the class for the client profile
 """
-import struct
 import tlsclient.constants as tls
 from tlsclient.protocol import ProtocolData
+
 
 class ClientProfile(object):
     def __init__(self, tls_connection_factory, server_name):
@@ -32,7 +32,6 @@ class ClientProfile(object):
 
         self.support_signature_algorithms = True
         self.signature_algorithms = [tls.SignatureScheme.RSA_PSS_RSAE_SHA256]
-
 
     def create_connection(self):
         return self.tls_connection_factory().set_profile(self)

@@ -6,11 +6,8 @@ import enum
 import collections
 from tlsclient.alert import FatalAlert
 
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.ciphers import algorithms
 
 class ExtendedEnum(enum.Enum):
-
     @classmethod
     def val2enum(cls, value, alert_on_failure=False):
         enum = cls._value2member_map_.get(value)
@@ -27,8 +24,8 @@ class ExtendedEnum(enum.Enum):
             raise FatalAlert(message, AlertDescription.ILLEGAL_PARAMETER)
         return enum
 
-class ExtendedIntEnum(enum.IntEnum):
 
+class ExtendedIntEnum(enum.IntEnum):
     @classmethod
     def val2enum(cls, value, alert_on_failure=False):
         enum = cls._value2member_map_.get(value)
@@ -62,6 +59,7 @@ class ContentType(ExtendedEnum):
 class CompressionMethod(ExtendedEnum):
     NULL = 0
     DEFLATE = 1
+
 
 class Extension(ExtendedEnum):
     SERVER_NAME = 0
@@ -116,6 +114,7 @@ class Extension(ExtendedEnum):
     EXTERNAL_ID_HASH = 55
     EXTERNAL_SESSION_ID = 56
     RENEGOTIATION_INFO = 65281
+
 
 class CipherSuite(ExtendedEnum):
     TLS_NULL_WITH_NULL_NULL = 0x0000
@@ -499,9 +498,11 @@ class AlertDescription(ExtendedEnum):
     CERTIFICATE_REQUIRED = 116
     NO_APPLICATION_PROTOCOL = 120
 
+
 class AlertLevel(ExtendedEnum):
     WARNING = 1
     FATAL = 2
+
 
 class HandshakeType(ExtendedEnum):
     HELLO_REQUEST = 0
@@ -522,8 +523,10 @@ class HandshakeType(ExtendedEnum):
     EKT_KEY = 26
     MESSAGE_HASH = 254
 
+
 class CCSType(ExtendedEnum):
     CHANGE_CIPHER_SPEC = 1
+
 
 class SupportedGroups(ExtendedEnum):
     SECT163K1 = 1
@@ -632,15 +635,18 @@ class SignatureScheme(ExtendedEnum):
     ECDSA_BRAINPOOLP384R1TLS13_SHA384 = 0x081B
     ECDSA_BRAINPOOLP512R1TLS13_SHA512 = 0x081C
 
+
 class EcPointFormat(ExtendedEnum):
     UNCOMPRESSED = 0
     ANSIX962_COMPRESSED_PRIME = 1
     ANSIX962_COMPRESSED_CHAR2 = 2
 
+
 class EcCurveType(ExtendedEnum):
     EXPLICIT_PRIME = 1
     EXPLICIT_CHAR2 = 2
     NAMED_CURVE = 3
+
 
 class KeyExchangeAlgorithm(ExtendedEnum):
     # RFC5246, 7.4.3.
@@ -669,6 +675,7 @@ class CipherPrimitive(ExtendedEnum):
     SEED = enum.auto()
     TRIPPLE_DES = enum.auto()
 
+
 class SupportedCipher(ExtendedEnum):
     NULL = enum.auto()
     AES_128_CBC = enum.auto()
@@ -689,12 +696,14 @@ class SupportedCipher(ExtendedEnum):
     SEED_CBC = enum.auto()
     TRIPPLE_DES_EDE_CBC = enum.auto()
 
+
 class SupportedCipherMode(ExtendedEnum):
     NULL = enum.auto()
     CBC = enum.auto()
     CCM = enum.auto()
     CCM_8 = enum.auto()
     GCM = enum.auto()
+
 
 class SupportedHash(ExtendedEnum):
     NULL = enum.auto()
@@ -703,6 +712,7 @@ class SupportedHash(ExtendedEnum):
     SHA256 = enum.auto()
     SHA384 = enum.auto()
 
+
 class CipherType(ExtendedEnum):
     NULL = enum.auto()
     BLOCK = enum.auto()
@@ -710,9 +720,10 @@ class CipherType(ExtendedEnum):
     AEAD = enum.auto()
 
 
-StateUpdateParams = collections.namedtuple("StateUpdateParams",
+StateUpdateParams = collections.namedtuple(
+    "StateUpdateParams",
     [
-        "cipher_primitive",       # tls.CipherPrimitive
+        "cipher_primitive",  # tls.CipherPrimitive
         "cipher_algo",
         "cipher_type",  # tls.CipherType
         "block_size",
@@ -722,9 +733,8 @@ StateUpdateParams = collections.namedtuple("StateUpdateParams",
         "iv_len",
         "mac_len",
         "hash_algo",
-        "compression_method",     # tls.CompressionMethod
-    ])
+        "compression_method",  # tls.CompressionMethod
+    ],
+)
 
 MessageBlock = collections.namedtuple("MessageBlock", "content_type version fragment")
-
-

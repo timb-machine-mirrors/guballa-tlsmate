@@ -6,39 +6,13 @@ import os
 import time
 import socket
 import select
-import struct
 import inspect
-import re
-import collections
 
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
 from tlsclient.tls_message import Alert, HandshakeMessage, ChangeCipherSpecMessage
-
-from cryptography.hazmat.primitives import hashes, hmac
-
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-
-
-def my_hmac(secret, msg, hash_algo):
-    h = hmac.HMAC(secret, hash_algo)
-    h.update(msg)
-    return h.finalize()
-
-
-def expand(secret, seed, size, hash_algo):
-    out = b""
-    ax = bytes(seed)
-    while len(out) < size:
-        ax = my_hmac(secret, ax, hash_algo)
-        out = out + my_hmac(secret, ax + seed, hash_algo)
-    return out[:size]
-
-
-def prf(secret, label, seed, size, hash_algo):
-    return expand(secret, label + seed, size, hash_algo)
+from cryptography.hazmat.primitives import hashes
 
 
 class TlsConnectionState(object):
@@ -201,7 +175,6 @@ class TlsConnection(object):
         self.socket.connect((self.server, self.port))
 
     def send(self, *messages):
-        data = ProtocolData()
         for msg in messages:
             if inspect.isclass(msg):
                 msg = msg().init_from_profile(self.client_profile)
