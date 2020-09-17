@@ -204,7 +204,7 @@ class TlsConnection(object):
             elif content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
                 msg = ChangeCipherSpecMessage.deserialize(fragment, self)
             elif content_type is tls.ContentType.APPLICATION_DATA:
-                pass
+                msg = AppDataMessage.deserialize(fragment, self)
             else:
                 raise ValueError("Content type unknow")
 

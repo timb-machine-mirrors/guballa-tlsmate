@@ -10,7 +10,6 @@ from tlsclient.security_parameters import get_random_value
 
 
 class TlsMessage(metaclass=abc.ABCMeta):
-
     @abc.abstractmethod
     def deserialize(cls, fragment, conn):
         pass
@@ -22,6 +21,7 @@ class TlsMessage(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def serialize(self, conn):
         pass
+
 
 class HandshakeMessage(TlsMessage):
 
@@ -425,6 +425,44 @@ class Alert(TlsMessage):
         else:
             alert.append_uint8(self.description.value)
         return alert
+
+
+class AppDataMessage(TlsMessage):
+
+    content_type = tls.ContentType.APPLICATION_DATA
+
+    @classmethod
+    def deserialize(cls, fragment, conn):
+        msg = AppData()
+        msg._deserialize_msg_body(fragment, conn)
+        return msg
+
+    def serialize(self, conn):
+        return self._serialize_msg_body(conn)
+
+    @abc.abstractmethod
+    def _deserialize_msg_body(self, conn):
+        pass
+
+    @abc.abstractmethod
+    def _serialize_msg_body(self, conn):
+        pass
+
+    def init_from_profile(self, profile):
+        return self
+
+
+class AppData(AppDataMessage):
+    def __init__(self, *content):
+        self.data = ProtocolData()
+        for data in content:
+            self.data.extend(data)
+
+    def _deserialize_msg_body(self, fragment, conn):
+        self.data = fragment
+
+    def _serialize_msg_body(self, conn):
+        return self.data
 
 
 _hs_deserialization_map = {
