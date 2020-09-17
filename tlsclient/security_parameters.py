@@ -113,7 +113,6 @@ class SecurityParameters(object):
         self.cipher_algo = None
         self.cipher_type = None
         self.block_size = None
-        self.cipher_mode = None
 
         # hash & mac
         self.hash_primitive = None
@@ -191,11 +190,11 @@ class SecurityParameters(object):
                 server_public_key = X25519PublicKey.from_public_bytes(
                     bytes(self.remote_public_key)
                 )
-                premaster_secret = self.private_key.exchange(server_public_key)
-                print("Premaster secret:", ProtocolData.dump(premaster_secret))
+                self.pre_master_secret = self.private_key.exchange(server_public_key)
+                print("Premaster secret:", ProtocolData.dump(self.pre_master_secret))
 
         self.master_secret = self.prf(
-            premaster_secret,
+            self.pre_master_secret,
             b"master secret",
             self.client_random + self.server_random,
             48,

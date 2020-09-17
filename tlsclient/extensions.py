@@ -22,9 +22,15 @@ class Extension(metaclass=abc.ABCMeta):
         return ext
 
     @classmethod
-    def deserialize(cls, ext_id, ext_body):
+    def deserialize(cls, fragment):
+        ext_id, offset = fragment.unpack_uint16(0)
+        ext_id = tls.Extension.val2enum(ext_id, alert_on_failure=True)
+        ext_len, offset = fragment.unpack_uint16(offset)
+        ext_body, offset = fragment.unpack_bytes(offset, ext_len)
         cls_name = deserialization_map[ext_id]
-        return cls_name().deserialize_ext_body(ext_body)
+        extension = cls_name()
+        extension.deserialize_ext_body(ext_body)
+        return extension
 
 
 class ExtServerNameIndication(Extension):
@@ -32,7 +38,7 @@ class ExtServerNameIndication(Extension):
     extension_id = tls.Extension.SERVER_NAME
 
     def __init__(self, **kwargs):
-        self.host_name = kwargs.get("host_name", "")
+        self.host_name = kwargs.get("host_name")
 
     def serialize_ext_body(self):
         # we only support exacly one list element: host_name
@@ -45,6 +51,18 @@ class ExtServerNameIndication(Extension):
         name_list.extend(ext)
         return name_list
 
+    def deserialize_ext_body(self, fragment):
+        list_length, offset = fragment.unpack_uint16(0)
+        if offset + list_length != len(fragment):
+            raise FatalAlert("Extension {}: list length incorrect".format(self.extension_id.name), tls.AlertDescription.DECODE_ERROR)
+        while offset < len(fragment):
+            name_type, offset = fragment.unpack_uint8(offset)
+            name_length, offset = fragment.unpack_uint16(offset)
+            name, offset = fragment.unpack_bytes(offset, name_length)
+            if name_type == 0:
+                self.host_name = name.decode()
+        if self.host_name is None:
+            raise FatalAlert("{}: host_name not present".format(self.extension_id), tls.AlertDescription.DECODE_ERROR)
 
 class ExtExtendedMasterSecret(Extension):
 
@@ -149,7 +167,7 @@ class ExtSignatureAlgorithms(Extension):
 
 
 deserialization_map = {
-    # tls.Extension.SERVER_NAME = 0
+    tls.Extension.SERVER_NAME: ExtServerNameIndication,
     # tls.Extension.MAX_FRAGMENT_LENGTH = 1
     # tls.Extension.CLIENT_CERTIFICATE_URL = 2
     # tls.Extension.TRUSTED_CA_KEYS = 3

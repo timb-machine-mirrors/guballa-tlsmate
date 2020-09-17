@@ -4,7 +4,7 @@
 import logging
 import tlsclient.constants as tls
 from tlsclient.server_profile import ServerProfile
-from tlsclient.test_suite import TestSuite
+from tlsclient.testsuite import TestSuite
 from tlsclient.tls_connection import (
     TlsConnection,
     TlsConnectionState,
