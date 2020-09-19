@@ -4,6 +4,7 @@
 
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
+from tlsclient.recorder import RecorderState
 import struct
 import os
 import socket
@@ -45,6 +46,10 @@ class RecordLayer(object):
         self._port = port
         self._socket = None
         self._flush_each_fragment = False
+        self._recorder = None
+
+    def set_recorder(self, recorder):
+        self._recorder = recorder
 
     def _add_to_sendbuffer(self, content_type, version, fragment):
         self._send_buffer.append_uint8(content_type.value)
@@ -79,7 +84,9 @@ class RecordLayer(object):
         enc_input.extend(struct.pack("!B", missing_bytes) * (missing_bytes + 1))
 
         # encryption
-        iv = os.urandom(state._iv_len)
+        # iv = os.urandom(state._iv_len)
+        iv = ProtocolData(state._iv_value[:-4])
+        iv.append_uint32(state._seq_nbr)
 
         #        iv = bytes.fromhex(
         # "91 1a 71 48 5a da 1b f6 e2 f7 0d 15 6f 8e 7c 2e"
@@ -219,6 +226,8 @@ class RecordLayer(object):
         self._negotiated_version = version
 
     def open_socket(self):
+        if self._recorder.state == RecorderState.REPLAYING:
+            return
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.connect((self._server, self._port))
 
@@ -229,16 +238,21 @@ class RecordLayer(object):
     def flush(self):
         if not self._socket:
             self.open_socket()
-        self._socket.sendall(self._send_buffer)
+        if self._recorder.outgoing_msg(self._send_buffer):
+            self._socket.sendall(self._send_buffer)
         self._send_buffer = ProtocolData()
 
     def _read_from_socket(self):
+        injected_msg = self._recorder.injected_msg()
+        if injected_msg is not None:
+            return injected_msg
         rfds, wfds, efds = select.select([self._socket], [], [], 5)
         data = None
         if rfds:
             for fd in rfds:
                 if fd is self._socket:
                     data = fd.recv(self._fragment_max_size)
+        self._recorder.trace_incoming_msg(data)
         return data
 
     def wait_fragment(self):

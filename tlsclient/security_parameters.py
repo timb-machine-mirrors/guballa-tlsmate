@@ -16,7 +16,7 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import (
     X25519PrivateKey,
     X25519PublicKey,
 )
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, PrivateFormat, NoEncryption
 
 
 Cipher = collections.namedtuple(
@@ -79,6 +79,7 @@ class SecurityParameters(object):
     }
 
     def __init__(self, entity):
+        self.recorder = None
         # general
         self.entity = entity
         self.version = None
@@ -118,6 +119,9 @@ class SecurityParameters(object):
         self.hash_primitive = None
         self.hash_algo = None
         self.mac_len = None
+
+    def set_recorder(self, recorder):
+        self.recorder = recorder
 
     def update_cipher_suite(self, cipher_suite):
         if self.version == tls.Version.TLS13:
@@ -182,15 +186,22 @@ class SecurityParameters(object):
             tls.KeyExchangeAlgorithm.ECDHE_RSA,
         ]:
             if self.named_curve == tls.SupportedGroups.X25519:
-                self.private_key = X25519PrivateKey.generate()
-                public_key = self.private_key.public_key()
+                private_key = X25519PrivateKey.generate()
+                private_bytes = private_key.private_bytes(
+                    encoding=Encoding.Raw,
+                    format=PrivateFormat.Raw,
+                    encryption_algorithm=NoEncryption()
+                )
+                self.private_key = self.recorder.inject(private_key=private_bytes)
+                private_key = X25519PrivateKey.from_private_bytes(self.private_key)
+                public_key = private_key.public_key()
                 self.public_key = public_key.public_bytes(
                     Encoding.Raw, PublicFormat.Raw
                 )
                 server_public_key = X25519PublicKey.from_public_bytes(
                     bytes(self.remote_public_key)
                 )
-                self.pre_master_secret = self.private_key.exchange(server_public_key)
+                self.pre_master_secret = private_key.exchange(server_public_key)
                 print("Premaster secret:", ProtocolData.dump(self.pre_master_secret))
 
         self.master_secret = self.prf(
@@ -199,6 +210,7 @@ class SecurityParameters(object):
             self.client_random + self.server_random,
             48,
         )
+        self.recorder.trace(master_secret=self.master_secret)
         print("Master secret: ", ProtocolData(self.master_secret).dump())
 
         return
@@ -226,6 +238,13 @@ class SecurityParameters(object):
         )
         self.client_write_iv, offset = key_material.unpack_bytes(offset, self.iv_len)
         self.server_write_iv, offset = key_material.unpack_bytes(offset, self.iv_len)
+
+        self.recorder.trace(client_write_mac_key=self.client_write_mac_key)
+        self.recorder.trace(server_write_mac_key=self.server_write_mac_key)
+        self.recorder.trace(client_write_key=self.client_write_key)
+        self.recorder.trace(server_write_key=self.server_write_key)
+        self.recorder.trace(client_write_iv=self.client_write_iv)
+        self.recorder.trace(server_write_iv=self.server_write_iv)
         print("client_write_mac_key: ", self.client_write_mac_key.dump())
         print("server_write_mac_key: ", self.server_write_mac_key.dump())
         print("client_write_key    : ", self.client_write_key.dump())

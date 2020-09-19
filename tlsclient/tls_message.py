@@ -119,6 +119,7 @@ class ClientHello(HandshakeMessage):
         # random
         if self.random is None:
             self.random = get_random_value()
+        self.random = conn.recorder.inject(client_random=self.random)
         conn.update(client_random=self.random)
         msg.extend(self.random)
 
@@ -328,7 +329,10 @@ class Finished(HandshakeMessage):
             hash_val = conn.finalize_msg_hash()
             label = b"server finished"
 
+
         val = conn.sec_param.prf(conn.sec_param.master_secret, label, hash_val, 12)
+        conn.recorder.trace(msg_digest_finished_sent=hash_val)
+        conn.recorder.trace(verify_data_finished_sent=val)
         print("Debug02:", hash_val)
         print("Debug03:", val)
         print("Debug04:", conn.sec_param.hash_algo)
@@ -344,6 +348,9 @@ class Finished(HandshakeMessage):
             hash_val = conn.finalize_msg_hash(intermediate=True)
             label = b"client finished"
         val = conn.sec_param.prf(conn.sec_param.master_secret, label, hash_val, 12)
+        conn.recorder.trace(msg_digest_finished_rec=hash_val)
+        conn.recorder.trace(verify_data_finished_rec=verify_data)
+        conn.recorder.trace(verify_data_finished_calc=val)
         print("Debug02:", hash_val)
         print("Debug03:", val)
         print("Debug04:", conn.sec_param.hash_algo)

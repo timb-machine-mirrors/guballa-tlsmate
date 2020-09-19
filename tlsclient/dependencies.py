@@ -13,6 +13,7 @@ from tlsclient.tls_connection import (
 from tlsclient.client_profile import ClientProfile
 from tlsclient.record_layer import RecordLayer
 from tlsclient.security_parameters import SecurityParameters
+from tlsclient.recorder import Recorder
 
 from dependency_injector import containers, providers
 
@@ -24,6 +25,8 @@ class Container(containers.DeclarativeContainer):
     logger = providers.Singleton(logging.Logger, name="tlsclient")
 
     server_profile = providers.Singleton(ServerProfile)
+
+    recorder = providers.Factory(Recorder)
 
     record_layer = providers.Factory(
         RecordLayer, logger=logger, server=config.server, port=config.port
@@ -46,6 +49,7 @@ class Container(containers.DeclarativeContainer):
         logger=logger,
         server=config.server,
         port=config.port,
+        recorder=recorder,
     )
 
     client_profile = providers.Factory(

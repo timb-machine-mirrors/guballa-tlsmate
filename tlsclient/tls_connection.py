@@ -137,6 +137,7 @@ class TlsConnection(object):
         logger,
         server,
         port,
+        recorder,
     ):
         self.logger = logger
         self.tls_connection_state = tls_connection_state
@@ -152,6 +153,7 @@ class TlsConnection(object):
         self._msg_hash = None
         self._msg_hash_queue = None
         self._msg_hash_active = False
+        self.set_recorder(recorder)
 
     def __enter__(self):
         return self
@@ -165,6 +167,11 @@ class TlsConnection(object):
             return True
         self.record_layer.close_socket()
         return False
+
+    def set_recorder(self, recorder):
+        self.recorder = recorder
+        self.sec_param.set_recorder(recorder)
+        self.record_layer.set_recorder(recorder)
 
     def set_profile(self, client_profile):
         self.client_profile = client_profile
