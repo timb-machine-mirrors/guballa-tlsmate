@@ -16,7 +16,12 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import (
     X25519PrivateKey,
     X25519PublicKey,
 )
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, PrivateFormat, NoEncryption
+from cryptography.hazmat.primitives.serialization import (
+    Encoding,
+    PublicFormat,
+    PrivateFormat,
+    NoEncryption,
+)
 
 
 Cipher = collections.namedtuple(
@@ -190,7 +195,7 @@ class SecurityParameters(object):
                 private_bytes = private_key.private_bytes(
                     encoding=Encoding.Raw,
                     format=PrivateFormat.Raw,
-                    encryption_algorithm=NoEncryption()
+                    encryption_algorithm=NoEncryption(),
                 )
                 self.private_key = self.recorder.inject(private_key=private_bytes)
                 private_key = X25519PrivateKey.from_private_bytes(self.private_key)

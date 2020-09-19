@@ -329,7 +329,6 @@ class Finished(HandshakeMessage):
             hash_val = conn.finalize_msg_hash()
             label = b"server finished"
 
-
         val = conn.sec_param.prf(conn.sec_param.master_secret, label, hash_val, 12)
         conn.recorder.trace(msg_digest_finished_sent=hash_val)
         conn.recorder.trace(verify_data_finished_sent=val)

@@ -4,11 +4,8 @@
 
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
-from tlsclient.recorder import RecorderState
 import struct
 import os
-import socket
-import select
 import tlsclient.constants as tls
 
 from cryptography.hazmat.primitives import hmac

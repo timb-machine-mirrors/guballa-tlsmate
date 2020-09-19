@@ -54,7 +54,10 @@ class ExtServerNameIndication(Extension):
     def deserialize_ext_body(self, fragment):
         list_length, offset = fragment.unpack_uint16(0)
         if offset + list_length != len(fragment):
-            raise FatalAlert("Extension {}: list length incorrect".format(self.extension_id.name), tls.AlertDescription.DECODE_ERROR)
+            raise FatalAlert(
+                "Extension {}: list length incorrect".format(self.extension_id.name),
+                tls.AlertDescription.DECODE_ERROR,
+            )
         while offset < len(fragment):
             name_type, offset = fragment.unpack_uint8(offset)
             name_length, offset = fragment.unpack_uint16(offset)
@@ -62,7 +65,11 @@ class ExtServerNameIndication(Extension):
             if name_type == 0:
                 self.host_name = name.decode()
         if self.host_name is None:
-            raise FatalAlert("{}: host_name not present".format(self.extension_id), tls.AlertDescription.DECODE_ERROR)
+            raise FatalAlert(
+                "{}: host_name not present".format(self.extension_id),
+                tls.AlertDescription.DECODE_ERROR,
+            )
+
 
 class ExtExtendedMasterSecret(Extension):
 

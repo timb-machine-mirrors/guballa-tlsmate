@@ -4,14 +4,18 @@
 
 import os
 import time
-import socket
 import select
 import inspect
 
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
-from tlsclient.tls_message import Alert, HandshakeMessage, ChangeCipherSpecMessage
+from tlsclient.tls_message import (
+    Alert,
+    HandshakeMessage,
+    ChangeCipherSpecMessage,
+    AppDataMessage,
+)
 from cryptography.hazmat.primitives import hashes
 
 
@@ -150,7 +154,7 @@ class TlsConnection(object):
         self._msg_hash_queue = None
         self._msg_hash_active = False
         self.recorder = recorder
-        #self.set_recorder(recorder)
+        # self.set_recorder(recorder)
 
     def __enter__(self):
         return self

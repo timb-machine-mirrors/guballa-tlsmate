@@ -4,11 +4,13 @@
 
 import enum
 
+
 class RecorderState(enum.Enum):
 
     INACTIVE = 0
     RECORDING = 1
     REPLAYING = 2
+
 
 class Recorder(object):
 
@@ -28,7 +30,7 @@ class Recorder(object):
         "verify_data_finished_calc",
         "msg_digest_finished_rec",
         "msg_digest_finished_sent",
-        "verify_data_finished_sent"
+        "verify_data_finished_sent",
     ]
 
     def __init__(self):
@@ -87,5 +89,3 @@ class Recorder(object):
             else:
                 setattr(self, name, val)
         return val
-
-

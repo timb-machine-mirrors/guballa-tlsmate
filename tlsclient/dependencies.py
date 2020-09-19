@@ -29,13 +29,12 @@ class Container(containers.DeclarativeContainer):
 
     recorder = providers.Singleton(Recorder)
 
-    socket = providers.Factory(Socket, server=config.server, port=config.port, recorder=recorder)
+    socket = providers.Factory(
+        Socket, server=config.server, port=config.port, recorder=recorder
+    )
 
     record_layer = providers.Factory(
-        RecordLayer,
-        socket=socket,
-        recorder=recorder,
-        logger=logger,
+        RecordLayer, socket=socket, recorder=recorder, logger=logger
     )
 
     security_parameters = providers.Factory(

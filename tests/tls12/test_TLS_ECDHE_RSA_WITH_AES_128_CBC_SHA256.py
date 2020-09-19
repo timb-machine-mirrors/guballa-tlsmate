@@ -13,7 +13,11 @@ PICKLE_DIR = pathlib.Path(__file__).resolve().parent / "recordings"
 FILE_NAME = "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256.pickle"
 PICKLE_FILE = PICKLE_DIR / FILE_NAME
 
-OPENSSL_SERVER_CMD = "export OPENSSL_TRACE=TLS && openssl s_server -key key.pem -cert cert.pem -accept 44330 -www -no_tls1_3 -cipher ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256"
+OPENSSL_SERVER_CMD = (
+    "export OPENSSL_TRACE=TLS && openssl s_server -key key.pem -cert cert.pem -accept "
+    "44330 -www -no_tls1_3 -cipher ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256"
+)
+
 
 def scenario(container):
 
@@ -66,6 +70,7 @@ def scenario(container):
 
     return conn
 
+
 def test_all():
 
     with open(PICKLE_FILE, "rb") as fd:
@@ -73,7 +78,7 @@ def test_all():
     recorder.replay()
     config = {"server": "localhost", "port": 44330}
     container = Container(config=config, recorder=providers.Object(recorder))
-    conn = scenario(container)
+    scenario(container)
 
 
 def gen_test():

@@ -5,8 +5,8 @@
 import socket
 import select
 
-class Socket(object):
 
+class Socket(object):
     def __init__(self, server, port, recorder):
 
         self._socket = None
@@ -51,4 +51,3 @@ class Socket(object):
 
     def set_fragment_size(self, fragment_size):
         self._fragment_max_size = fragment_size
-
