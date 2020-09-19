@@ -34,7 +34,7 @@ class RecordLayerState(object):
 
 
 class RecordLayer(object):
-    def __init__(self, server, port, logger):
+    def __init__(self, socket, recorder, logger):
         self._send_buffer = ProtocolData()
         self._receive_buffer = ProtocolData()
         self._fragment_max_size = 4 * 4096
@@ -42,14 +42,13 @@ class RecordLayer(object):
         self._write_state = None
         self._read_state = None
         self.logger = logger
-        self._server = server
-        self._port = port
-        self._socket = None
+        self._socket = socket
         self._flush_each_fragment = False
-        self._recorder = None
+        self._recorder = recorder
 
     def set_recorder(self, recorder):
         self._recorder = recorder
+        self._socket.set_recorder(recorder)
 
     def _add_to_sendbuffer(self, content_type, version, fragment):
         self._send_buffer.append_uint8(content_type.value)
@@ -225,40 +224,17 @@ class RecordLayer(object):
     def set_negotiated_version(self, version):
         self._negotiated_version = version
 
-    def open_socket(self):
-        if self._recorder.state == RecorderState.REPLAYING:
-            return
-        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket.connect((self._server, self._port))
-
     def close_socket(self):
-        if self._socket:
-            self._socket.close()
+        self._socket.close_socket()
 
     def flush(self):
-        if not self._socket:
-            self.open_socket()
-        if self._recorder.outgoing_msg(self._send_buffer):
-            self._socket.sendall(self._send_buffer)
+        self._socket.sendall(self._send_buffer)
         self._send_buffer = ProtocolData()
-
-    def _read_from_socket(self):
-        injected_msg = self._recorder.injected_msg()
-        if injected_msg is not None:
-            return injected_msg
-        rfds, wfds, efds = select.select([self._socket], [], [], 5)
-        data = None
-        if rfds:
-            for fd in rfds:
-                if fd is self._socket:
-                    data = fd.recv(self._fragment_max_size)
-        self._recorder.trace_incoming_msg(data)
-        return data
 
     def wait_fragment(self):
         # wait for record layer header
         while len(self._receive_buffer) < 5:
-            data = self._read_from_socket()
+            data = self._socket.recv_data()
             if data is None:
                 # TODO: timeout
                 pass
@@ -271,7 +247,7 @@ class RecordLayer(object):
         length, offset = self._receive_buffer.unpack_uint16(offset)
 
         while len(self._receive_buffer) < (length + 5):
-            data = self._read_from_socket()
+            data = self._socket.recv_data()
             if data is None:
                 # TODO: timeout
                 pass

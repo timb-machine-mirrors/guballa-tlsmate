@@ -78,8 +78,8 @@ class SecurityParameters(object):
         tls.SupportedHash.MD5: Mac(hash_algo=hashes.MD5, mac_len=16, mac_key_len=16),
     }
 
-    def __init__(self, entity):
-        self.recorder = None
+    def __init__(self, entity, recorder):
+        self.recorder = recorder
         # general
         self.entity = entity
         self.version = None

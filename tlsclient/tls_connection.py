@@ -135,15 +135,11 @@ class TlsConnection(object):
         security_parameters,
         record_layer,
         logger,
-        server,
-        port,
         recorder,
     ):
         self.logger = logger
         self.tls_connection_state = tls_connection_state
         self.msg = tls_connection_msgs
-        self.server = server
-        self.port = port
         self.received_data = ProtocolData()
         self.queued_msg = None
         self.record_layer = record_layer
@@ -153,7 +149,8 @@ class TlsConnection(object):
         self._msg_hash = None
         self._msg_hash_queue = None
         self._msg_hash_active = False
-        self.set_recorder(recorder)
+        self.recorder = recorder
+        #self.set_recorder(recorder)
 
     def __enter__(self):
         return self
@@ -176,10 +173,6 @@ class TlsConnection(object):
     def set_profile(self, client_profile):
         self.client_profile = client_profile
         return self
-
-    def open_socket(self):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((self.server, self.port))
 
     def send(self, *messages):
         for msg in messages:
