@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 """Module containing the CLI implementation
 """
+import sys
 import argparse
+import logging
 
-import tlsclient.dependencies as dependencies
+import tlsclient.dependency_injection as dependency
 
 
 from tlsclient.version import __version__
 
 
-def command_version(args):
+def print_version():
     """Prints the version.
-
-    :param object args: object containing the converted arguments
     """
     print(__version__)
 
@@ -35,19 +35,39 @@ def build_parser():
     :return: the parser object as created with argparse
     :rtype: :class:`argparse.ArgumentParser`
     """
-    parser = argparse.ArgumentParser(description="Bla bla bla")
-    subparsers = parser.add_subparsers(help="subcommands to execute", dest="command")
+    parser = argparse.ArgumentParser(description="tlsclient")
 
-    args_version(subparsers)
+    parser.add_argument("--version", action="store_true", default=False,
+            help="print the version of the tool")
+    parser.add_argument("--logging", choices=["critical", "error", "warning", "info", "debug"],
+            help="sets the loggin level. Default id error.", default="error")
+
     return parser
+
+def set_logging(level):
+    """Sets the logging level
+
+    :param args: args object as created by arg_parser
+    :type args: :class:`Namespace`
+    """
+    logging.basicConfig(level=level.upper())
 
 
 def main():
     """The entry point for the command line interface
     """
+
+    parser = build_parser()
+    args = parser.parse_args()
+    if args.version:
+        print_version()
+        sys.exit(0)
+    set_logging(args.logging)
+
+
     config = {"server": "localhost", "port": 44330}
 
-    container = dependencies.Container(config=config)
+    container = dependency.Container(config=config)
 
     container.test_suite().run()
 

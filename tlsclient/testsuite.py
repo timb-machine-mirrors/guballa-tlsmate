@@ -1,18 +1,16 @@
 # -*- coding: utf-8 -*-
 """Module containing the test suite
 """
-import tlsclient.tls_message as msg
+import tlsclient.messages as msg
 import tlsclient.constants as tls
 
 
 class TestSuite(object):
-    def __init__(self, logger, server_profile, client_profile_factory):
-        self.logger = logger
+    def __init__(self, server_profile, client_profile_factory):
         self.server_profile = server_profile
         self.create_client_profile = client_profile_factory
 
     def run(self):
-        print("Ok, we run")
 
         client_profile = self.create_client_profile()
         client_profile.tls_versions = [tls.Version.TLS12]

@@ -4,6 +4,7 @@
 import time
 import os
 import re
+import logging
 import tlsclient.constants as tls
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
@@ -206,17 +207,18 @@ class SecurityParameters(object):
                 server_public_key = X25519PublicKey.from_public_bytes(
                     bytes(self.remote_public_key)
                 )
-                self.pre_master_secret = private_key.exchange(server_public_key)
-                print("Premaster secret:", ProtocolData.dump(self.pre_master_secret))
+                self.pre_master_secret = ProtocolData(private_key.exchange(server_public_key))
 
-        self.master_secret = self.prf(
+
+        self.master_secret = ProtocolData(self.prf(
             self.pre_master_secret,
             b"master secret",
             self.client_random + self.server_random,
             48,
-        )
+        ))
+        logging.info("pre_master_secret: {}".format(self.pre_master_secret.dump()))
+        logging.info("master_secret: {}".format(self.master_secret.dump()))
         self.recorder.trace(master_secret=self.master_secret)
-        print("Master secret: ", ProtocolData(self.master_secret).dump())
 
         return
 
@@ -250,12 +252,12 @@ class SecurityParameters(object):
         self.recorder.trace(server_write_key=self.server_write_key)
         self.recorder.trace(client_write_iv=self.client_write_iv)
         self.recorder.trace(server_write_iv=self.server_write_iv)
-        print("client_write_mac_key: ", self.client_write_mac_key.dump())
-        print("server_write_mac_key: ", self.server_write_mac_key.dump())
-        print("client_write_key    : ", self.client_write_key.dump())
-        print("server_write_key    : ", self.server_write_key.dump())
-        print("client_write_iv     : ", self.client_write_iv.dump())
-        print("server_write_iv     : ", self.server_write_iv.dump())
+        logging.info("client_write_mac_key: {}".format(self.client_write_mac_key.dump()))
+        logging.info("server_write_mac_key: {}".format(self.server_write_mac_key.dump()))
+        logging.info("client_write_key: {}".format(self.client_write_key.dump()))
+        logging.info("server_write_key: {}".format(self.server_write_key.dump()))
+        logging.info("client_write_iv: {}".format(self.client_write_iv.dump()))
+        logging.info("server_write_iv: {}".format(self.server_write_iv.dump()))
 
     def get_pending_write_state(self, entity):
         if entity == tls.Entity.CLIENT:

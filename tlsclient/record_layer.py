@@ -31,14 +31,13 @@ class RecordLayerState(object):
 
 
 class RecordLayer(object):
-    def __init__(self, socket, recorder, logger):
+    def __init__(self, socket, recorder):
         self._send_buffer = ProtocolData()
         self._receive_buffer = ProtocolData()
         self._fragment_max_size = 4 * 4096
         self._negotiated_version = tls.Version.TLS10
         self._write_state = None
         self._read_state = None
-        self.logger = logger
         self._socket = socket
         self._flush_each_fragment = False
         self._recorder = recorder

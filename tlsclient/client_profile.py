@@ -6,8 +6,8 @@ from tlsclient.protocol import ProtocolData
 
 
 class ClientProfile(object):
-    def __init__(self, tls_connection_factory, server_name):
-        self.tls_connection_factory = tls_connection_factory
+    def __init__(self, connection_factory, server_name):
+        self.connection_factory = connection_factory
         self.versions = [tls.Version.TLS12]
         self.cipher_suites = [
             tls.CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
@@ -34,4 +34,4 @@ class ClientProfile(object):
         self.signature_algorithms = [tls.SignatureScheme.RSA_PSS_RSAE_SHA256]
 
     def create_connection(self):
-        return self.tls_connection_factory().set_profile(self)
+        return self.connection_factory().set_profile(self)

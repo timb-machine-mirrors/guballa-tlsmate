@@ -10,7 +10,7 @@ import inspect
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
-from tlsclient.tls_message import (
+from tlsclient.messages import (
     Alert,
     HandshakeMessage,
     ChangeCipherSpecMessage,
@@ -134,16 +134,14 @@ class TlsConnectionMsgs(object):
 class TlsConnection(object):
     def __init__(
         self,
-        tls_connection_state,
-        tls_connection_msgs,
+        connection_state,
+        connection_msgs,
         security_parameters,
         record_layer,
-        logger,
         recorder,
     ):
-        self.logger = logger
-        self.tls_connection_state = tls_connection_state
-        self.msg = tls_connection_msgs
+        self.connection_state = connection_state
+        self.msg = connection_msgs
         self.received_data = ProtocolData()
         self.queued_msg = None
         self.record_layer = record_layer

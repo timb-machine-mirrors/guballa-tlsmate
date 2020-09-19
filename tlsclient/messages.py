@@ -2,6 +2,7 @@
 """Module providing classes for each TLS message.
 """
 import abc
+import logging
 import tlsclient.constants as tls
 from tlsclient.protocol import ProtocolData
 import tlsclient.extensions as ext
@@ -32,6 +33,7 @@ class HandshakeMessage(TlsMessage):
     def deserialize(cls, fragment, conn):
         msg_type, offset = fragment.unpack_uint8(0)
         msg_type = tls.HandshakeType.val2enum(msg_type, alert_on_failure=True)
+        logging.info("Receiving {}".format(msg_type.name))
         length, offset = fragment.unpack_uint24(offset)
         if length + offset != len(fragment):
             raise FatalAlert(
@@ -62,6 +64,7 @@ class HandshakeMessage(TlsMessage):
         handshake_msg.append_uint24(len(msg_body))
         handshake_msg.extend(msg_body)
         conn.update_msg_hash(handshake_msg)
+        logging.info("Sending {}".format(self.msg_type.name))
         return handshake_msg
 
 
@@ -120,6 +123,7 @@ class ClientHello(HandshakeMessage):
         if self.random is None:
             self.random = get_random_value()
         self.random = conn.recorder.inject(client_random=self.random)
+        logging.info("client_random: {}".format(self.random.dump()))
         conn.update(client_random=self.random)
         msg.extend(self.random)
 
@@ -195,6 +199,9 @@ class ServerHello(HandshakeMessage):
             cipher_suite=self.cipher_suite,
             server_random=self.random,
         )
+        logging.info("TLS version: {}".format(self.version.name))
+        logging.info("Cipher suite: {}".format(self.cipher_suite.name))
+        logging.info("server_random: {}".format(self.random.dump()))
         return self
 
 
@@ -332,9 +339,6 @@ class Finished(HandshakeMessage):
         val = conn.sec_param.prf(conn.sec_param.master_secret, label, hash_val, 12)
         conn.recorder.trace(msg_digest_finished_sent=hash_val)
         conn.recorder.trace(verify_data_finished_sent=val)
-        print("Debug02:", hash_val)
-        print("Debug03:", val)
-        print("Debug04:", conn.sec_param.hash_algo)
         msg = ProtocolData(val)
         return msg
 
@@ -350,15 +354,12 @@ class Finished(HandshakeMessage):
         conn.recorder.trace(msg_digest_finished_rec=hash_val)
         conn.recorder.trace(verify_data_finished_rec=verify_data)
         conn.recorder.trace(verify_data_finished_calc=val)
-        print("Debug02:", hash_val)
-        print("Debug03:", val)
-        print("Debug04:", conn.sec_param.hash_algo)
-        print("Debug05:", fragment.dump())
         if verify_data != val:
             FatalAlert(
                 "Received Finidhed: verify_data does not match",
                 tls.AlertDescription.BAD_RECORD_MAC,
             )
+        logging.info("Received Finished sucessfully verified")
         return self
 
 
@@ -376,6 +377,7 @@ class ChangeCipherSpecMessage(TlsMessage):
             )
         msg_type, offset = fragment.unpack_uint8(0)
         msg_type = tls.CCSType.val2enum(msg_type, alert_on_failure=True)
+        logging.info("Receiving {}".format(msg_type.name))
         cls_name = _ccs_deserialization_map[msg_type]
         msg = cls_name()
         msg._deserialize_msg_body(conn)
@@ -385,6 +387,7 @@ class ChangeCipherSpecMessage(TlsMessage):
         self._serialize_msg_body(conn)
         ccs_msg = ProtocolData()
         ccs_msg.append_uint8(self.msg_type.value)
+        logging.info("Sending {}".format(self.msg_type.name))
         return ccs_msg
 
     @abc.abstractmethod
@@ -430,6 +433,8 @@ class Alert(TlsMessage):
             alert.append_uint8(self.description)
         else:
             alert.append_uint8(self.description.value)
+
+        logging.info("Sending ALERT ({})".format(self.description.name))
         return alert
 
 
@@ -439,11 +444,13 @@ class AppDataMessage(TlsMessage):
 
     @classmethod
     def deserialize(cls, fragment, conn):
+        logging.info("Receiving {}".format(self.content_type.name))
         msg = AppData()
         msg._deserialize_msg_body(fragment, conn)
         return msg
 
     def serialize(self, conn):
+        logging.info("Sending {}".format(self.content_type.name))
         return self._serialize_msg_body(conn)
 
     @abc.abstractmethod

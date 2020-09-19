@@ -5,8 +5,8 @@ import pathlib
 
 from dependency_injector import providers
 import tlsclient.constants as tls
-import tlsclient.tls_message as msg
-from tlsclient.dependencies import Container
+import tlsclient.messages as msg
+from tlsclient.dependency_injection import Container
 
 
 PICKLE_DIR = pathlib.Path(__file__).resolve().parent / "recordings"

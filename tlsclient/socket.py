@@ -4,7 +4,7 @@
 
 import socket
 import select
-
+import logging
 
 class Socket(object):
     def __init__(self, server, port, recorder):
@@ -20,9 +20,15 @@ class Socket(object):
             return
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._socket.connect((self._server, self._port))
+        laddr, lport = self._socket.getsockname()
+        raddr, rport = self._socket.getpeername()
+        logging.debug("Socket opened")
+        logging.debug("local address: {}:{}".format(laddr, lport))
+        logging.debug("remote address: {}:{}".format(raddr, rport))
 
     def close_socket(self):
         if self._socket is not None:
+            logging.debug("Closing socket")
             self._socket.close()
 
     def set_recorder(self, recorder):
