@@ -345,7 +345,7 @@ class Finished(HandshakeMessage):
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         verify_data = fragment[offset:]
-        logging.debug("Finished.verify_data(in): {}".format(verify_data.dump()))
+        logging.debug("Finished.verify_data(in): {}".format(ProtocolData(verify_data).dump()))
         if conn.sec_param.entity == tls.Entity.CLIENT:
             hash_val = conn.finalize_msg_hash()
             label = b"server finished"
