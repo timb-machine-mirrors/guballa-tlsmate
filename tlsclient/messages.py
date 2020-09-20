@@ -340,10 +340,12 @@ class Finished(HandshakeMessage):
         conn.recorder.trace(msg_digest_finished_sent=hash_val)
         conn.recorder.trace(verify_data_finished_sent=val)
         msg = ProtocolData(val)
+        logging.debug("Finished.verify_data(out): {}".format(msg.dump()))
         return msg
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         verify_data = fragment[offset:]
+        logging.debug("Finished.verify_data(in): {}".format(verify_data.dump()))
         if conn.sec_param.entity == tls.Entity.CLIENT:
             hash_val = conn.finalize_msg_hash()
             label = b"server finished"

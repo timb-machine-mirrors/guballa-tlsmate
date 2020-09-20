@@ -674,6 +674,7 @@ class CipherPrimitive(ExtendedEnum):
     RC4 = enum.auto()
     SEED = enum.auto()
     TRIPPLE_DES = enum.auto()
+    CHACHA = enum.auto()
 
 
 class SupportedCipher(ExtendedEnum):

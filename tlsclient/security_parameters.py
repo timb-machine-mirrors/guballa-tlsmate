@@ -74,6 +74,14 @@ class SecurityParameters(object):
             block_size=16,
             iv_len=4,
         ),
+        tls.SupportedCipher.CHACHA20_POLY1305: Cipher(
+            cipher_primitive=tls.CipherPrimitive.CHACHA,
+            cipher_algo=aead.ChaCha20Poly1305,
+            cipher_type=tls.CipherType.AEAD,
+            enc_key_len=32,
+            block_size=16,
+            iv_len=12,
+        ),
     }
 
     _supported_macs = {

@@ -5,7 +5,6 @@
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
 import struct
-import os
 import tlsclient.constants as tls
 
 from cryptography.hazmat.primitives import hmac
@@ -117,6 +116,23 @@ class RecordLayer(object):
 
         state._seq_nbr += 1
 
+    def _protect_chacha_cipher(self, state, content_type, version, fragment):
+        nonce_val = (
+            int.from_bytes(state._iv_value, "big", signed=False) ^ state._seq_nbr
+        )
+        nonce = nonce_val.to_bytes(state._iv_len, "big", signed=False)
+        aad = ProtocolData()
+        aad.append_uint64(state._seq_nbr)
+        aad.append_uint8(content_type.value)
+        aad.append_uint16(version.value)
+        aad.append_uint16(len(fragment))
+        chachapoly = aead.ChaCha20Poly1305(state._enc_key)
+        cipher_text = chachapoly.encrypt(nonce, bytes(fragment), bytes(aad))
+
+        self._add_to_sendbuffer(content_type, version, cipher_text)
+
+        state._seq_nbr += 1
+
     def _protect(self, content_type, version, fragment):
         wstate = self._write_state
         if wstate is None:
@@ -128,7 +144,10 @@ class RecordLayer(object):
             elif wstate._cipher_type == tls.CipherType.STREAM:
                 pass
             elif wstate._cipher_type == tls.CipherType.AEAD:
-                self._protect_aead_cipher(wstate, content_type, version, fragment)
+                if wstate._cipher_primitive == tls.CipherPrimitive.CHACHA:
+                    self._protect_chacha_cipher(wstate, content_type, version, fragment)
+                else:
+                    self._protect_aead_cipher(wstate, content_type, version, fragment)
             else:
                 raise FatalAlert(
                     "Unknown cipher type", tls.AlertDescription.INTERNAL_ERROR
@@ -192,6 +211,7 @@ class RecordLayer(object):
             raise FatalAlert(
                 "MAC verification failed", tls.AlertDescription.BAD_RECORD_MAC
             )
+        state._seq_nbr += 1
         return ProtocolData(plain_text)
 
     def _unprotect_aead_cipher(self, state, content_type, version, fragment):
@@ -201,11 +221,25 @@ class RecordLayer(object):
         aad.append_uint64(state._seq_nbr)
         aad.append_uint8(content_type.value)
         aad.append_uint16(version.value)
-        aad.append_uint16(len(cipher_text) - 16) # substract what aes_gcm adds
+        aad.append_uint16(len(cipher_text) - 16)  # substract what aes_gcm adds
         nonce = bytes(state._iv_value + nonce_explicit)
         aesgcm = aead.AESGCM(state._enc_key)
+        state._seq_nbr += 1
         return ProtocolData(aesgcm.decrypt(nonce, cipher_text, bytes(aad)))
 
+    def _unprotect_chacha_cipher(self, state, content_type, version, fragment):
+        nonce_val = (
+            int.from_bytes(state._iv_value, "big", signed=False) ^ state._seq_nbr
+        )
+        nonce = nonce_val.to_bytes(state._iv_len, "big", signed=False)
+        aad = ProtocolData()
+        aad.append_uint64(state._seq_nbr)
+        aad.append_uint8(content_type.value)
+        aad.append_uint16(version.value)
+        aad.append_uint16(len(fragment) - 16)  # substract what chacha-poly adds
+        chachapoly = aead.ChaCha20Poly1305(state._enc_key)
+        state._seq_nbr += 1
+        return ProtocolData(chachapoly.decrypt(nonce, bytes(fragment), bytes(aad)))
 
     def _unprotect(self, content_type, version, fragment):
         rstate = self._read_state
@@ -219,7 +253,14 @@ class RecordLayer(object):
             elif rstate._cipher_type == tls.CipherType.STREAM:
                 pass
             elif rstate._cipher_type == tls.CipherType.AEAD:
-                return self._unprotect_aead_cipher(rstate, content_type, version, fragment)
+                if rstate._cipher_primitive == tls.CipherPrimitive.CHACHA:
+                    return self._unprotect_chacha_cipher(
+                        rstate, content_type, version, fragment
+                    )
+                else:
+                    return self._unprotect_aead_cipher(
+                        rstate, content_type, version, fragment
+                    )
             else:
                 raise FatalAlert(
                     "Unknown cipher type", tls.AlertDescription.INTERNAL_ERROR
