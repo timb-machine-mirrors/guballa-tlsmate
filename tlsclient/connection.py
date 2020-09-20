@@ -317,7 +317,7 @@ class TlsConnection(object):
             self._msg_hash_queue.extend(msg)
         else:
             if self._msg_hash is None:
-                self._msg_hash = hashes.Hash(hashes.SHA256())
+                self._msg_hash = hashes.Hash(self.sec_param.hmac_algo())
                 self._msg_hash.update(self._msg_hash_queue)
                 self._msg_hash_queue = None
             self._msg_hash.update(msg)

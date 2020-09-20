@@ -29,7 +29,7 @@ Cipher = collections.namedtuple(
     "Cipher", "cipher_primitive cipher_algo cipher_type enc_key_len block_size iv_len"
 )
 
-Mac = collections.namedtuple("Mac", "hash_algo mac_len mac_key_len")
+Mac = collections.namedtuple("Mac", "hash_algo mac_len mac_key_len hmac_algo")
 
 
 def get_random_value():
@@ -55,8 +55,8 @@ class SecurityParameters(object):
             cipher_algo=algorithms.AES,
             cipher_type=tls.CipherType.BLOCK,
             enc_key_len=32,
-            block_size=32,
-            iv_len=32,
+            block_size=16,
+            iv_len=16,
         ),
         tls.SupportedCipher.AES_128_GCM: Cipher(
             cipher_primitive=tls.CipherPrimitive.AES,
@@ -64,24 +64,25 @@ class SecurityParameters(object):
             cipher_type=tls.CipherType.AEAD,
             enc_key_len=16,
             block_size=16,
-            iv_len=16,
+            iv_len=4,
         ),
         tls.SupportedCipher.AES_256_GCM: Cipher(
             cipher_primitive=tls.CipherPrimitive.AES,
             cipher_algo=aead.AESGCM,
             cipher_type=tls.CipherType.AEAD,
             enc_key_len=32,
-            block_size=32,
-            iv_len=32,
+            block_size=16,
+            iv_len=4,
         ),
     }
 
     _supported_macs = {
         tls.SupportedHash.SHA256: Mac(
-            hash_algo=hashes.SHA256, mac_len=32, mac_key_len=32
+            hash_algo=hashes.SHA256, mac_len=32, mac_key_len=32, hmac_algo=hashes.SHA256
         ),
-        tls.SupportedHash.SHA: Mac(hash_algo=hashes.SHA1, mac_len=20, mac_key_len=20),
-        tls.SupportedHash.MD5: Mac(hash_algo=hashes.MD5, mac_len=16, mac_key_len=16),
+        tls.SupportedHash.SHA: Mac(hash_algo=hashes.SHA1, mac_len=20, mac_key_len=20, hmac_algo=hashes.SHA256),
+        tls.SupportedHash.SHA384: Mac(hash_algo=hashes.SHA384, mac_len=48, mac_key_len=48, hmac_algo=hashes.SHA384),
+        tls.SupportedHash.MD5: Mac(hash_algo=hashes.MD5, mac_len=16, mac_key_len=16,hmac_algo=hashes.SHA256 ),
     }
 
     def __init__(self, entity, recorder):
@@ -125,6 +126,7 @@ class SecurityParameters(object):
         self.hash_primitive = None
         self.hash_algo = None
         self.mac_len = None
+        self.hmac_algo = None
 
     def set_recorder(self, recorder):
         self.recorder = recorder
@@ -164,14 +166,16 @@ class SecurityParameters(object):
                 self.block_size,
                 self.iv_len,
             ) = self._supported_ciphers[cipher]
-            (self.hash_algo, self.mac_len, self.mac_key_len) = self._supported_macs[
+            (self.hash_algo, self.mac_len, self.mac_key_len, self.hmac_algo) = self._supported_macs[
                 hash_primitive
             ]
+            if self.cipher_type == tls.CipherType.AEAD:
+                self.mac_key_len = 0
         logging.debug("hash_primitive: {}".format(self.hash_primitive.name))
         logging.debug("cipher_primitive: {}".format(self.cipher_primitive.name))
 
     def _hmac_func(self, secret, msg):
-        hmac_object = hmac.HMAC(secret, hashes.SHA256())
+        hmac_object = hmac.HMAC(secret, self.hmac_algo())
         hmac_object.update(msg)
         return hmac_object.finalize()
 

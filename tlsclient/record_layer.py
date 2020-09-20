@@ -100,7 +100,9 @@ class RecordLayer(object):
 
     def _protect_aead_cipher(self, state, content_type, version, fragment):
         aesgcm = aead.AESGCM(state._enc_key)
-        nonce = os.urandom(state._iv_len)
+        nonce_explicit = ProtocolData()
+        nonce_explicit.append_uint64(state._seq_nbr)
+        nonce = state._iv_value + nonce_explicit
         aad = ProtocolData()
         aad.append_uint64(state._seq_nbr)
         aad.append_uint8(content_type.value)
@@ -108,7 +110,7 @@ class RecordLayer(object):
         aad.append_uint16(len(fragment))
         cipher_text = aesgcm.encrypt(nonce, bytes(fragment), bytes(aad))
         aead_ciphered = ProtocolData()
-        aead_ciphered.extend(nonce)
+        aead_ciphered.extend(nonce_explicit)
         aead_ciphered.extend(cipher_text)
 
         self._add_to_sendbuffer(content_type, version, aead_ciphered)
@@ -192,6 +194,19 @@ class RecordLayer(object):
             )
         return ProtocolData(plain_text)
 
+    def _unprotect_aead_cipher(self, state, content_type, version, fragment):
+        nonce_explicit = fragment[:8]
+        cipher_text = bytes(fragment[8:])
+        aad = ProtocolData()
+        aad.append_uint64(state._seq_nbr)
+        aad.append_uint8(content_type.value)
+        aad.append_uint16(version.value)
+        aad.append_uint16(len(cipher_text) - 16) # substract what aes_gcm adds
+        nonce = bytes(state._iv_value + nonce_explicit)
+        aesgcm = aead.AESGCM(state._enc_key)
+        return ProtocolData(aesgcm.decrypt(nonce, cipher_text, bytes(aad)))
+
+
     def _unprotect(self, content_type, version, fragment):
         rstate = self._read_state
         if rstate is None:
@@ -204,7 +219,7 @@ class RecordLayer(object):
             elif rstate._cipher_type == tls.CipherType.STREAM:
                 pass
             elif rstate._cipher_type == tls.CipherType.AEAD:
-                pass
+                return self._unprotect_aead_cipher(rstate, content_type, version, fragment)
             else:
                 raise FatalAlert(
                     "Unknown cipher type", tls.AlertDescription.INTERNAL_ERROR

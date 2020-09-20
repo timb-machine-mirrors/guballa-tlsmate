@@ -1,95 +1,25 @@
 # -*- coding: utf-8 -*-
+"""Implements a class to be used for unit testing.
+"""
 import pytest
-import pickle
 import pathlib
-
-from dependency_injector import providers
+from tests.tc_recorder import TcRecorder
 import tlsclient.constants as tls
-import tlsclient.messages as msg
-from tlsclient.dependency_injection import Container
 
 
-PICKLE_DIR = pathlib.Path(__file__).resolve().parent / "recordings"
-FILE_NAME = "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA.pickle"
-PICKLE_FILE = PICKLE_DIR / FILE_NAME
+class TestCase(TcRecorder):
+    """Class used for tests with pytest.
 
-OPENSSL_SERVER_CMD = (
-    "export OPENSSL_TRACE=TLS && openssl s_server -key key.pem -cert cert.pem -accept "
-    "44330 -www -no_tls1_3 -trace -cipher ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES128-SHA"
-)
+    For more information refer to the documentation of the TcRecorder class.
+    """
+    path = pathlib.Path(__file__)
 
+    cipher_suite = tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
 
-def scenario(container):
-
-    client_profile = container.client_profile()
-
-    client_profile.tls_versions = [tls.Version.TLS12]
-    client_profile.cipher_suites = [
-        tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
-        tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
-        tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-        tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-        tls.CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
-        tls.CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA,
-    ]
-    client_profile.supported_groups = [
-        tls.SupportedGroups.X25519,
-        tls.SupportedGroups.SECP256R1,
-        tls.SupportedGroups.SECP384R1,
-        tls.SupportedGroups.SECP521R1,
-        tls.SupportedGroups.FFDHE2048,
-        tls.SupportedGroups.FFDHE4096,
-    ]
-    client_profile.signature_algorithms = [
-        tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
-        tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
-        tls.SignatureScheme.ECDSA_SECP521R1_SHA512,
-        tls.SignatureScheme.RSA_PSS_RSAE_SHA256,
-        tls.SignatureScheme.RSA_PSS_RSAE_SHA384,
-        tls.SignatureScheme.RSA_PSS_RSAE_SHA512,
-        tls.SignatureScheme.RSA_PKCS1_SHA256,
-        tls.SignatureScheme.RSA_PKCS1_SHA384,
-        tls.SignatureScheme.RSA_PKCS1_SHA512,
-        tls.SignatureScheme.ECDSA_SHA1,
-        tls.SignatureScheme.RSA_PKCS1_SHA1,
-    ]
-
-    with client_profile.create_connection() as conn:
-        conn.send(msg.ClientHello)
-        conn.wait(msg.ServerHello)
-        conn.wait(msg.Certificate, optional=True)
-        conn.wait(msg.ServerKeyExchange, optional=True)
-        conn.wait(msg.ServerHelloDone)
-        conn.send(msg.ClientKeyExchange, msg.ChangeCipherSpec, msg.Finished)
-        conn.wait(msg.ChangeCipherSpec)
-        conn.wait(msg.Finished)
-        conn.send(msg.AppData(b"Hier kommen Daten!"))
-
-    return conn
-
-
-def test_all():
-
-    with open(PICKLE_FILE, "rb") as fd:
-        recorder = pickle.load(fd)
-    recorder.replay()
-    config = {"server": "localhost", "port": 44330}
-    container = Container(config=config, recorder=providers.Object(recorder))
-    scenario(container)
-
-
-def gen_test():
-
-    config = {"server": "localhost", "port": 44330}
-    container = Container(config=config)
-    recorder = container.recorder()
-    recorder.openssl_s_server = OPENSSL_SERVER_CMD
-    recorder.record()
-    conn = scenario(container)
-
-    with open(PICKLE_FILE, "wb") as fd:
-        pickle.dump(conn.recorder, fd)
+    # Uncomment the line below if you do not want to use the default version and
+    # adapt it to your needs.
+    # version = tls.Version.TLS12
 
 
 if __name__ == "__main__":
-    gen_test()
+    TestCase().record_testcase()

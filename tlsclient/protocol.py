@@ -77,6 +77,8 @@ class ProtocolData(bytearray):
             self.extend(map(ord, string))
 
     def dump(self, bytes_per_row=0):
+        if not len(self):
+            return ""
         if bytes_per_row == 0:
             bytes_per_row = len(self)
         rows = []
