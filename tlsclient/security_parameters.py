@@ -167,9 +167,11 @@ class SecurityParameters(object):
             (self.hash_algo, self.mac_len, self.mac_key_len) = self._supported_macs[
                 hash_primitive
             ]
+        logging.debug("hash_primitive: {}".format(self.hash_primitive.name))
+        logging.debug("cipher_primitive: {}".format(self.cipher_primitive.name))
 
     def _hmac_func(self, secret, msg):
-        hmac_object = hmac.HMAC(secret, self.hash_algo())
+        hmac_object = hmac.HMAC(secret, hashes.SHA256())
         hmac_object.update(msg)
         return hmac_object.finalize()
 

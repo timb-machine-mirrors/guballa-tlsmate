@@ -6,6 +6,7 @@ import os
 import time
 import select
 import inspect
+import logging
 
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
@@ -152,9 +153,9 @@ class TlsConnection(object):
         self._msg_hash_queue = None
         self._msg_hash_active = False
         self.recorder = recorder
-        # self.set_recorder(recorder)
 
     def __enter__(self):
+        logging.debug("New TLS connection created")
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -165,6 +166,7 @@ class TlsConnection(object):
             self.record_layer.close_socket()
             return True
         self.record_layer.close_socket()
+        logging.debug("TLS connection closed")
         return False
 
     def set_recorder(self, recorder):
@@ -315,7 +317,7 @@ class TlsConnection(object):
             self._msg_hash_queue.extend(msg)
         else:
             if self._msg_hash is None:
-                self._msg_hash = hashes.Hash(self.sec_param.hash_algo())
+                self._msg_hash = hashes.Hash(hashes.SHA256())
                 self._msg_hash.update(self._msg_hash_queue)
                 self._msg_hash_queue = None
             self._msg_hash.update(msg)
