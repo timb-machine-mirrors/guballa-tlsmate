@@ -20,70 +20,6 @@ from tlsclient.messages import (
 from cryptography.hazmat.primitives import hashes
 
 
-class TlsConnectionState(object):
-    def __init__(self):
-        self.entity = tls.Entity.CLIENT
-        self.master_secret = None
-        client_random = ProtocolData()
-        client_random.append_uint32(int(time.time()))
-        client_random.extend(os.urandom(28))
-        self.client_random = client_random
-        self.server_random = None
-        self.record_layer_version = tls.Version.TLS10
-        self.named_curve = None
-        self.handshake_msgs = ProtocolData()
-        self.version = None
-        self.cipher_suite = None
-        self.mac = None
-        self.cipher = None
-        self.key_exchange_method = None
-
-    def set_version(self, version):
-        self.version = version
-        # stupid TLS1.3 RFC: let the message look like TLS1.2
-        # to support not compliant middleboxes. :-(
-        self.record_layer_version = min(version, tls.Version.TLS12)
-
-    def set_server_random(self, random):
-        self.server_random = random
-
-    def get_key_exchange_method(self):
-        return self.key_exchange_method
-
-    def update_keys(self):
-        self.generate_master_secret()
-        self.key_deriviation()
-
-    def update_value(self, attr_name, val):
-        setattr(self, attr_name, val)
-
-    def update_handshake_msg(self, argname, handshake_msg):
-        self.handshake_msgs.extend(handshake_msg)
-
-    def update_version(self, argname, version):
-        self.version = version
-        self.sec_param.version = version
-        # stupid TLS1.3 RFC: let the message look like TLS1.2
-        # to support not compliant middleboxes. :-(
-        self.record_layer_version = min(version, tls.Version.TLS12)
-
-    def update(self, **kwargs):
-        argname2method = {
-            "version": self.update_version,
-            "cipher_suite": self.update_cipher_suite,
-            "server_random": self.update_value,
-            "client_random": self.update_value,
-            "handshake_msg": self.update_handshake_msg,
-        }
-        for argname, val in kwargs.items():
-            method = argname2method.get(argname, None)
-            if method is None:
-                raise ValueError(
-                    'Update connection: unknown argument "{}" given'.format(argname)
-                )
-            method(argname, val)
-
-
 class TlsConnectionMsgs(object):
 
     map_msg2attr = {
@@ -135,13 +71,11 @@ class TlsConnectionMsgs(object):
 class TlsConnection(object):
     def __init__(
         self,
-        connection_state,
         connection_msgs,
         security_parameters,
         record_layer,
         recorder,
     ):
-        self.connection_state = connection_state
         self.msg = connection_msgs
         self.received_data = ProtocolData()
         self.queued_msg = None
@@ -227,35 +161,6 @@ class TlsConnection(object):
                     ),
                     tls.AlertDescription.UNEXPECTED_MESSAGE,
                 )
-
-    def wait_fragment(self):
-        while len(self.received_data) < 5:
-            self.received_data.extend(self.wait_data())
-
-        content_type, offset = self.received_data.unpack_uint8(0)
-        content_type = tls.ContentType.val2enum(content_type, alert_on_failure=True)
-        version, offset = self.received_data.unpack_uint16(offset)
-        version = tls.Version.val2enum(version, alert_on_failure=True)
-        length, offset = self.received_data.unpack_uint16(offset)
-
-        while len(self.received_data) < (length + 5):
-            self.received_data.extend(self.wait_data())
-        msg = ProtocolData(self.received_data[5 : 5 + length])
-        self.received_data = ProtocolData(self.received_data[length + 5 :])
-        return content_type, version, msg
-
-    def wait_data(self):
-        rfds, wfds, efds = select.select([self.socket], [], [], 5)
-        data = None
-        if rfds:
-            for fd in rfds:
-                if fd is self.socket:
-                    data = fd.recv(2048)
-        return data
-
-    def wait_server_hello_done(self):
-        while True:
-            self.wait()
 
     def update_keys(self):
         self.sec_param.generate_master_secret()

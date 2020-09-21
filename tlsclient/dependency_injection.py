@@ -7,7 +7,6 @@ from tlsclient.server_profile import ServerProfile
 from tlsclient.testsuite import TestSuite
 from tlsclient.connection import (
     TlsConnection,
-    TlsConnectionState,
     TlsConnectionMsgs,
 )
 from tlsclient.client_profile import ClientProfile
@@ -33,20 +32,17 @@ class Container(containers.DeclarativeContainer):
     )
 
     record_layer = providers.Factory(
-        RecordLayer, socket=socket, recorder=recorder, 
+        RecordLayer, socket=socket, recorder=recorder,
     )
 
     security_parameters = providers.Factory(
         SecurityParameters, entity=tls.Entity.CLIENT, recorder=recorder
     )
 
-    connection_state = providers.Factory(TlsConnectionState)
-
     connection_msgs = providers.Factory(TlsConnectionMsgs)
 
     connection = providers.Factory(
         TlsConnection,
-        connection_state=connection_state,
         connection_msgs=connection_msgs,
         security_parameters=security_parameters,
         record_layer=record_layer,
