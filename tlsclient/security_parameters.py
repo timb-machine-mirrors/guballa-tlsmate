@@ -13,10 +13,7 @@ import collections
 
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.ciphers import algorithms, aead
-from cryptography.hazmat.primitives.asymmetric.x25519 import (
-    X25519PrivateKey,
-    X25519PublicKey,
-)
+from cryptography.hazmat.primitives.asymmetric import ec, x25519
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
     PublicFormat,
@@ -31,6 +28,7 @@ Cipher = collections.namedtuple(
 
 Mac = collections.namedtuple("Mac", "hash_algo mac_len mac_key_len hmac_algo")
 
+Groups = collections.namedtuple("Groups", "curve_algo")
 
 def get_random_value():
     random = ProtocolData()
@@ -91,6 +89,28 @@ class SecurityParameters(object):
         tls.SupportedHash.SHA: Mac(hash_algo=hashes.SHA1, mac_len=20, mac_key_len=20, hmac_algo=hashes.SHA256),
         tls.SupportedHash.SHA384: Mac(hash_algo=hashes.SHA384, mac_len=48, mac_key_len=48, hmac_algo=hashes.SHA384),
         tls.SupportedHash.MD5: Mac(hash_algo=hashes.MD5, mac_len=16, mac_key_len=16,hmac_algo=hashes.SHA256 ),
+    }
+
+    _supported_groups_ec = {
+        tls.SupportedGroups.SECT163K1: Groups(curve_algo=ec.SECT163K1),
+        tls.SupportedGroups.SECT163R2: Groups(curve_algo=ec.SECT163R2),
+        tls.SupportedGroups.SECT233K1: Groups(curve_algo=ec.SECT233K1),
+        tls.SupportedGroups.SECT233R1: Groups(curve_algo=ec.SECT233R1),
+        tls.SupportedGroups.SECT283K1: Groups(curve_algo=ec.SECT283K1),
+        tls.SupportedGroups.SECT283R1: Groups(curve_algo=ec.SECT283R1),
+        tls.SupportedGroups.SECT409K1: Groups(curve_algo=ec.SECT409K1),
+        tls.SupportedGroups.SECT409R1: Groups(curve_algo=ec.SECT409R1),
+        tls.SupportedGroups.SECT571K1: Groups(curve_algo=ec.SECT571K1),
+        tls.SupportedGroups.SECT571R1: Groups(curve_algo=ec.SECT571R1),
+        tls.SupportedGroups.SECP192R1: Groups(curve_algo=ec.SECP192R1),
+        tls.SupportedGroups.SECP224R1: Groups(curve_algo=ec.SECP224R1),
+        tls.SupportedGroups.SECP256K1: Groups(curve_algo=ec.SECP256K1),
+        tls.SupportedGroups.SECP256R1: Groups(curve_algo=ec.SECP256R1),
+        tls.SupportedGroups.SECP384R1: Groups(curve_algo=ec.SECP384R1),
+        tls.SupportedGroups.SECP521R1: Groups(curve_algo=ec.SECP521R1),
+        tls.SupportedGroups.BRAINPOOLP256R1: Groups(curve_algo=ec.BrainpoolP256R1),
+        tls.SupportedGroups.BRAINPOOLP384R1: Groups(curve_algo=ec.BrainpoolP384R1),
+        tls.SupportedGroups.BRAINPOOLP512R1: Groups(curve_algo=ec.BrainpoolP512R1),
     }
 
     def __init__(self, entity, recorder):
@@ -205,24 +225,34 @@ class SecurityParameters(object):
             tls.KeyExchangeAlgorithm.ECDH_RSA,
             tls.KeyExchangeAlgorithm.ECDHE_RSA,
         ]:
-            if self.named_curve == tls.SupportedGroups.X25519:
-                private_key = X25519PrivateKey.generate()
+            named_ec_curve = self._supported_groups_ec.get(self.named_curve)
+            if named_ec_curve is not None:
+                curve_algo = named_ec_curve.curve_algo
+                seed = int.from_bytes(os.urandom(10),"big")
+                seed = self.recorder.inject(ec_seed=seed)
+                private_key = ec.derive_private_key(seed, curve_algo())
+                public_key = private_key.public_key()
+                self.public_key = public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
+                server_public_key = ec.EllipticCurvePublicKey.from_encoded_point(curve_algo(), bytes(self.remote_public_key))
+                self.pre_master_secret = ProtocolData(private_key.exchange(ec.ECDH(), server_public_key))
+
+            elif self.named_curve == tls.SupportedGroups.X25519:
+                private_key = x25519.X25519PrivateKey.generate()
                 private_bytes = private_key.private_bytes(
                     encoding=Encoding.Raw,
                     format=PrivateFormat.Raw,
                     encryption_algorithm=NoEncryption(),
                 )
                 self.private_key = self.recorder.inject(private_key=private_bytes)
-                private_key = X25519PrivateKey.from_private_bytes(self.private_key)
+                private_key = x25519.X25519PrivateKey.from_private_bytes(self.private_key)
                 public_key = private_key.public_key()
                 self.public_key = public_key.public_bytes(
                     Encoding.Raw, PublicFormat.Raw
                 )
-                server_public_key = X25519PublicKey.from_public_bytes(
+                server_public_key = x25519.X25519PublicKey.from_public_bytes(
                     bytes(self.remote_public_key)
                 )
                 self.pre_master_secret = ProtocolData(private_key.exchange(server_public_key))
-
 
         self.master_secret = ProtocolData(self.prf(
             self.pre_master_secret,

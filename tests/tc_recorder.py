@@ -17,6 +17,9 @@ class TcRecorder(metaclass=abc.ABCMeta):
     handshake scenario.
     """
 
+    # The name of the pickle file. If None, the name is taken from the
+    # cipher suite name
+    name = None
     path = None
     server = "localhost"
     port = 44330
@@ -54,10 +57,15 @@ class TcRecorder(metaclass=abc.ABCMeta):
         :return: a Path object for the pickle file
         :rtype: :class:`pathlib.Path`
         """
+        if self.name is not None:
+            name = self.name
+        else:
+            name = self.cipher_suite.name
+
         return (
             self.path.resolve().parent
             / "recordings"
-            / (self.cipher_suite.name + ".pickle")
+            / (name + ".pickle")
         )
 
     def scenario(self, container):

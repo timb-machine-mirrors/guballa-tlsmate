@@ -37,12 +37,29 @@ class TestSuite(object):
             #tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
         ]
         client_profile.supported_groups = [
-            tls.SupportedGroups.X25519,
+            #tls.SupportedGroups.X25519,
+
+            #tls.SupportedGroups.SECT163K1,
+            #tls.SupportedGroups.SECT163R2,
+            #tls.SupportedGroups.SECT233K1,
+            #tls.SupportedGroups.SECT233R1,
+            #tls.SupportedGroups.SECT283K1,
+            #tls.SupportedGroups.SECT283R1,
+            #tls.SupportedGroups.SECT409K1,
+            #tls.SupportedGroups.SECT409R1,
+            #tls.SupportedGroups.SECT571K1,
+            #tls.SupportedGroups.SECT571R1,
+            #tls.SupportedGroups.SECP224R1,
+            #tls.SupportedGroups.SECP256K1,
+            #tls.SupportedGroups.BRAINPOOLP256R1,
+            #tls.SupportedGroups.BRAINPOOLP384R1,
+            #tls.SupportedGroups.BRAINPOOLP512R1,
+
             tls.SupportedGroups.SECP256R1,
-            tls.SupportedGroups.SECP384R1,
-            tls.SupportedGroups.SECP521R1,
-            tls.SupportedGroups.FFDHE2048,
-            tls.SupportedGroups.FFDHE4096,
+            #tls.SupportedGroups.SECP384R1,
+            #tls.SupportedGroups.SECP521R1,
+            #tls.SupportedGroups.FFDHE2048,
+            #tls.SupportedGroups.FFDHE4096,
         ]
         client_profile.signature_algorithms = [
             tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
