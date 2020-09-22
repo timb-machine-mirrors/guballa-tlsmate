@@ -117,6 +117,7 @@ class ClientHello(HandshakeMessage):
         version = self.client_version
         if type(version) == tls.Version:
             version = version.value
+        conn.update(client_version_sent=version)
         msg.append_uint16(version)
 
         # random
@@ -317,8 +318,13 @@ class ClientKeyExchange(HandshakeMessage):
     def _serialize_msg_body(self, conn):
         conn.update_keys()
         msg = ProtocolData()
-        msg.append_uint8(len(conn.sec_param.public_key))
-        msg.extend(conn.sec_param.public_key)
+        if conn.sec_param.key_exchange_method == tls.KeyExchangeAlgorithm.RSA:
+            data = conn.rsa_key_transport()
+            msg.append_uint16(len(data))
+            msg.extend(data)
+        else:
+            msg.append_uint8(len(conn.sec_param.public_key))
+            msg.extend(conn.sec_param.public_key)
         return msg
 
     def _deserialize_msg_body(self, fragment, offset, conn):

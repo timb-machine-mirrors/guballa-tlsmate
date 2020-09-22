@@ -118,6 +118,7 @@ class SecurityParameters(object):
         # general
         self.entity = entity
         self.version = None
+        self.client_version_sent = None
         self.cipher_suite = None
         self.key_exchange_method = None
         self.compression_method = None
@@ -257,7 +258,13 @@ class SecurityParameters(object):
                     bytes(self.remote_public_key)
                 )
                 self.pre_master_secret = ProtocolData(private_key.exchange(server_public_key))
+        elif self.key_exchange_method == tls.KeyExchangeAlgorithm.RSA:
+            self.pre_master_secret = ProtocolData()
+            self.pre_master_secret.append_uint16(self.client_version_sent)
+            random = self.recorder.inject(pms_rsa=os.urandom(46))
+            self.pre_master_secret.extend(random)
 
+        self.recorder.trace(pre_master_secret=self.pre_master_secret)
         self.master_secret = ProtocolData(self.prf(
             self.pre_master_secret,
             b"master secret",

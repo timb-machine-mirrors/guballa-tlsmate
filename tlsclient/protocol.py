@@ -75,4 +75,4 @@ class ProtocolData(bytearray):
         for x in range(0, len(self), bytes_per_row):
             chunk = self[x : x + bytes_per_row]
             rows.append(" ".join("{:02x}".format(y) for y in chunk))
-        return "\n".join(rows)
+        return "\n".join(rows) + " ({})".format(len(self))

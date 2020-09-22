@@ -32,6 +32,8 @@ class Recorder(object):
         "msg_digest_finished_sent",
         "verify_data_finished_sent",
         "ec_seed",
+        "pms_rsa",
+        "rsa_enciphered"
     ]
 
     def __init__(self):

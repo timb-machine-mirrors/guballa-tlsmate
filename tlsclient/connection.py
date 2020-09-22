@@ -18,7 +18,8 @@ from tlsclient.messages import (
     AppDataMessage,
 )
 from cryptography.hazmat.primitives import hashes
-
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography import x509
 
 class TlsConnectionMsgs(object):
 
@@ -112,6 +113,14 @@ class TlsConnection(object):
         self.client_profile = client_profile
         return self
 
+    def rsa_key_transport(self):
+        binary_cert = self.msg.server_certificate.certificates[0]
+        cert = x509.load_der_x509_certificate(binary_cert)
+        pub_key = cert.public_key()
+        ciphered_key = pub_key.encrypt(bytes(self.sec_param.pre_master_secret), padding.PKCS1v15())
+        return self.recorder.inject(rsa_enciphered=ciphered_key)
+
+
     def send(self, *messages):
         for msg in messages:
             if inspect.isclass(msg):
@@ -184,6 +193,8 @@ class TlsConnection(object):
                 self.sec_param.named_curve = val
             elif argname == "remote_public_key":
                 self.sec_param.remote_public_key = val
+            elif argname == "client_version_sent":
+                self.sec_param.client_version_sent = val
             else:
                 raise ValueError(
                     'Update connection: unknown argument "{}" given'.format(argname)
