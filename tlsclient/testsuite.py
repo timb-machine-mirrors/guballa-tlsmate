@@ -21,7 +21,7 @@ class TestSuite(object):
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
-            tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+            #tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
             #tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
             #tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
@@ -38,6 +38,7 @@ class TestSuite(object):
         ]
         client_profile.supported_groups = [
             #tls.SupportedGroups.X25519,
+            tls.SupportedGroups.X448,
 
             #tls.SupportedGroups.SECT163K1,
             #tls.SupportedGroups.SECT163R2,
@@ -55,7 +56,7 @@ class TestSuite(object):
             #tls.SupportedGroups.BRAINPOOLP384R1,
             #tls.SupportedGroups.BRAINPOOLP512R1,
 
-            tls.SupportedGroups.SECP256R1,
+            #tls.SupportedGroups.SECP256R1,
             #tls.SupportedGroups.SECP384R1,
             #tls.SupportedGroups.SECP521R1,
             #tls.SupportedGroups.FFDHE2048,

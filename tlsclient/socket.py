@@ -54,6 +54,3 @@ class Socket(object):
                     data = fd.recv(self._fragment_max_size)
         self._recorder.trace_socket_recv(data)
         return data
-
-    def set_fragment_size(self, fragment_size):
-        self._fragment_max_size = fragment_size

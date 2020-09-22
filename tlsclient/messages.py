@@ -230,6 +230,7 @@ class KeyExchangeEC(object):
         if self.curve_type is tls.EcCurveType.NAMED_CURVE:
             named_curve, offset = fragment.unpack_uint16(offset)
             self.named_curve = tls.SupportedGroups.val2enum(named_curve)
+            logging.debug("named curve: " + self.named_curve.name)
             conn.update(named_curve=self.named_curve)
         # TODO: add other curve types
         return offset

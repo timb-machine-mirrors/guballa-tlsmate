@@ -56,6 +56,9 @@ class Recorder(object):
     def is_injecting(self):
         return self._state == RecorderState.REPLAYING
 
+    def is_recording(self):
+        return self._state == RecorderState.RECORDING
+
     def trace_socket_recv(self, msg):
         if self._state == RecorderState.RECORDING:
             self._msg_recv.append(msg)

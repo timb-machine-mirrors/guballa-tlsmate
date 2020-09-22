@@ -237,14 +237,18 @@ class SecurityParameters(object):
                 self.pre_master_secret = ProtocolData(private_key.exchange(ec.ECDH(), server_public_key))
 
             elif self.named_curve == tls.SupportedGroups.X25519:
-                private_key = x25519.X25519PrivateKey.generate()
-                private_bytes = private_key.private_bytes(
-                    encoding=Encoding.Raw,
-                    format=PrivateFormat.Raw,
-                    encryption_algorithm=NoEncryption(),
-                )
-                self.private_key = self.recorder.inject(private_key=private_bytes)
-                private_key = x25519.X25519PrivateKey.from_private_bytes(self.private_key)
+                if self.recorder.is_injecting():
+                    private_bytes = self.recorder.inject(private_key=None)
+                    private_key = x25519.X25519PrivateKey.from_private_bytes(private_bytes)
+                else:
+                    private_key = x25519.X25519PrivateKey.generate()
+                    if self.recorder.is_recording():
+                        private_bytes = private_key.private_bytes(
+                            encoding=Encoding.Raw,
+                            format=PrivateFormat.Raw,
+                            encryption_algorithm=NoEncryption(),
+                        )
+                        self.recorder.trace(private_key=private_bytes)
                 public_key = private_key.public_key()
                 self.public_key = public_key.public_bytes(
                     Encoding.Raw, PublicFormat.Raw
