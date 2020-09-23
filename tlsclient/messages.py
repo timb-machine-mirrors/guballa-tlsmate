@@ -259,8 +259,18 @@ class KeyExchangeEC(object):
 
 class KeyExchangeDH(object):
     def _deserialize_msg_body(self, fragment, offset, conn):
-        pass
-
+        p_length, offset = fragment.unpack_uint16(offset)
+        self.p_val, offset = fragment.unpack_bytes(offset, p_length)
+        g_len, offset = fragment.unpack_uint16(offset)
+        g_bytes, offset = fragment.unpack_bytes(offset, g_len)
+        self.g_val = int.from_bytes(g_bytes, "big")
+        pub_key_len, offset = fragment.unpack_uint16(offset)
+        self.public_key, offset = fragment.unpack_bytes(offset, pub_key_len)
+        sig_scheme, offset = fragment.unpack_uint16(offset)
+        self.sig_scheme = tls.SignatureScheme.val2enum(sig_scheme)
+        sig_length, offset = fragment.unpack_uint16(offset)
+        self.signature, offset = fragment.unpack_bytes(offset, sig_length)
+        return self
 
 class ServerKeyExchange(HandshakeMessage):
 
@@ -322,6 +332,9 @@ class ClientKeyExchange(HandshakeMessage):
             data = conn.rsa_key_transport()
             msg.append_uint16(len(data))
             msg.extend(data)
+        elif conn.sec_param.key_exchange_method == tls.KeyExchangeAlgorithm.DHE_RSA:
+            msg.append_uint16(len(conn.sec_param.dh_public_key))
+            msg.extend(conn.sec_param.dh_public_key)
         else:
             msg.append_uint8(len(conn.sec_param.public_key))
             msg.extend(conn.sec_param.public_key)

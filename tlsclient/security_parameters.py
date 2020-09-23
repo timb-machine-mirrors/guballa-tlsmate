@@ -13,7 +13,7 @@ import collections
 
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.ciphers import algorithms, aead
-from cryptography.hazmat.primitives.asymmetric import ec, x25519
+from cryptography.hazmat.primitives.asymmetric import ec, x25519, dh
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
     PublicFormat,
@@ -219,7 +219,7 @@ class SecurityParameters(object):
     def prf(self, secret, label, seed, size):
         return self._expand(secret, label + seed, size)
 
-    def generate_master_secret(self):
+    def generate_master_secret(self, server_key_exchange):
         if self.key_exchange_method in [
             tls.KeyExchangeAlgorithm.ECDH_ECDSA,
             tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
@@ -263,6 +263,16 @@ class SecurityParameters(object):
             self.pre_master_secret.append_uint16(self.client_version_sent)
             random = self.recorder.inject(pms_rsa=os.urandom(46))
             self.pre_master_secret.extend(random)
+        elif self.key_exchange_method == tls.KeyExchangeAlgorithm.DHE_RSA:
+            p_val = int.from_bytes(server_key_exchange.dh.p_val, "big")
+            rem_pub_key_val = int.from_bytes(server_key_exchange.dh.public_key, "big")
+            dh_group = dh.DHParameterNumbers(p_val, server_key_exchange.dh.g_val)
+            priv_key = dh_group.parameters().generate_private_key()
+            pub_key = priv_key.public_key()
+            remote_public_numbers = dh.DHPublicNumbers(rem_pub_key_val, dh_group)
+            remote_public_key = remote_public_numbers.public_key()
+            self.pre_master_secret = ProtocolData(priv_key.exchange(remote_public_key).lstrip(b"\0"))
+            self.dh_public_key = pub_key.public_numbers().y.to_bytes(int(pub_key.key_size / 8), "big")
 
         self.recorder.trace(pre_master_secret=self.pre_master_secret)
         self.master_secret = ProtocolData(self.prf(
