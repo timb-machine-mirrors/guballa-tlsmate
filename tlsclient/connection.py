@@ -123,6 +123,17 @@ class TlsConnection(object):
         return self.recorder.inject(rsa_enciphered=ciphered_key)
 
 
+    def get_extension(self, extensions, ext_id):
+        for ext in extensions:
+            if ext.extension_id == ext_id:
+                return ext
+        return None
+
+
+    def server_hello_received(self, msg):
+        if self.get_extension(msg.extensions, tls.Extension.ENCRYPT_THEN_MAC) is not None:
+            self.sec_param.encrypt_then_mac = True
+
     def send(self, *messages):
         for msg in messages:
             if inspect.isclass(msg):
@@ -197,6 +208,8 @@ class TlsConnection(object):
                 self.sec_param.remote_public_key = val
             elif argname == "client_version_sent":
                 self.sec_param.client_version_sent = val
+            elif argname == "server_hello":
+                self.server_hello_received(val)
             else:
                 raise ValueError(
                     'Update connection: unknown argument "{}" given'.format(argname)

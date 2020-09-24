@@ -122,6 +122,7 @@ class SecurityParameters(object):
         self.cipher_suite = None
         self.key_exchange_method = None
         self.compression_method = None
+        self.encrypt_then_mac = False
 
         # key exchange
         self.client_random = None
@@ -346,4 +347,5 @@ class SecurityParameters(object):
             mac_len=self.mac_len,
             hash_algo=self.hash_algo,
             compression_method=self.compression_method,
+            encrypt_then_mac=self.encrypt_then_mac,
         )

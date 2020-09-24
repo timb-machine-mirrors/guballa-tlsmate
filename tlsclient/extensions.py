@@ -21,16 +21,17 @@ class Extension(metaclass=abc.ABCMeta):
         ext.extend(ext_body)
         return ext
 
-    @classmethod
-    def deserialize(cls, fragment):
-        ext_id, offset = fragment.unpack_uint16(0)
+    @staticmethod
+    def deserialize(fragment, offset):
+        ext_id, offset = fragment.unpack_uint16(offset)
         ext_id = tls.Extension.val2enum(ext_id, alert_on_failure=True)
         ext_len, offset = fragment.unpack_uint16(offset)
         ext_body, offset = fragment.unpack_bytes(offset, ext_len)
         cls_name = deserialization_map[ext_id]
         extension = cls_name()
         extension.deserialize_ext_body(ext_body)
-        return extension
+        return extension, offset
+
 
 
 class ExtServerNameIndication(Extension):
@@ -74,6 +75,19 @@ class ExtServerNameIndication(Extension):
 class ExtExtendedMasterSecret(Extension):
 
     extension_id = tls.Extension.EXTENDED_MASTER_SECRET
+
+    def serialize_ext_body(self):
+        return ProtocolData()
+
+    def deserialize_ext_body(self, ext_body):
+        if ext_body:
+            raise FatalAlert("Message length error", tls.AlertDescription.DECODE_ERROR)
+        return self
+
+
+class ExtEncryptThenMac(Extension):
+
+    extension_id = tls.Extension.ENCRYPT_THEN_MAC
 
     def serialize_ext_body(self):
         return ProtocolData()
@@ -196,7 +210,7 @@ deserialization_map = {
     # tls.Extension.CLIENT_CERTIFICATE_TYPE = 19
     # tls.Extension.SERVER_CERTIFICATE_TYPE = 20
     # tls.Extension.PADDING = 21
-    # tls.Extension.ENCRYPT_THEN_MAC = 22
+    tls.Extension.ENCRYPT_THEN_MAC: ExtEncryptThenMac,
     tls.Extension.EXTENDED_MASTER_SECRET: ExtExtendedMasterSecret,
     # tls.Extension.TOKEN_BINDING = 24
     # tls.Extension.CACHED_INFO = 25

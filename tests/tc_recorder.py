@@ -68,6 +68,11 @@ class TcRecorder(metaclass=abc.ABCMeta):
             / (name + ".pickle")
         )
 
+    def update_client_profile(self, profile):
+        """Used in the test case to initialize the profile
+        """
+        pass
+
     def scenario(self, container):
         """The basic scenario to be recorded or replayed.
         """
@@ -77,6 +82,7 @@ class TcRecorder(metaclass=abc.ABCMeta):
         client_profile.cipher_suites = [self.cipher_suite]
         client_profile.supported_groups = self.supported_groups
         client_profile.signature_algorithms = self.signature_algorithms
+        self.update_client_profile(client_profile)
 
         with client_profile.create_connection() as conn:
             conn.send(msg.ClientHello)
@@ -97,15 +103,16 @@ class TcRecorder(metaclass=abc.ABCMeta):
         as all the random numbers and the keying material used in the handshake.
         """
         pickle_file = self.get_pickle_file()
-        if pickle_file.exists():
-            print("File {} existing. Testcase not generated".format(pickle_file))
-            return
         config = {"server": self.server, "port": self.port}
         container = Container(config=config)
         recorder = container.recorder()
         recorder.openssl_s_server = self.openssl_s_server
         recorder.record()
         conn = self.scenario(container)
+
+        if pickle_file.exists():
+            print("File {} existing. Testcase not generated".format(pickle_file))
+            return conn
 
         with open(pickle_file, "wb") as fd:
             pickle.dump(conn.recorder, fd)

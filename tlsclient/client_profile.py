@@ -33,5 +33,7 @@ class ClientProfile(object):
         self.support_signature_algorithms = True
         self.signature_algorithms = [tls.SignatureScheme.RSA_PSS_RSAE_SHA256]
 
+        self.support_encrypt_then_mac = False
+
     def create_connection(self):
         return self.connection_factory().set_profile(self)

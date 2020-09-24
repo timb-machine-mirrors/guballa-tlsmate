@@ -26,6 +26,7 @@ class RecordLayerState(object):
         self._iv_len = param.iv_len
         self._hash_algo = param.hash_algo
         self._compression_method = param.compression_method
+        self._encrypt_then_mac = param.encrypt_then_mac
         self._socket = None
 
 
@@ -53,12 +54,7 @@ class RecordLayer(object):
         if self._flush_each_fragment:
             self.flush()
 
-    def _protect_block_cipher(self, state, content_type, version, fragment):
-        # restrictions: only TLS1.2 supported right now (handling of iv has changed),
-        # and encrypt_then_mac not yet supported
-        # block ciphers are not applicable for TLS1.3
-
-        # MAC
+    def _append_mac(self, state, content_type, version, fragment):
         mac_input = ProtocolData()
         mac_input.append_uint64(state._seq_nbr)
         mac_input.append_uint8(content_type.value)
@@ -68,34 +64,40 @@ class RecordLayer(object):
         mac = hmac.HMAC(state._mac_key, state._hash_algo())
         mac.update(mac_input)
         hmac_bytes = mac.finalize()
-        enc_input = ProtocolData()
-        enc_input.extend(fragment)
-        enc_input.extend(hmac_bytes)
+        fragment.extend(hmac_bytes)
 
+    def _encrypt_cbc(self, state, iv, fragment):
         # padding
-        length = len(enc_input) + 1
+        length = len(fragment) + 1
         missing_bytes = state._block_size - (length % state._block_size)
-        enc_input.extend(struct.pack("!B", missing_bytes) * (missing_bytes + 1))
-
-        # encryption
-        # iv = os.urandom(state._iv_len)
-        iv = ProtocolData(state._iv_value[:-4])
-        iv.append_uint32(state._seq_nbr)
-
-        #        iv = bytes.fromhex(
-        # "91 1a 71 48 5a da 1b f6 e2 f7 0d 15 6f 8e 7c 2e"
-        #        )
+        fragment.extend(struct.pack("!B", missing_bytes) * (missing_bytes + 1))
 
         cipher = Cipher(state._cipher_algo(state._enc_key), modes.CBC(iv))
         encryptor = cipher.encryptor()
-        cipher_text = encryptor.update(enc_input) + encryptor.finalize()
+        return encryptor.update(fragment) + encryptor.finalize()
 
-        # msg = ProtocolData(iv)
-        # msg.append_uint16()
 
-        self._add_to_sendbuffer(content_type, version, iv + cipher_text)
+    def _protect_block_cipher(self, state, content_type, version, fragment):
+        # restrictions: only TLS1.2 supported right now (handling of iv has changed),
+        # block ciphers are not applicable for TLS1.3
+
+        # iv should be random but we want to have it reproducable
+        iv = ProtocolData(state._iv_value[:-4])
+        iv.append_uint32(state._seq_nbr)
+
+        if state._encrypt_then_mac:
+            fragment = self._encrypt_cbc(state, iv, fragment)
+            fragment = ProtocolData(iv + fragment)
+            self._append_mac(state, content_type, version, fragment)
+        else:
+            self._append_mac(state, content_type, version, fragment)
+            fragment = self._encrypt_cbc(state, iv, fragment)
+            fragment = ProtocolData(iv + fragment)
+
+        self._add_to_sendbuffer(content_type, version, fragment)
 
         state._seq_nbr += 1
+        return
 
     def _protect_aead_cipher(self, state, content_type, version, fragment):
         aesgcm = aead.AESGCM(state._enc_key)
@@ -166,9 +168,31 @@ class RecordLayer(object):
         if len(message):
             self._compress(message_block.content_type, message_block.version, message)
 
-    def _unprotect_block_cipher(self, state, content_type, version, fragment):
-        # Only TLS1.2 currently supported, encrypt_then_mac not yet supported
-        # decryption
+
+    def _verify_mac(self, state, content_type, version, fragment):
+        if len(fragment) < state._mac_len:
+            raise FatalAlert(
+                "Decoded fragment too short", tls.AlertDescription.BAD_RECORD_MAC
+            )
+        msg_len = len(fragment) - state._mac_len
+        mac_received = fragment[msg_len:]
+        msg = fragment[:msg_len]
+        mac_input = ProtocolData()
+        mac_input.append_uint64(state._seq_nbr)
+        mac_input.append_uint8(content_type.value)
+        mac_input.append_uint16(version)
+        mac_input.append_uint16(msg_len)
+        mac_input.extend(msg)
+        mac = hmac.HMAC(state._mac_key, state._hash_algo())
+        mac.update(mac_input)
+        mac_calculated = mac.finalize()
+        if mac_calculated != mac_received:
+            raise FatalAlert(
+                "MAC verification failed", tls.AlertDescription.BAD_RECORD_MAC
+            )
+        return msg
+
+    def _decode_cbc(self, state, fragment):
         iv = fragment[: state._iv_len]
         cipher_text = fragment[state._iv_len :]
         cipher = Cipher(state._cipher_algo(state._enc_key), modes.CBC(iv))
@@ -184,35 +208,26 @@ class RecordLayer(object):
             )
         padding = plain_text[pad_start:]
         plain_text = plain_text[:pad_start]
-        for pad_byte in padding:
-            if pad_byte != pad:
-                raise FatalAlert(
-                    "Wrong padding bytes", tls.AlertDescription.BAD_RECORD_MAC
-                )
+        if (struct.pack("!B", pad) * (pad + 1)) != padding:
+            raise FatalAlert(
+                "Wrong padding bytes", tls.AlertDescription.BAD_RECORD_MAC
+            )
+        return plain_text
 
-        # MAC
-        if len(plain_text) < state._mac_len:
-            raise FatalAlert(
-                "Decoded fragment too short", tls.AlertDescription.BAD_RECORD_MAC
-            )
-        plain_text_len = len(plain_text) - state._mac_len
-        mac_received = plain_text[plain_text_len:]
-        plain_text = plain_text[:plain_text_len]
-        mac_input = ProtocolData()
-        mac_input.append_uint64(state._seq_nbr)
-        mac_input.append_uint8(content_type.value)
-        mac_input.append_uint16(version)
-        mac_input.append_uint16(plain_text_len)
-        mac_input.extend(plain_text)
-        mac = hmac.HMAC(state._mac_key, state._hash_algo())
-        mac.update(mac_input)
-        mac_calculated = mac.finalize()
-        if mac_calculated != mac_received:
-            raise FatalAlert(
-                "MAC verification failed", tls.AlertDescription.BAD_RECORD_MAC
-            )
+
+    def _unprotect_block_cipher(self, state, content_type, version, fragment):
+        # Only TLS1.2 currently supported
+
+        if state._encrypt_then_mac:
+            fragment = self._verify_mac(state, content_type, version, fragment)
+            plain_text = ProtocolData(self._decode_cbc(state, fragment))
+        else:
+            fragment = self._decode_cbc(state, fragment)
+            plain_text = self._verify_mac(state, content_type, version, fragment)
+
         state._seq_nbr += 1
         return ProtocolData(plain_text)
+
 
     def _unprotect_aead_cipher(self, state, content_type, version, fragment):
         nonce_explicit = fragment[:8]

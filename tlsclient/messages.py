@@ -108,6 +108,10 @@ class ClientHello(HandshakeMessage):
                     signature_algorithms=profile.signature_algorithms
                 )
             )
+        if profile.support_encrypt_then_mac:
+            self.extensions.append(
+                ext.ExtEncryptThenMac()
+            )
         return self
 
     def _serialize_msg_body(self, conn):
@@ -189,16 +193,14 @@ class ServerHello(HandshakeMessage):
             # extensions present
             ext_len, offset = fragment.unpack_uint16(offset)
             while offset < len(fragment):
-                ext_id, offset = fragment.unpack_uint16(offset)
-                ext_id = tls.Extension.val2enum(ext_id, alert_on_failure=True)
-                ext_len, offset = fragment.unpack_uint16(offset)
-                ext_body, offset = fragment.unpack_bytes(offset, ext_len)
-                self.extensions.append(ext.Extension.deserialize(ext_id, ext_body))
+                extension, offset = ext.Extension.deserialize(fragment, offset)
+                self.extensions.append(extension)
 
         conn.update(
             version=self.version,
             cipher_suite=self.cipher_suite,
             server_random=self.random,
+            server_hello=self,
         )
         logging.info("TLS version: {}".format(self.version.name))
         logging.info("Cipher suite: {}".format(self.cipher_suite.name))

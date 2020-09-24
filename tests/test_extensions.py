@@ -9,7 +9,8 @@ def test_ServerNameIndication():
     data = ProtocolData().fromhex(
         "00 00 00 0e 00 0c 00 00 09 6c 6f 63 61 6c 68 6f 73 74"
     )
-    sni = ext.Extension.deserialize(data)
+    sni, offset = ext.Extension.deserialize(data, 0)
+    assert offset == len(data)
     assert sni.host_name == "localhost"
     assert sni.serialize() == data
     sni = ext.ExtServerNameIndication(host_name="localhost")
