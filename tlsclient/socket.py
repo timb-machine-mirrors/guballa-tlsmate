@@ -6,6 +6,7 @@ import socket
 import select
 import logging
 
+
 class Socket(object):
     def __init__(self, server, port, recorder):
 

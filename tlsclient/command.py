@@ -26,7 +26,7 @@ def args_version(subparsers):
     parser_version = subparsers.add_parser(
         "version", help="print the version of the tool"
     )
-    parser_version.set_defaults(subparser=parser_version, func=command_version)
+    parser_version.set_defaults(subparser=parser_version)
 
 
 def build_parser():
@@ -37,12 +37,21 @@ def build_parser():
     """
     parser = argparse.ArgumentParser(description="tlsclient")
 
-    parser.add_argument("--version", action="store_true", default=False,
-            help="print the version of the tool")
-    parser.add_argument("--logging", choices=["critical", "error", "warning", "info", "debug"],
-            help="sets the loggin level. Default id error.", default="error")
+    parser.add_argument(
+        "--version",
+        action="store_true",
+        default=False,
+        help="print the version of the tool",
+    )
+    parser.add_argument(
+        "--logging",
+        choices=["critical", "error", "warning", "info", "debug"],
+        help="sets the loggin level. Default id error.",
+        default="error",
+    )
 
     return parser
+
 
 def set_logging(level):
     """Sets the logging level
@@ -63,7 +72,6 @@ def main():
         print_version()
         sys.exit(0)
     set_logging(args.logging)
-
 
     config = {"server": "localhost", "port": 44330}
 

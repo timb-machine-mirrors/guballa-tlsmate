@@ -6,12 +6,11 @@ import abc
 import os
 import collections
 from tlsclient.protocol import ProtocolData
-from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
 
 from cryptography.hazmat.primitives.asymmetric import ec, x25519, x448, dh
 from cryptography import x509
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives.asymmetric import padding
 
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
@@ -22,6 +21,7 @@ from cryptography.hazmat.primitives.serialization import (
 
 
 Groups = collections.namedtuple("Groups", "curve_algo")
+
 
 class KeyExchange(metaclass=abc.ABCMeta):
     """The abstract class to derive different key exchange classes from
@@ -47,6 +47,7 @@ class KeyExchange(metaclass=abc.ABCMeta):
         """Method to perform the actual key exchange
         """
 
+
 class RsaKeyExchange(KeyExchange):
     """Implement an RSA based key transport
     """
@@ -60,7 +61,9 @@ class RsaKeyExchange(KeyExchange):
         ciphered_key = pub_key.encrypt(bytes(self._pms), padding.PKCS1v15())
         # injecting the encrypted key to the recorder is required, as the
         # padding scheme PKCS1v15 produces non-deterministic cipher text.
-        msg.encrypted_premaster_secret = self._recorder.inject(rsa_enciphered=ciphered_key)
+        msg.encrypted_premaster_secret = self._recorder.inject(
+            rsa_enciphered=ciphered_key
+        )
 
     def agree_on_premaster_secret(self):
         """Build the premaster secret
@@ -107,6 +110,7 @@ class DhKeyExchange(KeyExchange):
         self._local_pub_key = y_val.to_bytes(int(pub_key.key_size / 8), "big")
         return ProtocolData(priv_key.exchange(rem_pub_key).lstrip(b"\0"))
 
+
 class EcdhKeyExchange(KeyExchange):
     """Implement an ECDHE key exchange
     """
@@ -143,14 +147,17 @@ class EcdhKeyExchange(KeyExchange):
     def setup_client_key_exchange(self, msg):
         msg.client_ec_public = self._pub_key
 
-
     def _pms_supported_curve(self, curve_algo):
-        seed = int.from_bytes(os.urandom(10),"big")
+        seed = int.from_bytes(os.urandom(10), "big")
         seed = self._recorder.inject(ec_seed=seed)
         priv_key = ec.derive_private_key(seed, curve_algo())
         pub_key = priv_key.public_key()
-        self._pub_key = pub_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
-        rem_pub_key = ec.EllipticCurvePublicKey.from_encoded_point(curve_algo(), bytes(self._rem_key))
+        self._pub_key = pub_key.public_bytes(
+            Encoding.X962, PublicFormat.UncompressedPoint
+        )
+        rem_pub_key = ec.EllipticCurvePublicKey.from_encoded_point(
+            curve_algo(), bytes(self._rem_key)
+        )
         return ProtocolData(priv_key.exchange(ec.ECDH(), rem_pub_key))
 
     def _pms_x_curves(self, private_key_lib, public_key_lib):
@@ -174,9 +181,11 @@ class EcdhKeyExchange(KeyExchange):
     def agree_on_premaster_secret(self):
         if self._curve_type == tls.EcCurveType.NAMED_CURVE:
             if self._named_curve == tls.SupportedGroups.X25519:
-                return self._pms_x_curves(x25519.X25519PrivateKey, x25519.X25519PublicKey)
+                return self._pms_x_curves(
+                    x25519.X25519PrivateKey, x25519.X25519PublicKey
+                )
             elif self._named_curve == tls.SupportedGroups.X448:
-                return self._pms_x_curves(x448.X448PrivateKey, x448.X448PublicKey )
+                return self._pms_x_curves(x448.X448PrivateKey, x448.X448PublicKey)
             else:
                 supported_curve = self._supported_groups.get(self._named_curve)
                 if supported_curve is not None:

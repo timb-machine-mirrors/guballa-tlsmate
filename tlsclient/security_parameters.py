@@ -13,14 +13,6 @@ import collections
 
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.ciphers import algorithms, aead
-from cryptography.hazmat.primitives.asymmetric import ec, x25519, dh
-from cryptography.hazmat.primitives.serialization import (
-    Encoding,
-    PublicFormat,
-    PrivateFormat,
-    NoEncryption,
-)
-
 
 Cipher = collections.namedtuple(
     "Cipher", "cipher_primitive cipher_algo cipher_type enc_key_len block_size iv_len"
@@ -29,6 +21,7 @@ Cipher = collections.namedtuple(
 Mac = collections.namedtuple("Mac", "hash_algo mac_len mac_key_len hmac_algo")
 
 Groups = collections.namedtuple("Groups", "curve_algo")
+
 
 def get_random_value():
     random = ProtocolData()
@@ -86,11 +79,16 @@ class SecurityParameters(object):
         tls.SupportedHash.SHA256: Mac(
             hash_algo=hashes.SHA256, mac_len=32, mac_key_len=32, hmac_algo=hashes.SHA256
         ),
-        tls.SupportedHash.SHA: Mac(hash_algo=hashes.SHA1, mac_len=20, mac_key_len=20, hmac_algo=hashes.SHA256),
-        tls.SupportedHash.SHA384: Mac(hash_algo=hashes.SHA384, mac_len=48, mac_key_len=48, hmac_algo=hashes.SHA384),
-        tls.SupportedHash.MD5: Mac(hash_algo=hashes.MD5, mac_len=16, mac_key_len=16,hmac_algo=hashes.SHA256 ),
+        tls.SupportedHash.SHA: Mac(
+            hash_algo=hashes.SHA1, mac_len=20, mac_key_len=20, hmac_algo=hashes.SHA256
+        ),
+        tls.SupportedHash.SHA384: Mac(
+            hash_algo=hashes.SHA384, mac_len=48, mac_key_len=48, hmac_algo=hashes.SHA384
+        ),
+        tls.SupportedHash.MD5: Mac(
+            hash_algo=hashes.MD5, mac_len=16, mac_key_len=16, hmac_algo=hashes.SHA256
+        ),
     }
-
 
     def __init__(self, entity, recorder):
         self.recorder = recorder
@@ -175,9 +173,12 @@ class SecurityParameters(object):
                 self.block_size,
                 self.iv_len,
             ) = self._supported_ciphers[cipher]
-            (self.hash_algo, self.mac_len, self.mac_key_len, self.hmac_algo) = self._supported_macs[
-                hash_primitive
-            ]
+            (
+                self.hash_algo,
+                self.mac_len,
+                self.mac_key_len,
+                self.hmac_algo,
+            ) = self._supported_macs[hash_primitive]
             if self.cipher_type == tls.CipherType.AEAD:
                 self.mac_key_len = 0
         logging.debug("hash_primitive: {}".format(self.hash_primitive.name))
@@ -201,12 +202,14 @@ class SecurityParameters(object):
 
     def generate_master_secret(self, server_key_exchange):
         self.recorder.trace(pre_master_secret=self.premaster_secret)
-        self.master_secret = ProtocolData(self.prf(
-            self.premaster_secret,
-            b"master secret",
-            self.client_random + self.server_random,
-            48,
-        ))
+        self.master_secret = ProtocolData(
+            self.prf(
+                self.premaster_secret,
+                b"master secret",
+                self.client_random + self.server_random,
+                48,
+            )
+        )
         logging.info("premaster_secret: {}".format(self.premaster_secret.dump()))
         logging.info("master_secret: {}".format(self.master_secret.dump()))
         self.recorder.trace(master_secret=self.master_secret)
@@ -243,8 +246,12 @@ class SecurityParameters(object):
         self.recorder.trace(server_write_key=self.server_write_key)
         self.recorder.trace(client_write_iv=self.client_write_iv)
         self.recorder.trace(server_write_iv=self.server_write_iv)
-        logging.info("client_write_mac_key: {}".format(self.client_write_mac_key.dump()))
-        logging.info("server_write_mac_key: {}".format(self.server_write_mac_key.dump()))
+        logging.info(
+            "client_write_mac_key: {}".format(self.client_write_mac_key.dump())
+        )
+        logging.info(
+            "server_write_mac_key: {}".format(self.server_write_mac_key.dump())
+        )
         logging.info("client_write_key: {}".format(self.client_write_key.dump()))
         logging.info("server_write_key: {}".format(self.server_write_key.dump()))
         logging.info("client_write_iv: {}".format(self.client_write_iv.dump()))

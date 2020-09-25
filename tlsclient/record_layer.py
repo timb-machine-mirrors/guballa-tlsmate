@@ -76,7 +76,6 @@ class RecordLayer(object):
         encryptor = cipher.encryptor()
         return encryptor.update(fragment) + encryptor.finalize()
 
-
     def _protect_block_cipher(self, state, content_type, version, fragment):
         # restrictions: only TLS1.2 supported right now (handling of iv has changed),
         # block ciphers are not applicable for TLS1.3
@@ -168,7 +167,6 @@ class RecordLayer(object):
         if len(message):
             self._compress(message_block.content_type, message_block.version, message)
 
-
     def _verify_mac(self, state, content_type, version, fragment):
         if len(fragment) < state._mac_len:
             raise FatalAlert(
@@ -209,11 +207,8 @@ class RecordLayer(object):
         padding = plain_text[pad_start:]
         plain_text = plain_text[:pad_start]
         if (struct.pack("!B", pad) * (pad + 1)) != padding:
-            raise FatalAlert(
-                "Wrong padding bytes", tls.AlertDescription.BAD_RECORD_MAC
-            )
+            raise FatalAlert("Wrong padding bytes", tls.AlertDescription.BAD_RECORD_MAC)
         return plain_text
-
 
     def _unprotect_block_cipher(self, state, content_type, version, fragment):
         # Only TLS1.2 currently supported
@@ -227,7 +222,6 @@ class RecordLayer(object):
 
         state._seq_nbr += 1
         return ProtocolData(plain_text)
-
 
     def _unprotect_aead_cipher(self, state, content_type, version, fragment):
         nonce_explicit = fragment[:8]

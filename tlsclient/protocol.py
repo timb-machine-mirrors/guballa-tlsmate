@@ -31,7 +31,6 @@ class ProtocolData(bytearray):
             raise FatalAlert("Message length error", tls.AlertDescription.DECODE_ERROR)
         return ProtocolData(self[offset : offset + length]), offset + length
 
-
     def append_uint8(self, *vals):
         for val in vals:
             if val > 0xFF:

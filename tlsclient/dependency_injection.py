@@ -1,14 +1,10 @@
 # -*- coding: utf-8 -*-
 """Module for dependency injection
 """
-import logging
 import tlsclient.constants as tls
 from tlsclient.server_profile import ServerProfile
 from tlsclient.testsuite import TestSuite
-from tlsclient.connection import (
-    TlsConnection,
-    TlsConnectionMsgs,
-)
+from tlsclient.connection import TlsConnection, TlsConnectionMsgs
 from tlsclient.client_profile import ClientProfile
 from tlsclient.record_layer import RecordLayer
 from tlsclient.security_parameters import SecurityParameters
@@ -31,9 +27,7 @@ class Container(containers.DeclarativeContainer):
         Socket, server=config.server, port=config.port, recorder=recorder
     )
 
-    record_layer = providers.Factory(
-        RecordLayer, socket=socket, recorder=recorder,
-    )
+    record_layer = providers.Factory(RecordLayer, socket=socket, recorder=recorder)
 
     security_parameters = providers.Factory(
         SecurityParameters, entity=tls.Entity.CLIENT, recorder=recorder
@@ -50,9 +44,7 @@ class Container(containers.DeclarativeContainer):
     )
 
     client_profile = providers.Factory(
-        ClientProfile,
-        connection_factory=connection.provider,
-        server_name=config.server,
+        ClientProfile, connection_factory=connection.provider, server_name=config.server
     )
 
     test_suite = providers.Factory(

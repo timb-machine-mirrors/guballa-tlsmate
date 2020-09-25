@@ -33,7 +33,6 @@ class Extension(metaclass=abc.ABCMeta):
         return extension, offset
 
 
-
 class ExtServerNameIndication(Extension):
 
     extension_id = tls.Extension.SERVER_NAME

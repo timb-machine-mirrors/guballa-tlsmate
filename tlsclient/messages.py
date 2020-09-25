@@ -111,9 +111,7 @@ class ClientHello(HandshakeMessage):
                 )
             )
         if profile.support_encrypt_then_mac:
-            self.extensions.append(
-                ext.ExtEncryptThenMac()
-            )
+            self.extensions.append(ext.ExtEncryptThenMac())
         return self
 
     def _serialize_msg_body(self, conn):
@@ -276,6 +274,7 @@ class KeyExchangeDH(object):
         self.signature, offset = fragment.unpack_bytes(offset, sig_length)
         return self
 
+
 class ServerKeyExchange(HandshakeMessage):
 
     msg_type = tls.HandshakeType.SERVER_KEY_EXCHANGE
@@ -373,7 +372,9 @@ class Finished(HandshakeMessage):
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         verify_data = fragment[offset:]
-        logging.debug("Finished.verify_data(in): {}".format(ProtocolData(verify_data).dump()))
+        logging.debug(
+            "Finished.verify_data(in): {}".format(ProtocolData(verify_data).dump())
+        )
         if conn.sec_param.entity == tls.Entity.CLIENT:
             hash_val = conn.finalize_msg_hash()
             label = b"server finished"
@@ -471,7 +472,7 @@ class AppDataMessage(TlsMessage):
 
     @classmethod
     def deserialize(cls, fragment, conn):
-        logging.info("Receiving {}".format(self.content_type.name))
+        logging.info("Receiving {}".format(cls.content_type.name))
         msg = AppData()
         msg._deserialize_msg_body(fragment, conn)
         return msg

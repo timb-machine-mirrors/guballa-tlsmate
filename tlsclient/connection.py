@@ -2,9 +2,6 @@
 """Module containing the class implementing a TLS connection
 """
 
-import os
-import time
-import select
 import inspect
 import logging
 
@@ -21,8 +18,9 @@ from tlsclient.key_exchange import RsaKeyExchange, DhKeyExchange, EcdhKeyExchang
 
 
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography import x509
+
 
 class TlsConnectionMsgs(object):
 
@@ -73,13 +71,7 @@ class TlsConnectionMsgs(object):
 
 
 class TlsConnection(object):
-    def __init__(
-        self,
-        connection_msgs,
-        security_parameters,
-        record_layer,
-        recorder,
-    ):
+    def __init__(self, connection_msgs, security_parameters, record_layer, recorder):
         self.msg = connection_msgs
         self.received_data = ProtocolData()
         self.queued_msg = None
@@ -120,11 +112,12 @@ class TlsConnection(object):
         binary_cert = self.msg.server_certificate.certificates[0]
         cert = x509.load_der_x509_certificate(binary_cert)
         pub_key = cert.public_key()
-        ciphered_key = pub_key.encrypt(bytes(self.sec_param.premaster_secret), padding.PKCS1v15())
+        ciphered_key = pub_key.encrypt(
+            bytes(self.sec_param.premaster_secret), padding.PKCS1v15()
+        )
         # injecting the encrypted key to the recorder is required, as the
         # padding scheme PKCS1v15 produces non-deterministic cipher text.
         return self.recorder.inject(rsa_enciphered=ciphered_key)
-
 
     def get_extension(self, extensions, ext_id):
         for ext in extensions:
@@ -132,9 +125,11 @@ class TlsConnection(object):
                 return ext
         return None
 
-
     def server_hello_received(self, msg):
-        if self.get_extension(msg.extensions, tls.Extension.ENCRYPT_THEN_MAC) is not None:
+        if (
+            self.get_extension(msg.extensions, tls.Extension.ENCRYPT_THEN_MAC)
+            is not None
+        ):
             self.sec_param.encrypt_then_mac = True
 
     def send(self, *messages):
@@ -194,19 +189,18 @@ class TlsConnection(object):
         self.sec_param.key_deriviation()
 
     aaa = {
-        tls.KeyExchangeAlgorithm.DHE_DSS : DhKeyExchange,
-        tls.KeyExchangeAlgorithm.DHE_RSA : DhKeyExchange,
-        tls.KeyExchangeAlgorithm.DH_ANON : None,
-        tls.KeyExchangeAlgorithm.RSA : RsaKeyExchange,
-        tls.KeyExchangeAlgorithm.DH_DSS : None,
-        tls.KeyExchangeAlgorithm.DH_RSA : None,
-        tls.KeyExchangeAlgorithm.ECDH_ECDSA : EcdhKeyExchange,
-        tls.KeyExchangeAlgorithm.ECDHE_ECDSA : EcdhKeyExchange,
-        tls.KeyExchangeAlgorithm.ECDH_RSA : EcdhKeyExchange,
-        tls.KeyExchangeAlgorithm.ECDHE_RSA : EcdhKeyExchange,
-        tls.KeyExchangeAlgorithm.EC_DIFFIE_HELLMAN : EcdhKeyExchange,
+        tls.KeyExchangeAlgorithm.DHE_DSS: DhKeyExchange,
+        tls.KeyExchangeAlgorithm.DHE_RSA: DhKeyExchange,
+        tls.KeyExchangeAlgorithm.DH_ANON: None,
+        tls.KeyExchangeAlgorithm.RSA: RsaKeyExchange,
+        tls.KeyExchangeAlgorithm.DH_DSS: None,
+        tls.KeyExchangeAlgorithm.DH_RSA: None,
+        tls.KeyExchangeAlgorithm.ECDH_ECDSA: EcdhKeyExchange,
+        tls.KeyExchangeAlgorithm.ECDHE_ECDSA: EcdhKeyExchange,
+        tls.KeyExchangeAlgorithm.ECDH_RSA: EcdhKeyExchange,
+        tls.KeyExchangeAlgorithm.ECDHE_RSA: EcdhKeyExchange,
+        tls.KeyExchangeAlgorithm.EC_DIFFIE_HELLMAN: EcdhKeyExchange,
     }
-
 
     def update(self, **kwargs):
         for argname, val in kwargs.items():

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import pytest
 
 import tlsclient.extensions as ext
 from tlsclient.protocol import ProtocolData

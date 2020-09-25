@@ -62,11 +62,7 @@ class TcRecorder(metaclass=abc.ABCMeta):
         else:
             name = self.cipher_suite.name
 
-        return (
-            self.path.resolve().parent
-            / "recordings"
-            / (name + ".pickle")
-        )
+        return self.path.resolve().parent / "recordings" / (name + ".pickle")
 
     def update_client_profile(self, profile):
         """Used in the test case to initialize the profile

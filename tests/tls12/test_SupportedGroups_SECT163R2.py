@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Implements a class to be used for unit testing.
 """
-import pytest
 import pathlib
 from tests.tc_recorder import TcRecorder
 import tlsclient.constants as tls
@@ -23,6 +22,7 @@ class TestCase(TcRecorder):
     # version = tls.Version.TLS12
 
     supported_groups = [tls.SupportedGroups.SECT163R2]
+
 
 if __name__ == "__main__":
     TestCase().record_testcase()

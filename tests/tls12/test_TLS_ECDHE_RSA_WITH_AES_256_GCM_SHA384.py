@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Implements a class to be used for unit testing.
 """
-import pytest
 import pathlib
 from tests.tc_recorder import TcRecorder
 import tlsclient.constants as tls
@@ -12,6 +11,7 @@ class TestCase(TcRecorder):
 
     For more information refer to the documentation of the TcRecorder class.
     """
+
     path = pathlib.Path(__file__)
 
     cipher_suite = tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
