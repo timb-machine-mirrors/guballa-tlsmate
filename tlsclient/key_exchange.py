@@ -9,7 +9,7 @@ from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
 
-from cryptography.hazmat.primitives.asymmetric import ec, x25519, dh
+from cryptography.hazmat.primitives.asymmetric import ec, x25519, x448, dh
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 
@@ -153,12 +153,12 @@ class EcdhKeyExchange(KeyExchange):
         rem_pub_key = ec.EllipticCurvePublicKey.from_encoded_point(curve_algo(), bytes(self._rem_key))
         return ProtocolData(priv_key.exchange(ec.ECDH(), rem_pub_key))
 
-    def _pms_x25519(self):
+    def _pms_x_curves(self, private_key_lib, public_key_lib):
         if self._recorder.is_injecting():
             priv_bytes = self._recorder.inject(private_key=None)
-            priv_key = x25519.X25519PrivateKey.from_private_bytes(priv_bytes)
+            priv_key = private_key_lib.from_private_bytes(priv_bytes)
         else:
-            priv_key = x25519.X25519PrivateKey.generate()
+            priv_key = private_key_lib.generate()
             if self._recorder.is_recording():
                 priv_bytes = priv_key.private_bytes(
                     encoding=Encoding.Raw,
@@ -168,17 +168,15 @@ class EcdhKeyExchange(KeyExchange):
                 self._recorder.trace(private_key=priv_bytes)
         pub_key = priv_key.public_key()
         self._pub_key = pub_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
-        pass
-        rem_pub_key = x25519.X25519PublicKey.from_public_bytes(bytes(self._rem_key))
-        pass
+        rem_pub_key = public_key_lib.from_public_bytes(bytes(self._rem_key))
         return ProtocolData(priv_key.exchange(rem_pub_key))
 
     def agree_on_premaster_secret(self):
         if self._curve_type == tls.EcCurveType.NAMED_CURVE:
             if self._named_curve == tls.SupportedGroups.X25519:
-                return self._pms_x25519()
+                return self._pms_x_curves(x25519.X25519PrivateKey, x25519.X25519PublicKey)
             elif self._named_curve == tls.SupportedGroups.X448:
-                raise NotImplementedError
+                return self._pms_x_curves(x448.X448PrivateKey, x448.X448PublicKey )
             else:
                 supported_curve = self._supported_groups.get(self._named_curve)
                 if supported_curve is not None:

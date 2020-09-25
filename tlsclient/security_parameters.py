@@ -110,7 +110,7 @@ class SecurityParameters(object):
         self.private_key = None
         self.public_key = None
         self.remote_public_key = None
-        self.pre_master_secret = None
+        self.premaster_secret = None
         self.master_secret = None
 
         # for key deriviation
@@ -200,14 +200,14 @@ class SecurityParameters(object):
         return self._expand(secret, label + seed, size)
 
     def generate_master_secret(self, server_key_exchange):
-        self.recorder.trace(pre_master_secret=self.pre_master_secret)
+        self.recorder.trace(pre_master_secret=self.premaster_secret)
         self.master_secret = ProtocolData(self.prf(
-            self.pre_master_secret,
+            self.premaster_secret,
             b"master secret",
             self.client_random + self.server_random,
             48,
         ))
-        logging.info("pre_master_secret: {}".format(self.pre_master_secret.dump()))
+        logging.info("premaster_secret: {}".format(self.premaster_secret.dump()))
         logging.info("master_secret: {}".format(self.master_secret.dump()))
         self.recorder.trace(master_secret=self.master_secret)
 

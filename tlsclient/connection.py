@@ -120,7 +120,7 @@ class TlsConnection(object):
         binary_cert = self.msg.server_certificate.certificates[0]
         cert = x509.load_der_x509_certificate(binary_cert)
         pub_key = cert.public_key()
-        ciphered_key = pub_key.encrypt(bytes(self.sec_param.pre_master_secret), padding.PKCS1v15())
+        ciphered_key = pub_key.encrypt(bytes(self.sec_param.premaster_secret), padding.PKCS1v15())
         # injecting the encrypted key to the recorder is required, as the
         # padding scheme PKCS1v15 produces non-deterministic cipher text.
         return self.recorder.inject(rsa_enciphered=ciphered_key)
@@ -189,7 +189,7 @@ class TlsConnection(object):
                 )
 
     def update_keys(self):
-        self.sec_param.pre_master_secret = self.key_exchange.agree_on_premaster_secret()
+        self.sec_param.premaster_secret = self.key_exchange.agree_on_premaster_secret()
         self.sec_param.generate_master_secret(self.msg.server_key_exchange)
         self.sec_param.key_deriviation()
 
