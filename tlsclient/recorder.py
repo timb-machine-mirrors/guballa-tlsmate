@@ -33,7 +33,9 @@ class Recorder(object):
         "verify_data_finished_sent",
         "ec_seed",
         "pms_rsa",
-        "rsa_enciphered"
+        "rsa_enciphered",
+        "x_val",
+        "y_val",
     ]
 
     def __init__(self):

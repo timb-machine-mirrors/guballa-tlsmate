@@ -91,27 +91,6 @@ class SecurityParameters(object):
         tls.SupportedHash.MD5: Mac(hash_algo=hashes.MD5, mac_len=16, mac_key_len=16,hmac_algo=hashes.SHA256 ),
     }
 
-    _supported_groups_ec = {
-        tls.SupportedGroups.SECT163K1: Groups(curve_algo=ec.SECT163K1),
-        tls.SupportedGroups.SECT163R2: Groups(curve_algo=ec.SECT163R2),
-        tls.SupportedGroups.SECT233K1: Groups(curve_algo=ec.SECT233K1),
-        tls.SupportedGroups.SECT233R1: Groups(curve_algo=ec.SECT233R1),
-        tls.SupportedGroups.SECT283K1: Groups(curve_algo=ec.SECT283K1),
-        tls.SupportedGroups.SECT283R1: Groups(curve_algo=ec.SECT283R1),
-        tls.SupportedGroups.SECT409K1: Groups(curve_algo=ec.SECT409K1),
-        tls.SupportedGroups.SECT409R1: Groups(curve_algo=ec.SECT409R1),
-        tls.SupportedGroups.SECT571K1: Groups(curve_algo=ec.SECT571K1),
-        tls.SupportedGroups.SECT571R1: Groups(curve_algo=ec.SECT571R1),
-        tls.SupportedGroups.SECP192R1: Groups(curve_algo=ec.SECP192R1),
-        tls.SupportedGroups.SECP224R1: Groups(curve_algo=ec.SECP224R1),
-        tls.SupportedGroups.SECP256K1: Groups(curve_algo=ec.SECP256K1),
-        tls.SupportedGroups.SECP256R1: Groups(curve_algo=ec.SECP256R1),
-        tls.SupportedGroups.SECP384R1: Groups(curve_algo=ec.SECP384R1),
-        tls.SupportedGroups.SECP521R1: Groups(curve_algo=ec.SECP521R1),
-        tls.SupportedGroups.BRAINPOOLP256R1: Groups(curve_algo=ec.BrainpoolP256R1),
-        tls.SupportedGroups.BRAINPOOLP384R1: Groups(curve_algo=ec.BrainpoolP384R1),
-        tls.SupportedGroups.BRAINPOOLP512R1: Groups(curve_algo=ec.BrainpoolP512R1),
-    }
 
     def __init__(self, entity, recorder):
         self.recorder = recorder
@@ -221,60 +200,6 @@ class SecurityParameters(object):
         return self._expand(secret, label + seed, size)
 
     def generate_master_secret(self, server_key_exchange):
-        if self.key_exchange_method in [
-            tls.KeyExchangeAlgorithm.ECDH_ECDSA,
-            tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
-            tls.KeyExchangeAlgorithm.ECDH_RSA,
-            tls.KeyExchangeAlgorithm.ECDHE_RSA,
-        ]:
-            named_ec_curve = self._supported_groups_ec.get(self.named_curve)
-            if named_ec_curve is not None:
-                curve_algo = named_ec_curve.curve_algo
-                seed = int.from_bytes(os.urandom(10),"big")
-                seed = self.recorder.inject(ec_seed=seed)
-                private_key = ec.derive_private_key(seed, curve_algo())
-                public_key = private_key.public_key()
-                self.public_key = public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
-                server_public_key = ec.EllipticCurvePublicKey.from_encoded_point(curve_algo(), bytes(self.remote_public_key))
-                self.pre_master_secret = ProtocolData(private_key.exchange(ec.ECDH(), server_public_key))
-
-            elif self.named_curve == tls.SupportedGroups.X25519:
-                if self.recorder.is_injecting():
-                    private_bytes = self.recorder.inject(private_key=None)
-                    private_key = x25519.X25519PrivateKey.from_private_bytes(private_bytes)
-                else:
-                    private_key = x25519.X25519PrivateKey.generate()
-                    if self.recorder.is_recording():
-                        private_bytes = private_key.private_bytes(
-                            encoding=Encoding.Raw,
-                            format=PrivateFormat.Raw,
-                            encryption_algorithm=NoEncryption(),
-                        )
-                        self.recorder.trace(private_key=private_bytes)
-                public_key = private_key.public_key()
-                self.public_key = public_key.public_bytes(
-                    Encoding.Raw, PublicFormat.Raw
-                )
-                server_public_key = x25519.X25519PublicKey.from_public_bytes(
-                    bytes(self.remote_public_key)
-                )
-                self.pre_master_secret = ProtocolData(private_key.exchange(server_public_key))
-        elif self.key_exchange_method == tls.KeyExchangeAlgorithm.RSA:
-            self.pre_master_secret = ProtocolData()
-            self.pre_master_secret.append_uint16(self.client_version_sent)
-            random = self.recorder.inject(pms_rsa=os.urandom(46))
-            self.pre_master_secret.extend(random)
-        elif self.key_exchange_method == tls.KeyExchangeAlgorithm.DHE_RSA:
-            p_val = int.from_bytes(server_key_exchange.dh.p_val, "big")
-            rem_pub_key_val = int.from_bytes(server_key_exchange.dh.public_key, "big")
-            dh_group = dh.DHParameterNumbers(p_val, server_key_exchange.dh.g_val)
-            priv_key = dh_group.parameters().generate_private_key()
-            pub_key = priv_key.public_key()
-            remote_public_numbers = dh.DHPublicNumbers(rem_pub_key_val, dh_group)
-            remote_public_key = remote_public_numbers.public_key()
-            self.pre_master_secret = ProtocolData(priv_key.exchange(remote_public_key).lstrip(b"\0"))
-            self.dh_public_key = pub_key.public_numbers().y.to_bytes(int(pub_key.key_size / 8), "big")
-
         self.recorder.trace(pre_master_secret=self.pre_master_secret)
         self.master_secret = ProtocolData(self.prf(
             self.pre_master_secret,

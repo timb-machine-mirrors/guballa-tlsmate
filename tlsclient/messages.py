@@ -15,8 +15,7 @@ class TlsMessage(metaclass=abc.ABCMeta):
     def deserialize(cls, fragment, conn):
         pass
 
-    @abc.abstractmethod
-    def init_from_profile(self, profile):
+    def auto_generate_msg(self, conn):
         pass
 
     @abc.abstractmethod
@@ -53,7 +52,7 @@ class HandshakeMessage(TlsMessage):
     def _serialize_msg_body(self, conn):
         pass
 
-    def init_from_profile(self, profile):
+    def auto_generate_msg(self, conn):
         return self
 
     def serialize(self, conn):
@@ -79,6 +78,9 @@ class ClientHello(HandshakeMessage):
         self.cipher_suites = [tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256]
         self.compression_methods = [tls.CompressionMethod.NULL]
         self.extensions = []
+
+    def auto_generate_msg(self, conn):
+        self.init_from_profile(conn.client_profile)
 
     def init_from_profile(self, profile):
         self.client_version = max(profile.versions)
@@ -306,6 +308,7 @@ class ServerKeyExchange(HandshakeMessage):
                 "Key exchange algorithm incompatible with ServerKeyExchange message",
                 tls.AlertDescription.UNEXPECTED_MESSAGE,
             )
+        conn.key_exchange.inspect_server_key_exchange(self)
         return self
 
 
@@ -328,19 +331,22 @@ class ClientKeyExchange(HandshakeMessage):
     msg_type = tls.HandshakeType.CLIENT_KEY_EXCHANGE
 
     def _serialize_msg_body(self, conn):
-        conn.update_keys()
         msg = ProtocolData()
         if conn.sec_param.key_exchange_method == tls.KeyExchangeAlgorithm.RSA:
             data = conn.rsa_key_transport()
             msg.append_uint16(len(data))
             msg.extend(data)
         elif conn.sec_param.key_exchange_method == tls.KeyExchangeAlgorithm.DHE_RSA:
-            msg.append_uint16(len(conn.sec_param.dh_public_key))
-            msg.extend(conn.sec_param.dh_public_key)
+            msg.append_uint16(len(self.client_dh_public))
+            msg.extend(self.client_dh_public)
         else:
-            msg.append_uint8(len(conn.sec_param.public_key))
-            msg.extend(conn.sec_param.public_key)
+            msg.append_uint8(len(self.client_ec_public))
+            msg.extend(self.client_ec_public)
         return msg
+
+    def auto_generate_msg(self, conn):
+        conn.update_keys()
+        conn.key_exchange.setup_client_key_exchange(self)
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         pass
@@ -421,9 +427,6 @@ class ChangeCipherSpecMessage(TlsMessage):
     @abc.abstractmethod
     def _serialize_msg_body(self, conn):
         pass
-
-    def init_from_profile(self, profile):
-        return self
 
 
 class ChangeCipherSpec(ChangeCipherSpecMessage):

@@ -661,8 +661,6 @@ class KeyExchangeAlgorithm(ExtendedEnum):
     ECDHE_ECDSA = enum.auto()
     ECDH_RSA = enum.auto()
     ECDHE_RSA = enum.auto()
-
-    # do we actually need this
     EC_DIFFIE_HELLMAN = enum.auto()
 
 

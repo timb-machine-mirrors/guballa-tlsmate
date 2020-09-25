@@ -17,6 +17,9 @@ from tlsclient.messages import (
     ChangeCipherSpecMessage,
     AppDataMessage,
 )
+from tlsclient.key_exchange import RsaKeyExchange, DhKeyExchange, EcdhKeyExchange
+
+
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography import x509
@@ -137,7 +140,8 @@ class TlsConnection(object):
     def send(self, *messages):
         for msg in messages:
             if inspect.isclass(msg):
-                msg = msg().init_from_profile(self.client_profile)
+                msg = msg()
+                msg.auto_generate_msg(self)
             msg_data = msg.serialize(self)
 
             self.record_layer.send_message(
@@ -185,8 +189,24 @@ class TlsConnection(object):
                 )
 
     def update_keys(self):
+        self.sec_param.pre_master_secret = self.key_exchange.agree_on_premaster_secret()
         self.sec_param.generate_master_secret(self.msg.server_key_exchange)
         self.sec_param.key_deriviation()
+
+    aaa = {
+        tls.KeyExchangeAlgorithm.DHE_DSS : DhKeyExchange,
+        tls.KeyExchangeAlgorithm.DHE_RSA : DhKeyExchange,
+        tls.KeyExchangeAlgorithm.DH_ANON : None,
+        tls.KeyExchangeAlgorithm.RSA : RsaKeyExchange,
+        tls.KeyExchangeAlgorithm.DH_DSS : None,
+        tls.KeyExchangeAlgorithm.DH_RSA : None,
+        tls.KeyExchangeAlgorithm.ECDH_ECDSA : EcdhKeyExchange,
+        tls.KeyExchangeAlgorithm.ECDHE_ECDSA : EcdhKeyExchange,
+        tls.KeyExchangeAlgorithm.ECDH_RSA : EcdhKeyExchange,
+        tls.KeyExchangeAlgorithm.ECDHE_RSA : EcdhKeyExchange,
+        tls.KeyExchangeAlgorithm.EC_DIFFIE_HELLMAN : EcdhKeyExchange,
+    }
+
 
     def update(self, **kwargs):
         for argname, val in kwargs.items():
@@ -198,6 +218,8 @@ class TlsConnection(object):
                 self.record_layer_version = min(val, tls.Version.TLS12)
             elif argname == "cipher_suite":
                 self.sec_param.update_cipher_suite(val)
+                key_ex_class = self.aaa[self.sec_param.key_exchange_method]
+                self.key_exchange = key_ex_class(self, self.recorder)
             elif argname == "server_random":
                 self.sec_param.server_random = val
             elif argname == "client_random":
@@ -207,7 +229,7 @@ class TlsConnection(object):
             elif argname == "remote_public_key":
                 self.sec_param.remote_public_key = val
             elif argname == "client_version_sent":
-                self.sec_param.client_version_sent = val
+                self.client_version_sent = val
             elif argname == "server_hello":
                 self.server_hello_received(val)
             else:
