@@ -7,7 +7,6 @@ from tlsclient.testsuite import TestSuite
 from tlsclient.connection import TlsConnection, TlsConnectionMsgs
 from tlsclient.client_profile import ClientProfile
 from tlsclient.record_layer import RecordLayer
-from tlsclient.security_parameters import SecurityParameters
 from tlsclient.recorder import Recorder
 from tlsclient.socket import Socket
 
@@ -29,16 +28,12 @@ class Container(containers.DeclarativeContainer):
 
     record_layer = providers.Factory(RecordLayer, socket=socket, recorder=recorder)
 
-    security_parameters = providers.Factory(
-        SecurityParameters, entity=tls.Entity.CLIENT, recorder=recorder
-    )
-
     connection_msgs = providers.Factory(TlsConnectionMsgs)
 
     connection = providers.Factory(
         TlsConnection,
         connection_msgs=connection_msgs,
-        security_parameters=security_parameters,
+        entity=tls.Entity.CLIENT,
         record_layer=record_layer,
         recorder=recorder,
     )

@@ -286,7 +286,7 @@ class ServerKeyExchange(HandshakeMessage):
     def _deserialize_msg_body(self, fragment, offset, conn):
         self.ec = None
         self.dh = None
-        key_exchange_method = conn.sec_param.key_exchange_method
+        key_exchange_method = conn.key_exchange_method
         if key_exchange_method in [
             tls.KeyExchangeAlgorithm.ECDH_ECDSA,
             tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
@@ -331,11 +331,11 @@ class ClientKeyExchange(HandshakeMessage):
 
     def _serialize_msg_body(self, conn):
         msg = ProtocolData()
-        if conn.sec_param.key_exchange_method == tls.KeyExchangeAlgorithm.RSA:
+        if conn.key_exchange_method == tls.KeyExchangeAlgorithm.RSA:
             data = conn.rsa_key_transport()
             msg.append_uint16(len(data))
             msg.extend(data)
-        elif conn.sec_param.key_exchange_method == tls.KeyExchangeAlgorithm.DHE_RSA:
+        elif conn.key_exchange_method == tls.KeyExchangeAlgorithm.DHE_RSA:
             msg.append_uint16(len(self.client_dh_public))
             msg.extend(self.client_dh_public)
         else:
@@ -356,14 +356,14 @@ class Finished(HandshakeMessage):
     msg_type = tls.HandshakeType.FINISHED
 
     def _serialize_msg_body(self, conn):
-        if conn.sec_param.entity == tls.Entity.CLIENT:
+        if conn.entity == tls.Entity.CLIENT:
             hash_val = conn.finalize_msg_hash(intermediate=True)
             label = b"client finished"
         else:
             hash_val = conn.finalize_msg_hash()
             label = b"server finished"
 
-        val = conn.sec_param.prf(conn.sec_param.master_secret, label, hash_val, 12)
+        val = conn.prf(conn.master_secret, label, hash_val, 12)
         conn.recorder.trace(msg_digest_finished_sent=hash_val)
         conn.recorder.trace(verify_data_finished_sent=val)
         msg = ProtocolData(val)
@@ -375,13 +375,13 @@ class Finished(HandshakeMessage):
         logging.debug(
             "Finished.verify_data(in): {}".format(ProtocolData(verify_data).dump())
         )
-        if conn.sec_param.entity == tls.Entity.CLIENT:
+        if conn.entity == tls.Entity.CLIENT:
             hash_val = conn.finalize_msg_hash()
             label = b"server finished"
         else:
             hash_val = conn.finalize_msg_hash(intermediate=True)
             label = b"client finished"
-        val = conn.sec_param.prf(conn.sec_param.master_secret, label, hash_val, 12)
+        val = conn.prf(conn.master_secret, label, hash_val, 12)
         conn.recorder.trace(msg_digest_finished_rec=hash_val)
         conn.recorder.trace(verify_data_finished_rec=verify_data)
         conn.recorder.trace(verify_data_finished_calc=val)

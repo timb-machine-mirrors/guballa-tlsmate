@@ -5,7 +5,7 @@ import tlsclient.constants as tls
 
 import collections
 
-from cryptography.hazmat.primitives import hashes, hmac
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers import algorithms, aead
 import tlsclient.key_exchange as keyex
 
@@ -94,5 +94,7 @@ key_exchange_algo = {
     tls.KeyExchangeAlgorithm.ECDHE_ECDSA: KeyExchangeAlgo(cls=keyex.EcdhKeyExchange),
     tls.KeyExchangeAlgorithm.ECDH_RSA: KeyExchangeAlgo(cls=keyex.EcdhKeyExchange),
     tls.KeyExchangeAlgorithm.ECDHE_RSA: KeyExchangeAlgo(cls=keyex.EcdhKeyExchange),
-    tls.KeyExchangeAlgorithm.EC_DIFFIE_HELLMAN: KeyExchangeAlgo(cls=keyex.EcdhKeyExchange),
+    tls.KeyExchangeAlgorithm.EC_DIFFIE_HELLMAN: KeyExchangeAlgo(
+        cls=keyex.EcdhKeyExchange
+    ),
 }
