@@ -414,7 +414,6 @@ class AppDataMessage(TlsMessage):
 
 
 class AppData(AppDataMessage):
-
     def __init__(self, *content):
         self.data = ProtocolData()
         for data in content:

@@ -55,7 +55,7 @@ class ExtServerNameIndication(Extension):
         list_length, offset = fragment.unpack_uint16(0)
         if offset + list_length != len(fragment):
             raise FatalAlert(
-                "Extension {}: list length incorrect".format(self.extension_id.name),
+                f"Extension {self.extension_id.name}: list length incorrect",
                 tls.AlertDescription.DECODE_ERROR,
             )
         while offset < len(fragment):
@@ -66,7 +66,7 @@ class ExtServerNameIndication(Extension):
                 self.host_name = name.decode()
         if self.host_name is None:
             raise FatalAlert(
-                "{}: host_name not present".format(self.extension_id),
+                f"{self.extension_id}: host_name not present",
                 tls.AlertDescription.DECODE_ERROR,
             )
 

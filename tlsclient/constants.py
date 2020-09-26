@@ -12,7 +12,7 @@ class ExtendedEnum(enum.Enum):
     def val2enum(cls, value, alert_on_failure=False):
         enum = cls._value2member_map_.get(value)
         if (enum is None) and alert_on_failure:
-            message = "Value {} not defined for {}".format(value, cls)
+            message = f"Value {value} not defined for {cls}"
             raise FatalAlert(message, AlertDescription.ILLEGAL_PARAMETER)
         return enum
 
@@ -20,7 +20,7 @@ class ExtendedEnum(enum.Enum):
     def str2enum(cls, name, alert_on_failure=False):
         enum = cls._member_map_.get(name)
         if (enum is None) and alert_on_failure:
-            message = "Value {} not defined for {}".format(name, cls)
+            message = f"Value {name} not defined for {cls}"
             raise FatalAlert(message, AlertDescription.ILLEGAL_PARAMETER)
         return enum
 
@@ -30,7 +30,7 @@ class ExtendedIntEnum(enum.IntEnum):
     def val2enum(cls, value, alert_on_failure=False):
         enum = cls._value2member_map_.get(value)
         if (enum is None) and alert_on_failure:
-            message = "Value {} not defined for {}".format(value, cls)
+            message = f"Value {value} not defined for {cls}"
             raise FatalAlert(message, AlertDescription.ILLEGAL_PARAMETER)
         return enum
 

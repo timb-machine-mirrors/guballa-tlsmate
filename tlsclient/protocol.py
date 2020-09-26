@@ -34,31 +34,31 @@ class ProtocolData(bytearray):
     def append_uint8(self, *vals):
         for val in vals:
             if val > 0xFF:
-                raise ValueError("Cannot pack {} into 1 bytes".format(val))
+                raise ValueError(f"Cannot pack {val} into 1 byte")
             self.extend(struct.pack("!B", val))
 
     def append_uint16(self, *vals):
         for val in vals:
             if val > 0xFFFF:
-                raise ValueError("Cannot pack {} into 2 bytes".format(val))
+                raise ValueError(f"Cannot pack {val} into 2 bytes")
             self.extend(struct.pack("!H", val))
 
     def append_uint24(self, *vals):
         for val in vals:
             if val > 0xFFFFFF:
-                raise ValueError("Cannot pack {} into 3 bytes".format(val))
+                raise ValueError(f"Cannot pack {val} into 3 bytes")
             self.extend(struct.pack("!I", val)[1:])
 
     def append_uint32(self, *vals):
         for val in vals:
             if val > 0xFFFFFFFF:
-                raise ValueError("Cannot pack {} into 4 bytes".format(val))
+                raise ValueError(f"Cannot pack {val} into 4 bytes")
             self.extend(struct.pack("!I", val))
 
     def append_uint64(self, *vals):
         for val in vals:
             if val > 0xFFFFFFFFFFFFFFFF:
-                raise ValueError("Cannot pack {} into 8 bytes".format(val))
+                raise ValueError(f"Cannot pack {val} into 8 bytes")
             self.extend(struct.pack("!Q", val))
 
     def append_str(self, *strings):
@@ -73,5 +73,5 @@ class ProtocolData(bytearray):
         rows = []
         for x in range(0, len(self), bytes_per_row):
             chunk = self[x : x + bytes_per_row]
-            rows.append(" ".join("{:02x}".format(y) for y in chunk))
-        return "\n".join(rows) + " ({})".format(len(self))
+            rows.append(" ".join(f"{y:02x}" for y in chunk))
+        return "\n".join(rows) + f" ({len(self)})"

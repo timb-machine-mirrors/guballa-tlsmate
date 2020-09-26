@@ -61,9 +61,7 @@ class RsaKeyExchange(KeyExchange):
         ciphered_key = pub_key.encrypt(bytes(self._pms), padding.PKCS1v15())
         # injecting the encrypted key to the recorder is required, as the
         # padding scheme PKCS1v15 produces non-deterministic cipher text.
-        msg.rsa_encrypted_pms = self._recorder.inject(
-            rsa_enciphered=ciphered_key
-        )
+        msg.rsa_encrypted_pms = self._recorder.inject(rsa_enciphered=ciphered_key)
 
     def agree_on_premaster_secret(self):
         """Build the premaster secret

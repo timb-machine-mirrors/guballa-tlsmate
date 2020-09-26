@@ -184,7 +184,6 @@ class TlsConnection(object):
         self.update_write_state()
         return cls()
 
-
     def gen_finished(self, cls):
         if self.entity == tls.Entity.CLIENT:
             hash_val = self.finalize_msg_hash(intermediate=True)
@@ -199,8 +198,6 @@ class TlsConnection(object):
         msg = cls()
         msg.verify_data = val
         return msg
-
-
 
     _generate_out_msg = {
         tls.HandshakeType.CLIENT_HELLO: gen_client_hello,
@@ -237,12 +234,13 @@ class TlsConnection(object):
         logging.info(f"client_random: {msg.random.dump()}")
         logging.info(f"client_version: {msg.client_version.name}")
         for cipher_suite in msg.cipher_suites:
-            logging.info(f"cipher suite: 0x{cipher_suite.value:04x} {cipher_suite.name}")
+            logging.info(
+                f"cipher suite: 0x{cipher_suite.value:04x} {cipher_suite.name}"
+            )
         for extension in msg.extensions:
             ext = extension.extension_id
             logging.info(f"extension {ext.value} {ext.name}")
         self.init_msg_hash()
-
 
     _inspect_outgoing_msg = {tls.HandshakeType.CLIENT_HELLO: inspect_out_client_hello}
 
@@ -269,7 +267,7 @@ class TlsConnection(object):
             msg_data = msg.serialize(self)
             if msg.content_type == tls.ContentType.HANDSHAKE:
                 self.update_msg_hash(msg_data)
-            logging.info("Sending {}".format(msg.msg_type.name))
+            logging.info(f"Sending {msg.msg_type.name}")
 
             self.record_layer.send_message(
                 tls.MessageBlock(
@@ -295,7 +293,9 @@ class TlsConnection(object):
         self.key_exchange = key_ex.cls(self, self.recorder)
         logging.info(f"server random: {msg.random.dump()}")
         logging.info(f"version: {msg.version.name}")
-        logging.info(f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite.name}")
+        logging.info(
+            f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite.name}"
+        )
         for extension in msg.extensions:
             ext = extension.extension_id
             logging.info(f"extension {ext.value} {ext.name}")
@@ -310,7 +310,6 @@ class TlsConnection(object):
 
     def inc_change_cipher_spec(self, msg):
         self.update_read_state()
-
 
     def inc_finished(self, msg):
         verify_data = ProtocolData(msg.verify_data)
@@ -366,7 +365,7 @@ class TlsConnection(object):
             else:
                 raise ValueError("Content type unknow")
 
-        logging.info("Receiving {}".format(msg.msg_type.name))
+        logging.info(f"Receiving {msg.msg_type.name}")
         self.msg.store_received_msg(msg)
 
         if isinstance(msg, msg_class):
@@ -378,9 +377,7 @@ class TlsConnection(object):
                 return None
             else:
                 raise FatalAlert(
-                    "Unexpected message received: {}, expected: {}".format(
-                        type(msg), msg_class
-                    ),
+                    f"Unexpected message received: {type(msg)}, expected: {msg_class}",
                     tls.AlertDescription.UNEXPECTED_MESSAGE,
                 )
 
@@ -415,7 +412,7 @@ class TlsConnection(object):
                 self.server_hello_received(val)
             else:
                 raise ValueError(
-                    'Update connection: unknown argument "{}" given'.format(argname)
+                    f'Update connection: unknown argument "{argname}" given'
                 )
 
     def _check_update_write_state(self):
@@ -475,9 +472,7 @@ class TlsConnection(object):
             res = re.match(r"TLS_(.*)_WITH_(.+)_([^_]+)", cipher_suite.name)
             if not res:
                 raise FatalAlert(
-                    "Negotiated cipher suite {} not supported".format(
-                        cipher_suite.name
-                    ),
+                    f"Negotiated cipher suite {cipher_suite.name} not supported",
                     tls.AlertDescription.HandshakeFailure,
                 )
             key_exchange_method = tls.KeyExchangeAlgorithm.str2enum(res.group(1))
@@ -485,9 +480,7 @@ class TlsConnection(object):
             hash_primitive = tls.SupportedHash.str2enum(res.group(3))
             if key_exchange_method is None or cipher is None or hash_primitive is None:
                 raise FatalAlert(
-                    "Negotiated cipher suite {} not supported".format(
-                        cipher_suite.name
-                    ),
+                    f"Negotiated cipher suite {cipher_suite.name} not supported",
                     tls.AlertDescription.HandshakeFailure,
                 )
             self.key_exchange_method = key_exchange_method
@@ -509,8 +502,8 @@ class TlsConnection(object):
             ) = mappings.supported_macs[hash_primitive]
             if self.cipher_type == tls.CipherType.AEAD:
                 self.mac_key_len = 0
-        logging.debug("hash_primitive: {}".format(self.hash_primitive.name))
-        logging.debug("cipher_primitive: {}".format(self.cipher_primitive.name))
+        logging.debug(f"hash_primitive: {self.hash_primitive.name}")
+        logging.debug(f"cipher_primitive: {self.cipher_primitive.name}")
 
     def _hmac_func(self, secret, msg):
         hmac_object = hmac.HMAC(secret, self.hmac_algo())
@@ -538,8 +531,8 @@ class TlsConnection(object):
                 48,
             )
         )
-        logging.info("premaster_secret: {}".format(self.premaster_secret.dump()))
-        logging.info("master_secret: {}".format(self.master_secret.dump()))
+        logging.info(f"premaster_secret: {self.premaster_secret.dump()}")
+        logging.info(f"master_secret: {self.master_secret.dump()}")
         self.recorder.trace(master_secret=self.master_secret)
 
         return
@@ -574,16 +567,12 @@ class TlsConnection(object):
         self.recorder.trace(server_write_key=self.server_write_key)
         self.recorder.trace(client_write_iv=self.client_write_iv)
         self.recorder.trace(server_write_iv=self.server_write_iv)
-        logging.info(
-            "client_write_mac_key: {}".format(self.client_write_mac_key.dump())
-        )
-        logging.info(
-            "server_write_mac_key: {}".format(self.server_write_mac_key.dump())
-        )
-        logging.info("client_write_key: {}".format(self.client_write_key.dump()))
-        logging.info("server_write_key: {}".format(self.server_write_key.dump()))
-        logging.info("client_write_iv: {}".format(self.client_write_iv.dump()))
-        logging.info("server_write_iv: {}".format(self.server_write_iv.dump()))
+        logging.info(f"client_write_mac_key: {self.client_write_mac_key.dump()}")
+        logging.info(f"server_write_mac_key: {self.server_write_mac_key.dump()}")
+        logging.info(f"client_write_key: {self.client_write_key.dump()}")
+        logging.info(f"server_write_key: {self.server_write_key.dump()}")
+        logging.info(f"client_write_iv: {self.client_write_iv.dump()}")
+        logging.info(f"server_write_iv: {self.server_write_iv.dump()}")
 
     def get_pending_write_state(self, entity):
         if entity == tls.Entity.CLIENT:
