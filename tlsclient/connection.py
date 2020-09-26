@@ -360,11 +360,10 @@ class TlsConnection(object):
             else:
                 raise ValueError("Content type unknow")
 
-        logging.info(f"Receiving {msg.msg_type.name}")
-        self.msg.store_received_msg(msg)
-
         if isinstance(msg, msg_class):
             self.inspect_incoming_msg(msg)
+            logging.info(f"Receiving {msg.msg_type.name}")
+            self.msg.store_received_msg(msg)
             return msg
         else:
             if optional:
