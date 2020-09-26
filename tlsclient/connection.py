@@ -163,14 +163,13 @@ class TlsConnection(object):
         return msg
 
     def gen_client_key_exchange(self, cls):
-        self.update_keys()
+        self.premaster_secret = self.key_exchange.agree_on_premaster_secret()
+        self.recorder.trace(pre_master_secret=self.premaster_secret)
+        logging.info(f"premaster_secret: {self.premaster_secret.dump()}")
         msg = cls()
         self.key_exchange.setup_client_key_exchange(msg)
+        self._post_sending_hook = self.update_keys
         return msg
-
-    def gen_change_cipher_spec(self, cls):
-        self.update_write_state()
-        return cls()
 
     def gen_finished(self, cls):
         if self.entity == tls.Entity.CLIENT:
@@ -183,6 +182,7 @@ class TlsConnection(object):
         self.recorder.trace(msg_digest_finished_sent=hash_val)
         self.recorder.trace(verify_data_finished_sent=val)
         logging.debug(f"Finished.verify_data(out): {val.dump()}")
+        self.update_write_state()
         msg = cls()
         msg.verify_data = val
         return msg
@@ -190,7 +190,6 @@ class TlsConnection(object):
     _generate_out_msg = {
         tls.HandshakeType.CLIENT_HELLO: gen_client_hello,
         tls.HandshakeType.CLIENT_KEY_EXCHANGE: gen_client_key_exchange,
-        tls.CCSType.CHANGE_CIPHER_SPEC: gen_change_cipher_spec,
         tls.HandshakeType.FINISHED: gen_finished,
     }
 
@@ -248,6 +247,7 @@ class TlsConnection(object):
 
     def send(self, *messages):
         for msg in messages:
+            self._post_sending_hook = None
             if inspect.isclass(msg):
                 msg = self.generate_outgoing_msg(msg)
             else:
@@ -264,7 +264,9 @@ class TlsConnection(object):
                     fragment=msg_data,
                 )
             )
-            self._check_update_write_state()
+            # Some actions must be delayed after the message is actually sent
+            if self._post_sending_hook is not None:
+                self._post_sending_hook()
 
         self.record_layer.flush()
 
@@ -277,6 +279,11 @@ class TlsConnection(object):
             self.get_extension(msg.extensions, tls.Extension.ENCRYPT_THEN_MAC)
             is not None
         )
+        self.extended_ms = (
+            self.get_extension(msg.extensions, tls.Extension.EXTENDED_MASTER_SECRET)
+            is not None
+        )
+
         key_ex = mappings.key_exchange_algo[self.key_exchange_method]
         self.key_exchange = key_ex.cls(self, self.recorder)
         logging.info(f"server random: {msg.random.dump()}")
@@ -370,18 +377,13 @@ class TlsConnection(object):
                 )
 
     def update_keys(self):
-        self.premaster_secret = self.key_exchange.agree_on_premaster_secret()
-        self.generate_master_secret(self.msg.server_key_exchange)
+        self.generate_master_secret()
         self.key_deriviation()
 
-    def _check_update_write_state(self):
-        if self._update_write_state:
-            state = self.get_pending_write_state(self.entity)
-            self.record_layer.update_write_state(state)
-            self._update_write_state = False
-
     def update_write_state(self):
-        self._update_write_state = True
+        state = self.get_pending_write_state(self.entity)
+        self.record_layer.update_write_state(state)
+        self._update_write_state = False
 
     def update_read_state(self):
         if self.entity == tls.Entity.CLIENT:
@@ -396,10 +398,7 @@ class TlsConnection(object):
         self._msg_hash = None
         self._msg_hash_active = True
 
-        self._debug = []
-
     def update_msg_hash(self, msg):
-        self._debug.append(msg)
         if not self._msg_hash_active:
             return
         if self.hash_algo is None:
@@ -480,17 +479,26 @@ class TlsConnection(object):
     def prf(self, secret, label, seed, size):
         return self._expand(secret, label + seed, size)
 
-    def generate_master_secret(self, server_key_exchange):
-        self.recorder.trace(pre_master_secret=self.premaster_secret)
-        self.master_secret = ProtocolData(
-            self.prf(
-                self.premaster_secret,
-                b"master secret",
-                self.client_random + self.server_random,
-                48,
+    def generate_master_secret(self):
+        if self.extended_ms:
+            msg_digest = self.finalize_msg_hash(intermediate=True)
+            self.master_secret = ProtocolData(
+                self.prf(
+                    self.premaster_secret,
+                    b"extended master secret",
+                    msg_digest,
+                    48,
+                )
             )
-        )
-        logging.info(f"premaster_secret: {self.premaster_secret.dump()}")
+        else:
+            self.master_secret = ProtocolData(
+                self.prf(
+                    self.premaster_secret,
+                    b"master secret",
+                    self.client_random + self.server_random,
+                    48,
+                )
+            )
         logging.info(f"master_secret: {self.master_secret.dump()}")
         self.recorder.trace(master_secret=self.master_secret)
 

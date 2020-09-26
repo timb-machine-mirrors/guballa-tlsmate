@@ -31,10 +31,10 @@ class TestSuite(object):
             # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
             # tls.CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384,
-            # tls.CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+            tls.CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
             # tls.CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA,
             # tls.CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
-            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+            #tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
             # tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
         ]
         client_profile.supported_groups = [
@@ -74,7 +74,8 @@ class TestSuite(object):
             tls.SignatureScheme.ECDSA_SHA1,
             tls.SignatureScheme.RSA_PKCS1_SHA1,
         ]
-        client_profile.support_encrypt_then_mac = True
+        #client_profile.support_encrypt_then_mac = True
+        client_profile.support_extended_master_secret =True
 
         with client_profile.create_connection() as conn:
 
