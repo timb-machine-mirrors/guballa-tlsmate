@@ -18,10 +18,7 @@ from tlsclient.messages import (
 )
 from tlsclient import mappings
 
-
 from cryptography.hazmat.primitives import hashes, hmac
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography import x509
 
 
 def get_random_value():
@@ -153,15 +150,6 @@ class TlsConnection(object):
     def set_profile(self, client_profile):
         self.client_profile = client_profile
         return self
-
-    def rsa_key_transport(self):
-        binary_cert = self.msg.server_certificate.certificates[0]
-        cert = x509.load_der_x509_certificate(binary_cert)
-        pub_key = cert.public_key()
-        ciphered_key = pub_key.encrypt(bytes(self.premaster_secret), padding.PKCS1v15())
-        # injecting the encrypted key to the recorder is required, as the
-        # padding scheme PKCS1v15 produces non-deterministic cipher text.
-        return self.recorder.inject(rsa_enciphered=ciphered_key)
 
     def get_extension(self, extensions, ext_id):
         for ext in extensions:
@@ -385,35 +373,6 @@ class TlsConnection(object):
         self.premaster_secret = self.key_exchange.agree_on_premaster_secret()
         self.generate_master_secret(self.msg.server_key_exchange)
         self.key_deriviation()
-
-    def update(self, **kwargs):
-        for argname, val in kwargs.items():
-            if argname == "version":
-                self.version = val
-                self.version = val
-                # stupid TLS1.3 RFC: let the message look like TLS1.2
-                # to support not compliant middleboxes. :-(
-                self.record_layer_version = min(val, tls.Version.TLS12)
-            elif argname == "cipher_suite":
-                self.update_cipher_suite(val)
-                key_ex = mappings.key_exchange_algo[self.key_exchange_method]
-                self.key_exchange = key_ex.cls(self, self.recorder)
-            elif argname == "server_random":
-                self.server_random = val
-            elif argname == "client_random":
-                self.client_random = val
-            elif argname == "named_curve":
-                self.named_curve = val
-            elif argname == "remote_public_key":
-                self.remote_public_key = val
-            elif argname == "client_version_sent":
-                self.client_version_sent = val
-            elif argname == "server_hello":
-                self.server_hello_received(val)
-            else:
-                raise ValueError(
-                    f'Update connection: unknown argument "{argname}" given'
-                )
 
     def _check_update_write_state(self):
         if self._update_write_state:
