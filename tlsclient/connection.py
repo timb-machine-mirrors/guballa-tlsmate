@@ -169,20 +169,44 @@ class TlsConnection(object):
                 return ext
         return None
 
+    def gen_client_hello(self, msg_cls):
+        msg = self.client_profile.client_hello()
+        self.inspect_out_client_hello(msg)
+        return msg
+
     def gen_client_key_exchange(self, cls):
         self.update_keys()
         msg = cls()
         self.key_exchange.setup_client_key_exchange(msg)
         return msg
 
-    def gen_client_hello(self, msg_cls):
-        msg = self.client_profile.client_hello()
-        self.inspect_out_client_hello(msg)
+    def gen_change_cipher_spec(self, cls):
+        self.update_write_state()
+        return cls()
+
+
+    def gen_finished(self, cls):
+        if self.entity == tls.Entity.CLIENT:
+            hash_val = self.finalize_msg_hash(intermediate=True)
+            label = b"client finished"
+        else:
+            hash_val = self.finalize_msg_hash()
+            label = b"server finished"
+        val = ProtocolData(self.prf(self.master_secret, label, hash_val, 12))
+        self.recorder.trace(msg_digest_finished_sent=hash_val)
+        self.recorder.trace(verify_data_finished_sent=val)
+        logging.debug(f"Finished.verify_data(out): {val.dump()}")
+        msg = cls()
+        msg.verify_data = val
         return msg
+
+
 
     _generate_out_msg = {
         tls.HandshakeType.CLIENT_HELLO: gen_client_hello,
         tls.HandshakeType.CLIENT_KEY_EXCHANGE: gen_client_key_exchange,
+        tls.CCSType.CHANGE_CIPHER_SPEC: gen_change_cipher_spec,
+        tls.HandshakeType.FINISHED: gen_finished,
     }
 
     def generate_outgoing_msg(self, msg_cls):
@@ -210,7 +234,15 @@ class TlsConnection(object):
                 msg.random = get_random_value()
             self.recorder.trace(client_random=msg.random)
         self.client_random = msg.random
-        logging.info("client_random: {}".format(self.client_random.dump()))
+        logging.info(f"client_random: {msg.random.dump()}")
+        logging.info(f"client_version: {msg.client_version.name}")
+        for cipher_suite in msg.cipher_suites:
+            logging.info(f"cipher suite: 0x{cipher_suite.value:04x} {cipher_suite.name}")
+        for extension in msg.extensions:
+            ext = extension.extension_id
+            logging.info(f"extension {ext.value} {ext.name}")
+        self.init_msg_hash()
+
 
     _inspect_outgoing_msg = {tls.HandshakeType.CLIENT_HELLO: inspect_out_client_hello}
 
@@ -235,6 +267,9 @@ class TlsConnection(object):
             else:
                 self.inpect_outgoing_msg(msg)
             msg_data = msg.serialize(self)
+            if msg.content_type == tls.ContentType.HANDSHAKE:
+                self.update_msg_hash(msg_data)
+            logging.info("Sending {}".format(msg.msg_type.name))
 
             self.record_layer.send_message(
                 tls.MessageBlock(
@@ -258,14 +293,53 @@ class TlsConnection(object):
         )
         key_ex = mappings.key_exchange_algo[self.key_exchange_method]
         self.key_exchange = key_ex.cls(self, self.recorder)
+        logging.info(f"server random: {msg.random.dump()}")
+        logging.info(f"version: {msg.version.name}")
+        logging.info(f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite.name}")
+        for extension in msg.extensions:
+            ext = extension.extension_id
+            logging.info(f"extension {ext.value} {ext.name}")
 
     def inc_server_key_exchange(self, msg):
         self.dh_params = msg.dh
         self.ec_params = msg.ec
+        if msg.ec is not None:
+            if msg.ec.named_curve is not None:
+                logging.info(f"named curve: {msg.ec.named_curve.name}")
+        self.key_exchange.inspect_server_key_exchange(msg)
+
+    def inc_change_cipher_spec(self, msg):
+        self.update_read_state()
+
+
+    def inc_finished(self, msg):
+        verify_data = ProtocolData(msg.verify_data)
+
+        logging.debug(f"Finished.verify_data(in): {verify_data.dump()}")
+        if self.entity == tls.Entity.CLIENT:
+            hash_val = self.finalize_msg_hash()
+            label = b"server finished"
+        else:
+            hash_val = self.finalize_msg_hash(intermediate=True)
+            label = b"client finished"
+        val = self.prf(self.master_secret, label, hash_val, 12)
+        self.recorder.trace(msg_digest_finished_rec=hash_val)
+        self.recorder.trace(verify_data_finished_rec=verify_data)
+        self.recorder.trace(verify_data_finished_calc=val)
+        if verify_data != val:
+            FatalAlert(
+                "Received Finidhed: verify_data does not match",
+                tls.AlertDescription.BAD_RECORD_MAC,
+            )
+        logging.info("Received Finished sucessfully verified")
+        logging.info("Handshake finished, secure connection established")
+        return self
 
     _incoming_msg = {
         tls.HandshakeType.SERVER_HELLO: inc_server_hello,
         tls.HandshakeType.SERVER_KEY_EXCHANGE: inc_server_key_exchange,
+        tls.CCSType.CHANGE_CIPHER_SPEC: inc_change_cipher_spec,
+        tls.HandshakeType.FINISHED: inc_finished,
     }
 
     def inspect_incoming_msg(self, msg):
@@ -282,6 +356,7 @@ class TlsConnection(object):
             content_type, version, fragment = self.record_layer.wait_fragment()
             if content_type is tls.ContentType.HANDSHAKE:
                 msg = HandshakeMessage.deserialize(fragment, self)
+                self.update_msg_hash(fragment)
             elif content_type is tls.ContentType.ALERT:
                 raise NotImplementedError("Receiving an Alert is not yet implemented")
             elif content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
@@ -291,6 +366,7 @@ class TlsConnection(object):
             else:
                 raise ValueError("Content type unknow")
 
+        logging.info("Receiving {}".format(msg.msg_type.name))
         self.msg.store_received_msg(msg)
 
         if isinstance(msg, msg_class):

@@ -2,13 +2,10 @@
 """Module providing classes for each TLS message.
 """
 import abc
-import logging
 import tlsclient.constants as tls
 from tlsclient.protocol import ProtocolData
 import tlsclient.extensions as ext
 from tlsclient.alert import FatalAlert
-
-# from tlsclient.security_parameters import get_random_value
 
 
 class TlsMessage(metaclass=abc.ABCMeta):
@@ -30,7 +27,6 @@ class HandshakeMessage(TlsMessage):
     def deserialize(cls, fragment, conn):
         msg_type, offset = fragment.unpack_uint8(0)
         msg_type = tls.HandshakeType.val2enum(msg_type, alert_on_failure=True)
-        logging.info("Receiving {}".format(msg_type.name))
         length, offset = fragment.unpack_uint24(offset)
         if length + offset != len(fragment):
             raise FatalAlert(
@@ -39,7 +35,6 @@ class HandshakeMessage(TlsMessage):
             )
         cls_name = _hs_deserialization_map[msg_type]
         msg = cls_name()._deserialize_msg_body(fragment, offset, conn)
-        conn.update_msg_hash(fragment)
         return msg
 
     @abc.abstractmethod
@@ -57,8 +52,6 @@ class HandshakeMessage(TlsMessage):
         handshake_msg.append_uint8(self.msg_type.value)
         handshake_msg.append_uint24(len(msg_body))
         handshake_msg.extend(msg_body)
-        conn.update_msg_hash(handshake_msg)
-        logging.info("Sending {}".format(self.msg_type.name))
         return handshake_msg
 
 
@@ -81,15 +74,9 @@ class ClientHello(HandshakeMessage):
         version = self.client_version
         if type(version) == tls.Version:
             version = version.value
-        # conn.update(client_version_sent=version)
         msg.append_uint16(version)
 
         # random
-        # if self.random is None:
-        #    self.random = get_random_value()
-        # self.random = conn.recorder.inject(client_random=self.random)
-        # logging.info("client_random: {}".format(self.random.dump()))
-        # conn.update(client_random=self.random)
         msg.extend(self.random)
 
         # session_id
@@ -118,7 +105,6 @@ class ClientHello(HandshakeMessage):
         msg.append_uint16(len(ext_bytes))
         msg.extend(ext_bytes)
 
-        conn.init_msg_hash()
         return msg
 
     def _deserialize_msg_body(self, msg_body, length, conn):
@@ -128,6 +114,14 @@ class ClientHello(HandshakeMessage):
 class ServerHello(HandshakeMessage):
 
     msg_type = tls.HandshakeType.SERVER_HELLO
+
+    def __init__(self):
+        self.version = None
+        self.random = None
+        self.session_id = None
+        self.cipher_suite = None
+        self.compression_method = None
+        self.extensions = []
 
     def _serialize_msg_body(self, conn):
         # TODO if we want to implement the server side as well
@@ -155,16 +149,15 @@ class ServerHello(HandshakeMessage):
             while offset < len(fragment):
                 extension, offset = ext.Extension.deserialize(fragment, offset)
                 self.extensions.append(extension)
-
-        logging.info("TLS version: {}".format(self.version.name))
-        logging.info("Cipher suite: {}".format(self.cipher_suite.name))
-        logging.info("server_random: {}".format(self.random.dump()))
         return self
 
 
 class Certificate(HandshakeMessage):
 
     msg_type = tls.HandshakeType.CERTIFICATE
+
+    def __init__(self):
+        self.certificates = []
 
     def _serialize_msg_body(self, conn):
         # TODO
@@ -187,8 +180,6 @@ class KeyExchangeEC(object):
         if self.curve_type is tls.EcCurveType.NAMED_CURVE:
             named_curve, offset = fragment.unpack_uint16(offset)
             self.named_curve = tls.SupportedGroups.val2enum(named_curve)
-            logging.debug("named curve: " + self.named_curve.name)
-            # conn.update(named_curve=self.named_curve)
         # TODO: add other curve types
         return offset
 
@@ -198,7 +189,6 @@ class KeyExchangeEC(object):
         # ECPoint         public;
         point_len, offset = fragment.unpack_uint8(offset)
         self.public, offset = fragment.unpack_bytes(offset, point_len)
-        # conn.update(remote_public_key=self.public)
 
         return offset
 
@@ -233,6 +223,10 @@ class ServerKeyExchange(HandshakeMessage):
 
     msg_type = tls.HandshakeType.SERVER_KEY_EXCHANGE
 
+    def __init__(self):
+        self.ec = None
+        self.dh = None
+
     def _serialize_msg_body(self, conn):
         # TODO if we want to implement the server side as well
         pass
@@ -261,13 +255,15 @@ class ServerKeyExchange(HandshakeMessage):
                 "Key exchange algorithm incompatible with ServerKeyExchange message",
                 tls.AlertDescription.UNEXPECTED_MESSAGE,
             )
-        conn.key_exchange.inspect_server_key_exchange(self)
         return self
 
 
 class ServerHelloDone(HandshakeMessage):
 
     msg_type = tls.HandshakeType.SERVER_HELLO_DONE
+
+    def __init__(self):
+        pass
 
     def _serialize_msg_body(self, conn):
         # TODO if we want to implement the server side as well
@@ -300,16 +296,6 @@ class ClientKeyExchange(HandshakeMessage):
             msg.append_uint8(len(self.ecdh_public))
             msg.extend(self.ecdh_public)
 
-        #if conn.key_exchange_method == tls.KeyExchangeAlgorithm.RSA:
-        #    data = conn.rsa_key_transport()
-        #    msg.append_uint16(len(data))
-        #    msg.extend(data)
-        #elif conn.key_exchange_method == tls.KeyExchangeAlgorithm.DHE_RSA:
-        #    msg.append_uint16(len(self.client_dh_public))
-        #    msg.extend(self.client_dh_public)
-        #else:
-        #    msg.append_uint8(len(self.client_ec_public))
-        #    msg.extend(self.client_ec_public)
         return msg
 
     def _deserialize_msg_body(self, fragment, offset, conn):
@@ -320,42 +306,14 @@ class Finished(HandshakeMessage):
 
     msg_type = tls.HandshakeType.FINISHED
 
-    def _serialize_msg_body(self, conn):
-        if conn.entity == tls.Entity.CLIENT:
-            hash_val = conn.finalize_msg_hash(intermediate=True)
-            label = b"client finished"
-        else:
-            hash_val = conn.finalize_msg_hash()
-            label = b"server finished"
+    def __init__(self):
+        self.verify_data = None
 
-        val = conn.prf(conn.master_secret, label, hash_val, 12)
-        conn.recorder.trace(msg_digest_finished_sent=hash_val)
-        conn.recorder.trace(verify_data_finished_sent=val)
-        msg = ProtocolData(val)
-        logging.debug("Finished.verify_data(out): {}".format(msg.dump()))
-        return msg
+    def _serialize_msg_body(self, conn):
+        return ProtocolData(self.verify_data)
 
     def _deserialize_msg_body(self, fragment, offset, conn):
-        verify_data = fragment[offset:]
-        logging.debug(
-            "Finished.verify_data(in): {}".format(ProtocolData(verify_data).dump())
-        )
-        if conn.entity == tls.Entity.CLIENT:
-            hash_val = conn.finalize_msg_hash()
-            label = b"server finished"
-        else:
-            hash_val = conn.finalize_msg_hash(intermediate=True)
-            label = b"client finished"
-        val = conn.prf(conn.master_secret, label, hash_val, 12)
-        conn.recorder.trace(msg_digest_finished_rec=hash_val)
-        conn.recorder.trace(verify_data_finished_rec=verify_data)
-        conn.recorder.trace(verify_data_finished_calc=val)
-        if verify_data != val:
-            FatalAlert(
-                "Received Finidhed: verify_data does not match",
-                tls.AlertDescription.BAD_RECORD_MAC,
-            )
-        logging.info("Received Finished sucessfully verified")
+        self.verify_data = fragment[offset:]
         return self
 
 
@@ -373,7 +331,6 @@ class ChangeCipherSpecMessage(TlsMessage):
             )
         msg_type, offset = fragment.unpack_uint8(0)
         msg_type = tls.CCSType.val2enum(msg_type, alert_on_failure=True)
-        logging.info("Receiving {}".format(msg_type.name))
         cls_name = _ccs_deserialization_map[msg_type]
         msg = cls_name()
         msg._deserialize_msg_body(conn)
@@ -383,7 +340,6 @@ class ChangeCipherSpecMessage(TlsMessage):
         self._serialize_msg_body(conn)
         ccs_msg = ProtocolData()
         ccs_msg.append_uint8(self.msg_type.value)
-        logging.info("Sending {}".format(self.msg_type.name))
         return ccs_msg
 
     @abc.abstractmethod
@@ -399,11 +355,14 @@ class ChangeCipherSpec(ChangeCipherSpecMessage):
 
     msg_type = tls.CCSType.CHANGE_CIPHER_SPEC
 
+    def __init__(self):
+        pass
+
     def _deserialize_msg_body(self, conn):
-        conn.update_read_state()
+        pass
 
     def _serialize_msg_body(self, conn):
-        conn.update_write_state()
+        pass
 
 
 class Alert(TlsMessage):
@@ -427,7 +386,6 @@ class Alert(TlsMessage):
         else:
             alert.append_uint8(self.description.value)
 
-        logging.info("Sending ALERT ({})".format(self.description.name))
         return alert
 
 
@@ -439,13 +397,11 @@ class AppDataMessage(TlsMessage):
 
     @classmethod
     def deserialize(cls, fragment, conn):
-        logging.info("Receiving {}".format(cls.content_type.name))
         msg = AppData()
         msg._deserialize_msg_body(fragment, conn)
         return msg
 
     def serialize(self, conn):
-        logging.info("Sending {}".format(self.content_type.name))
         return self._serialize_msg_body(conn)
 
     @abc.abstractmethod
@@ -458,6 +414,7 @@ class AppDataMessage(TlsMessage):
 
 
 class AppData(AppDataMessage):
+
     def __init__(self, *content):
         self.data = ProtocolData()
         for data in content:
