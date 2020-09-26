@@ -8,6 +8,7 @@ import logging
 import tlsclient.constants as tls
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
+from tlsclient import mappings
 
 import collections
 
@@ -31,64 +32,6 @@ def get_random_value():
 
 
 class SecurityParameters(object):
-
-    _supported_ciphers = {
-        tls.SupportedCipher.AES_128_CBC: Cipher(
-            cipher_primitive=tls.CipherPrimitive.AES,
-            cipher_algo=algorithms.AES,
-            cipher_type=tls.CipherType.BLOCK,
-            enc_key_len=16,
-            block_size=16,
-            iv_len=16,
-        ),
-        tls.SupportedCipher.AES_256_CBC: Cipher(
-            cipher_primitive=tls.CipherPrimitive.AES,
-            cipher_algo=algorithms.AES,
-            cipher_type=tls.CipherType.BLOCK,
-            enc_key_len=32,
-            block_size=16,
-            iv_len=16,
-        ),
-        tls.SupportedCipher.AES_128_GCM: Cipher(
-            cipher_primitive=tls.CipherPrimitive.AES,
-            cipher_algo=aead.AESGCM,
-            cipher_type=tls.CipherType.AEAD,
-            enc_key_len=16,
-            block_size=16,
-            iv_len=4,
-        ),
-        tls.SupportedCipher.AES_256_GCM: Cipher(
-            cipher_primitive=tls.CipherPrimitive.AES,
-            cipher_algo=aead.AESGCM,
-            cipher_type=tls.CipherType.AEAD,
-            enc_key_len=32,
-            block_size=16,
-            iv_len=4,
-        ),
-        tls.SupportedCipher.CHACHA20_POLY1305: Cipher(
-            cipher_primitive=tls.CipherPrimitive.CHACHA,
-            cipher_algo=aead.ChaCha20Poly1305,
-            cipher_type=tls.CipherType.AEAD,
-            enc_key_len=32,
-            block_size=16,
-            iv_len=12,
-        ),
-    }
-
-    _supported_macs = {
-        tls.SupportedHash.SHA256: Mac(
-            hash_algo=hashes.SHA256, mac_len=32, mac_key_len=32, hmac_algo=hashes.SHA256
-        ),
-        tls.SupportedHash.SHA: Mac(
-            hash_algo=hashes.SHA1, mac_len=20, mac_key_len=20, hmac_algo=hashes.SHA256
-        ),
-        tls.SupportedHash.SHA384: Mac(
-            hash_algo=hashes.SHA384, mac_len=48, mac_key_len=48, hmac_algo=hashes.SHA384
-        ),
-        tls.SupportedHash.MD5: Mac(
-            hash_algo=hashes.MD5, mac_len=16, mac_key_len=16, hmac_algo=hashes.SHA256
-        ),
-    }
 
     def __init__(self, entity, recorder):
         self.recorder = recorder
@@ -172,13 +115,13 @@ class SecurityParameters(object):
                 self.enc_key_len,
                 self.block_size,
                 self.iv_len,
-            ) = self._supported_ciphers[cipher]
+            ) = mappings.supported_ciphers[cipher]
             (
                 self.hash_algo,
                 self.mac_len,
                 self.mac_key_len,
                 self.hmac_algo,
-            ) = self._supported_macs[hash_primitive]
+            ) = mappings.supported_macs[hash_primitive]
             if self.cipher_type == tls.CipherType.AEAD:
                 self.mac_key_len = 0
         logging.debug("hash_primitive: {}".format(self.hash_primitive.name))
