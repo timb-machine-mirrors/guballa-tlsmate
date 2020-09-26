@@ -5,7 +5,8 @@
 import inspect
 import logging
 import re
-
+import os
+import time
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
@@ -21,6 +22,13 @@ from tlsclient import mappings
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography import x509
+
+
+def get_random_value():
+    random = ProtocolData()
+    random.append_uint32(int(time.time()))
+    random.extend(os.urandom(28))
+    return random
 
 
 class TlsConnectionMsgs(object):
@@ -161,18 +169,71 @@ class TlsConnection(object):
                 return ext
         return None
 
-    def server_hello_received(self, msg):
-        if (
-            self.get_extension(msg.extensions, tls.Extension.ENCRYPT_THEN_MAC)
-            is not None
-        ):
-            self.encrypt_then_mac = True
+    def gen_client_key_exchange(self, cls):
+        self.update_keys()
+        msg = cls()
+        self.key_exchange.setup_client_key_exchange(msg)
+        return msg
+
+    def gen_client_hello(self, msg_cls):
+        msg = self.client_profile.client_hello()
+        self.inspect_out_client_hello(msg)
+        return msg
+
+    _generate_out_msg = {
+        tls.HandshakeType.CLIENT_HELLO: gen_client_hello,
+        tls.HandshakeType.CLIENT_KEY_EXCHANGE: gen_client_key_exchange,
+    }
+
+    def generate_outgoing_msg(self, msg_cls):
+        """Setup a message for which only the class has been provided
+
+        Here, we also do all the funny stuff required prior sending a
+        mesage, e.g. for a ClientKeyExchange the key exchange and key deriviation
+        is performed here.
+        """
+        method = self._generate_out_msg.get(msg_cls.msg_type)
+        if method is not None:
+            return method(self, msg_cls)
+        return msg_cls()
+
+    def inspect_out_client_hello(self, msg):
+        if type(msg.client_version) == tls.Version:
+            self.client_version_sent = msg.client_version.value
+        else:
+            self.client_version_sent = msg.client_version
+        self.client_version_sent = msg.client_version
+        if self.recorder.is_injecting():
+            msg.random = self.recorder.inject(client_random=None)
+        else:
+            if msg.random is None:
+                msg.random = get_random_value()
+            self.recorder.trace(client_random=msg.random)
+        self.client_random = msg.random
+        logging.info("client_random: {}".format(self.client_random.dump()))
+
+    _inspect_outgoing_msg = {tls.HandshakeType.CLIENT_HELLO: inspect_out_client_hello}
+
+    def inpect_outgoing_msg(self, msg):
+        """Extract relevant data from a provided message instance
+
+        This method is called if a completely setup message (i.e. an instance)
+        has been provided by the test case. Here we will extract relevant
+        data that are needed for the handshake.
+
+        A user provided ClientHello() is the most relevant use case for this
+        method.
+        """
+        method = self._inspect_outgoing_msg.get(msg.msg_type)
+        if method is not None:
+            method(self, msg)
 
     def send(self, *messages):
         for msg in messages:
             if inspect.isclass(msg):
-                msg = msg()
-                msg.auto_generate_msg(self)
+                msg = self.generate_outgoing_msg(msg)
+            else:
+                self.inpect_outgoing_msg(msg)
             msg_data = msg.serialize(self)
 
             self.record_layer.send_message(
@@ -185,6 +246,33 @@ class TlsConnection(object):
             self._check_update_write_state()
 
         self.record_layer.flush()
+
+    def inc_server_hello(self, msg):
+        self.version = msg.version
+        self.record_layer_version = min(self.version, tls.Version.TLS12)
+        self.update_cipher_suite(msg.cipher_suite)
+        self.server_random = msg.random
+        self.encrypt_then_mac = (
+            self.get_extension(msg.extensions, tls.Extension.ENCRYPT_THEN_MAC)
+            is not None
+        )
+        key_ex = mappings.key_exchange_algo[self.key_exchange_method]
+        self.key_exchange = key_ex.cls(self, self.recorder)
+
+    def inc_server_key_exchange(self, msg):
+        self.dh_params = msg.dh
+        self.ec_params = msg.ec
+
+    _incoming_msg = {
+        tls.HandshakeType.SERVER_HELLO: inc_server_hello,
+        tls.HandshakeType.SERVER_KEY_EXCHANGE: inc_server_key_exchange,
+    }
+
+    def inspect_incoming_msg(self, msg):
+        """Called whenever a message is received before it is passed to the testcase"""
+        method = self._incoming_msg.get(msg.msg_type)
+        if method is not None:
+            method(self, msg)
 
     def wait(self, msg_class, optional=False):
         if self.queued_msg:
@@ -206,6 +294,7 @@ class TlsConnection(object):
         self.msg.store_received_msg(msg)
 
         if isinstance(msg, msg_class):
+            self.inspect_incoming_msg(msg)
             return msg
         else:
             if optional:

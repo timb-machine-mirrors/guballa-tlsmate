@@ -61,7 +61,7 @@ class RsaKeyExchange(KeyExchange):
         ciphered_key = pub_key.encrypt(bytes(self._pms), padding.PKCS1v15())
         # injecting the encrypted key to the recorder is required, as the
         # padding scheme PKCS1v15 produces non-deterministic cipher text.
-        msg.encrypted_premaster_secret = self._recorder.inject(
+        msg.rsa_encrypted_pms = self._recorder.inject(
             rsa_enciphered=ciphered_key
         )
 
@@ -89,7 +89,7 @@ class DhKeyExchange(KeyExchange):
         self._rem_pub_key = int.from_bytes(msg.dh.public_key, "big")
 
     def setup_client_key_exchange(self, msg):
-        msg.client_dh_public = self._local_pub_key
+        msg.dh_public = self._local_pub_key
 
     def agree_on_premaster_secret(self):
         dh_group = dh.DHParameterNumbers(self._p_val, self._g_val)
@@ -145,7 +145,7 @@ class EcdhKeyExchange(KeyExchange):
         self._signature = msg.ec.signature
 
     def setup_client_key_exchange(self, msg):
-        msg.client_ec_public = self._pub_key
+        msg.ecdh_public = self._pub_key
 
     def _pms_supported_curve(self, curve_algo):
         seed = int.from_bytes(os.urandom(10), "big")

@@ -7,15 +7,13 @@ import tlsclient.constants as tls
 from tlsclient.protocol import ProtocolData
 import tlsclient.extensions as ext
 from tlsclient.alert import FatalAlert
-from tlsclient.security_parameters import get_random_value
+
+# from tlsclient.security_parameters import get_random_value
 
 
 class TlsMessage(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def deserialize(cls, fragment, conn):
-        pass
-
-    def auto_generate_msg(self, conn):
         pass
 
     @abc.abstractmethod
@@ -52,9 +50,6 @@ class HandshakeMessage(TlsMessage):
     def _serialize_msg_body(self, conn):
         pass
 
-    def auto_generate_msg(self, conn):
-        return self
-
     def serialize(self, conn):
         msg_body = self._serialize_msg_body(conn)
 
@@ -73,46 +68,11 @@ class ClientHello(HandshakeMessage):
 
     def __init__(self):
         self.client_version = tls.Version.TLS12
-        self.random = get_random_value()
+        self.random = None
         self.session_id = ProtocolData()
         self.cipher_suites = [tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256]
         self.compression_methods = [tls.CompressionMethod.NULL]
         self.extensions = []
-
-    def auto_generate_msg(self, conn):
-        self.init_from_profile(conn.client_profile)
-
-    def init_from_profile(self, profile):
-        self.client_version = max(profile.versions)
-        if profile.support_session_id and profile.session_id:
-            self.session_id = profile.session_id
-        self.session_id = profile.session_id
-        self.cipher_suites = profile.cipher_suites
-        self.compression_methods = profile.compression_methods
-        self.extensions = []
-        if profile.support_sni:
-            self.extensions.append(
-                ext.ExtServerNameIndication(host_name=profile.server_name)
-            )
-        if profile.support_extended_master_secret:
-            self.extensions.append(ext.ExtExtendedMasterSecret())
-        if profile.support_ec_point_formats:
-            self.extensions.append(
-                ext.ExtEcPointFormats(ec_point_formats=profile.ec_point_formats)
-            )
-        if profile.support_supported_groups:
-            self.extensions.append(
-                ext.ExtSupportedGroups(supported_groups=profile.supported_groups)
-            )
-        if profile.support_signature_algorithms:
-            self.extensions.append(
-                ext.ExtSignatureAlgorithms(
-                    signature_algorithms=profile.signature_algorithms
-                )
-            )
-        if profile.support_encrypt_then_mac:
-            self.extensions.append(ext.ExtEncryptThenMac())
-        return self
 
     def _serialize_msg_body(self, conn):
         msg = ProtocolData()
@@ -121,15 +81,15 @@ class ClientHello(HandshakeMessage):
         version = self.client_version
         if type(version) == tls.Version:
             version = version.value
-        conn.update(client_version_sent=version)
+        # conn.update(client_version_sent=version)
         msg.append_uint16(version)
 
         # random
-        if self.random is None:
-            self.random = get_random_value()
-        self.random = conn.recorder.inject(client_random=self.random)
-        logging.info("client_random: {}".format(self.random.dump()))
-        conn.update(client_random=self.random)
+        # if self.random is None:
+        #    self.random = get_random_value()
+        # self.random = conn.recorder.inject(client_random=self.random)
+        # logging.info("client_random: {}".format(self.random.dump()))
+        # conn.update(client_random=self.random)
         msg.extend(self.random)
 
         # session_id
@@ -196,12 +156,6 @@ class ServerHello(HandshakeMessage):
                 extension, offset = ext.Extension.deserialize(fragment, offset)
                 self.extensions.append(extension)
 
-        conn.update(
-            version=self.version,
-            cipher_suite=self.cipher_suite,
-            server_random=self.random,
-            server_hello=self,
-        )
         logging.info("TLS version: {}".format(self.version.name))
         logging.info("Cipher suite: {}".format(self.cipher_suite.name))
         logging.info("server_random: {}".format(self.random.dump()))
@@ -234,7 +188,7 @@ class KeyExchangeEC(object):
             named_curve, offset = fragment.unpack_uint16(offset)
             self.named_curve = tls.SupportedGroups.val2enum(named_curve)
             logging.debug("named curve: " + self.named_curve.name)
-            conn.update(named_curve=self.named_curve)
+            # conn.update(named_curve=self.named_curve)
         # TODO: add other curve types
         return offset
 
@@ -244,7 +198,7 @@ class KeyExchangeEC(object):
         # ECPoint         public;
         point_len, offset = fragment.unpack_uint8(offset)
         self.public, offset = fragment.unpack_bytes(offset, point_len)
-        conn.update(remote_public_key=self.public)
+        # conn.update(remote_public_key=self.public)
 
         return offset
 
@@ -329,23 +283,34 @@ class ClientKeyExchange(HandshakeMessage):
 
     msg_type = tls.HandshakeType.CLIENT_KEY_EXCHANGE
 
+    def __init__(self):
+        self.rsa_encrypted_pms = None
+        self.dh_public = None
+        self.ecdh_public = None
+
     def _serialize_msg_body(self, conn):
         msg = ProtocolData()
-        if conn.key_exchange_method == tls.KeyExchangeAlgorithm.RSA:
-            data = conn.rsa_key_transport()
-            msg.append_uint16(len(data))
-            msg.extend(data)
-        elif conn.key_exchange_method == tls.KeyExchangeAlgorithm.DHE_RSA:
-            msg.append_uint16(len(self.client_dh_public))
-            msg.extend(self.client_dh_public)
-        else:
-            msg.append_uint8(len(self.client_ec_public))
-            msg.extend(self.client_ec_public)
-        return msg
+        if self.rsa_encrypted_pms is not None:
+            msg.append_uint16(len(self.rsa_encrypted_pms))
+            msg.extend(self.rsa_encrypted_pms)
+        elif self.dh_public is not None:
+            msg.append_uint16(len(self.dh_public))
+            msg.extend(self.dh_public)
+        elif self.ecdh_public is not None:
+            msg.append_uint8(len(self.ecdh_public))
+            msg.extend(self.ecdh_public)
 
-    def auto_generate_msg(self, conn):
-        conn.update_keys()
-        conn.key_exchange.setup_client_key_exchange(self)
+        #if conn.key_exchange_method == tls.KeyExchangeAlgorithm.RSA:
+        #    data = conn.rsa_key_transport()
+        #    msg.append_uint16(len(data))
+        #    msg.extend(data)
+        #elif conn.key_exchange_method == tls.KeyExchangeAlgorithm.DHE_RSA:
+        #    msg.append_uint16(len(self.client_dh_public))
+        #    msg.extend(self.client_dh_public)
+        #else:
+        #    msg.append_uint8(len(self.client_ec_public))
+        #    msg.extend(self.client_ec_public)
+        return msg
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         pass
@@ -470,6 +435,8 @@ class AppDataMessage(TlsMessage):
 
     content_type = tls.ContentType.APPLICATION_DATA
 
+    msg_type = tls.ContentType.APPLICATION_DATA
+
     @classmethod
     def deserialize(cls, fragment, conn):
         logging.info("Receiving {}".format(cls.content_type.name))
@@ -488,9 +455,6 @@ class AppDataMessage(TlsMessage):
     @abc.abstractmethod
     def _serialize_msg_body(self, conn):
         pass
-
-    def init_from_profile(self, profile):
-        return self
 
 
 class AppData(AppDataMessage):
