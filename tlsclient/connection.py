@@ -401,7 +401,13 @@ class TlsConnection(object):
                     tls.AlertDescription.HandshakeFailure,
                 )
             key_exchange_method = tls.KeyExchangeAlgorithm.str2enum(res.group(1))
-            cipher = tls.SupportedCipher.str2enum(res.group(2))
+            cipher = res.group(2)
+            # as the cipher starts with a digit, but enum names may not, we need
+            # to check for 3DES manually.
+            if cipher == "3DES_EDE_CBC":
+                cipher = tls.SupportedCipher.TRIPPLE_DES_EDE_CBC
+            else:
+                cipher = tls.SupportedCipher.str2enum(res.group(2))
             hash_primitive = tls.SupportedHash.str2enum(res.group(3))
             if key_exchange_method is None or cipher is None or hash_primitive is None:
                 raise FatalAlert(

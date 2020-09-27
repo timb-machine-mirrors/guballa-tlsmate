@@ -58,6 +58,14 @@ supported_ciphers = {
         block_size=16,
         iv_len=12,
     ),
+    tls.SupportedCipher.TRIPPLE_DES_EDE_CBC: Cipher(
+        cipher_primitive=tls.CipherPrimitive.TRIPPLE_DES,
+        cipher_algo=algorithms.TripleDES,
+        cipher_type=tls.CipherType.BLOCK,
+        enc_key_len=24,
+        block_size=8,
+        iv_len=8,
+    ),
 }
 
 # map hash algorithms to mac parameters
