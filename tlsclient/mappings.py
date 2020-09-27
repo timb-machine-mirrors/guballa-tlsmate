@@ -82,6 +82,14 @@ supported_ciphers = {
         block_size=16,
         iv_len=16,
     ),
+    tls.SupportedCipher.IDEA_CBC: Cipher(
+        cipher_primitive=tls.CipherPrimitive.IDEA,
+        cipher_algo=algorithms.IDEA,
+        cipher_type=tls.CipherType.BLOCK,
+        enc_key_len=16,
+        block_size=8,
+        iv_len=8,
+    ),
 }
 
 # map hash algorithms to mac parameters
