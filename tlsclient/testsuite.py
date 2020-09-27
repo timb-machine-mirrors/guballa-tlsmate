@@ -93,4 +93,8 @@ class TestSuite(object):
             conn.send(msg.ClientKeyExchange, msg.ChangeCipherSpec, msg.Finished)
             conn.wait(msg.ChangeCipherSpec)
             conn.wait(msg.Finished)
-            conn.send(msg.AppData(b"Hier kommen Daten!"))
+            conn.send(msg.AppData(b"GET / HTTP/1.1\n"))
+            app_data = conn.wait(msg.AppData)
+            for line in app_data.data.decode("utf-8").split("\n"):
+                if line.startswith("s_server"):
+                    print(line)

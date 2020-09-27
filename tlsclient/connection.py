@@ -338,12 +338,12 @@ class TlsConnection(object):
         if method is not None:
             method(self, msg)
 
-    def wait(self, msg_class, optional=False):
+    def wait(self, msg_class, optional=False, timeout=5000):
         if self.queued_msg:
             msg = self.queued_msg
             self.queued_msg = None
         else:
-            content_type, version, fragment = self.record_layer.wait_fragment()
+            content_type, version, fragment = self.record_layer.wait_fragment(timeout)
             if content_type is tls.ContentType.HANDSHAKE:
                 msg = HandshakeMessage.deserialize(fragment, self)
                 self.hmac_prf.update_msg_digest(fragment)

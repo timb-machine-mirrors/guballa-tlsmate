@@ -42,13 +42,13 @@ class Socket(object):
                 self._open_socket()
             self._socket.sendall(data)
 
-    def recv_data(self):
+    def recv_data(self, timeout=5000):
         data = self._recorder.inject_socket_recv()
         if data is not None:
             return data
         if self._socket is None:
             self._open_socket()
-        rfds, wfds, efds = select.select([self._socket], [], [], 5)
+        rfds, wfds, efds = select.select([self._socket], [], [], timeout/1000)
         if rfds:
             for fd in rfds:
                 if fd is self._socket:

@@ -306,10 +306,10 @@ class RecordLayer(object):
         self._socket.sendall(self._send_buffer)
         self._send_buffer = ProtocolData()
 
-    def wait_fragment(self):
+    def wait_fragment(self, timeout=5000):
         # wait for record layer header
         while len(self._receive_buffer) < 5:
-            data = self._socket.recv_data()
+            data = self._socket.recv_data(timeout=timeout)
             if data is None:
                 # TODO: timeout
                 pass
@@ -322,7 +322,7 @@ class RecordLayer(object):
         length, offset = self._receive_buffer.unpack_uint16(offset)
 
         while len(self._receive_buffer) < (length + 5):
-            data = self._socket.recv_data()
+            data = self._socket.recv_data(timeout=timeout)
             if data is None:
                 # TODO: timeout
                 pass
