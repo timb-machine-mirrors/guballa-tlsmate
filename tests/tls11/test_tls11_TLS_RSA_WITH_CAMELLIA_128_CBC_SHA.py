@@ -23,5 +23,6 @@ class TestCase(TcRecorder):
 
 if __name__ == "__main__":
     import logging
+
     logging.basicConfig(level="DEBUG")
     TestCase().record_testcase()

@@ -14,7 +14,7 @@ class TestCase(TcRecorder):
 
     path = pathlib.Path(__file__)
 
-    cipher_suite = tls.CipherSuite.TLS_RSA_WITH_IDEA_CBC_SHA
+    cipher_suite = tls.CipherSuite.TLS_RSA_WITH_RC4_128_SHA
 
     # Uncomment the line below if you do not want to use the default version and
     # adapt it to your needs.

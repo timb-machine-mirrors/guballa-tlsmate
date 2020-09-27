@@ -90,6 +90,14 @@ supported_ciphers = {
         block_size=8,
         iv_len=8,
     ),
+    tls.SupportedCipher.RC4_128: Cipher(
+        cipher_primitive=tls.CipherPrimitive.RC4,
+        cipher_algo=algorithms.ARC4,
+        cipher_type=tls.CipherType.STREAM,
+        enc_key_len=16,
+        block_size=None,
+        iv_len=0,
+    ),
 }
 
 # map hash algorithms to mac parameters

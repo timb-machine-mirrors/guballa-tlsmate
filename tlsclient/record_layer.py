@@ -27,7 +27,7 @@ class RecordLayerState(object):
         self._hash_algo = param.hash_algo
         self._compression_method = param.compression_method
         self._encrypt_then_mac = param.encrypt_then_mac
-        self._socket = None
+        self._cipher_object = None
 
 
 class RecordLayer(object):
@@ -77,8 +77,8 @@ class RecordLayer(object):
         return encryptor.update(fragment) + encryptor.finalize()
 
     def _protect_block_cipher(self, state, content_type, version, fragment):
-        # restrictions: only TLS1.2 supported right now (handling of iv has changed),
-        # block ciphers are not applicable for TLS1.3
+        # restrictions: only TLS1.1/1.2 supported right now (handling of iv has
+        # changed), block ciphers are not applicable for TLS1.3
 
         # iv should be random but we want to have it reproducable
         iv = ProtocolData(state._iv_value[:-4])
@@ -97,6 +97,12 @@ class RecordLayer(object):
 
         state._seq_nbr += 1
         return
+
+    def _protect_stream_cipher(self, state, content_type, version, fragment):
+        self._append_mac(state, content_type, version, fragment)
+        stream_ciphered = state._cipher_object.update(fragment)
+        self._add_to_sendbuffer(content_type, version, stream_ciphered)
+        state._seq_nbr += 1
 
     def _protect_aead_cipher(self, state, content_type, version, fragment):
         aesgcm = aead.AESGCM(state._enc_key)
@@ -143,7 +149,7 @@ class RecordLayer(object):
             if wstate._cipher_type == tls.CipherType.BLOCK:
                 self._protect_block_cipher(wstate, content_type, version, fragment)
             elif wstate._cipher_type == tls.CipherType.STREAM:
-                pass
+                self._protect_stream_cipher(wstate, content_type, version, fragment)
             elif wstate._cipher_type == tls.CipherType.AEAD:
                 if wstate._cipher_primitive == tls.CipherPrimitive.CHACHA:
                     self._protect_chacha_cipher(wstate, content_type, version, fragment)
@@ -223,6 +229,12 @@ class RecordLayer(object):
         state._seq_nbr += 1
         return ProtocolData(plain_text)
 
+    def _unprotect_stream_cipher(self, state, content_type, version, fragment):
+        fragment = state._cipher_object.update(fragment)
+        clear_text = self._verify_mac(state, content_type, version, fragment)
+        state._seq_nbr += 1
+        return ProtocolData(clear_text)
+
     def _unprotect_aead_cipher(self, state, content_type, version, fragment):
         nonce_explicit = fragment[:8]
         cipher_text = bytes(fragment[8:])
@@ -260,7 +272,9 @@ class RecordLayer(object):
                     rstate, content_type, version, fragment
                 )
             elif rstate._cipher_type == tls.CipherType.STREAM:
-                pass
+                return self._unprotect_stream_cipher(
+                    rstate, content_type, version, fragment
+                )
             elif rstate._cipher_type == tls.CipherType.AEAD:
                 if rstate._cipher_primitive == tls.CipherPrimitive.CHACHA:
                     return self._unprotect_chacha_cipher(
@@ -325,7 +339,15 @@ class RecordLayer(object):
         )
 
     def update_write_state(self, new_state):
-        self._write_state = RecordLayerState(new_state)
+        state = RecordLayerState(new_state)
+        if state._cipher_type == tls.CipherType.STREAM:
+            cipher = Cipher(state._cipher_algo(state._enc_key), mode=None)
+            state._cipher_object = cipher.encryptor()
+        self._write_state = state
 
     def update_read_state(self, new_state):
-        self._read_state = RecordLayerState(new_state)
+        state = RecordLayerState(new_state)
+        if state._cipher_type == tls.CipherType.STREAM:
+            cipher = Cipher(state._cipher_algo(state._enc_key), mode=None)
+            state._cipher_object = cipher.decryptor()
+        self._read_state = state
