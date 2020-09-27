@@ -36,7 +36,9 @@ class TestSuite(object):
             #tls.CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
             #tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
             #tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
-            tls.CipherSuite.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA
+            #tls.CipherSuite.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,
+            #tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_128_CBC_SHA,
+            tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_256_CBC_SHA,
         ]
         client_profile.supported_groups = [
             tls.SupportedGroups.X25519,

@@ -66,6 +66,22 @@ supported_ciphers = {
         block_size=8,
         iv_len=8,
     ),
+    tls.SupportedCipher.CAMELLIA_128_CBC: Cipher(
+        cipher_primitive=tls.CipherPrimitive.CAMELLIA,
+        cipher_algo=algorithms.Camellia,
+        cipher_type=tls.CipherType.BLOCK,
+        enc_key_len=16,
+        block_size=16,
+        iv_len=16,
+    ),
+    tls.SupportedCipher.CAMELLIA_256_CBC: Cipher(
+        cipher_primitive=tls.CipherPrimitive.CAMELLIA,
+        cipher_algo=algorithms.Camellia,
+        cipher_type=tls.CipherType.BLOCK,
+        enc_key_len=32,
+        block_size=16,
+        iv_len=16,
+    ),
 }
 
 # map hash algorithms to mac parameters
