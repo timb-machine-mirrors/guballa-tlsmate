@@ -10,12 +10,7 @@ import time
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
-from tlsclient.messages import (
-    Alert,
-    HandshakeMessage,
-    ChangeCipherSpecMessage,
-    AppDataMessage,
-)
+from tlsclient.messages import HandshakeMessage, ChangeCipherSpecMessage, AppDataMessage
 from tlsclient import mappings
 
 
@@ -138,7 +133,9 @@ class TlsConnection(object):
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is FatalAlert:
             self.send(
-                Alert(level=tls.AlertLevel.FATAL, description=exc_value.description)
+                FatalAlert(
+                    level=tls.AlertLevel.FATAL, description=exc_value.description
+                )
             )
             self.record_layer.close_socket()
             return True
@@ -430,7 +427,10 @@ class TlsConnection(object):
             ) = mappings.supported_macs[hash_primitive]
             if self.cipher_type == tls.CipherType.AEAD:
                 self.mac_key_len = 0
-            self.hmac_prf.set_msg_digest_algo(self.hmac_algo)
+            if self.version < tls.Version.TLS12:
+                self.hmac_prf.set_msg_digest_algo(None)
+            else:
+                self.hmac_prf.set_msg_digest_algo(self.hmac_algo)
         logging.debug(f"hash_primitive: {self.hash_primitive.name}")
         logging.debug(f"cipher_primitive: {self.cipher_primitive.name}")
 

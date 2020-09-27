@@ -74,7 +74,7 @@ class TcRecorder(metaclass=abc.ABCMeta):
         """
         client_profile = container.client_profile()
 
-        client_profile.tls_versions = [self.version]
+        client_profile.versions = [self.version]
         client_profile.cipher_suites = [self.cipher_suite]
         client_profile.supported_groups = self.supported_groups
         client_profile.signature_algorithms = self.signature_algorithms

@@ -3,6 +3,7 @@
 """
 
 import abc
+import math
 from cryptography.hazmat.primitives import hashes, hmac
 
 
@@ -39,6 +40,34 @@ class _Backend(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
 
+class _BackendTls10(_Backend):
+    def __init__(self, hash_algo):
+        self._msg_digest_md5 = hashes.Hash(hashes.MD5())
+        self._msg_digest_sha = hashes.Hash(hashes.SHA1())
+
+    def update_msg_digest(self, msg):
+        self._msg_digest_md5.update(msg)
+        self._msg_digest_sha.update(msg)
+
+    def finalize_msg_digest(self, intermediate=False):
+        if intermediate:
+            tmp_digest_md5 = self._msg_digest_md5.copy()
+            tmp_digest_sha = self._msg_digest_sha.copy()
+            return tmp_digest_md5.finalize() + tmp_digest_sha.finalize()
+        return self._msg_digest_md5.finalize() + self._msg_digest_sha.finalize()
+
+    def prf(self, secret, label, seed, size):
+        length = math.ceil(len(secret) / 2)
+        s1_md5 = secret[:length]
+        s2_sha = secret[-length:]
+        md5_bytes = self._expand(s1_md5, label + seed, size, hashes.MD5)
+        sha_bytes = self._expand(s2_sha, label + seed, size, hashes.SHA1)
+        result = bytearray(sha_bytes)
+        for i, b in enumerate(md5_bytes):
+            result[i] ^= b
+        return result
+
+
 class _BackendTls12(_Backend):
     def __init__(self, hash_algo):
         self._hash_algo = hash_algo
@@ -73,7 +102,7 @@ class HmacPrf(object):
 
     def set_msg_digest_algo(self, hash_algo):
         if hash_algo is None:
-            self._backend = _BackendTls12(hash_algo)
+            self._backend = _BackendTls10(hash_algo)
         else:
             self._backend = _BackendTls12(hash_algo)
         if self._msg_digest_queue is not None:

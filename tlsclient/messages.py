@@ -198,7 +198,7 @@ class KeyExchangeEC(object):
         # Signature           signed_params;
         signature_scheme, offset = fragment.unpack_uint16(offset)
         self.signature_scheme = tls.SignatureScheme.val2enum(signature_scheme)
-        signature_len, offset = fragment.unpack_uint16(offset)
+        signature_len, offset = fragment.unpack_uint8(offset)
         self.signature, offset = fragment.unpack_bytes(offset, signature_len)
         return self
 
