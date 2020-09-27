@@ -9,6 +9,7 @@ from tlsclient.client_profile import ClientProfile
 from tlsclient.record_layer import RecordLayer
 from tlsclient.recorder import Recorder
 from tlsclient.socket import Socket
+from tlsclient.hmac_prf import HmacPrf
 
 from dependency_injector import containers, providers
 
@@ -26,6 +27,8 @@ class Container(containers.DeclarativeContainer):
         Socket, server=config.server, port=config.port, recorder=recorder
     )
 
+    hmac_prf = providers.Factory(HmacPrf)
+
     record_layer = providers.Factory(RecordLayer, socket=socket, recorder=recorder)
 
     connection_msgs = providers.Factory(TlsConnectionMsgs)
@@ -36,6 +39,7 @@ class Container(containers.DeclarativeContainer):
         entity=tls.Entity.CLIENT,
         record_layer=record_layer,
         recorder=recorder,
+        hmac_prf=hmac_prf,
     )
 
     client_profile = providers.Factory(

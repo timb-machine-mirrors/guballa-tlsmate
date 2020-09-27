@@ -18,8 +18,6 @@ from tlsclient.messages import (
 )
 from tlsclient import mappings
 
-from cryptography.hazmat.primitives import hashes, hmac
-
 
 def get_random_value():
     random = ProtocolData()
@@ -77,7 +75,7 @@ class TlsConnectionMsgs(object):
 
 
 class TlsConnection(object):
-    def __init__(self, connection_msgs, entity, record_layer, recorder):
+    def __init__(self, connection_msgs, entity, record_layer, recorder, hmac_prf):
         self.msg = connection_msgs
         self.received_data = ProtocolData()
         self.queued_msg = None
@@ -88,6 +86,7 @@ class TlsConnection(object):
         self._msg_hash_queue = None
         self._msg_hash_active = False
         self.recorder = recorder
+        self.hmac_prf = hmac_prf
 
         # general
         self.entity = entity
@@ -173,12 +172,12 @@ class TlsConnection(object):
 
     def gen_finished(self, cls):
         if self.entity == tls.Entity.CLIENT:
-            hash_val = self.finalize_msg_hash(intermediate=True)
+            hash_val = self.hmac_prf.finalize_msg_digest(intermediate=True)
             label = b"client finished"
         else:
-            hash_val = self.finalize_msg_hash()
+            hash_val = self.hmac_prf.finalize_msg_digest()
             label = b"server finished"
-        val = ProtocolData(self.prf(self.master_secret, label, hash_val, 12))
+        val = ProtocolData(self.hmac_prf.prf(self.master_secret, label, hash_val, 12))
         self.recorder.trace(msg_digest_finished_sent=hash_val)
         self.recorder.trace(verify_data_finished_sent=val)
         logging.debug(f"Finished.verify_data(out): {val.dump()}")
@@ -227,7 +226,7 @@ class TlsConnection(object):
         for extension in msg.extensions:
             ext = extension.extension_id
             logging.info(f"extension {ext.value} {ext.name}")
-        self.init_msg_hash()
+        self.hmac_prf.start_msg_digest()
 
     _inspect_outgoing_msg = {tls.HandshakeType.CLIENT_HELLO: inspect_out_client_hello}
 
@@ -254,7 +253,7 @@ class TlsConnection(object):
                 self.inpect_outgoing_msg(msg)
             msg_data = msg.serialize(self)
             if msg.content_type == tls.ContentType.HANDSHAKE:
-                self.update_msg_hash(msg_data)
+                self.hmac_prf.update_msg_digest(msg_data)
             logging.info(f"Sending {msg.msg_type.name}")
 
             self.record_layer.send_message(
@@ -311,12 +310,12 @@ class TlsConnection(object):
 
         logging.debug(f"Finished.verify_data(in): {verify_data.dump()}")
         if self.entity == tls.Entity.CLIENT:
-            hash_val = self.finalize_msg_hash()
+            hash_val = self.hmac_prf.finalize_msg_digest()
             label = b"server finished"
         else:
-            hash_val = self.finalize_msg_hash(intermediate=True)
+            hash_val = self.hmac_prf.finalize_msg_digest(intermediate=True)
             label = b"client finished"
-        val = self.prf(self.master_secret, label, hash_val, 12)
+        val = self.hmac_prf.prf(self.master_secret, label, hash_val, 12)
         self.recorder.trace(msg_digest_finished_rec=hash_val)
         self.recorder.trace(verify_data_finished_rec=verify_data)
         self.recorder.trace(verify_data_finished_calc=val)
@@ -350,7 +349,7 @@ class TlsConnection(object):
             content_type, version, fragment = self.record_layer.wait_fragment()
             if content_type is tls.ContentType.HANDSHAKE:
                 msg = HandshakeMessage.deserialize(fragment, self)
-                self.update_msg_hash(fragment)
+                self.hmac_prf.update_msg_digest(fragment)
             elif content_type is tls.ContentType.ALERT:
                 raise NotImplementedError("Receiving an Alert is not yet implemented")
             elif content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
@@ -392,34 +391,6 @@ class TlsConnection(object):
         state = self.get_pending_write_state(entity)
         self.record_layer.update_read_state(state)
 
-    def init_msg_hash(self):
-        self._msg_hash_queue = ProtocolData()
-        self._msg_hash = None
-        self._msg_hash_active = True
-
-    def update_msg_hash(self, msg):
-        if not self._msg_hash_active:
-            return
-        if self.hash_algo is None:
-            # cipher suite not yet negotiated, no hash algo available yet
-            self._msg_hash_queue.extend(msg)
-        else:
-            if self._msg_hash is None:
-                self._msg_hash = hashes.Hash(self.hmac_algo())
-                self._msg_hash.update(self._msg_hash_queue)
-                self._msg_hash_queue = None
-            self._msg_hash.update(msg)
-
-    def finalize_msg_hash(self, intermediate=False):
-        if intermediate:
-            hash_tmp = self._msg_hash.copy()
-            return hash_tmp.finalize()
-        val = self._msg_hash.finalize()
-        self._msg_hash_active = False
-        self._msg_hash = None
-        self._msg_hash_queue = None
-        return val
-
     def update_cipher_suite(self, cipher_suite):
         if self.version == tls.Version.TLS13:
             pass
@@ -459,39 +430,21 @@ class TlsConnection(object):
             ) = mappings.supported_macs[hash_primitive]
             if self.cipher_type == tls.CipherType.AEAD:
                 self.mac_key_len = 0
+            self.hmac_prf.set_msg_digest_algo(self.hmac_algo)
         logging.debug(f"hash_primitive: {self.hash_primitive.name}")
         logging.debug(f"cipher_primitive: {self.cipher_primitive.name}")
 
-    def _hmac_func(self, secret, msg):
-        hmac_object = hmac.HMAC(secret, self.hmac_algo())
-        hmac_object.update(msg)
-        return hmac_object.finalize()
-
-    def _expand(self, secret, seed, size):
-        out = b""
-        ax = bytes(seed)
-        while len(out) < size:
-            ax = self._hmac_func(secret, ax)
-            out = out + self._hmac_func(secret, ax + seed)
-        return out[:size]
-
-    def prf(self, secret, label, seed, size):
-        return self._expand(secret, label + seed, size)
-
     def generate_master_secret(self):
         if self.extended_ms:
-            msg_digest = self.finalize_msg_hash(intermediate=True)
+            msg_digest = self.hmac_prf.finalize_msg_digest(intermediate=True)
             self.master_secret = ProtocolData(
-                self.prf(
-                    self.premaster_secret,
-                    b"extended master secret",
-                    msg_digest,
-                    48,
+                self.hmac_prf.prf(
+                    self.premaster_secret, b"extended master secret", msg_digest, 48
                 )
             )
         else:
             self.master_secret = ProtocolData(
-                self.prf(
+                self.hmac_prf.prf(
                     self.premaster_secret,
                     b"master secret",
                     self.client_random + self.server_random,
@@ -505,7 +458,7 @@ class TlsConnection(object):
 
     def key_deriviation(self):
 
-        key_material = self.prf(
+        key_material = self.hmac_prf.prf(
             self.master_secret,
             b"key expansion",
             self.server_random + self.client_random,
