@@ -13,22 +13,21 @@ from cryptography.hazmat.primitives.ciphers import Cipher, modes, aead
 
 class RecordLayerState(object):
     def __init__(self, param):
-        self._seq_nbr = 0
-        # self._cipher = tls.cipher2algorithm[param.cipher]
-        self._cipher_primitive = param.cipher_primitive
-        self._cipher_algo = param.cipher_algo
-        self._cipher_type = param.cipher_type
-        self._block_size = param.block_size
-        self._enc_key = param.enc_key
-        self._mac_key = param.mac_key
-        self._mac_len = param.mac_len
-        self._iv_value = param.iv_value
-        self._iv_len = param.iv_len
-        self._hash_algo = param.hash_algo
-        self._compression_method = param.compression_method
-        self._encrypt_then_mac = param.encrypt_then_mac
-        self._implicit_iv = param.implicit_iv
-        self._cipher_object = None
+        self.seq_nbr = 0
+        self.cipher_primitive = param.cipher_primitive
+        self.cipher_algo = param.cipher_algo
+        self.cipher_type = param.cipher_type
+        self.block_size = param.block_size
+        self.enc_key = param.enc_key
+        self.mac_key = param.mac_key
+        self.mac_len = param.mac_len
+        self.iv_value = param.iv_value
+        self.iv_len = param.iv_len
+        self.hash_algo = param.hash_algo
+        self.compression_method = param.compression_method
+        self.encrypt_then_mac = param.encrypt_then_mac
+        self.implicit_iv = param.implicit_iv
+        self.cipher_object = None
 
 
 class RecordLayer(object):
@@ -57,12 +56,12 @@ class RecordLayer(object):
 
     def _append_mac(self, state, content_type, version, fragment):
         mac_input = ProtocolData()
-        mac_input.append_uint64(state._seq_nbr)
+        mac_input.append_uint64(state.seq_nbr)
         mac_input.append_uint8(content_type.value)
         mac_input.append_uint16(version.value)
         mac_input.append_uint16(len(fragment))
         mac_input.extend(fragment)
-        mac = hmac.HMAC(state._mac_key, state._hash_algo())
+        mac = hmac.HMAC(state.mac_key, state.hash_algo())
         mac.update(mac_input)
         hmac_bytes = mac.finalize()
         fragment.extend(hmac_bytes)
@@ -70,21 +69,21 @@ class RecordLayer(object):
     def _encrypt_cbc(self, state, fragment):
         # padding
         length = len(fragment) + 1
-        missing_bytes = state._block_size - (length % state._block_size)
+        missing_bytes = state.block_size - (length % state.block_size)
         fragment.extend(struct.pack("!B", missing_bytes) * (missing_bytes + 1))
 
-        if state._implicit_iv:
-            iv = state._iv_value
+        if state.implicit_iv:
+            iv = state.iv_value
         else:
             # iv should be random but we want to have it reproducable
-            iv = ProtocolData(state._iv_value[:-4])
-            iv.append_uint32(state._seq_nbr)
+            iv = ProtocolData(state.iv_value[:-4])
+            iv.append_uint32(state.seq_nbr)
 
-        cipher = Cipher(state._cipher_algo(state._enc_key), modes.CBC(iv))
+        cipher = Cipher(state.cipher_algo(state.enc_key), modes.CBC(iv))
         encryptor = cipher.encryptor()
         cipher_block = encryptor.update(fragment) + encryptor.finalize()
-        if state._implicit_iv:
-            state._iv_value = cipher_block[-state._iv_len :]
+        if state.implicit_iv:
+            state.iv_value = cipher_block[-state.iv_len :]
             return cipher_block
         else:
             return iv + cipher_block
@@ -93,7 +92,7 @@ class RecordLayer(object):
         # restrictions: only TLS1.1/1.2 supported right now (handling of iv has
         # changed), block ciphers are not applicable for TLS1.3
 
-        if state._encrypt_then_mac:
+        if state.encrypt_then_mac:
             fragment = self._encrypt_cbc(state, fragment)
             fragment = ProtocolData(fragment)
             self._append_mac(state, content_type, version, fragment)
@@ -104,22 +103,22 @@ class RecordLayer(object):
 
         self._add_to_sendbuffer(content_type, version, fragment)
 
-        state._seq_nbr += 1
+        state.seq_nbr += 1
         return
 
     def _protect_stream_cipher(self, state, content_type, version, fragment):
         self._append_mac(state, content_type, version, fragment)
-        stream_ciphered = state._cipher_object.update(fragment)
+        stream_ciphered = state.cipher_object.update(fragment)
         self._add_to_sendbuffer(content_type, version, stream_ciphered)
-        state._seq_nbr += 1
+        state.seq_nbr += 1
 
     def _protect_aead_cipher(self, state, content_type, version, fragment):
-        aesgcm = aead.AESGCM(state._enc_key)
+        aesgcm = aead.AESGCM(state.enc_key)
         nonce_explicit = ProtocolData()
-        nonce_explicit.append_uint64(state._seq_nbr)
-        nonce = state._iv_value + nonce_explicit
+        nonce_explicit.append_uint64(state.seq_nbr)
+        nonce = state.iv_value + nonce_explicit
         aad = ProtocolData()
-        aad.append_uint64(state._seq_nbr)
+        aad.append_uint64(state.seq_nbr)
         aad.append_uint8(content_type.value)
         aad.append_uint16(version.value)
         aad.append_uint16(len(fragment))
@@ -130,24 +129,24 @@ class RecordLayer(object):
 
         self._add_to_sendbuffer(content_type, version, aead_ciphered)
 
-        state._seq_nbr += 1
+        state.seq_nbr += 1
 
     def _protect_chacha_cipher(self, state, content_type, version, fragment):
         nonce_val = (
-            int.from_bytes(state._iv_value, "big", signed=False) ^ state._seq_nbr
+            int.from_bytes(state.iv_value, "big", signed=False) ^ state.seq_nbr
         )
-        nonce = nonce_val.to_bytes(state._iv_len, "big", signed=False)
+        nonce = nonce_val.to_bytes(state.iv_len, "big", signed=False)
         aad = ProtocolData()
-        aad.append_uint64(state._seq_nbr)
+        aad.append_uint64(state.seq_nbr)
         aad.append_uint8(content_type.value)
         aad.append_uint16(version.value)
         aad.append_uint16(len(fragment))
-        chachapoly = aead.ChaCha20Poly1305(state._enc_key)
+        chachapoly = aead.ChaCha20Poly1305(state.enc_key)
         cipher_text = chachapoly.encrypt(nonce, bytes(fragment), bytes(aad))
 
         self._add_to_sendbuffer(content_type, version, cipher_text)
 
-        state._seq_nbr += 1
+        state.seq_nbr += 1
 
     def _protect(self, content_type, version, fragment):
         wstate = self._write_state
@@ -155,12 +154,12 @@ class RecordLayer(object):
             # no record layer protection
             self._add_to_sendbuffer(content_type, version, fragment)
         else:
-            if wstate._cipher_type == tls.CipherType.BLOCK:
+            if wstate.cipher_type == tls.CipherType.BLOCK:
                 self._protect_block_cipher(wstate, content_type, version, fragment)
-            elif wstate._cipher_type == tls.CipherType.STREAM:
+            elif wstate.cipher_type == tls.CipherType.STREAM:
                 self._protect_stream_cipher(wstate, content_type, version, fragment)
-            elif wstate._cipher_type == tls.CipherType.AEAD:
-                if wstate._cipher_primitive == tls.CipherPrimitive.CHACHA:
+            elif wstate.cipher_type == tls.CipherType.AEAD:
+                if wstate.cipher_primitive == tls.CipherPrimitive.CHACHA:
                     self._protect_chacha_cipher(wstate, content_type, version, fragment)
                 else:
                     self._protect_aead_cipher(wstate, content_type, version, fragment)
@@ -183,20 +182,20 @@ class RecordLayer(object):
             self._compress(message_block.content_type, message_block.version, message)
 
     def _verify_mac(self, state, content_type, version, fragment):
-        if len(fragment) < state._mac_len:
+        if len(fragment) < state.mac_len:
             raise FatalAlert(
                 "Decoded fragment too short", tls.AlertDescription.BAD_RECORD_MAC
             )
-        msg_len = len(fragment) - state._mac_len
+        msg_len = len(fragment) - state.mac_len
         mac_received = fragment[msg_len:]
         msg = fragment[:msg_len]
         mac_input = ProtocolData()
-        mac_input.append_uint64(state._seq_nbr)
+        mac_input.append_uint64(state.seq_nbr)
         mac_input.append_uint8(content_type.value)
         mac_input.append_uint16(version)
         mac_input.append_uint16(msg_len)
         mac_input.extend(msg)
-        mac = hmac.HMAC(state._mac_key, state._hash_algo())
+        mac = hmac.HMAC(state.mac_key, state.hash_algo())
         mac.update(mac_input)
         mac_calculated = mac.finalize()
         if mac_calculated != mac_received:
@@ -206,14 +205,14 @@ class RecordLayer(object):
         return msg
 
     def _decode_cbc(self, state, fragment):
-        if state._implicit_iv:
-            iv = state._iv_value
+        if state.implicit_iv:
+            iv = state.iv_value
             cipher_text = fragment
-            state._iv_value = fragment[-state._iv_len :]
+            state.iv_value = fragment[-state.iv_len :]
         else:
-            iv = fragment[: state._iv_len]
-            cipher_text = fragment[state._iv_len :]
-        cipher = Cipher(state._cipher_algo(state._enc_key), modes.CBC(iv))
+            iv = fragment[: state.iv_len]
+            cipher_text = fragment[state.iv_len :]
+        cipher = Cipher(state.cipher_algo(state.enc_key), modes.CBC(iv))
         decryptor = cipher.decryptor()
         plain_text = decryptor.update(cipher_text) + decryptor.finalize()
 
@@ -233,47 +232,47 @@ class RecordLayer(object):
     def _unprotect_block_cipher(self, state, content_type, version, fragment):
         # Only TLS1.2 currently supported
 
-        if state._encrypt_then_mac:
+        if state.encrypt_then_mac:
             fragment = self._verify_mac(state, content_type, version, fragment)
             plain_text = ProtocolData(self._decode_cbc(state, fragment))
         else:
             fragment = self._decode_cbc(state, fragment)
             plain_text = self._verify_mac(state, content_type, version, fragment)
 
-        state._seq_nbr += 1
+        state.seq_nbr += 1
         return ProtocolData(plain_text)
 
     def _unprotect_stream_cipher(self, state, content_type, version, fragment):
-        fragment = state._cipher_object.update(fragment)
+        fragment = state.cipher_object.update(fragment)
         clear_text = self._verify_mac(state, content_type, version, fragment)
-        state._seq_nbr += 1
+        state.seq_nbr += 1
         return ProtocolData(clear_text)
 
     def _unprotect_aead_cipher(self, state, content_type, version, fragment):
         nonce_explicit = fragment[:8]
         cipher_text = bytes(fragment[8:])
         aad = ProtocolData()
-        aad.append_uint64(state._seq_nbr)
+        aad.append_uint64(state.seq_nbr)
         aad.append_uint8(content_type.value)
         aad.append_uint16(version.value)
         aad.append_uint16(len(cipher_text) - 16)  # substract what aes_gcm adds
-        nonce = bytes(state._iv_value + nonce_explicit)
-        aesgcm = aead.AESGCM(state._enc_key)
-        state._seq_nbr += 1
+        nonce = bytes(state.iv_value + nonce_explicit)
+        aesgcm = aead.AESGCM(state.enc_key)
+        state.seq_nbr += 1
         return ProtocolData(aesgcm.decrypt(nonce, cipher_text, bytes(aad)))
 
     def _unprotect_chacha_cipher(self, state, content_type, version, fragment):
         nonce_val = (
-            int.from_bytes(state._iv_value, "big", signed=False) ^ state._seq_nbr
+            int.from_bytes(state.iv_value, "big", signed=False) ^ state.seq_nbr
         )
-        nonce = nonce_val.to_bytes(state._iv_len, "big", signed=False)
+        nonce = nonce_val.to_bytes(state.iv_len, "big", signed=False)
         aad = ProtocolData()
-        aad.append_uint64(state._seq_nbr)
+        aad.append_uint64(state.seq_nbr)
         aad.append_uint8(content_type.value)
         aad.append_uint16(version.value)
         aad.append_uint16(len(fragment) - 16)  # substract what chacha-poly adds
-        chachapoly = aead.ChaCha20Poly1305(state._enc_key)
-        state._seq_nbr += 1
+        chachapoly = aead.ChaCha20Poly1305(state.enc_key)
+        state.seq_nbr += 1
         return ProtocolData(chachapoly.decrypt(nonce, bytes(fragment), bytes(aad)))
 
     def _unprotect(self, content_type, version, fragment):
@@ -281,16 +280,16 @@ class RecordLayer(object):
         if rstate is None:
             return fragment
         else:
-            if rstate._cipher_type == tls.CipherType.BLOCK:
+            if rstate.cipher_type == tls.CipherType.BLOCK:
                 return self._unprotect_block_cipher(
                     rstate, content_type, version, fragment
                 )
-            elif rstate._cipher_type == tls.CipherType.STREAM:
+            elif rstate.cipher_type == tls.CipherType.STREAM:
                 return self._unprotect_stream_cipher(
                     rstate, content_type, version, fragment
                 )
-            elif rstate._cipher_type == tls.CipherType.AEAD:
-                if rstate._cipher_primitive == tls.CipherPrimitive.CHACHA:
+            elif rstate.cipher_type == tls.CipherType.AEAD:
+                if rstate.cipher_primitive == tls.CipherPrimitive.CHACHA:
                     return self._unprotect_chacha_cipher(
                         rstate, content_type, version, fragment
                     )
@@ -354,14 +353,14 @@ class RecordLayer(object):
 
     def update_write_state(self, new_state):
         state = RecordLayerState(new_state)
-        if state._cipher_type == tls.CipherType.STREAM:
-            cipher = Cipher(state._cipher_algo(state._enc_key), mode=None)
-            state._cipher_object = cipher.encryptor()
+        if state.cipher_type == tls.CipherType.STREAM:
+            cipher = Cipher(state.cipher_algo(state.enc_key), mode=None)
+            state.cipher_object = cipher.encryptor()
         self._write_state = state
 
     def update_read_state(self, new_state):
         state = RecordLayerState(new_state)
-        if state._cipher_type == tls.CipherType.STREAM:
-            cipher = Cipher(state._cipher_algo(state._enc_key), mode=None)
-            state._cipher_object = cipher.decryptor()
+        if state.cipher_type == tls.CipherType.STREAM:
+            cipher = Cipher(state.cipher_algo(state.enc_key), mode=None)
+            state.cipher_object = cipher.decryptor()
         self._read_state = state
