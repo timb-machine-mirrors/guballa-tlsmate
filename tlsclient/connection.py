@@ -522,4 +522,5 @@ class TlsConnection(object):
             hash_algo=self.hash_algo,
             compression_method=self.compression_method,
             encrypt_then_mac=self.encrypt_then_mac,
+            implicit_iv=(self.version <= tls.Version.TLS10),
         )

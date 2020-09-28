@@ -15,7 +15,7 @@ class TestSuite(object):
     def run(self):
 
         client_profile = self.create_client_profile()
-        client_profile.versions = [tls.Version.TLS11]
+        client_profile.versions = [tls.Version.TLS10]
         client_profile.cipher_suites = [
             # tls.CipherSuite.TLS_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
@@ -83,7 +83,7 @@ class TestSuite(object):
             0x0203,
         ]
         # client_profile.support_encrypt_then_mac = True
-        client_profile.support_extended_master_secret = True
+        # client_profile.support_extended_master_secret = True
 
         with client_profile.create_connection() as conn:
 
@@ -97,6 +97,8 @@ class TestSuite(object):
             conn.wait(msg.Finished)
             conn.send(msg.AppData(b"GET / HTTP/1.1\n"))
             app_data = conn.wait(msg.AppData)
+            while len(app_data.data) == 0:
+                app_data = conn.wait(msg.AppData)
             for line in app_data.data.decode("utf-8").split("\n"):
                 if line.startswith("s_server"):
-                    logging.debug("openssl_command: " +line)
+                    logging.debug("openssl_command: " + line)

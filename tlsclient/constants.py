@@ -734,6 +734,7 @@ StateUpdateParams = collections.namedtuple(
         "hash_algo",
         "compression_method",  # tls.CompressionMethod
         "encrypt_then_mac",
+        "implicit_iv",
     ],
 )
 

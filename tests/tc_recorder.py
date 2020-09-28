@@ -99,6 +99,8 @@ class TcRecorder(metaclass=abc.ABCMeta):
             # information.
             conn.send(msg.AppData(b"GET / HTTP/1.1\n"))
             app_data = conn.wait(msg.AppData)
+            while not len(app_data.data):
+                app_data = conn.wait(msg.AppData)
             for line in app_data.data.decode("utf-8").split("\n"):
                 if line.startswith("s_server"):
                     logging.debug("openssl_command: " + line)

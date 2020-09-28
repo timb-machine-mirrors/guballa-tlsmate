@@ -48,7 +48,7 @@ class Socket(object):
             return data
         if self._socket is None:
             self._open_socket()
-        rfds, wfds, efds = select.select([self._socket], [], [], timeout/1000)
+        rfds, wfds, efds = select.select([self._socket], [], [], timeout / 1000)
         if rfds:
             for fd in rfds:
                 if fd is self._socket:

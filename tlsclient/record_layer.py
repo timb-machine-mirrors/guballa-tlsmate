@@ -27,6 +27,7 @@ class RecordLayerState(object):
         self._hash_algo = param.hash_algo
         self._compression_method = param.compression_method
         self._encrypt_then_mac = param.encrypt_then_mac
+        self._implicit_iv = param.implicit_iv
         self._cipher_object = None
 
 
@@ -66,32 +67,40 @@ class RecordLayer(object):
         hmac_bytes = mac.finalize()
         fragment.extend(hmac_bytes)
 
-    def _encrypt_cbc(self, state, iv, fragment):
+    def _encrypt_cbc(self, state, fragment):
         # padding
         length = len(fragment) + 1
         missing_bytes = state._block_size - (length % state._block_size)
         fragment.extend(struct.pack("!B", missing_bytes) * (missing_bytes + 1))
 
+        if state._implicit_iv:
+            iv = state._iv_value
+        else:
+            # iv should be random but we want to have it reproducable
+            iv = ProtocolData(state._iv_value[:-4])
+            iv.append_uint32(state._seq_nbr)
+
         cipher = Cipher(state._cipher_algo(state._enc_key), modes.CBC(iv))
         encryptor = cipher.encryptor()
-        return encryptor.update(fragment) + encryptor.finalize()
+        cipher_block = encryptor.update(fragment) + encryptor.finalize()
+        if state._implicit_iv:
+            state._iv_value = cipher_block[-state._iv_len :]
+            return cipher_block
+        else:
+            return iv + cipher_block
 
     def _protect_block_cipher(self, state, content_type, version, fragment):
         # restrictions: only TLS1.1/1.2 supported right now (handling of iv has
         # changed), block ciphers are not applicable for TLS1.3
 
-        # iv should be random but we want to have it reproducable
-        iv = ProtocolData(state._iv_value[:-4])
-        iv.append_uint32(state._seq_nbr)
-
         if state._encrypt_then_mac:
-            fragment = self._encrypt_cbc(state, iv, fragment)
-            fragment = ProtocolData(iv + fragment)
+            fragment = self._encrypt_cbc(state, fragment)
+            fragment = ProtocolData(fragment)
             self._append_mac(state, content_type, version, fragment)
         else:
             self._append_mac(state, content_type, version, fragment)
-            fragment = self._encrypt_cbc(state, iv, fragment)
-            fragment = ProtocolData(iv + fragment)
+            fragment = self._encrypt_cbc(state, fragment)
+            fragment = ProtocolData(fragment)
 
         self._add_to_sendbuffer(content_type, version, fragment)
 
@@ -197,8 +206,13 @@ class RecordLayer(object):
         return msg
 
     def _decode_cbc(self, state, fragment):
-        iv = fragment[: state._iv_len]
-        cipher_text = fragment[state._iv_len :]
+        if state._implicit_iv:
+            iv = state._iv_value
+            cipher_text = fragment
+            state._iv_value = fragment[-state._iv_len :]
+        else:
+            iv = fragment[: state._iv_len]
+            cipher_text = fragment[state._iv_len :]
         cipher = Cipher(state._cipher_algo(state._enc_key), modes.CBC(iv))
         decryptor = cipher.decryptor()
         plain_text = decryptor.update(cipher_text) + decryptor.finalize()
