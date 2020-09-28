@@ -4,6 +4,7 @@
 
 import abc
 import pickle
+import logging
 from dependency_injector import providers
 import tlsclient.constants as tls
 import tlsclient.messages as msg
@@ -89,7 +90,19 @@ class TcRecorder(metaclass=abc.ABCMeta):
             conn.send(msg.ClientKeyExchange, msg.ChangeCipherSpec, msg.Finished)
             conn.wait(msg.ChangeCipherSpec)
             conn.wait(msg.Finished)
-            conn.send(msg.AppData(b"Here are some data!"))
+
+            # Cool feature by openssl: if the server is started with the -www
+            # option, an HTTP get request will return some information,
+            # including the command line used to start the server. We will
+            # extract this line and add it to the pickle file.
+            # The command openssl_command.py can then be used to read out this
+            # information.
+            conn.send(msg.AppData(b"GET / HTTP/1.1\n"))
+            app_data = conn.wait(msg.AppData)
+            for line in app_data.data.decode("utf-8").split("\n"):
+                if line.startswith("s_server"):
+                    logging.debug("openssl_command: " + line)
+                    conn.recorder.trace(openssl_command=line)
         return conn
 
     def record_testcase(self):
@@ -98,6 +111,7 @@ class TcRecorder(metaclass=abc.ABCMeta):
         All messages sent and received by the record layer are recorded, as well
         as all the random numbers and the keying material used in the handshake.
         """
+        logging.basicConfig(level="DEBUG")
         pickle_file = self.get_pickle_file()
         config = {"server": self.server, "port": self.port}
         container = Container(config=config)

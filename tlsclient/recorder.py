@@ -36,6 +36,7 @@ class Recorder(object):
         "rsa_enciphered",
         "x_val",
         "y_val",
+        "openssl_command",
     ]
 
     def __init__(self):

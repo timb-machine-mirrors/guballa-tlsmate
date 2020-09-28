@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Module containing the test suite
 """
+
+import logging
 import tlsclient.messages as msg
 import tlsclient.constants as tls
 
@@ -24,7 +26,7 @@ class TestSuite(object):
             # tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
             # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-            # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
             # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
@@ -40,7 +42,7 @@ class TestSuite(object):
             # tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_128_CBC_SHA,
             # tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_256_CBC_SHA,
             # tls.CipherSuite.TLS_RSA_WITH_IDEA_CBC_SHA,
-            tls.CipherSuite.TLS_RSA_WITH_RC4_128_SHA
+            # tls.CipherSuite.TLS_RSA_WITH_RC4_128_SHA,
         ]
         client_profile.supported_groups = [
             tls.SupportedGroups.X25519,
@@ -97,4 +99,4 @@ class TestSuite(object):
             app_data = conn.wait(msg.AppData)
             for line in app_data.data.decode("utf-8").split("\n"):
                 if line.startswith("s_server"):
-                    print(line)
+                    logging.debug("openssl_command: " +line)
