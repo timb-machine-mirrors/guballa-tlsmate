@@ -42,10 +42,6 @@ class RecordLayer(object):
         self._flush_each_fragment = False
         self._recorder = recorder
 
-    def set_recorder(self, recorder):
-        self._recorder = recorder
-        self._socket.set_recorder(recorder)
-
     def _add_to_sendbuffer(self, content_type, version, fragment):
         self._send_buffer.append_uint8(content_type.value)
         self._send_buffer.append_uint16(version.value)

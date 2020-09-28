@@ -22,7 +22,7 @@ class TestCase(TcRecorder):
 
     def update_client_profile(self, profile):
 
-        self.support_encrypt_then_mac = True
+        profile.support_encrypt_then_mac = True
 
 
 if __name__ == "__main__":

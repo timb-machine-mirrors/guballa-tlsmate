@@ -32,9 +32,6 @@ class Socket(object):
             logging.debug("Closing socket")
             self._socket.close()
 
-    def set_recorder(self, recorder):
-        self._recorder = recorder
-
     def sendall(self, data):
         cont = self._recorder.trace_socket_sendall(data)
         if cont:

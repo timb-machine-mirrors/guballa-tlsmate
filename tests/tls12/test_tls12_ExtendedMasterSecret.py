@@ -22,7 +22,7 @@ class TestCase(TcRecorder):
 
     def update_client_profile(self, profile):
 
-        self.support_extended_master_secret = True
+        profile.support_extended_master_secret = True
 
 
 if __name__ == "__main__":
