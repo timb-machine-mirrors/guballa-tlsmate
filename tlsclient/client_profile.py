@@ -17,9 +17,10 @@ class ClientProfile(object):
         ]
         self.compression_methods = [tls.CompressionMethod.NULL]
         self.support_session_id = False
+        self.session_state_id = None
 
         self.support_session_ticket = False
-        self.session_id = ProtocolData()
+        self.session_state_ticket = None
 
         self.support_sni = True
         self.server_name = server_name
@@ -40,13 +41,26 @@ class ClientProfile(object):
     def create_connection(self):
         return self.connection_factory().set_profile(self)
 
+    def save_session_state_id(self, session_state):
+        self.session_state_id = session_state
+
+    def get_session_state_id(self):
+        return self.session_state_id
+
+    def save_session_state_ticket(self, session_state):
+        self.session_state_ticket = session_state
+
+
     def client_hello(self):
         """Returns an instance of the ClientHello, populated according to the profile
         """
         msg = ClientHello()
         msg.client_version = max(self.versions)
         msg.random = None  # will be provided autonomously
-        msg.session_id = self.session_id
+        if self.session_state_id is None:
+            msg.session_id = ProtocolData()
+        else:
+            msg.session_id = self.session_state_id.session_id
         msg.cipher_suites = self.cipher_suites
         msg.compression_methods = self.compression_methods
         if self.support_sni:

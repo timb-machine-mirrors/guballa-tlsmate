@@ -7,11 +7,20 @@ import logging
 import re
 import os
 import time
+import collections
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
 from tlsclient.messages import HandshakeMessage, ChangeCipherSpecMessage, AppDataMessage
 from tlsclient import mappings
+
+SessionStateId = collections.namedtuple(
+    "SessionStateId", ["session_id", "cipher_suite", "version", "master_secret"]
+)
+
+SessionStateTicket = collections.namedtuple(
+    "SessionStateTicket", ["session_ticket", "cipher_suite", "version", "master_secret"]
+)
 
 
 def get_random_value():
@@ -82,6 +91,8 @@ class TlsConnection(object):
         self._msg_hash_active = False
         self.recorder = recorder
         self.hmac_prf = hmac_prf
+        self._session_id = None
+        self._finished_treated = False
 
         # general
         self.entity = entity
@@ -168,11 +179,11 @@ class TlsConnection(object):
         return msg
 
     def gen_finished(self, cls):
+        intermediate = not self._finished_treated
+        hash_val = self.hmac_prf.finalize_msg_digest(intermediate=intermediate)
         if self.entity == tls.Entity.CLIENT:
-            hash_val = self.hmac_prf.finalize_msg_digest(intermediate=True)
             label = b"client finished"
         else:
-            hash_val = self.hmac_prf.finalize_msg_digest()
             label = b"server finished"
         val = ProtocolData(self.hmac_prf.prf(self.master_secret, label, hash_val, 12))
         self.recorder.trace(msg_digest_finished_sent=hash_val)
@@ -181,6 +192,9 @@ class TlsConnection(object):
         self.update_write_state()
         msg = cls()
         msg.verify_data = val
+        if not self._finished_treated:
+            logging.info("Handshake finished, secure connection established")
+        self._finished_treated = True
         return msg
 
     _generate_out_msg = {
@@ -271,6 +285,16 @@ class TlsConnection(object):
         self.record_layer_version = min(self.version, tls.Version.TLS12)
         self.update_cipher_suite(msg.cipher_suite)
         self.server_random = msg.random
+        if len(msg.session_id):
+            session_state = self.client_profile.get_session_state_id()
+            if session_state is not None:
+                if session_state.session_id == msg.session_id:
+                    # abbreviated handshake
+                    # TODO: check version and ciphersuite
+                    self.master_secret = session_state.master_secret
+                    self.key_deriviation()
+
+            self._session_id = msg.session_id
         self.encrypt_then_mac = (
             self.get_extension(msg.extensions, tls.Extension.ENCRYPT_THEN_MAC)
             is not None
@@ -304,13 +328,12 @@ class TlsConnection(object):
 
     def inc_finished(self, msg):
         verify_data = ProtocolData(msg.verify_data)
-
         logging.debug(f"Finished.verify_data(in): {verify_data.dump()}")
+        intermediate = not self._finished_treated
+        hash_val = self.hmac_prf.finalize_msg_digest(intermediate=intermediate)
         if self.entity == tls.Entity.CLIENT:
-            hash_val = self.hmac_prf.finalize_msg_digest()
             label = b"server finished"
         else:
-            hash_val = self.hmac_prf.finalize_msg_digest(intermediate=True)
             label = b"client finished"
         val = self.hmac_prf.prf(self.master_secret, label, hash_val, 12)
         self.recorder.trace(msg_digest_finished_rec=hash_val)
@@ -322,7 +345,9 @@ class TlsConnection(object):
                 tls.AlertDescription.BAD_RECORD_MAC,
             )
         logging.info("Received Finished sucessfully verified")
-        logging.info("Handshake finished, secure connection established")
+        if not self._finished_treated:
+            logging.info("Handshake finished, secure connection established")
+        self._finished_treated = True
         return self
 
     _incoming_msg = {
@@ -459,6 +484,15 @@ class TlsConnection(object):
             )
         logging.info(f"master_secret: {self.master_secret.dump()}")
         self.recorder.trace(master_secret=self.master_secret)
+        if self._session_id is not None:
+            self.client_profile.save_session_state_id(
+                SessionStateId(
+                    session_id=self._session_id,
+                    cipher_suite=self.cipher_suite,
+                    version=self.version,
+                    master_secret=self.master_secret,
+                )
+            )
 
         return
 
