@@ -47,7 +47,7 @@ class Recorder(object):
         self._msg_sendall = []
         self._msg_recv = []
         for attr in self._attr:
-            setattr(self, attr, None)
+            setattr(self, attr, [])
 
     def deactivate(self):
         self._state = RecorderState.INACTIVE
@@ -84,9 +84,14 @@ class Recorder(object):
         name, val = kwargs.popitem()
         if name in self._attr:
             if self._state == RecorderState.REPLAYING:
-                assert getattr(self, name) == val
+                item = getattr(self, name)
+                if isinstance(item, list):
+                    rec_val = item.pop(0)
+                else:
+                    rec_val = item
+                assert rec_val == val
             else:
-                setattr(self, name, val)
+                getattr(self, name).append(val)
 
     def inject(self, **kwargs):
         name, val = kwargs.popitem()
@@ -95,6 +100,8 @@ class Recorder(object):
         if name in self._attr:
             if self._state == RecorderState.REPLAYING:
                 val = getattr(self, name)
+                if isinstance(val, list):
+                    val = val.pop(0)
             else:
-                setattr(self, name, val)
+                getattr(self, name).append(val)
         return val

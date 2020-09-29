@@ -120,15 +120,14 @@ class TcRecorder(metaclass=abc.ABCMeta):
         recorder = container.recorder()
         recorder.openssl_s_server = self.openssl_s_server
         recorder.record()
-        conn = self.scenario(container)
+        self.scenario(container)
 
         if pickle_file.exists():
             print("File {} existing. Testcase not generated".format(pickle_file))
-            return conn
+            return
 
         with open(pickle_file, "wb") as fd:
-            pickle.dump(conn.recorder, fd)
-        return conn
+            pickle.dump(recorder, fd)
 
     def test_replay_scenario(self):
         """This is the method called by pytest
