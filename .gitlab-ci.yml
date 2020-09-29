@@ -26,7 +26,7 @@ test/python38:
   image: python:3.8-slim
   script:
     - apt update --yes && apt upgrade --yes
-    - apt install build-essential libssl-dev libffi-dev python-dev
+    - apt install --yes build-essential libssl-dev libffi-dev python-dev
     - pip install tox
     - tox -e py38
 
