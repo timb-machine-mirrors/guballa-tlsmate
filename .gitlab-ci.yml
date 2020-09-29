@@ -5,28 +5,28 @@ stages:
 
 test/python36:
   stage: test
-  image: python:3.6-alpine
+  image: python:3.6-slim
   script:
-    - apk update && apk upgrade
-    - apk add build-essential libssl-dev libffi-dev python-dev
+    - apt update && apk upgrade
+    - apt install build-essential libssl-dev libffi-dev python-dev
     - pip install tox
     - tox -e py36
 
 test/python37:
   stage: test
-  image: python:3.7-alpine
+  image: python:3.7-slim
   script:
-    - apk update && apk upgrade
-    - apk add build-essential libssl-dev libffi-dev python-dev
+    - apt update && apk upgrade
+    - apt install build-essential libssl-dev libffi-dev python-dev
     - pip install tox
     - tox -e py37
 
 test/python38:
   stage: test
-  image: python:3.8-alpine
+  image: python:3.8-slim
   script:
-    - apk update && apk upgrade
-    - apk add build-essential libssl-dev libffi-dev python-dev
+    - apt update && apk upgrade
+    - apt install build-essential libssl-dev libffi-dev python-dev
     - pip install tox
     - tox -e py38
 
