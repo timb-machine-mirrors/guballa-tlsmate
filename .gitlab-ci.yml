@@ -7,8 +7,8 @@ test/python36:
   stage: test
   image: python:3.6-slim
   script:
-    - apt update && apt upgrade
-    - apt install build-essential libssl-dev libffi-dev python-dev
+    - apt update --yes && apt upgrade --yes
+    - apt install --yes build-essential libssl-dev libffi-dev python-dev
     - pip install tox
     - tox -e py36
 
@@ -16,8 +16,8 @@ test/python37:
   stage: test
   image: python:3.7-slim
   script:
-    - apt update && apt upgrade
-    - apt install build-essential libssl-dev libffi-dev python-dev
+    - apt update --yes && apt upgrade --yes
+    - apt install --yes build-essential libssl-dev libffi-dev python-dev
     - pip install tox
     - tox -e py37
 
@@ -25,7 +25,7 @@ test/python38:
   stage: test
   image: python:3.8-slim
   script:
-    - apt update && apt upgrade
+    - apt update --yes && apt upgrade --yes
     - apt install build-essential libssl-dev libffi-dev python-dev
     - pip install tox
     - tox -e py38
