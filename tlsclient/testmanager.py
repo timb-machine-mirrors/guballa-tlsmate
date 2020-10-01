@@ -10,9 +10,9 @@ class TestSuite(metaclass=abc.ABCMeta):
 
     prio = 100
 
-    def inject_dependencies(self, server_profile, client_profile):
+    def inject_dependencies(self, server_profile, client):
         self.server_profile = server_profile
-        self.client_profile = client_profile
+        self.client = client
 
     @abc.abstractmethod
     def run(self):
@@ -47,7 +47,7 @@ class TestManager(object):
                     logging.debug(f"starting test suite {test_suite_cls.name}")
                     test_suite = test_suite_cls()
                     test_suite.inject_dependencies(
-                        container.server_profile(), container.client_profile()
+                        container.server_profile(), container.client()
                     )
                     test_suite.run()
                     logging.debug(f"test suite {test_suite_cls.name} finished")

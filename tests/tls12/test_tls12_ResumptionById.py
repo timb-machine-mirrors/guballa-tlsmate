@@ -22,13 +22,13 @@ class TestCase(TcRecorder):
     # version = tls.Version.TLS12
 
     def scenario(self, container):
-        client_profile = container.client_profile()
+        client = container.client()
 
-        client_profile.versions = [tls.Version.TLS12]
-        client_profile.cipher_suites = [
+        client.versions = [tls.Version.TLS12]
+        client.cipher_suites = [
             tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
         ]
-        client_profile.supported_groups = [
+        client.supported_groups = [
             tls.SupportedGroups.X25519,
             tls.SupportedGroups.X448,
             tls.SupportedGroups.SECT163K1,
@@ -52,7 +52,7 @@ class TestCase(TcRecorder):
             tls.SupportedGroups.FFDHE2048,
             tls.SupportedGroups.FFDHE4096,
         ]
-        client_profile.signature_algorithms = [
+        client.signature_algorithms = [
             tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
             tls.SupportedGroups.X448,
             tls.SupportedGroups.SECT163K1,
@@ -76,7 +76,7 @@ class TestCase(TcRecorder):
             tls.SupportedGroups.FFDHE2048,
             tls.SupportedGroups.FFDHE4096,
         ]
-        with client_profile.create_connection() as conn:
+        with client.create_connection() as conn:
             conn.send(msg.ClientHello)
             conn.wait(msg.ServerHello)
             conn.wait(msg.Certificate, optional=True)
@@ -94,8 +94,8 @@ class TestCase(TcRecorder):
                     logging.debug("openssl_command: " + line)
                     conn.recorder.trace(openssl_command=line)
 
-        client_profile.support_session_id = True
-        with client_profile.create_connection() as conn:
+        client.support_session_id = True
+        with client.create_connection() as conn:
             conn.send(msg.ClientHello)
             conn.wait(msg.ServerHello)
             conn.wait(msg.ChangeCipherSpec)

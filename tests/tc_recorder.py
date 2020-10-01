@@ -65,23 +65,23 @@ class TcRecorder(metaclass=abc.ABCMeta):
 
         return self.path.resolve().parent / "recordings" / (name + ".pickle")
 
-    def update_client_profile(self, profile):
-        """Used in the test case to initialize the profile
+    def update_client(self, client):
+        """Used in the test case to initialize the client
         """
         pass
 
     def scenario(self, container):
         """The basic scenario to be recorded or replayed.
         """
-        client_profile = container.client_profile()
+        client = container.client()
 
-        client_profile.versions = [self.version]
-        client_profile.cipher_suites = [self.cipher_suite]
-        client_profile.supported_groups = self.supported_groups
-        client_profile.signature_algorithms = self.signature_algorithms
-        self.update_client_profile(client_profile)
+        client.versions = [self.version]
+        client.cipher_suites = [self.cipher_suite]
+        client.supported_groups = self.supported_groups
+        client.signature_algorithms = self.signature_algorithms
+        self.update_client(client)
 
-        with client_profile.create_connection() as conn:
+        with client.create_connection() as conn:
             conn.send(msg.ClientHello)
             conn.wait(msg.ServerHello)
             conn.wait(msg.Certificate, optional=True)

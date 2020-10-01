@@ -160,8 +160,8 @@ class TlsConnection(object):
         logging.debug("TLS connection closed")
         return False
 
-    def set_profile(self, client_profile):
-        self.client_profile = client_profile
+    def set_client(self, client):
+        self.client = client
         return self
 
     def get_extension(self, extensions, ext_id):
@@ -171,7 +171,7 @@ class TlsConnection(object):
         return None
 
     def generate_client_hello(self, msg_cls):
-        msg = self.client_profile.client_hello()
+        msg = self.client.client_hello()
         self.on_sending_client_hello(msg)
         return msg
 
@@ -292,7 +292,7 @@ class TlsConnection(object):
         self.update_cipher_suite(msg.cipher_suite)
         self.server_random = msg.random
         if len(msg.session_id):
-            session_state = self.client_profile.get_session_state_id()
+            session_state = self.client.get_session_state_id()
             if session_state is not None:
                 if session_state.session_id == msg.session_id:
                     # abbreviated handshake
@@ -497,7 +497,7 @@ class TlsConnection(object):
         logging.info(f"master_secret: {self.master_secret.dump()}")
         self.recorder.trace(master_secret=self.master_secret)
         if self._session_id is not None:
-            self.client_profile.save_session_state_id(
+            self.client.save_session_state_id(
                 SessionStateId(
                     session_id=self._session_id,
                     cipher_suite=self.cipher_suite,

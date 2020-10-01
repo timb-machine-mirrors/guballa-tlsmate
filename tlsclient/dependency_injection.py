@@ -7,7 +7,7 @@ from dependency_injector import containers, providers
 import tlsclient.constants as tls
 from tlsclient.server_profile import ServerProfile
 from tlsclient.connection import TlsConnection, TlsConnectionMsgs
-from tlsclient.client_profile import ClientProfile
+from tlsclient.client import Client
 from tlsclient.record_layer import RecordLayer
 from tlsclient.recorder import Recorder
 from tlsclient.socket import Socket
@@ -54,8 +54,8 @@ class Container(containers.DeclarativeContainer):
         hmac_prf=hmac_prf,
     )
 
-    client_profile = providers.Factory(
-        ClientProfile, connection_factory=connection.provider, server_name=config.server
+    client = providers.Factory(
+        Client, connection_factory=connection.provider, server_name=config.server
     )
 
     test_manager = providers.Singleton(TestManager)

@@ -15,9 +15,9 @@ class MyTestSuite(TestSuite):
     prio = 100
 
     def run(self):
-        client_profile = self.client_profile
-        client_profile.versions = [tls.Version.TLS12]
-        client_profile.cipher_suites = [
+        client = self.client
+        client.versions = [tls.Version.TLS12]
+        client.cipher_suites = [
             # tls.CipherSuite.TLS_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
             # tls.CipherSuite.TLS_AES_256_GCM_SHA384,
@@ -45,7 +45,7 @@ class MyTestSuite(TestSuite):
             # tls.CipherSuite.TLS_RSA_WITH_IDEA_CBC_SHA,
             # tls.CipherSuite.TLS_RSA_WITH_RC4_128_SHA,
         ]
-        client_profile.supported_groups = [
+        client.supported_groups = [
             # tls.SupportedGroups.X25519,
             # tls.SupportedGroups.X448,
             # tls.SupportedGroups.SECT163K1,
@@ -69,7 +69,7 @@ class MyTestSuite(TestSuite):
             # tls.SupportedGroups.FFDHE2048,
             # tls.SupportedGroups.FFDHE4096,
         ]
-        client_profile.signature_algorithms = [
+        client.signature_algorithms = [
             tls.SignatureScheme.ED25519,
             tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
             tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
@@ -83,10 +83,10 @@ class MyTestSuite(TestSuite):
             tls.SignatureScheme.ECDSA_SHA1,
             tls.SignatureScheme.RSA_PKCS1_SHA1,
         ]
-        # client_profile.support_encrypt_then_mac = True
-        # client_profile.support_extended_master_secret = True
+        # client.support_encrypt_then_mac = True
+        # client.support_extended_master_secret = True
 
-        with client_profile.create_connection() as conn:
+        with client.create_connection() as conn:
 
             conn.send(msg.ClientHello)
             conn.wait(msg.ServerHello)
@@ -105,8 +105,8 @@ class MyTestSuite(TestSuite):
                 if line.startswith("s_server"):
                     logging.debug("openssl_command: " + line)
 
-        client_profile.support_session_id = True
-        with client_profile.create_connection() as conn:
+        client.support_session_id = True
+        with client.create_connection() as conn:
             conn.send(msg.ClientHello)
             conn.wait(msg.ServerHello)
             conn.wait(msg.ChangeCipherSpec)

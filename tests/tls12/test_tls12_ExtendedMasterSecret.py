@@ -20,9 +20,9 @@ class TestCase(TcRecorder):
     # adapt it to your needs.
     # version = tls.Version.TLS12
 
-    def update_client_profile(self, profile):
+    def update_client(self, client):
 
-        profile.support_extended_master_secret = True
+        client.support_extended_master_secret = True
 
 
 if __name__ == "__main__":

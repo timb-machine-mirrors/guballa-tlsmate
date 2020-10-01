@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Module containing the class for the client profile
+"""Module containing the class for the client client
 """
 import tlsclient.constants as tls
 import tlsclient.extensions as ext
@@ -7,7 +7,7 @@ from tlsclient.protocol import ProtocolData
 from tlsclient.messages import ClientHello
 
 
-class ClientProfile(object):
+class Client(object):
     def __init__(self, connection_factory, server_name):
         self.connection_factory = connection_factory
         self.versions = [tls.Version.TLS12]
@@ -39,7 +39,7 @@ class ClientProfile(object):
         self.support_encrypt_then_mac = False
 
     def create_connection(self):
-        return self.connection_factory().set_profile(self)
+        return self.connection_factory().set_client(self)
 
     def save_session_state_id(self, session_state):
         self.session_state_id = session_state
@@ -51,7 +51,7 @@ class ClientProfile(object):
         self.session_state_ticket = session_state
 
     def client_hello(self):
-        """Returns an instance of the ClientHello, populated according to the profile
+        """Returns an instance of the ClientHello, populated according to the client
         """
         msg = ClientHello()
         msg.client_version = max(self.versions)
