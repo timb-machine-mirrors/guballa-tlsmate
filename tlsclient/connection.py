@@ -118,6 +118,7 @@ class TlsConnection(object):
         self.premaster_secret = None
         self.master_secret = None
         self.key_exchange = None
+        self.key_exchange_method = None
 
         # for key deriviation
         self.mac_key_len = None
@@ -438,6 +439,7 @@ class TlsConnection(object):
             if key_ex is None or key_ex.cls is None:
                 logging.debug(f"key exchange {res.group(1)} not supported")
                 return
+            self.key_exchange_method = key_exchange_method
             self.key_exchange = key_ex.cls(self, self.recorder)
 
             cipher = res.group(2)
