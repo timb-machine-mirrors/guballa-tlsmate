@@ -2,6 +2,7 @@
 """Module containing the test suite
 """
 
+import logging
 import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.testmanager import TestManager, TestSuite
@@ -13,38 +14,33 @@ class MyTestSuite(TestSuite):
     descr = "enumerate TLS versions and cipher suites"
     prio = 10
 
+    def enum_version(self, version, cipher_suites):
+        print(f"starting to enumerate {version.name}")
+        logging.info(f"starting to enumerate {version.name}")
+        self.client.versions = [version]
+
+        max_items = 32
+        while len(cipher_suites) > 0:
+            sub_set = cipher_suites[:max_items]
+            cipher_suites = cipher_suites[max_items:]
+
+            while sub_set:
+                self.client.cipher_suites = sub_set
+                with self.client.create_connection() as conn:
+                    conn.send(msg.ClientHello)
+                    message = conn.wait(msg.Any)
+                if isinstance(message, msg.ServerHello):
+                    if message.cipher_suite not in sub_set:
+                        raise ValueError("Hey, what's going on???")
+                    sub_set.remove(message.cipher_suite)
+                    print(message.cipher_suite.name)
+                else:
+                    sub_set = []
+        logging.info(f"enumeration for {version.name} finished")
+
     def run(self):
-        client = self.client
-        client.versions = [tls.Version.TLS12]
-        # client.cipher_suites = [
-        #    # tls.CipherSuite.TLS_AES_128_GCM_SHA256,
-        #    # tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
-        #    # tls.CipherSuite.TLS_AES_256_GCM_SHA384,
-        #    # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-        #    # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-        #    # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
-        #    # tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
-        #    # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-        #    # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-        #    # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
-        #    # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
-        #    # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
-        #    tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-        #    # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-        #    # tls.CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
-        #    # tls.CipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384,
-        #    # tls.CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
-        #    # tls.CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA,
-        #    # tls.CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
-        #    # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
-        #    # tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
-        #    # tls.CipherSuite.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,
-        #    # tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_128_CBC_SHA,
-        #    # tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_256_CBC_SHA,
-        #    # tls.CipherSuite.TLS_RSA_WITH_IDEA_CBC_SHA,
-        #    # tls.CipherSuite.TLS_RSA_WITH_RC4_128_SHA,
-        # ]
-        client.supported_groups = [
+        self.client.versions = [tls.Version.TLS12]
+        self.client.supported_groups = [
             tls.SupportedGroups.X25519,
             tls.SupportedGroups.X448,
             tls.SupportedGroups.SECT163K1,
@@ -68,7 +64,7 @@ class MyTestSuite(TestSuite):
             tls.SupportedGroups.FFDHE2048,
             tls.SupportedGroups.FFDHE4096,
         ]
-        client.signature_algorithms = [
+        self.client.signature_algorithms = [
             tls.SignatureScheme.ED25519,
             tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
             tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
@@ -82,33 +78,11 @@ class MyTestSuite(TestSuite):
             tls.SignatureScheme.ECDSA_SHA1,
             tls.SignatureScheme.RSA_PKCS1_SHA1,
         ]
-        # client.support_encrypt_then_mac = True
-        # client.support_extended_master_secret = True
         cipher_suites = list(tls.CipherSuite.__members__.values())
         cipher_suites.remove(tls.CipherSuite.TLS_FALLBACK_SCSV)
         cipher_suites.remove(tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV)
-        # cipher_suites = [
-        #    tls.CipherSuite.TLS_DHE_RSA_WITH_CAMELLIA_128_CBC_SHA256,
-        #    tls.CipherSuite.TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA256,
-        #    tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
-        #    tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_128_CBC_SHA256,
-        #    tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_256_CBC_SHA256,
-        # ]
 
-        max_items = 32
-        while len(cipher_suites) > 0:
-            sub_set = cipher_suites[:max_items]
-            cipher_suites = cipher_suites[max_items:]
+        self.enum_version(tls.Version.TLS10, cipher_suites[:])
+        self.enum_version(tls.Version.TLS11, cipher_suites[:])
+        self.enum_version(tls.Version.TLS12, cipher_suites[:])
 
-            while sub_set:
-                client.cipher_suites = sub_set
-                with client.create_connection() as conn:
-                    conn.send(msg.ClientHello)
-                    message = conn.wait(msg.Any)
-                if isinstance(message, msg.ServerHello):
-                    if message.cipher_suite not in sub_set:
-                        raise ValueError("Hey, what's going on???")
-                    sub_set.remove(message.cipher_suite)
-                    print(message.cipher_suite.name)
-                else:
-                    sub_set = []

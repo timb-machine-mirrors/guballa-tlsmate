@@ -105,7 +105,6 @@ class TlsConnection(object):
         self.version = None
         self.client_version_sent = None
         self.cipher_suite = None
-        self.key_exchange_method = None
         self.compression_method = None
         self.encrypt_then_mac = False
 
@@ -118,6 +117,7 @@ class TlsConnection(object):
         self.remote_public_key = None
         self.premaster_secret = None
         self.master_secret = None
+        self.key_exchange = None
 
         # for key deriviation
         self.mac_key_len = None
@@ -287,6 +287,14 @@ class TlsConnection(object):
         self.record_layer.flush()
 
     def on_server_hello_received(self, msg):
+        logging.info(f"server random: {msg.random.dump()}")
+        logging.info(f"version: {msg.version.name}")
+        logging.info(
+            f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite.name}"
+        )
+        for extension in msg.extensions:
+            ext = extension.extension_id
+            logging.info(f"extension {ext.value} {ext.name}")
         self.version = msg.version
         self.record_layer_version = min(self.version, tls.Version.TLS12)
         self.update_cipher_suite(msg.cipher_suite)
@@ -309,17 +317,6 @@ class TlsConnection(object):
             self.get_extension(msg.extensions, tls.Extension.EXTENDED_MASTER_SECRET)
             is not None
         )
-        if self.cipher_suite_supported:
-            key_ex = mappings.key_exchange_algo[self.key_exchange_method]
-            self.key_exchange = key_ex.cls(self, self.recorder)
-        logging.info(f"server random: {msg.random.dump()}")
-        logging.info(f"version: {msg.version.name}")
-        logging.info(
-            f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite.name}"
-        )
-        for extension in msg.extensions:
-            ext = extension.extension_id
-            logging.info(f"extension {ext.value} {ext.name}")
 
     def on_server_key_exchange_received(self, msg):
         self.dh_params = msg.dh
@@ -424,6 +421,7 @@ class TlsConnection(object):
         self.record_layer.update_read_state(state)
 
     def update_cipher_suite(self, cipher_suite):
+        self.cipher_suite = cipher_suite
         if self.version == tls.Version.TLS13:
             pass
         else:
@@ -436,6 +434,12 @@ class TlsConnection(object):
                     tls.AlertDescription.HandshakeFailure,
                 )
             key_exchange_method = tls.KeyExchangeAlgorithm.str2enum(res.group(1))
+            key_ex = mappings.key_exchange_algo.get(key_exchange_method)
+            if key_ex is None or key_ex.cls is None:
+                logging.debug(f"key exchange {res.group(1)} not supported")
+                return
+            self.key_exchange = key_ex.cls(self, self.recorder)
+
             cipher = res.group(2)
             # as the cipher starts with a digit, but enum names may not, we need
             # to check for 3DES manually.
@@ -443,17 +447,10 @@ class TlsConnection(object):
                 cipher = tls.SupportedCipher.TRIPPLE_DES_EDE_CBC
             else:
                 cipher = tls.SupportedCipher.str2enum(res.group(2))
-            hash_primitive = tls.SupportedHash.str2enum(res.group(3))
-            if key_exchange_method is None or cipher is None or hash_primitive is None:
+            cipher_info = mappings.supported_ciphers.get(cipher)
+            if cipher_info is None:
+                logging.debug("cipher {cipher} not supported")
                 return
-                raise FatalAlert(
-                    f"Negotiated cipher suite {cipher_suite.name} not supported",
-                    tls.AlertDescription.HandshakeFailure,
-                )
-            self.cipher_suite_supported = True
-            self.key_exchange_method = key_exchange_method
-            self.cipher = cipher
-            self.hash_primitive = hash_primitive
             (
                 self.cipher_primitive,
                 self.cipher_algo,
@@ -461,19 +458,29 @@ class TlsConnection(object):
                 self.enc_key_len,
                 self.block_size,
                 self.iv_len,
-            ) = mappings.supported_ciphers[cipher]
+            ) = cipher_info
+            self.cipher = cipher
+
+            hash_primitive = tls.SupportedHash.str2enum(res.group(3))
+            mac_info = mappings.supported_macs.get(hash_primitive)
+            if mac_info is None:
+                debug.logging("hash primitive {res.group(3)} not supported")
+                return
+            self.hash_primitive = hash_primitive
             (
                 self.hash_algo,
                 self.mac_len,
                 self.mac_key_len,
                 self.hmac_algo,
-            ) = mappings.supported_macs[hash_primitive]
+            ) = mac_info
+
             if self.cipher_type == tls.CipherType.AEAD:
                 self.mac_key_len = 0
             if self.version < tls.Version.TLS12:
                 self.hmac_prf.set_msg_digest_algo(None)
             else:
                 self.hmac_prf.set_msg_digest_algo(self.hmac_algo)
+            self.cipher_suite_supported = True
         logging.debug(f"hash_primitive: {self.hash_primitive.name}")
         logging.debug(f"cipher_primitive: {self.cipher_primitive.name}")
 
