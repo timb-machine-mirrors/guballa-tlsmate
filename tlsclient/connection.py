@@ -11,7 +11,13 @@ import collections
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
-from tlsclient.messages import HandshakeMessage, ChangeCipherSpecMessage, AppDataMessage
+from tlsclient.messages import (
+    HandshakeMessage,
+    ChangeCipherSpecMessage,
+    AppDataMessage,
+    Alert,
+    Any,
+)
 from tlsclient import mappings
 
 SessionStateId = collections.namedtuple(
@@ -130,6 +136,7 @@ class TlsConnection(object):
         self.cipher_algo = None
         self.cipher_type = None
         self.block_size = None
+        self.cipher_suite_supported = False
 
         # hash & mac
         self.hash_primitive = None
@@ -143,10 +150,9 @@ class TlsConnection(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is FatalAlert:
+            logging.debug("exception: " + exc_value.message)
             self.send(
-                FatalAlert(
-                    level=tls.AlertLevel.FATAL, description=exc_value.description
-                )
+                Alert(level=tls.AlertLevel.FATAL, description=exc_value.description)
             )
             self.record_layer.close_socket()
             return True
@@ -292,7 +298,7 @@ class TlsConnection(object):
                     # abbreviated handshake
                     # TODO: check version and ciphersuite
                     self.master_secret = session_state.master_secret
-                    self.key_deriviation()
+                    self.key_derivation()
 
             self._session_id = msg.session_id
         self.encrypt_then_mac = (
@@ -303,9 +309,9 @@ class TlsConnection(object):
             self.get_extension(msg.extensions, tls.Extension.EXTENDED_MASTER_SECRET)
             is not None
         )
-
-        key_ex = mappings.key_exchange_algo[self.key_exchange_method]
-        self.key_exchange = key_ex.cls(self, self.recorder)
+        if self.cipher_suite_supported:
+            key_ex = mappings.key_exchange_algo[self.key_exchange_method]
+            self.key_exchange = key_ex.cls(self, self.recorder)
         logging.info(f"server random: {msg.random.dump()}")
         logging.info(f"version: {msg.version.name}")
         logging.info(
@@ -373,7 +379,7 @@ class TlsConnection(object):
                 msg = HandshakeMessage.deserialize(fragment, self)
                 self.hmac_prf.update_msg_digest(fragment)
             elif content_type is tls.ContentType.ALERT:
-                raise NotImplementedError("Receiving an Alert is not yet implemented")
+                msg = Alert.deserialize(fragment, self)
             elif content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
                 msg = ChangeCipherSpecMessage.deserialize(fragment, self)
             elif content_type is tls.ContentType.APPLICATION_DATA:
@@ -381,7 +387,7 @@ class TlsConnection(object):
             else:
                 raise ValueError("Content type unknow")
 
-        if isinstance(msg, msg_class):
+        if (msg_class == Any) or isinstance(msg, msg_class):
             self.inspect_incoming_msg(msg)
             logging.info(f"Receiving {msg.msg_type.name}")
             self.msg.store_received_msg(msg)
@@ -391,14 +397,18 @@ class TlsConnection(object):
                 self.queued_msg = msg
                 return None
             else:
+                logging.debug("unexpected message received")
                 raise FatalAlert(
-                    f"Unexpected message received: {type(msg)}, expected: {msg_class}",
+                    (
+                        f"Unexpected message received: {msg.msg_type.name}, "
+                        f"expected: {msg_class.msg_type.name}"
+                    ),
                     tls.AlertDescription.UNEXPECTED_MESSAGE,
                 )
 
     def update_keys(self):
         self.generate_master_secret()
-        self.key_deriviation()
+        self.key_derivation()
 
     def update_write_state(self):
         state = self.get_pending_write_state(self.entity)
@@ -435,10 +445,12 @@ class TlsConnection(object):
                 cipher = tls.SupportedCipher.str2enum(res.group(2))
             hash_primitive = tls.SupportedHash.str2enum(res.group(3))
             if key_exchange_method is None or cipher is None or hash_primitive is None:
+                return
                 raise FatalAlert(
                     f"Negotiated cipher suite {cipher_suite.name} not supported",
                     tls.AlertDescription.HandshakeFailure,
                 )
+            self.cipher_suite_supported = True
             self.key_exchange_method = key_exchange_method
             self.cipher = cipher
             self.hash_primitive = hash_primitive
@@ -496,7 +508,7 @@ class TlsConnection(object):
 
         return
 
-    def key_deriviation(self):
+    def key_derivation(self):
 
         key_material = self.hmac_prf.prf(
             self.master_secret,

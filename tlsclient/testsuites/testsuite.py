@@ -10,9 +10,8 @@ from tlsclient.testmanager import TestManager, TestSuite
 
 @TestManager.register
 class MyTestSuite(TestSuite):
-    name = "test"
-    descr = "just a scratch test suite for the developer"
-    prio = 100
+    name = "My private Test"
+    prio = 10
 
     def run(self):
         client_profile = self.client_profile

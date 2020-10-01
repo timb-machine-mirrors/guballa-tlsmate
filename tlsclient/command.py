@@ -7,7 +7,6 @@ import logging
 
 import tlsclient.dependency_injection as dependency
 
-
 from tlsclient.version import __version__
 
 
@@ -66,23 +65,34 @@ def main():
     """The entry point for the command line interface
     """
 
+    config = {"server": "localhost", "port": 44330}
+
+    container = dependency.Container(config=config)
+    test_manager = container.test_manager()
     parser = build_parser()
+    all_names = []
+    for test_suite in test_manager.test_suites():
+        all_names.append(test_suite.name)
+        parser.add_argument(
+            "--" + test_suite.name,
+            help=test_suite.descr,
+            action="store_true",
+            default=False,
+        )
+
     args = parser.parse_args()
     if args.version:
         print_version()
         sys.exit(0)
     set_logging(args.logging)
 
-    config = {"server": "localhost", "port": 44330}
+    test_suite_names = []
+    for name in all_names:
+        if getattr(args, name):
+            test_suite_names.append(name)
 
-    container = dependency.Container(config=config)
+    if not test_suite_names:
+        options = " ".join(["--" + name for name in all_names])
+        parser.error("specify at least of the following options: " + options)
 
-    container.test_suite().run()
-
-    # parser = build_parser()
-    # args = parser.parse_args()
-
-    # if args.command is None:
-    #     parser.print_help()
-    # else:
-    #     args.func(args)
+    test_manager.run(container, test_suite_names)

@@ -26,7 +26,7 @@ class TestCase(TcRecorder):
 
         client_profile.versions = [tls.Version.TLS12]
         client_profile.cipher_suites = [
-            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
         ]
         client_profile.supported_groups = [
             tls.SupportedGroups.X25519,
@@ -109,6 +109,7 @@ class TestCase(TcRecorder):
             for line in app_data.data.decode("utf-8").split("\n"):
                 if line.startswith("s_server"):
                     logging.debug("openssl_command: " + line)
+
 
 if __name__ == "__main__":
     TestCase().record_testcase()

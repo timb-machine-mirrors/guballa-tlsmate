@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """Module for dependency injection
 """
+import importlib
+import pkgutil
+from dependency_injector import containers, providers
 import tlsclient.constants as tls
 from tlsclient.server_profile import ServerProfile
-from tlsclient.testsuite import TestSuite
 from tlsclient.connection import TlsConnection, TlsConnectionMsgs
 from tlsclient.client_profile import ClientProfile
 from tlsclient.record_layer import RecordLayer
@@ -11,7 +13,17 @@ from tlsclient.recorder import Recorder
 from tlsclient.socket import Socket
 from tlsclient.hmac_prf import HmacPrf
 
-from dependency_injector import containers, providers
+from tlsclient.testmanager import TestManager
+import tlsclient.testsuites.eval_cipher_suites as tmp1
+import tlsclient.testsuite as tmp2
+
+tmp1, tmp2  # make linters happy
+
+discovered_plugins = {
+    name: importlib.import_module(name)
+    for finder, name, ispkg in pkgutil.iter_modules()
+    if name.startswith("tlsclient_")
+}
 
 
 class Container(containers.DeclarativeContainer):
@@ -46,8 +58,4 @@ class Container(containers.DeclarativeContainer):
         ClientProfile, connection_factory=connection.provider, server_name=config.server
     )
 
-    test_suite = providers.Factory(
-        TestSuite,
-        server_profile=server_profile,
-        client_profile_factory=client_profile.provider,
-    )
+    test_manager = providers.Singleton(TestManager)

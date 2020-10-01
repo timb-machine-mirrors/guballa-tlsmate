@@ -128,9 +128,7 @@ class RecordLayer(object):
         state.seq_nbr += 1
 
     def _protect_chacha_cipher(self, state, content_type, version, fragment):
-        nonce_val = (
-            int.from_bytes(state.iv_value, "big", signed=False) ^ state.seq_nbr
-        )
+        nonce_val = int.from_bytes(state.iv_value, "big", signed=False) ^ state.seq_nbr
         nonce = nonce_val.to_bytes(state.iv_len, "big", signed=False)
         aad = ProtocolData()
         aad.append_uint64(state.seq_nbr)
@@ -258,9 +256,7 @@ class RecordLayer(object):
         return ProtocolData(aesgcm.decrypt(nonce, cipher_text, bytes(aad)))
 
     def _unprotect_chacha_cipher(self, state, content_type, version, fragment):
-        nonce_val = (
-            int.from_bytes(state.iv_value, "big", signed=False) ^ state.seq_nbr
-        )
+        nonce_val = int.from_bytes(state.iv_value, "big", signed=False) ^ state.seq_nbr
         nonce = nonce_val.to_bytes(state.iv_len, "big", signed=False)
         aad = ProtocolData()
         aad.append_uint64(state.seq_nbr)

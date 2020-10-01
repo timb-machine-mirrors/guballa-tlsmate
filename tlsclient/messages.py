@@ -18,6 +18,10 @@ class TlsMessage(metaclass=abc.ABCMeta):
         pass
 
 
+class Any(object):
+    pass
+
+
 class HandshakeMessage(TlsMessage):
 
     content_type = tls.ContentType.HANDSHAKE
@@ -368,6 +372,7 @@ class ChangeCipherSpec(ChangeCipherSpecMessage):
 class Alert(TlsMessage):
 
     content_type = tls.ContentType.ALERT
+    msg_type = tls.ContentType.ALERT
 
     def __init__(self, **kwargs):
         self.level = kwargs.get("level", tls.AlertLevel.FATAL)
@@ -387,6 +392,15 @@ class Alert(TlsMessage):
             alert.append_uint8(self.description.value)
 
         return alert
+
+    @classmethod
+    def deserialize(cls, fragment, conn):
+        msg = cls()
+        alert_level, offset = fragment.unpack_uint8(0)
+        msg.level = tls.AlertLevel.val2enum(alert_level)
+        descr, offset = fragment.unpack_uint8(offset)
+        msg.description = tls.AlertDescription(descr)
+        return msg
 
 
 class AppDataMessage(TlsMessage):

@@ -50,7 +50,6 @@ class ClientProfile(object):
     def save_session_state_ticket(self, session_state):
         self.session_state_ticket = session_state
 
-
     def client_hello(self):
         """Returns an instance of the ClientHello, populated according to the profile
         """
