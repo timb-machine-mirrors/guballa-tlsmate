@@ -170,12 +170,12 @@ class TlsConnection(object):
                 return ext
         return None
 
-    def gen_client_hello(self, msg_cls):
+    def generate_client_hello(self, msg_cls):
         msg = self.client_profile.client_hello()
-        self.inspect_out_client_hello(msg)
+        self.on_sending_client_hello(msg)
         return msg
 
-    def gen_client_key_exchange(self, cls):
+    def generate_client_key_exchange(self, cls):
         self.premaster_secret = self.key_exchange.agree_on_premaster_secret()
         self.recorder.trace(pre_master_secret=self.premaster_secret)
         logging.info(f"premaster_secret: {self.premaster_secret.dump()}")
@@ -184,7 +184,7 @@ class TlsConnection(object):
         self._post_sending_hook = self.update_keys
         return msg
 
-    def gen_finished(self, cls):
+    def generate_finished(self, cls):
         intermediate = not self._finished_treated
         hash_val = self.hmac_prf.finalize_msg_digest(intermediate=intermediate)
         if self.entity == tls.Entity.CLIENT:
@@ -204,9 +204,9 @@ class TlsConnection(object):
         return msg
 
     _generate_out_msg = {
-        tls.HandshakeType.CLIENT_HELLO: gen_client_hello,
-        tls.HandshakeType.CLIENT_KEY_EXCHANGE: gen_client_key_exchange,
-        tls.HandshakeType.FINISHED: gen_finished,
+        tls.HandshakeType.CLIENT_HELLO: generate_client_hello,
+        tls.HandshakeType.CLIENT_KEY_EXCHANGE: generate_client_key_exchange,
+        tls.HandshakeType.FINISHED: generate_finished,
     }
 
     def generate_outgoing_msg(self, msg_cls):
@@ -221,7 +221,7 @@ class TlsConnection(object):
             return method(self, msg_cls)
         return msg_cls()
 
-    def inspect_out_client_hello(self, msg):
+    def on_sending_client_hello(self, msg):
         if type(msg.client_version) == tls.Version:
             self.client_version_sent = msg.client_version.value
         else:
@@ -245,9 +245,9 @@ class TlsConnection(object):
             logging.info(f"extension {ext.value} {ext.name}")
         self.hmac_prf.start_msg_digest()
 
-    _inspect_outgoing_msg = {tls.HandshakeType.CLIENT_HELLO: inspect_out_client_hello}
+    _on_sending_message = {tls.HandshakeType.CLIENT_HELLO: on_sending_client_hello}
 
-    def inpect_outgoing_msg(self, msg):
+    def on_sending_message(self, msg):
         """Extract relevant data from a provided message instance
 
         This method is called if a completely setup message (i.e. an instance)
@@ -257,7 +257,7 @@ class TlsConnection(object):
         A user provided ClientHello() is the most relevant use case for this
         method.
         """
-        method = self._inspect_outgoing_msg.get(msg.msg_type)
+        method = self._on_sending_message.get(msg.msg_type)
         if method is not None:
             method(self, msg)
 
@@ -267,7 +267,7 @@ class TlsConnection(object):
             if inspect.isclass(msg):
                 msg = self.generate_outgoing_msg(msg)
             else:
-                self.inpect_outgoing_msg(msg)
+                self.on_sending_message(msg)
             msg_data = msg.serialize(self)
             if msg.content_type == tls.ContentType.HANDSHAKE:
                 self.hmac_prf.update_msg_digest(msg_data)
@@ -286,7 +286,7 @@ class TlsConnection(object):
 
         self.record_layer.flush()
 
-    def inc_server_hello(self, msg):
+    def on_server_hello_received(self, msg):
         self.version = msg.version
         self.record_layer_version = min(self.version, tls.Version.TLS12)
         self.update_cipher_suite(msg.cipher_suite)
@@ -321,7 +321,7 @@ class TlsConnection(object):
             ext = extension.extension_id
             logging.info(f"extension {ext.value} {ext.name}")
 
-    def inc_server_key_exchange(self, msg):
+    def on_server_key_exchange_received(self, msg):
         self.dh_params = msg.dh
         self.ec_params = msg.ec
         if msg.ec is not None:
@@ -329,10 +329,10 @@ class TlsConnection(object):
                 logging.info(f"named curve: {msg.ec.named_curve.name}")
         self.key_exchange.inspect_server_key_exchange(msg)
 
-    def inc_change_cipher_spec(self, msg):
+    def on_change_cipher_spec_received(self, msg):
         self.update_read_state()
 
-    def inc_finished(self, msg):
+    def on_finished_received(self, msg):
         verify_data = ProtocolData(msg.verify_data)
         logging.debug(f"Finished.verify_data(in): {verify_data.dump()}")
         intermediate = not self._finished_treated
@@ -356,16 +356,16 @@ class TlsConnection(object):
         self._finished_treated = True
         return self
 
-    _incoming_msg = {
-        tls.HandshakeType.SERVER_HELLO: inc_server_hello,
-        tls.HandshakeType.SERVER_KEY_EXCHANGE: inc_server_key_exchange,
-        tls.CCSType.CHANGE_CIPHER_SPEC: inc_change_cipher_spec,
-        tls.HandshakeType.FINISHED: inc_finished,
+    _on_msg_received = {
+        tls.HandshakeType.SERVER_HELLO: on_server_hello_received,
+        tls.HandshakeType.SERVER_KEY_EXCHANGE: on_server_key_exchange_received,
+        tls.CCSType.CHANGE_CIPHER_SPEC: on_change_cipher_spec_received,
+        tls.HandshakeType.FINISHED: on_finished_received,
     }
 
-    def inspect_incoming_msg(self, msg):
+    def on_msg_received(self, msg):
         """Called whenever a message is received before it is passed to the testcase"""
-        method = self._incoming_msg.get(msg.msg_type)
+        method = self._on_msg_received.get(msg.msg_type)
         if method is not None:
             method(self, msg)
 
@@ -388,7 +388,7 @@ class TlsConnection(object):
                 raise ValueError("Content type unknow")
 
         if (msg_class == Any) or isinstance(msg, msg_class):
-            self.inspect_incoming_msg(msg)
+            self.on_msg_received(msg)
             logging.info(f"Receiving {msg.msg_type.name}")
             self.msg.store_received_msg(msg)
             return msg
