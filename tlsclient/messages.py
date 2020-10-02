@@ -208,7 +208,7 @@ class KeyExchangeEC(object):
 
 
 class KeyExchangeDH(object):
-    def _deserialize_msg_body(self, fragment, offset, conn):
+    def _deserialize_msg_body(self, fragment, offset, conn, signature_present=True):
         p_length, offset = fragment.unpack_uint16(offset)
         self.p_val, offset = fragment.unpack_bytes(offset, p_length)
         g_len, offset = fragment.unpack_uint16(offset)
@@ -216,10 +216,11 @@ class KeyExchangeDH(object):
         self.g_val = int.from_bytes(g_bytes, "big")
         pub_key_len, offset = fragment.unpack_uint16(offset)
         self.public_key, offset = fragment.unpack_bytes(offset, pub_key_len)
-        sig_scheme, offset = fragment.unpack_uint16(offset)
-        self.sig_scheme = tls.SignatureScheme.val2enum(sig_scheme)
-        sig_length, offset = fragment.unpack_uint16(offset)
-        self.signature, offset = fragment.unpack_bytes(offset, sig_length)
+        if signature_present:
+            sig_scheme, offset = fragment.unpack_uint16(offset)
+            self.sig_scheme = tls.SignatureScheme.val2enum(sig_scheme)
+            sig_length, offset = fragment.unpack_uint16(offset)
+            self.signature, offset = fragment.unpack_bytes(offset, sig_length)
         return self
 
 
@@ -250,10 +251,11 @@ class ServerKeyExchange(HandshakeMessage):
         elif key_exchange_method in [
             tls.KeyExchangeAlgorithm.DHE_DSS,
             tls.KeyExchangeAlgorithm.DHE_RSA,
-            tls.KeyExchangeAlgorithm.DH_ANON,
         ]:
             # RFC5246
             self.dh = KeyExchangeDH()._deserialize_msg_body(fragment, offset, conn)
+        elif key_exchange_method == tls.KeyExchangeAlgorithm.DH_ANON:
+            self.dh = KeyExchangeDH()._deserialize_msg_body(fragment, offset, conn, signature_present=False)
         else:
             raise FatalAlert(
                 "Key exchange algorithm incompatible with ServerKeyExchange message",

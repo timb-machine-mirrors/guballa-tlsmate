@@ -16,7 +16,7 @@ class MyTestSuite(TestSuite):
 
     def run(self):
         client = self.client
-        client.versions = [tls.Version.TLS12]
+        client.versions = [tls.Version.TLS10]
         client.cipher_suites = [
             # tls.CipherSuite.TLS_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
@@ -30,7 +30,7 @@ class MyTestSuite(TestSuite):
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
-            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+            #tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
             # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
             # tls.CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384,
@@ -44,6 +44,7 @@ class MyTestSuite(TestSuite):
             # tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_256_CBC_SHA,
             # tls.CipherSuite.TLS_RSA_WITH_IDEA_CBC_SHA,
             # tls.CipherSuite.TLS_RSA_WITH_RC4_128_SHA,
+            tls.CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA
         ]
         client.supported_groups = [
             # tls.SupportedGroups.X25519,
