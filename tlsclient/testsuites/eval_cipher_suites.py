@@ -14,11 +14,32 @@ class MyTestSuite(TestSuite):
     descr = "enumerate TLS versions and cipher suites"
     prio = 10
 
+    def get_server_cs(self):
+        with self.client.create_connection() as conn:
+            conn.send(msg.ClientHello)
+            server_hello = conn.wait(msg.Any)
+        try:
+            return server_hello.cipher_suite
+        except:
+            return None
+
+    def get_server_preference(self, cipher_suites):
+        self.client.cipher_suites = cipher_suites
+        server_pref = []
+        while self.client.cipher_suites:
+            server_cs = self.get_server_cs()
+            server_pref.append(server_cs)
+            self.client.cipher_suites.remove(server_cs)
+        return server_pref
+
     def enum_version(self, version, cipher_suites):
         print(f"starting to enumerate {version.name}")
         logging.info(f"starting to enumerate {version.name}")
         self.client.versions = [version]
+        supported_cs = []
 
+        # get a list of all supported cipher suites, don't send more than
+        # max_items cipher suites in the ClientHello
         max_items = 32
         while len(cipher_suites) > 0:
             sub_set = cipher_suites[:max_items]
@@ -26,17 +47,39 @@ class MyTestSuite(TestSuite):
 
             while sub_set:
                 self.client.cipher_suites = sub_set
-                with self.client.create_connection() as conn:
-                    conn.send(msg.ClientHello)
-                    message = conn.wait(msg.Any)
-                if isinstance(message, msg.ServerHello):
-                    if message.cipher_suite not in sub_set:
-                        raise ValueError("Hey, what's going on???")
-                    sub_set.remove(message.cipher_suite)
-                    print(message.cipher_suite.name)
+                server_cs = self.get_server_cs()
+                if server_cs is not None:
+                    sub_set.remove(server_cs)
+                    supported_cs.append(server_cs)
                 else:
                     sub_set = []
+
+        # check if server enforce the cipher suite prio
+        server_prio = False
+        self.client.cipher_suites = supported_cs
+        server_cs = self.get_server_cs()
+        if server_cs != supported_cs[0]:
+            server_prio = True
+        else:
+            supported_cs.append(supported_cs.pop(0))
+            server_cs = self.get_server_cs()
+            if server_cs != supported_cs[0]:
+                server_prio = True
+
+        # determine order cipher suites on server side, if applicable
+        if server_prio:
+            supported_cs = self.get_server_preference(supported_cs)
+        else:
+            # esthetical: restore original order, which means the cipher suites
+            # are ordered according to the binary representation
+            supported_cs.insert(0, supported_cs.pop())
+
+        print(f"TLS Version {version.name}: server_prio: {server_prio}")
+        for cipher_suite in supported_cs:
+            print(f"0x{cipher_suite.value:04x} {cipher_suite.name}")
+
         logging.info(f"enumeration for {version.name} finished")
+        return supported_cs
 
     def run(self):
         self.client.versions = [tls.Version.TLS12]
