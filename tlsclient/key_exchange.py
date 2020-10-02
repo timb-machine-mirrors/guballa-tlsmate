@@ -103,8 +103,9 @@ class DhKeyExchange(KeyExchange):
         rem_pub_numbers = dh.DHPublicNumbers(self._rem_pub_key, dh_group)
         rem_pub_key = rem_pub_numbers.public_key()
         y_val = pub_key.public_numbers().y
-        self._recorder.trace(x_val=priv_key.private_numbers().x)
-        self._recorder.trace(y_val=y_val)
+        if self._recorder.is_recording():
+            self._recorder.trace(x_val=priv_key.private_numbers().x)
+            self._recorder.trace(y_val=y_val)
         self._local_pub_key = y_val.to_bytes(int(pub_key.key_size / 8), "big")
         return ProtocolData(priv_key.exchange(rem_pub_key).lstrip(b"\0"))
 

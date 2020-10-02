@@ -30,7 +30,7 @@ class MyTestSuite(TestSuite):
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
-            #tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+            # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
             # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
             # tls.CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384,
@@ -97,22 +97,6 @@ class MyTestSuite(TestSuite):
             conn.send(msg.ClientKeyExchange, msg.ChangeCipherSpec, msg.Finished)
             conn.wait(msg.ChangeCipherSpec)
             conn.wait(msg.Finished)
-            conn.send(msg.AppData(b"GET / HTTP/1.1\n"))
-            while True:
-                app_data = conn.wait(msg.AppData)
-                if len(app_data.data):
-                    break
-            for line in app_data.data.decode("utf-8").split("\n"):
-                if line.startswith("s_server"):
-                    logging.debug("openssl_command: " + line)
-
-        client.support_session_id = True
-        with client.create_connection() as conn:
-            conn.send(msg.ClientHello)
-            conn.wait(msg.ServerHello)
-            conn.wait(msg.ChangeCipherSpec)
-            conn.wait(msg.Finished)
-            conn.send(msg.ChangeCipherSpec, msg.Finished)
             conn.send(msg.AppData(b"GET / HTTP/1.1\n"))
             while True:
                 app_data = conn.wait(msg.AppData)

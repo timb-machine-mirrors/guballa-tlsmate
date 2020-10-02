@@ -466,15 +466,10 @@ class TlsConnection(object):
             hash_primitive = tls.SupportedHash.str2enum(res.group(3))
             mac_info = mappings.supported_macs.get(hash_primitive)
             if mac_info is None:
-                debug.logging("hash primitive {res.group(3)} not supported")
+                logging.debug("hash primitive {res.group(3)} not supported")
                 return
             self.hash_primitive = hash_primitive
-            (
-                self.hash_algo,
-                self.mac_len,
-                self.mac_key_len,
-                self.hmac_algo,
-            ) = mac_info
+            (self.hash_algo, self.mac_len, self.mac_key_len, self.hmac_algo) = mac_info
 
             if self.cipher_type == tls.CipherType.AEAD:
                 self.mac_key_len = 0

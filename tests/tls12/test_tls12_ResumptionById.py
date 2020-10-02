@@ -25,9 +25,7 @@ class TestCase(TcRecorder):
         client = container.client()
 
         client.versions = [tls.Version.TLS12]
-        client.cipher_suites = [
-            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
-        ]
+        client.cipher_suites = [tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA]
         client.supported_groups = [
             tls.SupportedGroups.X25519,
             tls.SupportedGroups.X448,

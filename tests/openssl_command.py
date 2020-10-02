@@ -17,7 +17,10 @@ def main():
         obj = pickle.load(fh)
     if hasattr(obj, "openssl_command"):
         if obj.openssl_command is not None:
-            print("openssl_command: " + obj.openssl_command)
+            cmd = obj.openssl_command
+            if isinstance(cmd, list):
+                cmd = cmd[0]
+            print("openssl_command: " + cmd)
             return
     print("No openssl command found.")
 

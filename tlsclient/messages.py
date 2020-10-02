@@ -255,7 +255,9 @@ class ServerKeyExchange(HandshakeMessage):
             # RFC5246
             self.dh = KeyExchangeDH()._deserialize_msg_body(fragment, offset, conn)
         elif key_exchange_method == tls.KeyExchangeAlgorithm.DH_ANON:
-            self.dh = KeyExchangeDH()._deserialize_msg_body(fragment, offset, conn, signature_present=False)
+            self.dh = KeyExchangeDH()._deserialize_msg_body(
+                fragment, offset, conn, signature_present=False
+            )
         else:
             raise FatalAlert(
                 "Key exchange algorithm incompatible with ServerKeyExchange message",
