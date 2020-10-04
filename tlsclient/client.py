@@ -62,26 +62,29 @@ class Client(object):
             msg.session_id = self.session_state_id.session_id
         msg.cipher_suites = self.cipher_suites
         msg.compression_methods = self.compression_methods
-        if self.support_sni:
-            msg.extensions.append(
-                ext.ExtServerNameIndication(host_name=self.server_name)
-            )
-        if self.support_extended_master_secret:
-            msg.extensions.append(ext.ExtExtendedMasterSecret())
-        if self.support_ec_point_formats:
-            msg.extensions.append(
-                ext.ExtEcPointFormats(ec_point_formats=self.ec_point_formats)
-            )
-        if self.support_supported_groups:
-            msg.extensions.append(
-                ext.ExtSupportedGroups(supported_groups=self.supported_groups)
-            )
-        if self.support_signature_algorithms:
-            msg.extensions.append(
-                ext.ExtSignatureAlgorithms(
-                    signature_algorithms=self.signature_algorithms
+        if msg.client_version == tls.Version.SSL30:
+            msg.extensions = None
+        else:
+            if self.support_sni:
+                msg.extensions.append(
+                    ext.ExtServerNameIndication(host_name=self.server_name)
                 )
-            )
-        if self.support_encrypt_then_mac:
-            msg.extensions.append(ext.ExtEncryptThenMac())
+            if self.support_extended_master_secret:
+                msg.extensions.append(ext.ExtExtendedMasterSecret())
+            if self.support_ec_point_formats:
+                msg.extensions.append(
+                    ext.ExtEcPointFormats(ec_point_formats=self.ec_point_formats)
+                )
+            if self.support_supported_groups:
+                msg.extensions.append(
+                    ext.ExtSupportedGroups(supported_groups=self.supported_groups)
+                )
+            if self.support_signature_algorithms:
+                msg.extensions.append(
+                    ext.ExtSignatureAlgorithms(
+                        signature_algorithms=self.signature_algorithms
+                    )
+                )
+            if self.support_encrypt_then_mac:
+                msg.extensions.append(ext.ExtEncryptThenMac())
         return msg

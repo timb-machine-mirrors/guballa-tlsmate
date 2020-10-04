@@ -241,9 +241,10 @@ class TlsConnection(object):
             logging.info(
                 f"cipher suite: 0x{cipher_suite.value:04x} {cipher_suite.name}"
             )
-        for extension in msg.extensions:
-            ext = extension.extension_id
-            logging.info(f"extension {ext.value} {ext.name}")
+        if msg.extensions is not None:
+            for extension in msg.extensions:
+                ext = extension.extension_id
+                logging.info(f"extension {ext.value} {ext.name}")
         self.hmac_prf.start_msg_digest()
 
     _on_sending_message = {tls.HandshakeType.CLIENT_HELLO: on_sending_client_hello}

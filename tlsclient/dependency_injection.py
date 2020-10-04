@@ -15,7 +15,7 @@ from tlsclient.hmac_prf import HmacPrf
 
 from tlsclient.testmanager import TestManager
 import tlsclient.testsuites.eval_cipher_suites as tmp1
-import tlsclient.testsuite as tmp2
+import tlsclient.testsuites.testsuite as tmp2
 
 tmp1, tmp2  # make linters happy
 

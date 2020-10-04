@@ -54,29 +54,30 @@ class MyTestSuite(TestSuite):
                 else:
                     sub_set = []
 
-        # check if server enforce the cipher suite prio
-        server_prio = False
-        self.client.cipher_suites = supported_cs
-        server_cs = self.get_server_cs()
-        if server_cs != supported_cs[0]:
-            server_prio = True
-        else:
-            supported_cs.append(supported_cs.pop(0))
+        if supported_cs:
+            # check if server enforce the cipher suite prio
+            server_prio = False
+            self.client.cipher_suites = supported_cs
             server_cs = self.get_server_cs()
             if server_cs != supported_cs[0]:
                 server_prio = True
+            else:
+                supported_cs.append(supported_cs.pop(0))
+                server_cs = self.get_server_cs()
+                if server_cs != supported_cs[0]:
+                    server_prio = True
 
-        # determine order cipher suites on server side, if applicable
-        if server_prio:
-            supported_cs = self.get_server_preference(supported_cs)
-        else:
-            # esthetical: restore original order, which means the cipher suites
-            # are ordered according to the binary representation
-            supported_cs.insert(0, supported_cs.pop())
+            # determine order cipher suites on server side, if applicable
+            if server_prio:
+                supported_cs = self.get_server_preference(supported_cs)
+            else:
+                # esthetical: restore original order, which means the cipher suites
+                # are ordered according to the binary representation
+                supported_cs.insert(0, supported_cs.pop())
 
-        print(f"TLS Version {version.name}: server_prio: {server_prio}")
-        for cipher_suite in supported_cs:
-            print(f"0x{cipher_suite.value:04x} {cipher_suite.name}")
+            print(f"TLS Version {version.name}: server_prio: {server_prio}")
+            for cipher_suite in supported_cs:
+                print(f"0x{cipher_suite.value:04x} {cipher_suite.name}")
 
         logging.info(f"enumeration for {version.name} finished")
         return supported_cs
@@ -125,6 +126,7 @@ class MyTestSuite(TestSuite):
         cipher_suites.remove(tls.CipherSuite.TLS_FALLBACK_SCSV)
         cipher_suites.remove(tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV)
 
+        self.enum_version(tls.Version.SSL30, cipher_suites[:])
         self.enum_version(tls.Version.TLS10, cipher_suites[:])
         self.enum_version(tls.Version.TLS11, cipher_suites[:])
         self.enum_version(tls.Version.TLS12, cipher_suites[:])
