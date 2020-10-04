@@ -1,0 +1,10 @@
+
+    - support for sessions tickets
+    - support for renegotiation
+    - support for tls13
+    - support for SSL2 (low prio)
+    - refactoring: don't use the cipher suite name to extract the properties,
+      use a mapping table instead
+    - generate a server profile (including export to yaml)
+    - verify signatures (signed public key)
+    - certificate validation and extraction to server profile
