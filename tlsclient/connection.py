@@ -156,6 +156,7 @@ class TlsConnection(object):
         self.client = client
         return self
 
+    # TODO: Move this to the extension module, as it is a static method anyway
     def get_extension(self, extensions, ext_id):
         for ext in extensions:
             if ext.extension_id == ext_id:
