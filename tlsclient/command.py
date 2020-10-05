@@ -4,6 +4,7 @@
 import sys
 import argparse
 import logging
+import yaml
 
 import tlsclient.dependency_injection as dependency
 
@@ -96,3 +97,4 @@ def main():
         parser.error("specify at least of the following options: " + options)
 
     test_manager.run(container, test_suite_names)
+    print(yaml.dump(container.server_profile().serialize_obj(), indent=4))

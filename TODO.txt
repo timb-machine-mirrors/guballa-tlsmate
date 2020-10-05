@@ -8,3 +8,4 @@
     - generate a server profile (including export to yaml)
     - verify signatures (signed public key)
     - certificate validation and extraction to server profile
+    - add a progress feedback, e.g. print a dot for each handshake

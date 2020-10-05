@@ -6,6 +6,7 @@ import logging
 import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.testmanager import TestManager, TestSuite
+from tlsclient.server_profile import SPCipherSuite, SPBool
 
 
 @TestManager.register
@@ -14,13 +15,28 @@ class MyTestSuite(TestSuite):
     descr = "enumerate TLS versions and cipher suites"
     prio = 10
 
+    def get_server_cs_and_cert(self):
+        with self.client.create_connection() as conn:
+            conn.send(msg.ClientHello)
+            server_hello = conn.wait(msg.ServerHello)
+            certificate = conn.wait(msg.Certificate, optional=True)
+            cert_chain_id = None
+            if certificate is not None:
+                cert_chain_id = self.server_profile.get_cert_chain_id(
+                    certificate.certificates
+                )
+            return SPCipherSuite(
+                cipher_suite=server_hello.cipher_suite, cert_chain_id=cert_chain_id
+            )
+        return None
+
     def get_server_cs(self):
         with self.client.create_connection() as conn:
             conn.send(msg.ClientHello)
             server_hello = conn.wait(msg.Any)
         try:
             return server_hello.cipher_suite
-        except:
+        except AttributeError:
             return None
 
     def get_server_preference(self, cipher_suites):
@@ -33,9 +49,9 @@ class MyTestSuite(TestSuite):
         return server_pref
 
     def enum_version(self, version, cipher_suites):
-        print(f"starting to enumerate {version.name}")
         logging.info(f"starting to enumerate {version.name}")
         self.client.versions = [version]
+        cs_tuples = {}
         supported_cs = []
 
         # get a list of all supported cipher suites, don't send more than
@@ -47,40 +63,42 @@ class MyTestSuite(TestSuite):
 
             while sub_set:
                 self.client.cipher_suites = sub_set
-                server_cs = self.get_server_cs()
-                if server_cs is not None:
-                    sub_set.remove(server_cs)
-                    supported_cs.append(server_cs)
+                sp_cipher_suite = self.get_server_cs_and_cert()
+                if sp_cipher_suite is not None:
+                    cs = sp_cipher_suite.cipher_suite
+                    sub_set.remove(cs)
+                    cs_tuples[cs] = sp_cipher_suite
+                    supported_cs.append(cs)
                 else:
                     sub_set = []
 
         if supported_cs:
-            # check if server enforce the cipher suite prio
-            server_prio = False
-            self.client.cipher_suites = supported_cs
-            server_cs = self.get_server_cs()
-            if server_cs != supported_cs[0]:
-                server_prio = True
+            if len(supported_cs) == 1:
+                server_prio = SPBool.C_NA
             else:
-                supported_cs.append(supported_cs.pop(0))
-                server_cs = self.get_server_cs()
-                if server_cs != supported_cs[0]:
-                    server_prio = True
+                server_prio = SPBool.C_FALSE
+                # check if server enforce the cipher suite prio
+                self.client.cipher_suites = supported_cs
+                if self.get_server_cs() != supported_cs[0]:
+                    server_prio = SPBool.C_TRUE
+                else:
+                    supported_cs.append(supported_cs.pop(0))
+                    if self.get_server_cs() != supported_cs[0]:
+                        server_prio = SPBool.C_TRUE
 
-            # determine order cipher suites on server side, if applicable
-            if server_prio:
-                supported_cs = self.get_server_preference(supported_cs)
-            else:
-                # esthetical: restore original order, which means the cipher suites
-                # are ordered according to the binary representation
-                supported_cs.insert(0, supported_cs.pop())
+                # determine the order of cipher suites on server side, if applicable
+                if server_prio == SPBool.C_TRUE:
+                    supported_cs = self.get_server_preference(supported_cs)
+                else:
+                    # esthetical: restore original order, which means the cipher suites
+                    # are ordered according to the binary representation
+                    supported_cs.insert(0, supported_cs.pop())
 
-            print(f"TLS Version {version.name}: server_prio: {server_prio}")
-            for cipher_suite in supported_cs:
-                print(f"0x{cipher_suite.value:04x} {cipher_suite.name}")
+            self.server_profile.new_version(version, server_prio)
+            for cs in supported_cs:
+                self.server_profile.add_cipher_suite(version, cs_tuples[cs])
 
         logging.info(f"enumeration for {version.name} finished")
-        return supported_cs
 
     def run(self):
         self.client.versions = [tls.Version.TLS12]
