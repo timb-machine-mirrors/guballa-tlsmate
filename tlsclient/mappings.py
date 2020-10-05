@@ -3,19 +3,12 @@
 """
 import tlsclient.constants as tls
 
-import collections
-
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers import algorithms, aead
 import tlsclient.key_exchange as keyex
-
-Groups = collections.namedtuple("Groups", "curve_algo")
+from tlsclient.structures import Cipher, Mac, KeyExchangeAlgo
 
 # map cipher to various parameters relevant for the record layer
-
-Cipher = collections.namedtuple(
-    "Cipher", "cipher_primitive cipher_algo cipher_type enc_key_len block_size iv_len"
-)
 
 supported_ciphers = {
     tls.SupportedCipher.AES_128_CBC: Cipher(
@@ -102,8 +95,6 @@ supported_ciphers = {
 
 # map hash algorithms to mac parameters
 
-Mac = collections.namedtuple("Mac", "hash_algo mac_len mac_key_len hmac_algo")
-
 supported_macs = {
     tls.SupportedHash.SHA256: Mac(
         hash_algo=hashes.SHA256, mac_len=32, mac_key_len=32, hmac_algo=hashes.SHA256
@@ -120,8 +111,6 @@ supported_macs = {
 }
 
 # map key exchange algorithm to the corresponding class
-
-KeyExchangeAlgo = collections.namedtuple("KeyExchangeAlgo", "cls")
 
 key_exchange_algo = {
     tls.KeyExchangeAlgorithm.DHE_DSS: KeyExchangeAlgo(cls=keyex.DhKeyExchange),

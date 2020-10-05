@@ -2,8 +2,6 @@
 """Module containing the server profile class
 """
 import abc
-import enum
-import collections
 
 
 class Serializable(metaclass=abc.ABCMeta):
@@ -33,16 +31,6 @@ class Serializable(metaclass=abc.ABCMeta):
                     val = func(val)
             obj[attr] = Serializable.serialize(val)
         return obj
-
-
-SPCipherSuite = collections.namedtuple("SPCipherSuite", "cipher_suite cert_chain_id")
-
-
-class SPBool(enum.Enum):
-    C_FALSE = 0
-    C_TRUE = 1
-    C_NA = 2
-    C_UNDETERMINED = 3
 
 
 class SPVersions(Serializable):

@@ -3,7 +3,6 @@
 """
 
 import enum
-import collections
 from tlsclient.alert import FatalAlert
 
 
@@ -719,23 +718,8 @@ class CipherType(ExtendedEnum):
     AEAD = enum.auto()
 
 
-StateUpdateParams = collections.namedtuple(
-    "StateUpdateParams",
-    [
-        "cipher_primitive",  # tls.CipherPrimitive
-        "cipher_algo",
-        "cipher_type",  # tls.CipherType
-        "block_size",
-        "enc_key",
-        "mac_key",
-        "iv_value",
-        "iv_len",
-        "mac_len",
-        "hash_algo",
-        "compression_method",  # tls.CompressionMethod
-        "encrypt_then_mac",
-        "implicit_iv",
-    ],
-)
-
-MessageBlock = collections.namedtuple("MessageBlock", "content_type version fragment")
+class SPBool(enum.Enum):
+    C_FALSE = 0
+    C_TRUE = 1
+    C_NA = 2
+    C_UNDETERMINED = 3

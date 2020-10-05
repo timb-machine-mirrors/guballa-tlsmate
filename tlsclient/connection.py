@@ -7,7 +7,6 @@ import logging
 import re
 import os
 import time
-import collections
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
@@ -19,14 +18,7 @@ from tlsclient.messages import (
     Any,
 )
 from tlsclient import mappings
-
-SessionStateId = collections.namedtuple(
-    "SessionStateId", ["session_id", "cipher_suite", "version", "master_secret"]
-)
-
-SessionStateTicket = collections.namedtuple(
-    "SessionStateTicket", ["session_ticket", "cipher_suite", "version", "master_secret"]
-)
+import tlsclient.structures as structs
 
 
 def get_random_value():
@@ -276,7 +268,7 @@ class TlsConnection(object):
             logging.info(f"Sending {msg.msg_type.name}")
 
             self.record_layer.send_message(
-                tls.MessageBlock(
+                structs.MessageBlock(
                     content_type=msg.content_type,
                     version=self.record_layer_version,
                     fragment=msg_data,
@@ -503,7 +495,7 @@ class TlsConnection(object):
         self.recorder.trace(master_secret=self.master_secret)
         if self._session_id is not None:
             self.client.save_session_state_id(
-                SessionStateId(
+                structs.SessionStateId(
                     session_id=self._session_id,
                     cipher_suite=self.cipher_suite,
                     version=self.version,
@@ -560,7 +552,7 @@ class TlsConnection(object):
             mac_key = self.server_write_mac_key
             iv_value = self.server_write_iv
 
-        return tls.StateUpdateParams(
+        return structs.StateUpdateParams(
             cipher_primitive=self.cipher_primitive,
             cipher_algo=self.cipher_algo,
             cipher_type=self.cipher_type,

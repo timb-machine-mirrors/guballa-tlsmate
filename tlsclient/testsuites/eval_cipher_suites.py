@@ -6,7 +6,7 @@ import logging
 import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.testmanager import TestManager, TestSuite
-from tlsclient.server_profile import SPCipherSuite, SPBool
+import tlsclient.structures as structs
 
 
 @TestManager.register
@@ -25,7 +25,7 @@ class MyTestSuite(TestSuite):
                 cert_chain_id = self.server_profile.get_cert_chain_id(
                     certificate.certificates
                 )
-            return SPCipherSuite(
+            return structs.SPCipherSuite(
                 cipher_suite=server_hello.cipher_suite, cert_chain_id=cert_chain_id
             )
         return None
@@ -74,20 +74,20 @@ class MyTestSuite(TestSuite):
 
         if supported_cs:
             if len(supported_cs) == 1:
-                server_prio = SPBool.C_NA
+                server_prio = tls.SPBool.C_NA
             else:
-                server_prio = SPBool.C_FALSE
+                server_prio = tls.SPBool.C_FALSE
                 # check if server enforce the cipher suite prio
                 self.client.cipher_suites = supported_cs
                 if self.get_server_cs() != supported_cs[0]:
-                    server_prio = SPBool.C_TRUE
+                    server_prio = tls.SPBool.C_TRUE
                 else:
                     supported_cs.append(supported_cs.pop(0))
                     if self.get_server_cs() != supported_cs[0]:
-                        server_prio = SPBool.C_TRUE
+                        server_prio = tls.SPBool.C_TRUE
 
                 # determine the order of cipher suites on server side, if applicable
-                if server_prio == SPBool.C_TRUE:
+                if server_prio == tls.SPBool.C_TRUE:
                     supported_cs = self.get_server_preference(supported_cs)
                 else:
                     # esthetical: restore original order, which means the cipher suites

@@ -4,9 +4,9 @@
 
 import abc
 import os
-import collections
 from tlsclient.protocol import ProtocolData
 import tlsclient.constants as tls
+import tlsclient.structures as structs
 
 from cryptography.hazmat.primitives.asymmetric import ec, x25519, x448, dh
 from cryptography import x509
@@ -18,9 +18,6 @@ from cryptography.hazmat.primitives.serialization import (
     PrivateFormat,
     NoEncryption,
 )
-
-
-Groups = collections.namedtuple("Groups", "curve_algo")
 
 
 class KeyExchange(metaclass=abc.ABCMeta):
@@ -115,25 +112,31 @@ class EcdhKeyExchange(KeyExchange):
     """
 
     _supported_groups = {
-        tls.SupportedGroups.SECT163K1: Groups(curve_algo=ec.SECT163K1),
-        tls.SupportedGroups.SECT163R2: Groups(curve_algo=ec.SECT163R2),
-        tls.SupportedGroups.SECT233K1: Groups(curve_algo=ec.SECT233K1),
-        tls.SupportedGroups.SECT233R1: Groups(curve_algo=ec.SECT233R1),
-        tls.SupportedGroups.SECT283K1: Groups(curve_algo=ec.SECT283K1),
-        tls.SupportedGroups.SECT283R1: Groups(curve_algo=ec.SECT283R1),
-        tls.SupportedGroups.SECT409K1: Groups(curve_algo=ec.SECT409K1),
-        tls.SupportedGroups.SECT409R1: Groups(curve_algo=ec.SECT409R1),
-        tls.SupportedGroups.SECT571K1: Groups(curve_algo=ec.SECT571K1),
-        tls.SupportedGroups.SECT571R1: Groups(curve_algo=ec.SECT571R1),
-        tls.SupportedGroups.SECP192R1: Groups(curve_algo=ec.SECP192R1),
-        tls.SupportedGroups.SECP224R1: Groups(curve_algo=ec.SECP224R1),
-        tls.SupportedGroups.SECP256K1: Groups(curve_algo=ec.SECP256K1),
-        tls.SupportedGroups.SECP256R1: Groups(curve_algo=ec.SECP256R1),
-        tls.SupportedGroups.SECP384R1: Groups(curve_algo=ec.SECP384R1),
-        tls.SupportedGroups.SECP521R1: Groups(curve_algo=ec.SECP521R1),
-        tls.SupportedGroups.BRAINPOOLP256R1: Groups(curve_algo=ec.BrainpoolP256R1),
-        tls.SupportedGroups.BRAINPOOLP384R1: Groups(curve_algo=ec.BrainpoolP384R1),
-        tls.SupportedGroups.BRAINPOOLP512R1: Groups(curve_algo=ec.BrainpoolP512R1),
+        tls.SupportedGroups.SECT163K1: structs.Groups(curve_algo=ec.SECT163K1),
+        tls.SupportedGroups.SECT163R2: structs.Groups(curve_algo=ec.SECT163R2),
+        tls.SupportedGroups.SECT233K1: structs.Groups(curve_algo=ec.SECT233K1),
+        tls.SupportedGroups.SECT233R1: structs.Groups(curve_algo=ec.SECT233R1),
+        tls.SupportedGroups.SECT283K1: structs.Groups(curve_algo=ec.SECT283K1),
+        tls.SupportedGroups.SECT283R1: structs.Groups(curve_algo=ec.SECT283R1),
+        tls.SupportedGroups.SECT409K1: structs.Groups(curve_algo=ec.SECT409K1),
+        tls.SupportedGroups.SECT409R1: structs.Groups(curve_algo=ec.SECT409R1),
+        tls.SupportedGroups.SECT571K1: structs.Groups(curve_algo=ec.SECT571K1),
+        tls.SupportedGroups.SECT571R1: structs.Groups(curve_algo=ec.SECT571R1),
+        tls.SupportedGroups.SECP192R1: structs.Groups(curve_algo=ec.SECP192R1),
+        tls.SupportedGroups.SECP224R1: structs.Groups(curve_algo=ec.SECP224R1),
+        tls.SupportedGroups.SECP256K1: structs.Groups(curve_algo=ec.SECP256K1),
+        tls.SupportedGroups.SECP256R1: structs.Groups(curve_algo=ec.SECP256R1),
+        tls.SupportedGroups.SECP384R1: structs.Groups(curve_algo=ec.SECP384R1),
+        tls.SupportedGroups.SECP521R1: structs.Groups(curve_algo=ec.SECP521R1),
+        tls.SupportedGroups.BRAINPOOLP256R1: structs.Groups(
+            curve_algo=ec.BrainpoolP256R1
+        ),
+        tls.SupportedGroups.BRAINPOOLP384R1: structs.Groups(
+            curve_algo=ec.BrainpoolP384R1
+        ),
+        tls.SupportedGroups.BRAINPOOLP512R1: structs.Groups(
+            curve_algo=ec.BrainpoolP512R1
+        ),
     }
 
     def inspect_server_key_exchange(self, msg):

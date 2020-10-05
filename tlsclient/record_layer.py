@@ -6,6 +6,7 @@ from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
 import struct
 import tlsclient.constants as tls
+import tlsclient.structures as structs
 
 from cryptography.hazmat.primitives import hmac
 from cryptography.hazmat.primitives.ciphers import Cipher, modes, aead
@@ -339,7 +340,7 @@ class RecordLayer(object):
 
         fragment = self._unprotect(content_type, version, fragment)
         fragment = self._uncompress(fragment)
-        return tls.MessageBlock(
+        return structs.MessageBlock(
             content_type=content_type, version=version, fragment=fragment
         )
 
