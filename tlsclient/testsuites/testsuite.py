@@ -16,7 +16,7 @@ class MyTestSuite(TestSuite):
 
     def run(self):
         client = self.client
-        client.versions = [tls.Version.TLS11]
+        client.versions = [tls.Version.TLS12]
         client.cipher_suites = [
             # tls.CipherSuite.TLS_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
@@ -24,9 +24,9 @@ class MyTestSuite(TestSuite):
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
-            # tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-            # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
             tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
@@ -44,6 +44,7 @@ class MyTestSuite(TestSuite):
             # tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_256_CBC_SHA,
             # tls.CipherSuite.TLS_RSA_WITH_IDEA_CBC_SHA,
             # tls.CipherSuite.TLS_RSA_WITH_RC4_128_SHA,
+            tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV,
         ]
         client.supported_groups = [
             tls.SupportedGroups.X25519,
@@ -70,18 +71,40 @@ class MyTestSuite(TestSuite):
             tls.SupportedGroups.FFDHE4096,
         ]
         client.signature_algorithms = [
-            tls.SignatureScheme.ED25519,
-            tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
+            tls.SignatureScheme.RSA_PKCS1_SHA1,
+            tls.SignatureScheme.ECDSA_SHA1,
+            tls.SignatureScheme.RSA_PKCS1_SHA256,
             tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
+            tls.SignatureScheme.RSA_PKCS1_SHA256_LEGACY,
+            tls.SignatureScheme.RSA_PKCS1_SHA384,
+            tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
+            tls.SignatureScheme.RSA_PKCS1_SHA384_LEGACY,
+            tls.SignatureScheme.RSA_PKCS1_SHA512,
             tls.SignatureScheme.ECDSA_SECP521R1_SHA512,
+            tls.SignatureScheme.RSA_PKCS1_SHA512_LEGACY,
+            tls.SignatureScheme.ECCSI_SHA256,
+            tls.SignatureScheme.ISO_IBS1,
+            tls.SignatureScheme.ISO_IBS2,
+            tls.SignatureScheme.ISO_CHINESE_IBS,
+            tls.SignatureScheme.SM2SIG_SM3,
+            tls.SignatureScheme.GOSTR34102012_256A,
+            tls.SignatureScheme.GOSTR34102012_256B,
+            tls.SignatureScheme.GOSTR34102012_256C,
+            tls.SignatureScheme.GOSTR34102012_256D,
+            tls.SignatureScheme.GOSTR34102012_512A,
+            tls.SignatureScheme.GOSTR34102012_512B,
+            tls.SignatureScheme.GOSTR34102012_512C,
             tls.SignatureScheme.RSA_PSS_RSAE_SHA256,
             tls.SignatureScheme.RSA_PSS_RSAE_SHA384,
             tls.SignatureScheme.RSA_PSS_RSAE_SHA512,
-            tls.SignatureScheme.RSA_PKCS1_SHA256,
-            tls.SignatureScheme.RSA_PKCS1_SHA384,
-            tls.SignatureScheme.RSA_PKCS1_SHA512,
-            tls.SignatureScheme.ECDSA_SHA1,
-            tls.SignatureScheme.RSA_PKCS1_SHA1,
+            tls.SignatureScheme.ED25519,
+            tls.SignatureScheme.ED448,
+            tls.SignatureScheme.RSA_PSS_PSS_SHA256,
+            tls.SignatureScheme.RSA_PSS_PSS_SHA384,
+            tls.SignatureScheme.RSA_PSS_PSS_SHA512,
+            tls.SignatureScheme.ECDSA_BRAINPOOLP256R1TLS13_SHA256,
+            tls.SignatureScheme.ECDSA_BRAINPOOLP384R1TLS13_SHA384,
+            tls.SignatureScheme.ECDSA_BRAINPOOLP512R1TLS13_SHA512,
         ]
         client.support_encrypt_then_mac = True
         client.support_extended_master_secret = True

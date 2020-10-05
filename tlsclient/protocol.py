@@ -12,23 +12,23 @@ class ProtocolData(bytearray):
 
     def unpack_uint8(self, offset):
         if offset >= len(self):
-            raise FatalAlert("Message length error", tls.AlertDescription.DECODE_ERROR)
+            raise FatalAlert("Message length error when unpacking uint8", tls.AlertDescription.DECODE_ERROR)
         return self[offset], offset + 1
 
     def unpack_uint16(self, offset):
         if offset + 1 >= len(self):
-            raise FatalAlert("Message length error", tls.AlertDescription.DECODE_ERROR)
+            raise FatalAlert("Message length error when unpacking uint16", tls.AlertDescription.DECODE_ERROR)
         return struct.unpack("!H", self[offset : offset + 2])[0], offset + 2
 
     def unpack_uint24(self, offset):
         if offset + 2 >= len(self):
-            raise FatalAlert("Message length error", tls.AlertDescription.DECODE_ERROR)
+            raise FatalAlert("Message length error when unpacking uint24", tls.AlertDescription.DECODE_ERROR)
         high_byte, val = struct.unpack("!BH", self[offset : offset + 3])
         return 0x10000 * high_byte + val, offset + 3
 
     def unpack_bytes(self, offset, length):
         if offset + length > len(self):
-            raise FatalAlert("Message length error", tls.AlertDescription.DECODE_ERROR)
+            raise FatalAlert("Message length error when unpacking bytes", tls.AlertDescription.DECODE_ERROR)
         return ProtocolData(self[offset : offset + length]), offset + length
 
     def append_uint8(self, *vals):
