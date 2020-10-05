@@ -4,7 +4,6 @@
 
 import inspect
 import logging
-import re
 import os
 import time
 from tlsclient.protocol import ProtocolData
@@ -419,50 +418,30 @@ class TlsConnection(object):
         if self.version == tls.Version.TLS13:
             pass
         else:
-            # Dirty: We extract key exhange method, cipher and hash from
-            # the enum name.
-            res = re.match(r"TLS_(.*)_WITH_(.+)_([^_]+)", cipher_suite.name)
-            if not res:
-                raise FatalAlert(
-                    f"Negotiated cipher suite {cipher_suite.name} not supported",
-                    tls.AlertDescription.HandshakeFailure,
+            cs_info = mappings.supported_cipher_suites.get(cipher_suite)
+            if cs_info is None:
+                logging.debug(
+                    f"full handshake for cipher suite {cipher_suite.name} not supported"
                 )
-            key_exchange_method = tls.KeyExchangeAlgorithm.str2enum(res.group(1))
-            key_ex = mappings.key_exchange_algo.get(key_exchange_method)
-            if key_ex is None or key_ex.cls is None:
-                logging.debug(f"key exchange {res.group(1)} not supported")
                 return
-            self.key_exchange_method = key_exchange_method
+            self.key_exchange_method = cs_info.key_ex
+            key_ex = mappings.key_exchange_algo[cs_info.key_ex]
             self.key_exchange = key_ex.cls(self, self.recorder)
 
-            cipher = res.group(2)
-            # as the cipher starts with a digit, but enum names may not, we need
-            # to check for 3DES manually.
-            if cipher == "3DES_EDE_CBC":
-                cipher = tls.SupportedCipher.TRIPPLE_DES_EDE_CBC
-            else:
-                cipher = tls.SupportedCipher.str2enum(res.group(2))
-            cipher_info = mappings.supported_ciphers.get(cipher)
-            if cipher_info is None:
-                logging.debug("cipher {cipher} not supported")
-                return
-            (
-                self.cipher_primitive,
-                self.cipher_algo,
-                self.cipher_type,
-                self.enc_key_len,
-                self.block_size,
-                self.iv_len,
-            ) = cipher_info
-            self.cipher = cipher
+            cipher_info = mappings.supported_ciphers[cs_info.cipher]
+            self.cipher_primitive = cipher_info.cipher_primitive
+            self.cipher_algo = cipher_info.cipher_algo
+            self.cipher_type = cipher_info.cipher_type
+            self.enc_key_len = cipher_info.enc_key_len
+            self.block_size = cipher_info.block_size
+            self.iv_len = cipher_info.iv_len
 
-            hash_primitive = tls.SupportedHash.str2enum(res.group(3))
-            mac_info = mappings.supported_macs.get(hash_primitive)
-            if mac_info is None:
-                logging.debug("hash primitive {res.group(3)} not supported")
-                return
-            self.hash_primitive = hash_primitive
-            (self.hash_algo, self.mac_len, self.mac_key_len, self.hmac_algo) = mac_info
+            mac_info = mappings.supported_macs[cs_info.mac]
+            self.hash_algo = mac_info.hash_algo
+            self.mac_len = mac_info.mac_len
+            self.mac_key_len = mac_info.mac_key_len
+            self.hmac_algo = mac_info.hmac_algo
+            self.hash_primitive = cs_info.mac
 
             if self.cipher_type == tls.CipherType.AEAD:
                 self.mac_key_len = 0

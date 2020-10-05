@@ -3,9 +3,11 @@
     - support for renegotiation
     - support for tls13
     - support for SSL2 (low prio)
-    - refactoring: don't use the cipher suite name to extract the properties,
-      use a mapping table instead
+    - refactoring: instead of passing every attribute to the record layer as a single
+      item, we could pass the namedtuples we have already anyway when mapping a
+      cipher suite to the cipher and mac.
     - generate a server profile (including export to yaml)
     - verify signatures (signed public key)
     - certificate validation and extraction to server profile
     - add a progress feedback, e.g. print a dot for each handshake
+    - debug-logging: First log the incoming message type, then the parameters

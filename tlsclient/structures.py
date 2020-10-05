@@ -40,6 +40,8 @@ StateUpdateParams = collections.namedtuple(
     ],
 )
 
+CipherSuite = collections.namedtuple("CipherSuite", "key_ex cipher mac")
+
 
 MessageBlock = collections.namedtuple("MessageBlock", "content_type version fragment")
 
