@@ -88,8 +88,11 @@ class TlsConnection(object):
         self._msg_hash_active = False
         self.recorder = recorder
         self.hmac_prf = hmac_prf
-        self._session_id = None
+        self._new_session_id = None
         self._finished_treated = False
+        self.ticket_sent = False
+        self.abbreviated_hs = False
+        self.session_id_sent = None
 
         # general
         self.entity = entity
@@ -215,7 +218,7 @@ class TlsConnection(object):
         return msg_cls()
 
     def on_sending_client_hello(self, msg):
-        if type(msg.client_version) == tls.Version:
+        if isinstance(msg.client_version, tls.Version):
             self.client_version_sent = msg.client_version.value
         else:
             self.client_version_sent = msg.client_version
@@ -227,6 +230,9 @@ class TlsConnection(object):
                 msg.random = get_random_value()
             self.recorder.trace(client_random=msg.random)
         self.client_random = msg.random
+        if len(msg.session_id):
+            self.session_id_sent = msg.session_id
+            logging.info(f"session_id: {msg.session_id.dump()}")
         logging.info(f"client_random: {msg.random.dump()}")
         logging.info(f"client_version: {msg.client_version.name}")
         for cipher_suite in msg.cipher_suites:
@@ -237,6 +243,8 @@ class TlsConnection(object):
             for extension in msg.extensions:
                 ext = extension.extension_id
                 logging.info(f"extension {ext.value} {ext.name}")
+                if ext is tls.Extension.SESSION_TICKET:
+                    self.ticket_sent = extension.ticket is not None
         self.hmac_prf.start_msg_digest()
 
     _on_sending_message = {tls.HandshakeType.CLIENT_HELLO: on_sending_client_hello}
@@ -294,15 +302,17 @@ class TlsConnection(object):
         self.update_cipher_suite(msg.cipher_suite)
         self.server_random = msg.random
         if len(msg.session_id):
-            session_state = self.client.get_session_state_id()
-            if session_state is not None:
-                if session_state.session_id == msg.session_id:
-                    # abbreviated handshake
-                    # TODO: check version and ciphersuite
-                    self.master_secret = session_state.master_secret
-                    self.key_derivation()
-
-            self._session_id = msg.session_id
+            if msg.session_id == self.session_id_sent:
+                self.abbreviated_hs = True
+                # TODO: check version and ciphersuite
+                if self.ticket_sent:
+                    self.master_secret = self.client.session_state_ticket.master_secret
+                else:
+                    self.master_secret = self.client.session_state_id.master_secret
+                logging.info(f"master_secret: {self.master_secret.dump()}")
+                self.key_derivation()
+            else:
+                self._new_session_id = msg.session_id
         self.encrypt_then_mac = (
             self.get_extension(msg.extensions, tls.Extension.ENCRYPT_THEN_MAC)
             is not None
@@ -321,6 +331,11 @@ class TlsConnection(object):
         self.key_exchange.inspect_server_key_exchange(msg)
 
     def on_change_cipher_spec_received(self, msg):
+        #        if self.msg.server_hello_done is None:
+        #            # abbreviated handshake, resumption with session_ticket
+        #            self.master_secret = self.client.session_state_ticket.master_secret
+        #            logging.info(f"master_secret: {self.master_secret.dump()}")
+        #            self.key_derivation()
         self.update_read_state()
 
     def on_finished_received(self, msg):
@@ -347,11 +362,23 @@ class TlsConnection(object):
         self._finished_treated = True
         return self
 
+    def on_new_session_ticket_received(self, msg):
+        self.client.save_session_state_ticket(
+            structs.SessionStateTicket(
+                ticket=msg.ticket,
+                lifetime_hint=msg.lifetime_hint,
+                cipher_suite=self.cipher_suite,
+                version=self.version,
+                master_secret=self.master_secret,
+            )
+        )
+
     _on_msg_received = {
         tls.HandshakeType.SERVER_HELLO: on_server_hello_received,
         tls.HandshakeType.SERVER_KEY_EXCHANGE: on_server_key_exchange_received,
         tls.CCSType.CHANGE_CIPHER_SPEC: on_change_cipher_spec_received,
         tls.HandshakeType.FINISHED: on_finished_received,
+        tls.HandshakeType.NEW_SESSION_TICKET: on_new_session_ticket_received,
     }
 
     def on_msg_received(self, msg):
@@ -473,10 +500,10 @@ class TlsConnection(object):
             )
         logging.info(f"master_secret: {self.master_secret.dump()}")
         self.recorder.trace(master_secret=self.master_secret)
-        if self._session_id is not None:
+        if self._new_session_id is not None:
             self.client.save_session_state_id(
                 structs.SessionStateId(
-                    session_id=self._session_id,
+                    session_id=self._new_session_id,
                     cipher_suite=self.cipher_suite,
                     version=self.version,
                     master_secret=self.master_secret,

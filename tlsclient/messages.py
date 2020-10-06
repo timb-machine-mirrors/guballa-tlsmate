@@ -329,6 +329,25 @@ class Finished(HandshakeMessage):
         return self
 
 
+class NewSessionTicket(HandshakeMessage):
+
+    msg_type = tls.HandshakeType.NEW_SESSION_TICKET
+
+    def __init__(self):
+        # TODO for server side implementation
+        pass
+
+    def _serialize_msg_body(self, conn):
+        # TODO for server side implementation
+        return ProtocolData()
+
+    def _deserialize_msg_body(self, fragment, offset, conn):
+        self.lifetime_hint, offset = fragment.unpack_uint32(offset)
+        length, offset = fragment.unpack_uint16(offset)
+        self.ticket, offset = fragment.unpack_bytes(offset, length)
+        return self
+
+
 class ChangeCipherSpecMessage(TlsMessage):
 
     content_type = tls.ContentType.CHANGE_CIPHER_SPEC
@@ -452,7 +471,7 @@ _hs_deserialization_map = {
     # tls.HandshakeType.HELLO_REQUEST = 0
     tls.HandshakeType.CLIENT_HELLO: ClientHello,
     tls.HandshakeType.SERVER_HELLO: ServerHello,
-    # tls.HandshakeType.NEW_SESSION_TICKET = 4
+    tls.HandshakeType.NEW_SESSION_TICKET: NewSessionTicket,
     # tls.HandshakeType.END_OF_EARLY_DATA = 5
     # tls.HandshakeType.ENCRYPTED_EXTENSIONS = 8
     tls.HandshakeType.CERTIFICATE: Certificate,

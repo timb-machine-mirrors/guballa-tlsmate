@@ -35,6 +35,14 @@ class ProtocolData(bytearray):
         high_byte, val = struct.unpack("!BH", self[offset : offset + 3])
         return 0x10000 * high_byte + val, offset + 3
 
+    def unpack_uint32(self, offset):
+        if offset + 3 >= len(self):
+            raise FatalAlert(
+                "Message length error when unpacking uint32",
+                tls.AlertDescription.DECODE_ERROR,
+            )
+        return struct.unpack("!I", self[offset : offset + 4])[0], offset + 4
+
     def unpack_bytes(self, offset, length):
         if offset + length > len(self):
             raise FatalAlert(

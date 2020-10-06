@@ -197,6 +197,23 @@ class ExtSignatureAlgorithms(Extension):
         return ext_body
 
 
+class ExtSessionTicket(Extension):
+
+    extension_id = tls.Extension.SESSION_TICKET
+
+    def __init__(self, **kwargs):
+        self.ticket = kwargs.get("ticket")
+
+    def serialize_ext_body(self):
+        ext_body = ProtocolData()
+        if self.ticket is not None:
+            ext_body.extend(self.ticket)
+        return ext_body
+
+    def deserialize_ext_body(self, ext_body):
+        return self
+
+
 deserialization_map = {
     tls.Extension.SERVER_NAME: ExtServerNameIndication,
     # tls.Extension.MAX_FRAGMENT_LENGTH = 1
@@ -233,7 +250,7 @@ deserialization_map = {
     # tls.Extension.TICKET_PINNING = 32
     # tls.Extension.TLS_CERT_WITH_EXTERN_PSK = 33
     # tls.Extension.DELEGATED_CREDENTIALS = 34
-    # tls.Extension.SESSION_TICKET = 35
+    tls.Extension.SESSION_TICKET: ExtSessionTicket,
     # tls.Extension.SUPPORTED_EKT_CIPHERS = 39
     # tls.Extension.PRE_SHARED_KEY = 41
     # tls.Extension.EARLY_DATA = 42

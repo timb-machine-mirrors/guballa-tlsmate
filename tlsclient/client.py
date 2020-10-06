@@ -32,8 +32,8 @@ class Client(object):
             resume a session with the session_id
         support_session_ticket: (bool): An indication if the client supports
             resumption via the session_ticket extension
-        session_state_ticket (:obj`xxx`): the stored sessions state usable to
-            resume a session with the session_ticket extension
+        session_state_ticket (:obj`SessionStateTicket`): the stored sessions state
+            usable to resume a session with the session_ticket extension
         support_sni (bool): an indication if the SNI extension is supported
         server_name (str): the server name which will included in the SNI extension
         support_extended_master_secret (bool): an indication if the client supports
@@ -109,7 +109,7 @@ class Client(object):
         self.session_state_id = session_state
 
     def get_session_state_id(self):
-        """Get the session state
+        """Get the session state (id)
 
         Returns:
             :obj:`SessionStateId`: the session state to resume a session from
@@ -125,6 +125,14 @@ class Client(object):
         """
         self.session_state_ticket = session_state
 
+    def get_session_state_ticket(self):
+        """Get the session state (ticket)
+
+        Returns:
+            :obj:`SessionStateTicket`: the session state to resume a session from
+        """
+        return self.session_state_ticket
+
     def client_hello(self):
         """Populate a ClientHello message according to the current client profile
 
@@ -134,10 +142,13 @@ class Client(object):
         msg = ClientHello()
         msg.client_version = max(self.versions)
         msg.random = None  # will be provided autonomously
-        if self.session_state_id is None:
-            msg.session_id = ProtocolData()
-        else:
+
+        if self.support_session_ticket and self.session_state_ticket is not None:
+            msg.session_id = ProtocolData().fromhex("dead beaf")
+        elif self.support_session_id and self.session_state_id is not None:
             msg.session_id = self.session_state_id.session_id
+        else:
+            msg.session_id = ProtocolData()
         msg.cipher_suites = self.cipher_suites
         msg.compression_methods = self.compression_methods
         if msg.client_version == tls.Version.SSL30:
@@ -165,4 +176,9 @@ class Client(object):
                 )
             if self.support_encrypt_then_mac:
                 msg.extensions.append(ext.ExtEncryptThenMac())
+            if self.support_session_ticket:
+                kwargs = {}
+                if self.session_state_ticket is not None:
+                    kwargs["ticket"] = self.session_state_ticket.ticket
+                msg.extensions.append(ext.ExtSessionTicket(**kwargs))
         return msg
