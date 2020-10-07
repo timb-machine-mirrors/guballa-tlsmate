@@ -49,3 +49,5 @@ MessageBlock = collections.namedtuple("MessageBlock", "content_type version frag
 
 Groups = collections.namedtuple("Groups", "curve_algo")
 SPCipherSuite = collections.namedtuple("SPCipherSuite", "cipher_suite cert_chain_id")
+
+KeyExchange = collections.namedtuple("KeyExchange", "key_ex_type key_auth")

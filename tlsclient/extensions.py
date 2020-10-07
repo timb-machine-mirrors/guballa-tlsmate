@@ -214,6 +214,58 @@ class ExtSessionTicket(Extension):
         return self
 
 
+class ExtSupportedVersions(Extension):
+
+    extension_id = tls.Extension.SUPPORTED_VERSIONS
+
+    def __init__(self, **kwargs):
+        self.versions = kwargs.get("versions")
+
+    def serialize_ext_body(self):
+        versions = ProtocolData()
+        for version in self.versions:
+            versions.append_uint16(version.value)
+        ext_body = ProtocolData()
+        ext_body.append_uint8(len(versions))
+        ext_body.extend(versions)
+        return ext_body
+
+    def deserialize_ext_body(self, ext_body):
+        self.versions = []
+        offset = 0
+        while offset < len(ext_body):
+            version, offset = ext_body.unpack_uint16(offset)
+            version = tls.Version.val2enum(version)
+            self.versions.append(version)
+        return self
+
+
+class ExtKeyShare(Extension):
+
+    extension_id = tls.Extension.KEY_SHARE
+
+    def __init__(self, **kwargs):
+        self.versions = kwargs.get("versions")
+
+    def serialize_ext_body(self):
+        versions = ProtocolData()
+        for version in self.versions:
+            versions.append_uint16(version.value)
+        ext_body = ProtocolData()
+        ext_body.append_uint8(len(versions))
+        ext_body.extend(versions)
+        return ext_body
+
+    def deserialize_ext_body(self, ext_body):
+        self.versions = []
+        offset = 0
+        while offset < len(ext_body):
+            version, offset = ext_body.unpack_uint16(offset)
+            version = tls.Version.val2enum(version)
+            self.versions.append(version)
+        return self
+
+
 deserialization_map = {
     tls.Extension.SERVER_NAME: ExtServerNameIndication,
     # tls.Extension.MAX_FRAGMENT_LENGTH = 1

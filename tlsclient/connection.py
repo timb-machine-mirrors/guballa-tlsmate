@@ -18,6 +18,7 @@ from tlsclient.messages import (
 )
 from tlsclient import mappings
 import tlsclient.structures as structs
+import tlsclient.key_exchange as kex
 
 
 def get_random_value():
@@ -112,7 +113,8 @@ class TlsConnection(object):
         self.premaster_secret = None
         self.master_secret = None
         self.key_exchange = None
-        self.key_exchange_method = None
+        self.key_ex_type = None
+        self.key_auth = None
 
         # for key deriviation
         self.mac_key_len = None
@@ -172,11 +174,19 @@ class TlsConnection(object):
         return msg
 
     def generate_client_key_exchange(self, cls):
-        self.premaster_secret = self.key_exchange.agree_on_premaster_secret()
+        if self.key_exchange is None and self.key_ex_type is tls.KeyExchangeType.RSA:
+            self.key_exchange = kex.RsaKeyExchange(self, self.recorder)
+        self.premaster_secret = self.key_exchange.get_premaster_secret()
         self.recorder.trace(pre_master_secret=self.premaster_secret)
         logging.info(f"premaster_secret: {self.premaster_secret.dump()}")
         msg = cls()
-        self.key_exchange.setup_client_key_exchange(msg)
+        transferable_key = self.key_exchange.get_transferable_key()
+        if self.key_ex_type is tls.KeyExchangeType.RSA:
+            msg.rsa_encrypted_pms = transferable_key
+        elif self.key_ex_type is tls.KeyExchangeType.ECDH:
+            msg.ecdh_public = transferable_key
+        elif self.key_ex_type is tls.KeyExchangeType.DH:
+            msg.dh_public = transferable_key
         self._post_sending_hook = self.update_keys
         return msg
 
@@ -323,19 +333,21 @@ class TlsConnection(object):
         )
 
     def on_server_key_exchange_received(self, msg):
-        self.dh_params = msg.dh
-        self.ec_params = msg.ec
         if msg.ec is not None:
             if msg.ec.named_curve is not None:
                 logging.info(f"named curve: {msg.ec.named_curve.name}")
-        self.key_exchange.inspect_server_key_exchange(msg)
+                self.key_exchange = kex.instantiate_named_group(
+                    msg.ec.named_curve, self, self.recorder
+                )
+                self.key_exchange.set_remote_key(msg.ec.public)
+        elif msg.dh is not None:
+            dh = msg.dh
+            self.key_exchange = kex.DhKeyExchange(self, self.recorder)
+            self.key_exchange.set_remote_key(
+                dh.public_key, g_val=dh.g_val, p_val=dh.p_val
+            )
 
     def on_change_cipher_spec_received(self, msg):
-        #        if self.msg.server_hello_done is None:
-        #            # abbreviated handshake, resumption with session_ticket
-        #            self.master_secret = self.client.session_state_ticket.master_secret
-        #            logging.info(f"master_secret: {self.master_secret.dump()}")
-        #            self.key_derivation()
         self.update_read_state()
 
     def on_finished_received(self, msg):
@@ -452,9 +464,9 @@ class TlsConnection(object):
                     f"full handshake for cipher suite {cipher_suite.name} not supported"
                 )
                 return
-            self.key_exchange_method = cs_info.key_ex
-            key_ex = mappings.key_exchange_algo[cs_info.key_ex]
-            self.key_exchange = key_ex.cls(self, self.recorder)
+            key_ex = mappings.key_exchange[cs_info.key_ex]
+            self.key_ex_type = key_ex.key_ex_type
+            self.key_auth = key_ex.key_auth
 
             cipher_info = mappings.supported_ciphers[cs_info.cipher]
             self.cipher_primitive = cipher_info.cipher_primitive
@@ -509,7 +521,6 @@ class TlsConnection(object):
                     master_secret=self.master_secret,
                 )
             )
-
         return
 
     def key_derivation(self):

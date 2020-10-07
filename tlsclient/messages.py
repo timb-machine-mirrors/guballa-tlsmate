@@ -240,28 +240,23 @@ class ServerKeyExchange(HandshakeMessage):
     def _deserialize_msg_body(self, fragment, offset, conn):
         self.ec = None
         self.dh = None
-        key_exchange_method = conn.key_exchange_method
-        if key_exchange_method in [
-            tls.KeyExchangeAlgorithm.ECDH_ECDSA,
-            tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
-            tls.KeyExchangeAlgorithm.ECDH_RSA,
-            tls.KeyExchangeAlgorithm.ECDHE_RSA,
-        ]:
+        if conn.key_ex_type is tls.KeyExchangeType.ECDH:
             # RFC 4492
             self.ec = KeyExchangeEC()._deserialize_msg_body(fragment, offset, conn)
-        elif key_exchange_method in [
-            tls.KeyExchangeAlgorithm.DHE_DSS,
-            tls.KeyExchangeAlgorithm.DHE_RSA,
-        ]:
+        elif conn.key_ex_type is tls.KeyExchangeType.DH:
             # RFC5246
-            self.dh = KeyExchangeDH()._deserialize_msg_body(fragment, offset, conn)
-        elif key_exchange_method == tls.KeyExchangeAlgorithm.DH_ANON:
             self.dh = KeyExchangeDH()._deserialize_msg_body(
-                fragment, offset, conn, signature_present=False
+                fragment,
+                offset,
+                conn,
+                signature_present=(conn.key_auth is not tls.KeyAuthentication.NONE),
             )
         else:
             raise FatalAlert(
-                "Key exchange algorithm incompatible with ServerKeyExchange message",
+                (
+                    f"Key exchange algorithm {conn.key_ex_type} is incompatible "
+                    f"with ServerKeyExchange message"
+                ),
                 tls.AlertDescription.UNEXPECTED_MESSAGE,
             )
         return self

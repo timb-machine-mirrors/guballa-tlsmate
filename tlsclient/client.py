@@ -3,6 +3,7 @@
 """
 import tlsclient.constants as tls
 import tlsclient.extensions as ext
+import tlsclient.key_exchange as kex
 from tlsclient.protocol import ProtocolData
 from tlsclient.messages import ClientHello
 
@@ -53,6 +54,8 @@ class Client(object):
             signature algorithms supported by the client
         support_encrypt_then_mac (bool): an indication if the client supports the
             encrypt-then-mac extension
+        key_shares (list of :obj:`SupportedGroups`): this list of key shares
+            supported for TLS1.3.
     """
 
     def __init__(self, connection_factory, server_name):
@@ -88,6 +91,9 @@ class Client(object):
 
         self.support_signature_algorithms = True
         self.signature_algorithms = [tls.SignatureScheme.RSA_PSS_RSAE_SHA256]
+
+        # TLS13
+        self.key_shares = []
 
         self.support_encrypt_then_mac = False
 
@@ -140,7 +146,11 @@ class Client(object):
             :obj:`ClientHello`: the ClientHello object
         """
         msg = ClientHello()
-        msg.client_version = max(self.versions)
+        max_version = max(self.versions)
+        if max_version is tls.Version.TLS13:
+            msg.client_version = tls.Version.TLS12
+        else:
+            msg.client_version = max_version
         msg.random = None  # will be provided autonomously
 
         if self.support_session_ticket and self.session_state_ticket is not None:
@@ -181,4 +191,12 @@ class Client(object):
                 if self.session_state_ticket is not None:
                     kwargs["ticket"] = self.session_state_ticket.ticket
                 msg.extensions.append(ext.ExtSessionTicket(**kwargs))
+            if tls.Version.TLS13 in self.versions:
+                msg.extensions.append(ext.ExtSupportedVersions(versions=self.versions))
+                key_shares = []
+                for group in self.support_supported_groups:
+                    if group in self.key_shares:
+                        key_shares.append(kex.instantiate_named_group(group))
+                msg.extensions.append(ext.ExtKeyShare(key_shares=key_shares))
+
         return msg

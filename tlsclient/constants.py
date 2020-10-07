@@ -663,6 +663,19 @@ class KeyExchangeAlgorithm(ExtendedEnum):
     EC_DIFFIE_HELLMAN = enum.auto()
 
 
+class KeyExchangeType(ExtendedEnum):
+    RSA = enum.auto()
+    DH = enum.auto()
+    ECDH = enum.auto()
+
+
+class KeyAuthentication(ExtendedEnum):
+    NONE = enum.auto()
+    RSA = enum.auto()
+    DSS = enum.auto()
+    ECDSA = enum.auto()
+
+
 class CipherPrimitive(ExtendedEnum):
     NULL = enum.auto()
     AES = enum.auto()

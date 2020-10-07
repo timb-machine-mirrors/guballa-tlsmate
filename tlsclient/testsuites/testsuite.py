@@ -15,7 +15,7 @@ class MyTestSuite(TestSuite):
 
     def run(self):
         client = self.client
-        client.versions = [tls.Version.TLS12]
+        client.versions = [tls.Version.TLS13]
         client.cipher_suites = [
             # tls.CipherSuite.TLS_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,

@@ -427,3 +427,36 @@ key_exchange_algo = {
         cls=keyex.EcdhKeyExchange
     ),
 }
+
+key_exchange = {
+    tls.KeyExchangeAlgorithm.DHE_DSS: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.DH, key_auth=tls.KeyAuthentication.DSS
+    ),
+    tls.KeyExchangeAlgorithm.DHE_RSA: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.DH, key_auth=tls.KeyAuthentication.RSA
+    ),
+    tls.KeyExchangeAlgorithm.DH_ANON: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.DH, key_auth=tls.KeyAuthentication.NONE
+    ),
+    tls.KeyExchangeAlgorithm.RSA: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.RSA, key_auth=tls.KeyAuthentication.NONE
+    ),
+    tls.KeyExchangeAlgorithm.DH_DSS: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.DH, key_auth=tls.KeyAuthentication.NONE
+    ),
+    tls.KeyExchangeAlgorithm.DH_RSA: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.DH, key_auth=tls.KeyAuthentication.NONE
+    ),
+    tls.KeyExchangeAlgorithm.ECDH_ECDSA: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.ECDH, key_auth=tls.KeyAuthentication.NONE
+    ),
+    tls.KeyExchangeAlgorithm.ECDHE_ECDSA: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.ECDH, key_auth=tls.KeyAuthentication.ECDSA
+    ),
+    tls.KeyExchangeAlgorithm.ECDH_RSA: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.ECDH, key_auth=tls.KeyAuthentication.NONE
+    ),
+    tls.KeyExchangeAlgorithm.ECDHE_RSA: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.ECDH, key_auth=tls.KeyAuthentication.RSA
+    ),
+}
