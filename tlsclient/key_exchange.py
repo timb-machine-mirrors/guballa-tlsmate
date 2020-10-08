@@ -6,6 +6,7 @@ import abc
 import collections
 import os
 from tlsclient.protocol import ProtocolData
+from tlsclient import mappings
 import tlsclient.constants as tls
 
 from cryptography.hazmat.primitives.asymmetric import ec, x25519, x448, dh
@@ -52,7 +53,7 @@ class KeyExchange(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_premaster_secret(self):
+    def get_shared_secret(self):
         """Do everything needed to provide the premaster secret
         """
         raise NotImplementedError
@@ -94,7 +95,7 @@ class RsaKeyExchange(KeyExchange):
         # padding scheme PKCS1v15 produces non-deterministic cipher text.
         return self._recorder.inject(rsa_enciphered=ciphered_key)
 
-    def get_premaster_secret(self):
+    def get_shared_secret(self):
         if self._pms is None:
             self._create_pms()
         return self._pms
@@ -105,13 +106,22 @@ class DhKeyExchange(KeyExchange):
     """
 
     def __init__(self, *args, **kwargs):
-        self._pval = None
-        self._gval = None
+        super().__init__(*args, **kwargs)
+        if self._group_name is not None:
+            dh_numbers = mappings.dh_numbers.get(self._group_name)
+            if dh_numbers is None:
+                raise ValueError(
+                    f"No numbers defined for DH-group {self._group_name.name}"
+                )
+            self._gval = dh_numbers.g_val
+            self._pval = int.from_bytes(dh_numbers.p_val, "big")
+        else:
+            self._pval = None
+            self._gval = None
         self._rem_pub_key = None
         self._priv_key = None
         self._pub_key = None
         self._dh_group = None
-        super().__init__(*args, **kwargs)
 
     def _create_key_pair(self):
         self._dh_group = dh.DHParameterNumbers(self._pval, self._gval)
@@ -125,7 +135,7 @@ class DhKeyExchange(KeyExchange):
             self._priv_key = self._dh_group.parameters().generate_private_key()
         self._pub_key = self._priv_key.public_key()
 
-    def get_premaster_secret(self):
+    def get_shared_secret(self):
         if self._priv_key is None:
             self._create_key_pair()
         rem_pub_numbers = dh.DHPublicNumbers(self._rem_pub_key, self._dh_group)
@@ -146,6 +156,9 @@ class DhKeyExchange(KeyExchange):
             self._create_key_pair()
         y_val = self._pub_key.public_numbers().y
         return y_val.to_bytes(int(self._pub_key.key_size / 8), "big")
+
+    def get_key_share(self):
+        return self.get_transferable_key()
 
 
 class EcdhKeyExchange(KeyExchange):
@@ -168,7 +181,7 @@ class EcdhKeyExchange(KeyExchange):
             Encoding.X962, PublicFormat.UncompressedPoint
         )
 
-    def get_premaster_secret(self):
+    def get_shared_secret(self):
         if self._priv_key is None:
             self._create_key_pair()
         rem_pub_key = ec.EllipticCurvePublicKey.from_encoded_point(
@@ -180,6 +193,11 @@ class EcdhKeyExchange(KeyExchange):
         self._rem_pub_key = rem_pub_key
 
     def get_transferable_key(self):
+        if self._pub_key is None:
+            self._create_key_pair()
+        return self._pub_key
+
+    def get_key_share(self):
         if self._pub_key is None:
             self._create_key_pair()
         return self._pub_key
@@ -216,7 +234,7 @@ class XKeyExchange(KeyExchange):
         pub_key = self._priv_key.public_key()
         self._pub_key = pub_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
 
-    def get_premaster_secret(self):
+    def get_shared_secret(self):
         if self._priv_key is None:
             self._create_key_pair()
         rem_pub_key = self._public_key_lib.from_public_bytes(bytes(self._rem_pub_key))
@@ -229,6 +247,9 @@ class XKeyExchange(KeyExchange):
         if self._priv_key is None:
             self._create_key_pair()
         return self._pub_key
+
+    def get_key_share(self):
+        return self.get_transferable_key()
 
 
 Group = collections.namedtuple("Group", "cls algo")

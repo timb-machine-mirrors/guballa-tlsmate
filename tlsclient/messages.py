@@ -106,7 +106,7 @@ class ClientHello(HandshakeMessage):
         if self.extensions is not None:
             ext_bytes = ProtocolData()
             for extension in self.extensions:
-                ext_bytes.extend(extension.serialize())
+                ext_bytes.extend(extension.serialize(conn))
             msg.append_uint16(len(ext_bytes))
             msg.extend(ext_bytes)
 

@@ -11,6 +11,6 @@ def test_ServerNameIndication():
     sni, offset = ext.Extension.deserialize(data, 0)
     assert offset == len(data)
     assert sni.host_name == "localhost"
-    assert sni.serialize() == data
+    assert sni.serialize(None) == data
     sni = ext.ExtServerNameIndication(host_name="localhost")
-    assert sni.serialize() == data
+    assert sni.serialize(None) == data

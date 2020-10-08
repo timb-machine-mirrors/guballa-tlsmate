@@ -102,6 +102,7 @@ class TlsConnection(object):
         self.cipher_suite = None
         self.compression_method = None
         self.encrypt_then_mac = False
+        self.key_shares = {}
 
         # key exchange
         self.client_random = None
@@ -127,6 +128,11 @@ class TlsConnection(object):
         self.server_write_key = None
         self.client_write_iv = None
         self.server_write_iv = None
+
+        self.client_write_keys = None
+        self.server_write_keys = None
+        self.cipher = None
+        self.mac = None
 
         # cipher
         self.cipher_primitive = None
@@ -161,6 +167,11 @@ class TlsConnection(object):
         self.client = client
         return self
 
+    def get_key_share(self, group):
+        key_share = kex.instantiate_named_group(group, self, self.recorder)
+        self.key_shares[group] = key_share
+        return key_share.get_key_share()
+
     # TODO: Move this to the extension module, as it is a static method anyway
     def get_extension(self, extensions, ext_id):
         for ext in extensions:
@@ -176,7 +187,7 @@ class TlsConnection(object):
     def generate_client_key_exchange(self, cls):
         if self.key_exchange is None and self.key_ex_type is tls.KeyExchangeType.RSA:
             self.key_exchange = kex.RsaKeyExchange(self, self.recorder)
-        self.premaster_secret = self.key_exchange.get_premaster_secret()
+        self.premaster_secret = self.key_exchange.get_shared_secret()
         self.recorder.trace(pre_master_secret=self.premaster_secret)
         logging.info(f"premaster_secret: {self.premaster_secret.dump()}")
         msg = cls()
@@ -298,19 +309,21 @@ class TlsConnection(object):
 
         self.record_layer.flush()
 
-    def on_server_hello_received(self, msg):
-        logging.info(f"server random: {msg.random.dump()}")
-        logging.info(f"version: {msg.version.name}")
-        logging.info(
-            f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite.name}"
-        )
-        for extension in msg.extensions:
-            ext = extension.extension_id
-            logging.info(f"extension {ext.value} {ext.name}")
-        self.version = msg.version
-        self.record_layer_version = min(self.version, tls.Version.TLS12)
-        self.update_cipher_suite(msg.cipher_suite)
-        self.server_random = msg.random
+    def on_server_hello_tls13(self, msg):
+        key_share_ext = self.get_extension(msg.extensions, tls.Extension.KEY_SHARE)
+        if key_share_ext is None:
+            raise FatalAlert(
+                "ServerHello-TLS13: extension KEY_SHARE not present",
+                tls.AlertDescription.HANDSHAKE_FAILURE,
+            )
+        share_entry = key_share_ext.key_shares[0]
+        self.key_exchange = self.key_shares[share_entry.group]
+        self.key_exchange.set_remote_key(share_entry.key_exchange)
+        self.premaster_secret = self.key_exchange.get_shared_secret()
+        logging.info(f"premaster_secret: {self.premaster_secret.dump()}")
+        self.tls13_key_schedule()
+
+    def on_server_hello_tls12(self, msg):
         if len(msg.session_id):
             if msg.session_id == self.session_id_sent:
                 self.abbreviated_hs = True
@@ -331,6 +344,30 @@ class TlsConnection(object):
             self.get_extension(msg.extensions, tls.Extension.EXTENDED_MASTER_SECRET)
             is not None
         )
+
+    def on_server_hello_received(self, msg):
+        logging.info(f"server random: {msg.random.dump()}")
+        logging.info(f"version: {msg.version.name}")
+        logging.info(
+            f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite.name}"
+        )
+        for extension in msg.extensions:
+            ext = extension.extension_id
+            logging.info(f"extension {ext.value} {ext.name}")
+        supported_versions = self.get_extension(
+            msg.extensions, tls.Extension.SUPPORTED_VERSIONS
+        )
+        if supported_versions is not None:
+            self.version = supported_versions.versions[0]
+        else:
+            self.version = msg.version
+        self.update_cipher_suite(msg.cipher_suite)
+        self.record_layer_version = min(self.version, tls.Version.TLS12)
+        self.server_random = msg.random
+        if self.version is tls.Version.TLS13:
+            self.on_server_hello_tls13(msg)
+        else:
+            self.on_server_hello_tls12(msg)
 
     def on_server_key_exchange_received(self, msg):
         if msg.ec is not None:
@@ -364,7 +401,7 @@ class TlsConnection(object):
         self.recorder.trace(verify_data_finished_rec=verify_data)
         self.recorder.trace(verify_data_finished_calc=val)
         if verify_data != val:
-            FatalAlert(
+            raise FatalAlert(
                 "Received Finidhed: verify_data does not match",
                 tls.AlertDescription.BAD_RECORD_MAC,
             )
@@ -455,43 +492,45 @@ class TlsConnection(object):
 
     def update_cipher_suite(self, cipher_suite):
         self.cipher_suite = cipher_suite
-        if self.version == tls.Version.TLS13:
-            pass
-        else:
-            cs_info = mappings.supported_cipher_suites.get(cipher_suite)
-            if cs_info is None:
-                logging.debug(
-                    f"full handshake for cipher suite {cipher_suite.name} not supported"
-                )
-                return
+        cs_info = mappings.supported_cipher_suites.get(cipher_suite)
+        if cs_info is None:
+            logging.debug(
+                f"full handshake for cipher suite {cipher_suite.name} not supported"
+            )
+            return
+
+        if cs_info.key_ex is not None:
             key_ex = mappings.key_exchange[cs_info.key_ex]
             self.key_ex_type = key_ex.key_ex_type
             self.key_auth = key_ex.key_auth
 
-            cipher_info = mappings.supported_ciphers[cs_info.cipher]
-            self.cipher_primitive = cipher_info.cipher_primitive
-            self.cipher_algo = cipher_info.cipher_algo
-            self.cipher_type = cipher_info.cipher_type
-            self.enc_key_len = cipher_info.enc_key_len
-            self.block_size = cipher_info.block_size
-            self.iv_len = cipher_info.iv_len
+        self.cipher = mappings.supported_ciphers[cs_info.cipher]
+        self.mac = mappings.supported_macs[cs_info.mac]
 
-            mac_info = mappings.supported_macs[cs_info.mac]
-            self.hash_algo = mac_info.hash_algo
-            self.mac_len = mac_info.mac_len
-            self.mac_key_len = mac_info.mac_key_len
-            self.hmac_algo = mac_info.hmac_algo
-            self.hash_primitive = cs_info.mac
+        #cipher_info = mappings.supported_ciphers[cs_info.cipher]
+        #self.cipher_primitive = cipher_info.cipher_primitive
+        #self.cipher_algo = cipher_info.cipher_algo
+        #self.cipher_type = cipher_info.cipher_type
+        #self.enc_key_len = cipher_info.enc_key_len
+        #self.block_size = cipher_info.block_size
+        #self.iv_len = cipher_info.iv_len
 
-            if self.cipher_type == tls.CipherType.AEAD:
-                self.mac_key_len = 0
-            if self.version < tls.Version.TLS12:
-                self.hmac_prf.set_msg_digest_algo(None)
-            else:
-                self.hmac_prf.set_msg_digest_algo(self.hmac_algo)
-            self.cipher_suite_supported = True
-        logging.debug(f"hash_primitive: {self.hash_primitive.name}")
-        logging.debug(f"cipher_primitive: {self.cipher_primitive.name}")
+        #mac_info = mappings.supported_macs[cs_info.mac]
+        #self.hash_algo = mac_info.hash_algo
+        #self.mac_len = mac_info.mac_len
+        #self.mac_key_len = mac_info.mac_key_len
+        #self.hmac_algo = mac_info.hmac_algo
+        #self.hash_primitive = cs_info.mac
+
+        #if self.cipher_type == tls.CipherType.AEAD:
+        #    self.mac_key_len = 0
+        if self.version < tls.Version.TLS12:
+            self.hmac_prf.set_msg_digest_algo(None)
+        else:
+            self.hmac_prf.set_msg_digest_algo(self.mac.hmac_algo)
+        self.cipher_suite_supported = True
+        logging.debug(f"hash_primitive: {cs_info.mac.name}")
+        logging.debug(f"cipher_primitive: {self.cipher.cipher_primitive.name}")
 
     def generate_master_secret(self):
         if self.extended_ms:
@@ -523,29 +562,51 @@ class TlsConnection(object):
             )
         return
 
-    def key_derivation(self):
+    def tls13_key_schedule(self):
+        early_secret = self.hmac_prf.hkdf_extract(None, b"")
+        empty_msg_digest = self.hmac_prf.empty_msg_digest()
+        derived = self.hmac_prf.hkdf_expand_label(
+            early_secret, "derived", empty_msg_digest
+        )
+        handshake_secret = self.hmac_prf.hkdf_extract(self.premaster_secret, derived)
+        hello_digest = self.hmac_prf.finalize_msg_digest(intermediate=True)
+        client_hs_tr_sec = self.hmac_prf.hkdf_expand_label(
+            handshake_secret, "c hs traffic", hello_digest
+        )
+        server_hs_tr_sec = self.hmac_prf.hkdf_expand_label(
+            handshake_secret, "s hs traffic", hello_digest
+        )
+        derived = self.hmac_prf.hkdf_expand_label(
+            handshake_secret, "derived", empty_msg_digest
+        )
+        master_secret = self.hmac_prf.hkdf_extract(None, derived)
 
+    def key_derivation(self):
+        if self.cipher.cipher_type is tls.CipherType.AEAD:
+            iv_len = 0
+        else:
+            iv_len = self.cipher.iv_len
         key_material = self.hmac_prf.prf(
             self.master_secret,
             b"key expansion",
             self.server_random + self.client_random,
-            2 * (self.mac_key_len + self.enc_key_len + self.iv_len),
+            2 * (self.mac.mac_key_len + self.cipher.enc_key_len + iv_len),
         )
         key_material = ProtocolData(key_material)
         self.client_write_mac_key, offset = key_material.unpack_bytes(
-            0, self.mac_key_len
+            0, self.mac.mac_key_len
         )
         self.server_write_mac_key, offset = key_material.unpack_bytes(
-            offset, self.mac_key_len
+            offset, self.mac.mac_key_len
         )
         self.client_write_key, offset = key_material.unpack_bytes(
-            offset, self.enc_key_len
+            offset, self.cipher.enc_key_len
         )
         self.server_write_key, offset = key_material.unpack_bytes(
-            offset, self.enc_key_len
+            offset, self.cipher.enc_key_len
         )
-        self.client_write_iv, offset = key_material.unpack_bytes(offset, self.iv_len)
-        self.server_write_iv, offset = key_material.unpack_bytes(offset, self.iv_len)
+        self.client_write_iv, offset = key_material.unpack_bytes(offset, self.cipher.iv_len)
+        self.server_write_iv, offset = key_material.unpack_bytes(offset, self.cipher.iv_len)
 
         self.recorder.trace(client_write_mac_key=self.client_write_mac_key)
         self.recorder.trace(server_write_mac_key=self.server_write_mac_key)
@@ -559,29 +620,53 @@ class TlsConnection(object):
         logging.info(f"server_write_key: {self.server_write_key.dump()}")
         logging.info(f"client_write_iv: {self.client_write_iv.dump()}")
         logging.info(f"server_write_iv: {self.server_write_iv.dump()}")
+        self.client_write_keys = structs.SymmetricKeys(
+            mac=self.client_write_mac_key,
+            enc=self.client_write_key,
+            iv=self.client_write_iv,
+        )
+        self.server_write_keys = structs.SymmetricKeys(
+            mac=self.server_write_mac_key,
+            enc=self.server_write_key,
+            iv=self.server_write_iv,
+        )
 
     def get_pending_write_state(self, entity):
-        if entity == tls.Entity.CLIENT:
-            enc_key = self.client_write_key
-            mac_key = self.client_write_mac_key
-            iv_value = self.client_write_iv
+        if entity is tls.Entity.CLIENT:
+            keys = self.client_write_keys
         else:
-            enc_key = self.server_write_key
-            mac_key = self.server_write_mac_key
-            iv_value = self.server_write_iv
+            keys = self.server_write_keys
 
-        return structs.StateUpdateParams(
-            cipher_primitive=self.cipher_primitive,
-            cipher_algo=self.cipher_algo,
-            cipher_type=self.cipher_type,
-            block_size=self.block_size,
-            enc_key=enc_key,
-            mac_key=mac_key,
-            iv_value=iv_value,
-            iv_len=self.iv_len,
-            mac_len=self.mac_len,
-            hash_algo=self.hash_algo,
-            compression_method=self.compression_method,
-            encrypt_then_mac=self.encrypt_then_mac,
+        return structs.StateUpdateParams2(
+            cipher=self.cipher,
+            mac=self.mac,
+            keys=keys,
+            compr=self.compression_method,
+            enc_then_mac=self.encrypt_then_mac,
             implicit_iv=(self.version <= tls.Version.TLS10),
         )
+
+        #if entity == tls.Entity.CLIENT:
+        #    enc_key = self.client_write_key
+        #    mac_key = self.client_write_mac_key
+        #    iv_value = self.client_write_iv
+        #else:
+        #    enc_key = self.server_write_key
+        #    mac_key = self.server_write_mac_key
+        #    iv_value = self.server_write_iv
+
+        #return structs.StateUpdateParams(
+        #    cipher_primitive=self.cipher_primitive,
+        #    cipher_algo=self.cipher_algo,
+        #    cipher_type=self.cipher_type,
+        #    block_size=self.block_size,
+        #    enc_key=enc_key,
+        #    mac_key=mac_key,
+        #    iv_value=iv_value,
+        #    iv_len=self.iv_len,
+        #    mac_len=self.mac_len,
+        #    hash_algo=self.hash_algo,
+        #    compression_method=self.compression_method,
+        #    encrypt_then_mac=self.encrypt_then_mac,
+        #    implicit_iv=(self.version <= tls.Version.TLS10),
+        #)

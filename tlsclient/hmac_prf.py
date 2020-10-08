@@ -4,7 +4,9 @@
 
 import abc
 import math
+import struct
 from cryptography.hazmat.primitives import hashes, hmac
+from cryptography.hazmat.primitives.kdf.hkdf import HKDFExpand
 
 
 class _Backend(metaclass=abc.ABCMeta):
@@ -85,6 +87,28 @@ class _BackendTls12(_Backend):
     def prf(self, secret, label, seed, size):
         return self._expand(secret, label + seed, size, self._hash_algo)
 
+    def hkdf_extract(self, secret, salt):
+        if secret is None:
+            secret = b"\0" * self._hash_algo.digest_size
+        h = hmac.HMAC(salt, self._hash_algo())
+        h.update(secret)
+        return h.finalize()
+
+    def _hkdf_expand(self, secret, label, length):
+        hkdf = HKDFExpand(algorithm=self._hash_algo(), length=length, info=label)
+        return hkdf.derive(secret)
+
+    def hkdf_expand_label(self, secret, label, context, length):
+        label_bytes = ("tls13 " + label).encode()
+        hkdf_label = (
+            struct.pack("!H", length)
+            + struct.pack("!B", len(label_bytes))
+            + label_bytes
+            + struct.pack("!B", len(context))
+            + context
+        )
+        return self._hkdf_expand(secret, hkdf_label, length)
+
 
 class HmacPrf(object):
     def __init__(self):
@@ -99,12 +123,14 @@ class HmacPrf(object):
         self._msg_digest = None
         self._msg_digest_active = True
         self._backend = None
+        self._empty_msg_digest = None
 
     def set_msg_digest_algo(self, hash_algo):
         if hash_algo is None:
             self._backend = _BackendTls10(hash_algo)
         else:
             self._backend = _BackendTls12(hash_algo)
+        self._empty_msg_digest = self.finalize_msg_digest(intermediate=True)
         if self._msg_digest_queue is not None:
             self._backend.update_msg_digest(self._msg_digest_queue)
             self._msg_digest_queue = None
@@ -120,6 +146,9 @@ class HmacPrf(object):
         else:
             self._backend.update_msg_digest(msg)
 
+    def empty_msg_digest(self):
+        return self._empty_msg_digest
+
     def finalize_msg_digest(self, intermediate=False):
         if not intermediate:
             self._msg_digest_active = False
@@ -127,3 +156,9 @@ class HmacPrf(object):
 
     def prf(self, secret, label, seed, size):
         return self._backend.prf(secret, label, seed, size)
+
+    def hkdf_extract(self, secret, salt):
+        return self._backend.hkdf_extract(secret, salt)
+
+    def hkdf_expand_label(self, secret, label, msg_digest, length):
+        return self._backend.hkdf_expand_label(secret, label, msg_digest, length)

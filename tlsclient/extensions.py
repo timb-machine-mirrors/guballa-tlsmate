@@ -6,6 +6,7 @@ import abc
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
+import tlsclient.structures as structs
 
 
 class Extension(metaclass=abc.ABCMeta):
@@ -13,9 +14,9 @@ class Extension(metaclass=abc.ABCMeta):
     def serialize_ext_body(self):
         pass
 
-    def serialize(self):
+    def serialize(self, conn):
         ext = ProtocolData()
-        ext_body = self.serialize_ext_body()
+        ext_body = self.serialize_ext_body(conn)
         ext.append_uint16(self.extension_id.value)
         ext.append_uint16(len(ext_body))
         ext.extend(ext_body)
@@ -40,7 +41,7 @@ class ExtServerNameIndication(Extension):
     def __init__(self, **kwargs):
         self.host_name = kwargs.get("host_name")
 
-    def serialize_ext_body(self):
+    def serialize_ext_body(self, conn):
         # we only support exacly one list element: host_name
         ext = ProtocolData()
         ext.append_uint8(0)  # host_name
@@ -77,7 +78,7 @@ class ExtExtendedMasterSecret(Extension):
 
     extension_id = tls.Extension.EXTENDED_MASTER_SECRET
 
-    def serialize_ext_body(self):
+    def serialize_ext_body(self, conn):
         return ProtocolData()
 
     def deserialize_ext_body(self, ext_body):
@@ -93,7 +94,7 @@ class ExtEncryptThenMac(Extension):
 
     extension_id = tls.Extension.ENCRYPT_THEN_MAC
 
-    def serialize_ext_body(self):
+    def serialize_ext_body(self, conn):
         return ProtocolData()
 
     def deserialize_ext_body(self, ext_body):
@@ -112,7 +113,7 @@ class ExtRenegotiationInfo(Extension):
     def __init__(self, **kwargs):
         self.opaque = kwargs.get("opaque", b"\0")
 
-    def serialize_ext_body(self):
+    def serialize_ext_body(self, conn):
         return self.opaque
 
     def deserialize_ext_body(self, ext_body):
@@ -129,7 +130,7 @@ class ExtEcPointFormats(Extension):
             "point_formats", [tls.EcPointFormat.UNCOMPRESSED]
         )
 
-    def serialize_ext_body(self):
+    def serialize_ext_body(self, conn):
         format_list = ProtocolData()
         for point_format in self.point_formats:
             if type(point_format) == int:
@@ -162,7 +163,7 @@ class ExtSupportedGroups(Extension):
     def __init__(self, **kwargs):
         self.supported_groups = kwargs.get("supported_groups", [])
 
-    def serialize_ext_body(self):
+    def serialize_ext_body(self, conn):
         group_list = ProtocolData()
         for group in self.supported_groups:
             if type(group) == int:
@@ -182,7 +183,7 @@ class ExtSignatureAlgorithms(Extension):
     def __init__(self, **kwargs):
         self.signature_algorithms = kwargs.get("signature_algorithms", [])
 
-    def serialize_ext_body(self):
+    def serialize_ext_body(self, conn):
         algo_list = ProtocolData()
         for algo in self.signature_algorithms:
             if type(algo) == int:
@@ -204,7 +205,7 @@ class ExtSessionTicket(Extension):
     def __init__(self, **kwargs):
         self.ticket = kwargs.get("ticket")
 
-    def serialize_ext_body(self):
+    def serialize_ext_body(self, conn):
         ext_body = ProtocolData()
         if self.ticket is not None:
             ext_body.extend(self.ticket)
@@ -221,7 +222,7 @@ class ExtSupportedVersions(Extension):
     def __init__(self, **kwargs):
         self.versions = kwargs.get("versions")
 
-    def serialize_ext_body(self):
+    def serialize_ext_body(self, conn):
         versions = ProtocolData()
         for version in self.versions:
             versions.append_uint16(version.value)
@@ -245,24 +246,31 @@ class ExtKeyShare(Extension):
     extension_id = tls.Extension.KEY_SHARE
 
     def __init__(self, **kwargs):
-        self.versions = kwargs.get("versions")
+        self.key_shares = kwargs.get("key_shares")
 
-    def serialize_ext_body(self):
-        versions = ProtocolData()
-        for version in self.versions:
-            versions.append_uint16(version.value)
+    def serialize_ext_body(self, conn):
+        key_shares = ProtocolData()
+        for group in self.key_shares:
+            key_shares.append_uint16(group.value)
+            share = conn.get_key_share(group)
+            key_shares.append_uint16(len(share))
+            key_shares.extend(share)
         ext_body = ProtocolData()
-        ext_body.append_uint8(len(versions))
-        ext_body.extend(versions)
+        ext_body.append_uint16(len(key_shares))
+        ext_body.extend(key_shares)
         return ext_body
 
     def deserialize_ext_body(self, ext_body):
-        self.versions = []
+        self.key_shares = []
         offset = 0
         while offset < len(ext_body):
-            version, offset = ext_body.unpack_uint16(offset)
-            version = tls.Version.val2enum(version)
-            self.versions.append(version)
+            group, offset = ext_body.unpack_uint16(offset)
+            group = tls.SupportedGroups.val2enum(group, alert_on_failure=True)
+            length, offset = ext_body.unpack_uint16(offset)
+            share, offset = ext_body.unpack_bytes(offset, length)
+            self.key_shares.append(
+                structs.KeyShareEntry(group=group, key_exchange=share)
+            )
         return self
 
 
@@ -306,14 +314,14 @@ deserialization_map = {
     # tls.Extension.SUPPORTED_EKT_CIPHERS = 39
     # tls.Extension.PRE_SHARED_KEY = 41
     # tls.Extension.EARLY_DATA = 42
-    # tls.Extension.SUPPORTED_VERSIONS = 43
+    tls.Extension.SUPPORTED_VERSIONS: ExtSupportedVersions,
     # tls.Extension.COOKIE = 44
     # tls.Extension.PSK_KEY_EXCHANGE_MODES = 45
     # tls.Extension.CERTIFICATE_AUTHORITIES = 47
     # tls.Extension.OID_FILTERS = 48
     # tls.Extension.POST_HANDSHAKE_AUTH = 49
     # tls.Extension.SIGNATURE_ALGORITHMS_CERT = 50
-    # tls.Extension.KEY_SHARE = 51
+    tls.Extension.KEY_SHARE: ExtKeyShare,
     # tls.Extension.TRANSPARENCY_INFO = 52
     # tls.Extension.CONNECTION_ID = 53
     # tls.Extension.EXTERNAL_ID_HASH = 55

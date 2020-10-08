@@ -54,7 +54,7 @@ class Client(object):
             signature algorithms supported by the client
         support_encrypt_then_mac (bool): an indication if the client supports the
             encrypt-then-mac extension
-        key_shares (list of :obj:`SupportedGroups`): this list of key shares
+        key_shares (list of :obj:`SupportedGroups`): this list of key share ob
             supported for TLS1.3.
     """
 
@@ -93,7 +93,7 @@ class Client(object):
         self.signature_algorithms = [tls.SignatureScheme.RSA_PSS_RSAE_SHA256]
 
         # TLS13
-        self.key_shares = []
+        self.key_shares = [tls.SupportedGroups.SECP256R1]
 
         self.support_encrypt_then_mac = False
 
@@ -192,11 +192,13 @@ class Client(object):
                     kwargs["ticket"] = self.session_state_ticket.ticket
                 msg.extensions.append(ext.ExtSessionTicket(**kwargs))
             if tls.Version.TLS13 in self.versions:
+                self._key_share_objects = []
                 msg.extensions.append(ext.ExtSupportedVersions(versions=self.versions))
+                # TLS13 key shares: enforce the same sequence as in supported groups
                 key_shares = []
-                for group in self.support_supported_groups:
+                for group in self.supported_groups:
                     if group in self.key_shares:
-                        key_shares.append(kex.instantiate_named_group(group))
+                        key_shares.append(group)
                 msg.extensions.append(ext.ExtKeyShare(key_shares=key_shares))
 
         return msg
