@@ -117,35 +117,12 @@ class TlsConnection(object):
         self.key_ex_type = None
         self.key_auth = None
 
-        # for key deriviation
-        self.mac_key_len = None
-        self.enc_key_len = None
-        self.iv_len = None
-
-        self.client_write_mac_key = None
-        self.server_write_mac_key = None
-        self.client_write_key = None
-        self.server_write_key = None
-        self.client_write_iv = None
-        self.server_write_iv = None
-
         self.client_write_keys = None
         self.server_write_keys = None
         self.cipher = None
         self.mac = None
 
-        # cipher
-        self.cipher_primitive = None
-        self.cipher_algo = None
-        self.cipher_type = None
-        self.block_size = None
         self.cipher_suite_supported = False
-
-        # hash & mac
-        self.hash_primitive = None
-        self.hash_algo = None
-        self.mac_len = None
-        self.hmac_algo = None
 
     def __enter__(self):
         logging.debug("New TLS connection created")
@@ -507,30 +484,13 @@ class TlsConnection(object):
         self.cipher = mappings.supported_ciphers[cs_info.cipher]
         self.mac = mappings.supported_macs[cs_info.mac]
 
-        #cipher_info = mappings.supported_ciphers[cs_info.cipher]
-        #self.cipher_primitive = cipher_info.cipher_primitive
-        #self.cipher_algo = cipher_info.cipher_algo
-        #self.cipher_type = cipher_info.cipher_type
-        #self.enc_key_len = cipher_info.enc_key_len
-        #self.block_size = cipher_info.block_size
-        #self.iv_len = cipher_info.iv_len
-
-        #mac_info = mappings.supported_macs[cs_info.mac]
-        #self.hash_algo = mac_info.hash_algo
-        #self.mac_len = mac_info.mac_len
-        #self.mac_key_len = mac_info.mac_key_len
-        #self.hmac_algo = mac_info.hmac_algo
-        #self.hash_primitive = cs_info.mac
-
-        #if self.cipher_type == tls.CipherType.AEAD:
-        #    self.mac_key_len = 0
         if self.version < tls.Version.TLS12:
             self.hmac_prf.set_msg_digest_algo(None)
         else:
             self.hmac_prf.set_msg_digest_algo(self.mac.hmac_algo)
         self.cipher_suite_supported = True
         logging.debug(f"hash_primitive: {cs_info.mac.name}")
-        logging.debug(f"cipher_primitive: {self.cipher.cipher_primitive.name}")
+        logging.debug(f"cipher_primitive: {self.cipher.primitive.name}")
 
     def generate_master_secret(self):
         if self.extended_ms:
@@ -582,7 +542,7 @@ class TlsConnection(object):
         master_secret = self.hmac_prf.hkdf_extract(None, derived)
 
     def key_derivation(self):
-        if self.cipher.cipher_type is tls.CipherType.AEAD:
+        if self.cipher.c_type is tls.CipherType.AEAD:
             iv_len = 0
         else:
             iv_len = self.cipher.iv_len
@@ -590,46 +550,30 @@ class TlsConnection(object):
             self.master_secret,
             b"key expansion",
             self.server_random + self.client_random,
-            2 * (self.mac.mac_key_len + self.cipher.enc_key_len + iv_len),
+            2 * (self.mac.key_len + self.cipher.key_len + iv_len),
         )
         key_material = ProtocolData(key_material)
-        self.client_write_mac_key, offset = key_material.unpack_bytes(
-            0, self.mac.mac_key_len
-        )
-        self.server_write_mac_key, offset = key_material.unpack_bytes(
-            offset, self.mac.mac_key_len
-        )
-        self.client_write_key, offset = key_material.unpack_bytes(
-            offset, self.cipher.enc_key_len
-        )
-        self.server_write_key, offset = key_material.unpack_bytes(
-            offset, self.cipher.enc_key_len
-        )
-        self.client_write_iv, offset = key_material.unpack_bytes(offset, self.cipher.iv_len)
-        self.server_write_iv, offset = key_material.unpack_bytes(offset, self.cipher.iv_len)
+        c_mac, offset = key_material.unpack_bytes(0, self.mac.key_len)
+        s_mac, offset = key_material.unpack_bytes(offset, self.mac.key_len)
+        c_enc, offset = key_material.unpack_bytes(offset, self.cipher.key_len)
+        s_enc, offset = key_material.unpack_bytes(offset, self.cipher.key_len)
+        c_iv, offset = key_material.unpack_bytes(offset, self.cipher.iv_len)
+        s_iv, offset = key_material.unpack_bytes(offset, self.cipher.iv_len)
 
-        self.recorder.trace(client_write_mac_key=self.client_write_mac_key)
-        self.recorder.trace(server_write_mac_key=self.server_write_mac_key)
-        self.recorder.trace(client_write_key=self.client_write_key)
-        self.recorder.trace(server_write_key=self.server_write_key)
-        self.recorder.trace(client_write_iv=self.client_write_iv)
-        self.recorder.trace(server_write_iv=self.server_write_iv)
-        logging.info(f"client_write_mac_key: {self.client_write_mac_key.dump()}")
-        logging.info(f"server_write_mac_key: {self.server_write_mac_key.dump()}")
-        logging.info(f"client_write_key: {self.client_write_key.dump()}")
-        logging.info(f"server_write_key: {self.server_write_key.dump()}")
-        logging.info(f"client_write_iv: {self.client_write_iv.dump()}")
-        logging.info(f"server_write_iv: {self.server_write_iv.dump()}")
-        self.client_write_keys = structs.SymmetricKeys(
-            mac=self.client_write_mac_key,
-            enc=self.client_write_key,
-            iv=self.client_write_iv,
-        )
-        self.server_write_keys = structs.SymmetricKeys(
-            mac=self.server_write_mac_key,
-            enc=self.server_write_key,
-            iv=self.server_write_iv,
-        )
+        self.recorder.trace(client_write_mac_key=c_mac)
+        self.recorder.trace(server_write_mac_key=s_mac)
+        self.recorder.trace(client_write_key=c_enc)
+        self.recorder.trace(server_write_key=s_enc)
+        self.recorder.trace(client_write_iv=c_iv)
+        self.recorder.trace(server_write_iv=s_iv)
+        logging.info(f"client_write_mac_key: {c_mac.dump()}")
+        logging.info(f"server_write_mac_key: {s_mac.dump()}")
+        logging.info(f"client_write_key: {c_enc.dump()}")
+        logging.info(f"server_write_key: {s_enc.dump()}")
+        logging.info(f"client_write_iv: {c_iv.dump()}")
+        logging.info(f"server_write_iv: {s_iv.dump()}")
+        self.client_write_keys = structs.SymmetricKeys(mac=c_mac, enc=c_enc, iv=c_iv)
+        self.server_write_keys = structs.SymmetricKeys(mac=s_mac, enc=s_enc, iv=s_iv)
 
     def get_pending_write_state(self, entity):
         if entity is tls.Entity.CLIENT:
@@ -637,7 +581,7 @@ class TlsConnection(object):
         else:
             keys = self.server_write_keys
 
-        return structs.StateUpdateParams2(
+        return structs.StateUpdateParams(
             cipher=self.cipher,
             mac=self.mac,
             keys=keys,
@@ -645,28 +589,3 @@ class TlsConnection(object):
             enc_then_mac=self.encrypt_then_mac,
             implicit_iv=(self.version <= tls.Version.TLS10),
         )
-
-        #if entity == tls.Entity.CLIENT:
-        #    enc_key = self.client_write_key
-        #    mac_key = self.client_write_mac_key
-        #    iv_value = self.client_write_iv
-        #else:
-        #    enc_key = self.server_write_key
-        #    mac_key = self.server_write_mac_key
-        #    iv_value = self.server_write_iv
-
-        #return structs.StateUpdateParams(
-        #    cipher_primitive=self.cipher_primitive,
-        #    cipher_algo=self.cipher_algo,
-        #    cipher_type=self.cipher_type,
-        #    block_size=self.block_size,
-        #    enc_key=enc_key,
-        #    mac_key=mac_key,
-        #    iv_value=iv_value,
-        #    iv_len=self.iv_len,
-        #    mac_len=self.mac_len,
-        #    hash_algo=self.hash_algo,
-        #    compression_method=self.compression_method,
-        #    encrypt_then_mac=self.encrypt_then_mac,
-        #    implicit_iv=(self.version <= tls.Version.TLS10),
-        #)

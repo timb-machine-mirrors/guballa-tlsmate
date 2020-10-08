@@ -26,6 +26,7 @@ class RecordLayerState(object):
         self.cipher_object = None
         self.iv = param.keys.iv
 
+
 class RecordLayer(object):
     def __init__(self, socket, recorder):
         self._send_buffer = ProtocolData()
@@ -71,7 +72,7 @@ class RecordLayer(object):
             iv = ProtocolData(state.iv[:-4])
             iv.append_uint32(state.seq_nbr)
 
-        cipher = Cipher(state.cipher.cipher_algo(state.keys.enc), modes.CBC(iv))
+        cipher = Cipher(state.cipher.algo(state.keys.enc), modes.CBC(iv))
         encryptor = cipher.encryptor()
         cipher_block = encryptor.update(fragment) + encryptor.finalize()
         if state.implicit_iv:
@@ -96,7 +97,6 @@ class RecordLayer(object):
         self._add_to_sendbuffer(content_type, version, fragment)
 
         state.seq_nbr += 1
-        return
 
     def _protect_stream_cipher(self, state, content_type, version, fragment):
         self._append_mac(state, content_type, version, fragment)
@@ -144,12 +144,12 @@ class RecordLayer(object):
             # no record layer protection
             self._add_to_sendbuffer(content_type, version, fragment)
         else:
-            if wstate.cipher.cipher_type == tls.CipherType.BLOCK:
+            if wstate.cipher.c_type == tls.CipherType.BLOCK:
                 self._protect_block_cipher(wstate, content_type, version, fragment)
-            elif wstate.cipher.cipher_type == tls.CipherType.STREAM:
+            elif wstate.cipher.c_type == tls.CipherType.STREAM:
                 self._protect_stream_cipher(wstate, content_type, version, fragment)
-            elif wstate.cipher.cipher_type == tls.CipherType.AEAD:
-                if wstate.cipher.cipher_primitive == tls.CipherPrimitive.CHACHA:
+            elif wstate.cipher.c_type == tls.CipherType.AEAD:
+                if wstate.cipher.primitive == tls.CipherPrimitive.CHACHA:
                     self._protect_chacha_cipher(wstate, content_type, version, fragment)
                 else:
                     self._protect_aead_cipher(wstate, content_type, version, fragment)
@@ -202,7 +202,7 @@ class RecordLayer(object):
         else:
             iv = fragment[: state.cipher.iv_len]
             cipher_text = fragment[state.cipher.iv_len :]
-        cipher = Cipher(state.cipher.cipher_algo(state.keys.enc), modes.CBC(iv))
+        cipher = Cipher(state.cipher.algo(state.keys.enc), modes.CBC(iv))
         decryptor = cipher.decryptor()
         plain_text = decryptor.update(cipher_text) + decryptor.finalize()
 
@@ -268,16 +268,16 @@ class RecordLayer(object):
         if rstate is None:
             return fragment
         else:
-            if rstate.cipher.cipher_type == tls.CipherType.BLOCK:
+            if rstate.cipher.c_type == tls.CipherType.BLOCK:
                 return self._unprotect_block_cipher(
                     rstate, content_type, version, fragment
                 )
-            elif rstate.cipher.cipher_type == tls.CipherType.STREAM:
+            elif rstate.cipher.c_type == tls.CipherType.STREAM:
                 return self._unprotect_stream_cipher(
                     rstate, content_type, version, fragment
                 )
-            elif rstate.cipher.cipher_type == tls.CipherType.AEAD:
-                if rstate.cipher.cipher_primitive == tls.CipherPrimitive.CHACHA:
+            elif rstate.cipher.c_type == tls.CipherType.AEAD:
+                if rstate.cipher.primitive == tls.CipherPrimitive.CHACHA:
                     return self._unprotect_chacha_cipher(
                         rstate, content_type, version, fragment
                     )
@@ -341,14 +341,14 @@ class RecordLayer(object):
 
     def update_write_state(self, new_state):
         state = RecordLayerState(new_state)
-        if state.cipher.cipher_type == tls.CipherType.STREAM:
-            cipher = Cipher(state.cipher.cipher_algo(state.keys.enc), mode=None)
+        if state.cipher.c_type == tls.CipherType.STREAM:
+            cipher = Cipher(state.cipher.algo(state.keys.enc), mode=None)
             state.cipher_object = cipher.encryptor()
         self._write_state = state
 
     def update_read_state(self, new_state):
         state = RecordLayerState(new_state)
-        if state.cipher.cipher_type == tls.CipherType.STREAM:
-            cipher = Cipher(state.cipher.cipher_algo(state.keys.enc), mode=None)
+        if state.cipher.c_type == tls.CipherType.STREAM:
+            cipher = Cipher(state.cipher.algo(state.keys.enc), mode=None)
             state.cipher_object = cipher.decryptor()
         self._read_state = state

@@ -298,9 +298,9 @@ supported_cipher_suites = {
         cipher=tls.SupportedCipher.RC4_128,
         mac=tls.SupportedHash.SHA,
     ),
-    ####
-    #### TLS1.3 cipher suites
-    ####
+    # ********************
+    # TLS1.3 cipher suites
+    # ********************
     tls.CipherSuite.TLS_AES_128_GCM_SHA256: structs.CipherSuite(
         key_ex=None,
         cipher=tls.SupportedCipher.AES_128_GCM,
@@ -323,82 +323,82 @@ supported_cipher_suites = {
 
 supported_ciphers = {
     tls.SupportedCipher.AES_128_CBC: structs.Cipher(
-        cipher_primitive=tls.CipherPrimitive.AES,
-        cipher_algo=algorithms.AES,
-        cipher_type=tls.CipherType.BLOCK,
-        enc_key_len=16,
+        primitive=tls.CipherPrimitive.AES,
+        algo=algorithms.AES,
+        c_type=tls.CipherType.BLOCK,
+        key_len=16,
         block_size=16,
         iv_len=16,
     ),
     tls.SupportedCipher.AES_256_CBC: structs.Cipher(
-        cipher_primitive=tls.CipherPrimitive.AES,
-        cipher_algo=algorithms.AES,
-        cipher_type=tls.CipherType.BLOCK,
-        enc_key_len=32,
+        primitive=tls.CipherPrimitive.AES,
+        algo=algorithms.AES,
+        c_type=tls.CipherType.BLOCK,
+        key_len=32,
         block_size=16,
         iv_len=16,
     ),
     tls.SupportedCipher.AES_128_GCM: structs.Cipher(
-        cipher_primitive=tls.CipherPrimitive.AES,
-        cipher_algo=aead.AESGCM,
-        cipher_type=tls.CipherType.AEAD,
-        enc_key_len=16,
+        primitive=tls.CipherPrimitive.AES,
+        algo=aead.AESGCM,
+        c_type=tls.CipherType.AEAD,
+        key_len=16,
         block_size=16,
         iv_len=4,
     ),
     tls.SupportedCipher.AES_256_GCM: structs.Cipher(
-        cipher_primitive=tls.CipherPrimitive.AES,
-        cipher_algo=aead.AESGCM,
-        cipher_type=tls.CipherType.AEAD,
-        enc_key_len=32,
+        primitive=tls.CipherPrimitive.AES,
+        algo=aead.AESGCM,
+        c_type=tls.CipherType.AEAD,
+        key_len=32,
         block_size=16,
         iv_len=4,
     ),
     tls.SupportedCipher.CHACHA20_POLY1305: structs.Cipher(
-        cipher_primitive=tls.CipherPrimitive.CHACHA,
-        cipher_algo=aead.ChaCha20Poly1305,
-        cipher_type=tls.CipherType.AEAD,
-        enc_key_len=32,
+        primitive=tls.CipherPrimitive.CHACHA,
+        algo=aead.ChaCha20Poly1305,
+        c_type=tls.CipherType.AEAD,
+        key_len=32,
         block_size=16,
         iv_len=12,
     ),
     tls.SupportedCipher.TRIPPLE_DES_EDE_CBC: structs.Cipher(
-        cipher_primitive=tls.CipherPrimitive.TRIPPLE_DES,
-        cipher_algo=algorithms.TripleDES,
-        cipher_type=tls.CipherType.BLOCK,
-        enc_key_len=24,
+        primitive=tls.CipherPrimitive.TRIPPLE_DES,
+        algo=algorithms.TripleDES,
+        c_type=tls.CipherType.BLOCK,
+        key_len=24,
         block_size=8,
         iv_len=8,
     ),
     tls.SupportedCipher.CAMELLIA_128_CBC: structs.Cipher(
-        cipher_primitive=tls.CipherPrimitive.CAMELLIA,
-        cipher_algo=algorithms.Camellia,
-        cipher_type=tls.CipherType.BLOCK,
-        enc_key_len=16,
+        primitive=tls.CipherPrimitive.CAMELLIA,
+        algo=algorithms.Camellia,
+        c_type=tls.CipherType.BLOCK,
+        key_len=16,
         block_size=16,
         iv_len=16,
     ),
     tls.SupportedCipher.CAMELLIA_256_CBC: structs.Cipher(
-        cipher_primitive=tls.CipherPrimitive.CAMELLIA,
-        cipher_algo=algorithms.Camellia,
-        cipher_type=tls.CipherType.BLOCK,
-        enc_key_len=32,
+        primitive=tls.CipherPrimitive.CAMELLIA,
+        algo=algorithms.Camellia,
+        c_type=tls.CipherType.BLOCK,
+        key_len=32,
         block_size=16,
         iv_len=16,
     ),
     tls.SupportedCipher.IDEA_CBC: structs.Cipher(
-        cipher_primitive=tls.CipherPrimitive.IDEA,
-        cipher_algo=algorithms.IDEA,
-        cipher_type=tls.CipherType.BLOCK,
-        enc_key_len=16,
+        primitive=tls.CipherPrimitive.IDEA,
+        algo=algorithms.IDEA,
+        c_type=tls.CipherType.BLOCK,
+        key_len=16,
         block_size=8,
         iv_len=8,
     ),
     tls.SupportedCipher.RC4_128: structs.Cipher(
-        cipher_primitive=tls.CipherPrimitive.RC4,
-        cipher_algo=algorithms.ARC4,
-        cipher_type=tls.CipherType.STREAM,
-        enc_key_len=16,
+        primitive=tls.CipherPrimitive.RC4,
+        algo=algorithms.ARC4,
+        c_type=tls.CipherType.STREAM,
+        key_len=16,
         block_size=None,
         iv_len=0,
     ),
@@ -408,16 +408,16 @@ supported_ciphers = {
 
 supported_macs = {
     tls.SupportedHash.SHA256: structs.Mac(
-        hash_algo=hashes.SHA256, mac_len=32, mac_key_len=32, hmac_algo=hashes.SHA256
+        hash_algo=hashes.SHA256, mac_len=32, key_len=32, hmac_algo=hashes.SHA256
     ),
     tls.SupportedHash.SHA: structs.Mac(
-        hash_algo=hashes.SHA1, mac_len=20, mac_key_len=20, hmac_algo=hashes.SHA256
+        hash_algo=hashes.SHA1, mac_len=20, key_len=20, hmac_algo=hashes.SHA256
     ),
     tls.SupportedHash.SHA384: structs.Mac(
-        hash_algo=hashes.SHA384, mac_len=48, mac_key_len=48, hmac_algo=hashes.SHA384
+        hash_algo=hashes.SHA384, mac_len=48, key_len=48, hmac_algo=hashes.SHA384
     ),
     tls.SupportedHash.MD5: structs.Mac(
-        hash_algo=hashes.MD5, mac_len=16, mac_key_len=16, hmac_algo=hashes.SHA256
+        hash_algo=hashes.MD5, mac_len=16, key_len=16, hmac_algo=hashes.SHA256
     ),
 }
 

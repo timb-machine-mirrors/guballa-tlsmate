@@ -14,45 +14,18 @@ SessionStateTicket = collections.namedtuple(
 
 
 Cipher = collections.namedtuple(
-    "Cipher", "cipher_primitive cipher_algo cipher_type enc_key_len block_size iv_len"
+    "Cipher", "primitive algo c_type key_len block_size iv_len"
 )
 
-Mac = collections.namedtuple("Mac", "hash_algo mac_len mac_key_len hmac_algo")
+Mac = collections.namedtuple("Mac", "hash_algo mac_len key_len hmac_algo")
 
 SymmetricKeys = collections.namedtuple("SymmetricKeys", "mac enc iv")
 
 KeyExchangeAlgo = collections.namedtuple("KeyExchangeAlgo", "cls")
 
-
 StateUpdateParams = collections.namedtuple(
     "StateUpdateParams",
-    [
-        "cipher_primitive",  # tls.CipherPrimitive
-        "cipher_algo",
-        "cipher_type",  # tls.CipherType
-        "block_size",
-        "enc_key",
-        "mac_key",
-        "iv_value",
-        "iv_len",
-        "mac_len",
-        "hash_algo",
-        "compression_method",  # tls.CompressionMethod
-        "encrypt_then_mac",
-        "implicit_iv",
-    ],
-)
-
-StateUpdateParams2 = collections.namedtuple(
-    "StateUpdateParams2",
-    [
-        "cipher",
-        "mac",
-        "keys",
-        "compr",
-        "enc_then_mac",
-        "implicit_iv"
-    ]
+    ["cipher", "mac", "keys", "compr", "enc_then_mac", "implicit_iv"],
 )
 
 
