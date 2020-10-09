@@ -25,7 +25,7 @@ KeyExchangeAlgo = collections.namedtuple("KeyExchangeAlgo", "cls")
 
 StateUpdateParams = collections.namedtuple(
     "StateUpdateParams",
-    ["cipher", "mac", "keys", "compr", "enc_then_mac", "implicit_iv"],
+    ["cipher", "mac", "keys", "compr", "enc_then_mac", "version", "is_write_state"],
 )
 
 

@@ -3,10 +3,12 @@
 """
 
 import abc
+import logging
 import math
 import struct
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.kdf.hkdf import HKDFExpand
+from tlsclient.protocol import ProtocolData
 
 
 class _Backend(metaclass=abc.ABCMeta):
@@ -161,4 +163,12 @@ class HmacPrf(object):
         return self._backend.hkdf_extract(secret, salt)
 
     def hkdf_expand_label(self, secret, label, msg_digest, length):
-        return self._backend.hkdf_expand_label(secret, label, msg_digest, length)
+        logging.debug("*****")
+        logging.debug("hkdf_expand_label")
+        logging.debug(f"secret: {ProtocolData(secret).dump()}")
+        logging.debug(f"label: {label}")
+        logging.debug(f"msg_digest: {ProtocolData(msg_digest).dump()}")
+        x = self._backend.hkdf_expand_label(secret, label, msg_digest, length)
+        logging.debug(f"out: {ProtocolData(x).dump()}")
+        logging.debug("*****")
+        return x

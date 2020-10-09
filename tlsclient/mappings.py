@@ -303,12 +303,12 @@ supported_cipher_suites = {
     # ********************
     tls.CipherSuite.TLS_AES_128_GCM_SHA256: structs.CipherSuite(
         key_ex=None,
-        cipher=tls.SupportedCipher.AES_128_GCM,
+        cipher=tls.SupportedCipher.TLS13_AES_128_GCM,
         mac=tls.SupportedHash.SHA256,
     ),
     tls.CipherSuite.TLS_AES_256_GCM_SHA384: structs.CipherSuite(
         key_ex=None,
-        cipher=tls.SupportedCipher.AES_256_GCM,
+        cipher=tls.SupportedCipher.TLS13_AES_256_GCM,
         mac=tls.SupportedHash.SHA384,
     ),
     tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256: structs.CipherSuite(
@@ -401,6 +401,22 @@ supported_ciphers = {
         key_len=16,
         block_size=None,
         iv_len=0,
+    ),
+    tls.SupportedCipher.TLS13_AES_128_GCM: structs.Cipher(
+        primitive=tls.CipherPrimitive.AES,
+        algo=aead.AESGCM,
+        c_type=tls.CipherType.AEAD,
+        key_len=16,
+        block_size=16,
+        iv_len=12,
+    ),
+    tls.SupportedCipher.TLS13_AES_256_GCM: structs.Cipher(
+        primitive=tls.CipherPrimitive.AES,
+        algo=aead.AESGCM,
+        c_type=tls.CipherType.AEAD,
+        key_len=32,
+        block_size=16,
+        iv_len=12,
     ),
 }
 

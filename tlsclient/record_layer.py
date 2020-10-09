@@ -15,16 +15,27 @@ from cryptography.hazmat.primitives.ciphers import Cipher, modes, aead
 class RecordLayerState(object):
     def __init__(self, param):
 
-        self.param = param
         self.keys = param.keys
         self.mac = param.mac
         self.cipher = param.cipher
         self.compr = param.compr
         self.enc_then_mac = param.enc_then_mac
-        self.implicit_iv = param.implicit_iv
+        self.version = param.version
         self.seq_nbr = 0
         self.cipher_object = None
         self.iv = param.keys.iv
+        self.is_write_state = param.is_write_state
+        if self.cipher.c_type == tls.CipherType.STREAM:
+            cipher = Cipher(self.cipher.algo(self.keys.enc), mode=None)
+            if self.is_write_state:
+                self.cipher_object = cipher.encryptor()
+            else:
+                self.cipher_object = cipher.decryptor()
+        if self.version is tls.Version.TLS13:
+            if self.cipher.primitive is tls.CipherPrimitive.AES:
+                self.cipher_object = aead.AESGCM
+            else:
+                self.cipher_object = aead.ChaCha20Poly1305
 
 
 class RecordLayer(object):
@@ -32,7 +43,6 @@ class RecordLayer(object):
         self._send_buffer = ProtocolData()
         self._receive_buffer = ProtocolData()
         self._fragment_max_size = 4 * 4096
-        self._negotiated_version = tls.Version.TLS10
         self._write_state = None
         self._read_state = None
         self._socket = socket
@@ -65,7 +75,7 @@ class RecordLayer(object):
         missing_bytes = state.cipher.block_size - (length % state.cipher.block_size)
         fragment.extend(struct.pack("!B", missing_bytes) * (missing_bytes + 1))
 
-        if state.implicit_iv:
+        if state.version <= tls.Version.TLS10:
             iv = state.iv
         else:
             # iv should be random but we want to have it reproducable
@@ -75,7 +85,7 @@ class RecordLayer(object):
         cipher = Cipher(state.cipher.algo(state.keys.enc), modes.CBC(iv))
         encryptor = cipher.encryptor()
         cipher_block = encryptor.update(fragment) + encryptor.finalize()
-        if state.implicit_iv:
+        if state.version <= tls.Version.TLS10:
             state.iv = cipher_block[-state.cipher.iv_len :]
             return cipher_block
         else:
@@ -195,7 +205,7 @@ class RecordLayer(object):
         return msg
 
     def _decode_cbc(self, state, fragment):
-        if state.implicit_iv:
+        if state.version <= tls.Version.TLS10:
             iv = state.iv
             cipher_text = fragment
             state.iv = fragment[-state.cipher.iv_len :]
@@ -263,42 +273,62 @@ class RecordLayer(object):
         state.seq_nbr += 1
         return ProtocolData(chachapoly.decrypt(nonce, bytes(fragment), bytes(aad)))
 
-    def _unprotect(self, content_type, version, fragment):
-        rstate = self._read_state
-        if rstate is None:
-            return fragment
-        else:
-            if rstate.cipher.c_type == tls.CipherType.BLOCK:
-                return self._unprotect_block_cipher(
-                    rstate, content_type, version, fragment
-                )
-            elif rstate.cipher.c_type == tls.CipherType.STREAM:
-                return self._unprotect_stream_cipher(
-                    rstate, content_type, version, fragment
-                )
-            elif rstate.cipher.c_type == tls.CipherType.AEAD:
-                if rstate.cipher.primitive == tls.CipherPrimitive.CHACHA:
-                    return self._unprotect_chacha_cipher(
-                        rstate, content_type, version, fragment
-                    )
-                else:
-                    return self._unprotect_aead_cipher(
-                        rstate, content_type, version, fragment
-                    )
-            else:
-                raise FatalAlert(
-                    "Unknown cipher type", tls.AlertDescription.INTERNAL_ERROR
-                )
-        return None
+    def _tls13_unprotect(self, state, content_type, version, fragment):
+        aad = ProtocolData()
+        aad.append_uint8(content_type.value)
+        aad.append_uint16(version.value)
+        aad.append_uint16(len(fragment))
+        nonce_val = int.from_bytes(state.keys.iv, "big", signed=False) ^ state.seq_nbr
+        nonce = nonce_val.to_bytes(state.cipher.iv_len, "big", signed=False)
+        cipher = state.cipher_object(state.keys.enc)
+        decoded = cipher.decrypt(nonce, bytes(fragment), bytes(aad))
+        # find idx of last non-zero octet
+        idx = len(decoded) - 1
+        while idx >= 0:
+            if decoded[idx] != 0:
+                break
+            idx -= 1
+        if idx < 0:
+            raise FatalAlert(
+                "decoded record: padding not Ok",
+                tls.AlertDescription.UNEXPECTED_MESSAGE,
+            )
+        return structs.MessageBlock(
+            content_type=tls.ContentType.val2enum(decoded[idx], alert_on_failure=True),
+            version=version,
+            fragment=ProtocolData(decoded[:idx]),
+        )
 
     def _uncompress(self, fragment):
         return fragment
 
+    def _unprotect(self, state, content_type, version, fragment):
+        if state.cipher.c_type == tls.CipherType.BLOCK:
+            fragment = self._unprotect_block_cipher(
+                state, content_type, version, fragment
+            )
+        elif state.cipher.c_type == tls.CipherType.STREAM:
+            fragment = self._unprotect_stream_cipher(
+                state, content_type, version, fragment
+            )
+        elif state.cipher.c_type == tls.CipherType.AEAD:
+            if state.cipher.primitive == tls.CipherPrimitive.CHACHA:
+                fragment = self._unprotect_chacha_cipher(
+                    state, content_type, version, fragment
+                )
+            else:
+                fragment = self._unprotect_aead_cipher(
+                    state, content_type, version, fragment
+                )
+        else:
+            raise FatalAlert("Unknown cipher type", tls.AlertDescription.INTERNAL_ERROR)
+        fragment = self._uncompress(fragment)
+        return structs.MessageBlock(
+            content_type=content_type, version=version, fragment=fragment
+        )
+
     def send_message(self, message_block):
         self._fragment(message_block)
-
-    def set_negotiated_version(self, version):
-        self._negotiated_version = version
 
     def close_socket(self):
         self._socket.close_socket()
@@ -333,22 +363,48 @@ class RecordLayer(object):
         fragment = ProtocolData(self._receive_buffer[5 : (length + 5)])
         self._receive_buffer = ProtocolData(self._receive_buffer[(length + 5) :])
 
-        fragment = self._unprotect(content_type, version, fragment)
-        fragment = self._uncompress(fragment)
-        return structs.MessageBlock(
-            content_type=content_type, version=version, fragment=fragment
-        )
+        if self._read_state is not None and content_type is tls.ContentType.APPLICATION_DATA:
+            state = self._read_state
+            if state.version is tls.Version.TLS13:
+                return self._tls13_unprotect(state, content_type, version, fragment)
+            else:
+                return self._unprotect(state, content_type, version, fragment)
+        else:
+            return structs.MessageBlock(
+                content_type=content_type, version=version, fragment=fragment
+            )
 
-    def update_write_state(self, new_state):
+    def update_state(self, new_state):
         state = RecordLayerState(new_state)
-        if state.cipher.c_type == tls.CipherType.STREAM:
-            cipher = Cipher(state.cipher.algo(state.keys.enc), mode=None)
-            state.cipher_object = cipher.encryptor()
-        self._write_state = state
+        if state.is_write_state:
+            self._write_state = state
+        else:
+            self._read_state = state
 
-    def update_read_state(self, new_state):
-        state = RecordLayerState(new_state)
-        if state.cipher.c_type == tls.CipherType.STREAM:
-            cipher = Cipher(state.cipher.algo(state.keys.enc), mode=None)
-            state.cipher_object = cipher.decryptor()
-        self._read_state = state
+
+#    def update_write_state(self, new_state):
+#        state = RecordLayerState(new_state)
+#        if state.cipher.c_type == tls.CipherType.STREAM:
+#            cipher = Cipher(state.cipher.algo(state.keys.enc), mode=None)
+#            state.cipher_object = cipher.encryptor()
+#        self._write_state_app = state
+#        self._write_state_hs = state
+#
+#    def update_read_state(self, new_state):
+#        state = RecordLayerState(new_state)
+#        if state.cipher.c_type == tls.CipherType.STREAM:
+#            cipher = Cipher(state.cipher.algo(state.keys.enc), mode=None)
+#            state.cipher_object = cipher.decryptor()
+#        self._read_state_app = state
+#
+#    def tls13_update_read_state_app(self, new_state):
+#        self._read_state_app = RecordLayerState(new_state)
+#
+#    def tls13_update_read_state_hs(self, new_state):
+#        self._read_state_hs = RecordLayerState(new_state)
+#
+#    def tls13_update_write_state_app(self, new_state):
+#        self._write_state_app = RecordLayerState(new_state)
+#
+#    def tls13_update_write_state_hs(self, new_state):
+#        self._write_state_hs = RecordLayerState(new_state)

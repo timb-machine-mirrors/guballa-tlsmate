@@ -83,7 +83,6 @@ class TlsConnection(object):
         self.queued_msg = None
         self.record_layer = record_layer
         self.record_layer_version = tls.Version.TLS10
-        self._update_write_state = False
         self._msg_hash = None
         self._msg_hash_queue = None
         self._msg_hash_active = False
@@ -362,7 +361,8 @@ class TlsConnection(object):
             )
 
     def on_change_cipher_spec_received(self, msg):
-        self.update_read_state()
+        if self.version is not tls.Version.TLS13:
+            self.update_read_state()
 
     def on_finished_received(self, msg):
         verify_data = ProtocolData(msg.verify_data)
@@ -456,8 +456,7 @@ class TlsConnection(object):
 
     def update_write_state(self):
         state = self.get_pending_write_state(self.entity)
-        self.record_layer.update_write_state(state)
-        self._update_write_state = False
+        self.record_layer.update_state(state)
 
     def update_read_state(self):
         if self.entity == tls.Entity.CLIENT:
@@ -465,7 +464,7 @@ class TlsConnection(object):
         else:
             entity = tls.Entity.CLIENT
         state = self.get_pending_write_state(entity)
-        self.record_layer.update_read_state(state)
+        self.record_layer.update_state(state)
 
     def update_cipher_suite(self, cipher_suite):
         self.cipher_suite = cipher_suite
@@ -523,22 +522,59 @@ class TlsConnection(object):
         return
 
     def tls13_key_schedule(self):
+
         early_secret = self.hmac_prf.hkdf_extract(None, b"")
+        logging.debug(f"early_secret: {ProtocolData(early_secret).dump()}")
         empty_msg_digest = self.hmac_prf.empty_msg_digest()
+        logging.debug(f"empty msg digest: {ProtocolData(empty_msg_digest).dump()}")
         derived = self.hmac_prf.hkdf_expand_label(
-            early_secret, "derived", empty_msg_digest
+            early_secret, "derived", empty_msg_digest, self.mac.key_len
         )
+
         handshake_secret = self.hmac_prf.hkdf_extract(self.premaster_secret, derived)
+        logging.debug(f"handshake secret: {ProtocolData(handshake_secret).dump()}")
         hello_digest = self.hmac_prf.finalize_msg_digest(intermediate=True)
-        client_hs_tr_sec = self.hmac_prf.hkdf_expand_label(
-            handshake_secret, "c hs traffic", hello_digest
+        logging.debug(f"hello_digest: {ProtocolData(hello_digest).dump()}")
+        c_hs_tr_secret = self.hmac_prf.hkdf_expand_label(
+            handshake_secret, "c hs traffic", hello_digest, self.mac.key_len
         )
-        server_hs_tr_sec = self.hmac_prf.hkdf_expand_label(
-            handshake_secret, "s hs traffic", hello_digest
+        c_enc = self.hmac_prf.hkdf_expand_label(c_hs_tr_secret, "key", b"", self.cipher.key_len)
+        c_iv = self.hmac_prf.hkdf_expand_label(c_hs_tr_secret, "iv", b"", self.cipher.iv_len)
+        s_hs_tr_secret = self.hmac_prf.hkdf_expand_label(
+            handshake_secret, "s hs traffic", hello_digest, self.mac.key_len
         )
+        s_enc = self.hmac_prf.hkdf_expand_label(s_hs_tr_secret, "key", b"", self.cipher.key_len)
+        s_iv = self.hmac_prf.hkdf_expand_label(s_hs_tr_secret, "iv", b"", self.cipher.iv_len)
+        logging.info(f"client hs traffic secret: {ProtocolData(c_hs_tr_secret).dump()}")
+        logging.info(f"server hs traffic secret: {ProtocolData(s_hs_tr_secret).dump()}")
+
+        self.record_layer.update_state(
+            structs.StateUpdateParams(
+                cipher=self.cipher,
+                mac=None,
+                keys=structs.SymmetricKeys(enc=c_enc, mac=None, iv=c_iv),
+                compr=None,
+                enc_then_mac=False,
+                version=self.version,
+                is_write_state=True
+            )
+        )
+        self.record_layer.update_state(
+            structs.StateUpdateParams(
+                cipher=self.cipher,
+                mac=None,
+                keys=structs.SymmetricKeys(enc=s_enc, mac=None, iv=s_iv),
+                compr=None,
+                enc_then_mac=False,
+                version=self.version,
+                is_write_state=False
+            )
+        )
+
         derived = self.hmac_prf.hkdf_expand_label(
-            handshake_secret, "derived", empty_msg_digest
+            handshake_secret, "derived", empty_msg_digest, self.mac.key_len
         )
+
         master_secret = self.hmac_prf.hkdf_extract(None, derived)
 
     def key_derivation(self):
@@ -587,5 +623,6 @@ class TlsConnection(object):
             keys=keys,
             compr=self.compression_method,
             enc_then_mac=self.encrypt_then_mac,
-            implicit_iv=(self.version <= tls.Version.TLS10),
+            version=self.version,
+            is_write_state=(entity is tls.Entity.CLIENT),
         )

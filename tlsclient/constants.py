@@ -706,6 +706,8 @@ class SupportedCipher(ExtendedEnum):
     RC4_40 = enum.auto()
     SEED_CBC = enum.auto()
     TRIPPLE_DES_EDE_CBC = enum.auto()
+    TLS13_AES_128_GCM = enum.auto()
+    TLS13_AES_256_GCM = enum.auto()
 
 
 class SupportedCipherMode(ExtendedEnum):
