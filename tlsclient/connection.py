@@ -78,7 +78,7 @@ class TlsConnectionMsgs(object):
 
 
 class TlsConnection(object):
-    def __init__(self, connection_msgs, entity, record_layer, recorder, hmac_prf):
+    def __init__(self, connection_msgs, entity, record_layer, recorder, kdf):
         self.msg = connection_msgs
         self.received_data = ProtocolData()
         self.queued_msg = None
@@ -88,7 +88,7 @@ class TlsConnection(object):
         self._msg_hash_queue = None
         self._msg_hash_active = False
         self.recorder = recorder
-        self.hmac_prf = hmac_prf
+        self.kdf = kdf
         self._new_session_id = None
         self._finished_treated = False
         self.ticket_sent = False
@@ -179,17 +179,17 @@ class TlsConnection(object):
         return msg
 
     def post_generate_finished(self):
-        c_app_tr_secret = self.hmac_prf.hkdf_expand_label(
+        c_app_tr_secret = self.kdf.hkdf_expand_label(
             self.master_secret,
             "c ap traffic",
             self.server_finished_digest,
             self.mac.key_len,
         )
         logging.debug(f"c_app_tr_secret: {ProtocolData(c_app_tr_secret).dump()}")
-        c_enc = self.hmac_prf.hkdf_expand_label(
+        c_enc = self.kdf.hkdf_expand_label(
             c_app_tr_secret, "key", b"", self.cipher.key_len
         )
-        c_iv = self.hmac_prf.hkdf_expand_label(
+        c_iv = self.kdf.hkdf_expand_label(
             c_app_tr_secret, "iv", b"", self.cipher.iv_len
         )
 
@@ -207,14 +207,14 @@ class TlsConnection(object):
 
     def generate_finished(self, cls):
         intermediate = not self._finished_treated
-        hash_val = self.hmac_prf.finalize_msg_digest(intermediate=intermediate)
+        hash_val = self.kdf.finalize_msg_digest(intermediate=intermediate)
         if self.version is tls.Version.TLS13:
             # TODO: server side implementation
-            finished_key = self.hmac_prf.hkdf_expand_label(
+            finished_key = self.kdf.hkdf_expand_label(
                 self.c_hs_tr_secret, "finished", b"", self.mac.key_len
             )
             logging.debug(f"finished_key: {ProtocolData(finished_key).dump()}")
-            val = ProtocolData(self.hmac_prf.hkdf_extract(hash_val, finished_key))
+            val = ProtocolData(self.kdf.hkdf_extract(hash_val, finished_key))
             self._post_sending_hook = self.post_generate_finished
 
         else:
@@ -223,7 +223,7 @@ class TlsConnection(object):
             else:
                 label = b"server finished"
             val = ProtocolData(
-                self.hmac_prf.prf(self.master_secret, label, hash_val, 12)
+                self.kdf.prf(self.master_secret, label, hash_val, 12)
             )
             self.update_write_state()
         self.recorder.trace(msg_digest_finished_sent=hash_val)
@@ -282,7 +282,7 @@ class TlsConnection(object):
                 logging.info(f"extension {ext.value} {ext.name}")
                 if ext is tls.Extension.SESSION_TICKET:
                     self.ticket_sent = extension.ticket is not None
-        self.hmac_prf.start_msg_digest()
+        self.kdf.start_msg_digest()
 
     _on_sending_message = {tls.HandshakeType.CLIENT_HELLO: on_sending_client_hello}
 
@@ -309,7 +309,7 @@ class TlsConnection(object):
                 self.on_sending_message(msg)
             msg_data = msg.serialize(self)
             if msg.content_type == tls.ContentType.HANDSHAKE:
-                self.hmac_prf.update_msg_digest(msg_data)
+                self.kdf.update_msg_digest(msg_data)
             logging.info(f"Sending {msg.msg_type.name}")
 
             self.record_layer.send_message(
@@ -409,11 +409,11 @@ class TlsConnection(object):
         logging.debug(f"Finished.verify_data(in): {verify_data.dump()}")
 
         if self.version is tls.Version.TLS13:
-            finished_key = self.hmac_prf.hkdf_expand_label(
+            finished_key = self.kdf.hkdf_expand_label(
                 self.s_hs_tr_secret, "finished", b"", self.mac.key_len
             )
             logging.debug(f"finished_key: {ProtocolData(finished_key).dump()}")
-            calc_verify_data = self.hmac_prf.hkdf_extract(
+            calc_verify_data = self.kdf.hkdf_extract(
                 self.pre_server_finished_digest, finished_key
             )
             logging.debug(f"calc. verify_data: {ProtocolData(calc_verify_data).dump()}")
@@ -422,20 +422,20 @@ class TlsConnection(object):
                     "Received Finidhed: verify_data does not match",
                     tls.AlertDescription.DECRYPT_ERROR,
                 )
-            self.server_finished_digest = self.hmac_prf.finalize_msg_digest(
+            self.server_finished_digest = self.kdf.finalize_msg_digest(
                 intermediate=True
             )
-            s_app_tr_secret = self.hmac_prf.hkdf_expand_label(
+            s_app_tr_secret = self.kdf.hkdf_expand_label(
                 self.master_secret,
                 "s ap traffic",
                 self.server_finished_digest,
                 self.mac.key_len,
             )
             logging.debug(f"s_app_tr_secret: ProtocolData(s_app_tr_secret).dump()")
-            c_enc = self.hmac_prf.hkdf_expand_label(
+            c_enc = self.kdf.hkdf_expand_label(
                 s_app_tr_secret, "key", b"", self.cipher.key_len
             )
-            c_iv = self.hmac_prf.hkdf_expand_label(
+            c_iv = self.kdf.hkdf_expand_label(
                 s_app_tr_secret, "iv", b"", self.cipher.iv_len
             )
 
@@ -453,12 +453,12 @@ class TlsConnection(object):
 
         else:
             intermediate = not self._finished_treated
-            hash_val = self.hmac_prf.finalize_msg_digest(intermediate=intermediate)
+            hash_val = self.kdf.finalize_msg_digest(intermediate=intermediate)
             if self.entity == tls.Entity.CLIENT:
                 label = b"server finished"
             else:
                 label = b"client finished"
-            val = self.hmac_prf.prf(self.master_secret, label, hash_val, 12)
+            val = self.kdf.prf(self.master_secret, label, hash_val, 12)
             self.recorder.trace(msg_digest_finished_rec=hash_val)
             self.recorder.trace(verify_data_finished_rec=verify_data)
             self.recorder.trace(verify_data_finished_calc=val)
@@ -489,7 +489,7 @@ class TlsConnection(object):
             logging.debug(f"extension {ext.extension_id.name}")
 
     def on_certificate_verify_received(self, msg):
-        self.pre_server_finished_digest = self.hmac_prf.finalize_msg_digest(
+        self.pre_server_finished_digest = self.kdf.finalize_msg_digest(
             intermediate=True
         )
 
@@ -517,7 +517,7 @@ class TlsConnection(object):
             content_type, version, fragment = self.record_layer.wait_fragment(timeout)
             if content_type is tls.ContentType.HANDSHAKE:
                 msg = HandshakeMessage.deserialize(fragment, self)
-                self.hmac_prf.update_msg_digest(fragment)
+                self.kdf.update_msg_digest(fragment)
             elif content_type is tls.ContentType.ALERT:
                 msg = Alert.deserialize(fragment, self)
             elif content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
@@ -580,24 +580,24 @@ class TlsConnection(object):
         self.mac = mappings.supported_macs[cs_info.mac]
 
         if self.version < tls.Version.TLS12:
-            self.hmac_prf.set_msg_digest_algo(None)
+            self.kdf.set_msg_digest_algo(None)
         else:
-            self.hmac_prf.set_msg_digest_algo(self.mac.hmac_algo)
+            self.kdf.set_msg_digest_algo(self.mac.hmac_algo)
         self.cipher_suite_supported = True
         logging.debug(f"hash_primitive: {cs_info.mac.name}")
         logging.debug(f"cipher_primitive: {self.cipher.primitive.name}")
 
     def generate_master_secret(self):
         if self.extended_ms:
-            msg_digest = self.hmac_prf.finalize_msg_digest(intermediate=True)
+            msg_digest = self.kdf.finalize_msg_digest(intermediate=True)
             self.master_secret = ProtocolData(
-                self.hmac_prf.prf(
+                self.kdf.prf(
                     self.premaster_secret, b"extended master secret", msg_digest, 48
                 )
             )
         else:
             self.master_secret = ProtocolData(
-                self.hmac_prf.prf(
+                self.kdf.prf(
                     self.premaster_secret,
                     b"master secret",
                     self.client_random + self.server_random,
@@ -619,34 +619,34 @@ class TlsConnection(object):
 
     def tls13_key_schedule(self):
 
-        early_secret = self.hmac_prf.hkdf_extract(None, b"")
+        early_secret = self.kdf.hkdf_extract(None, b"")
         logging.debug(f"early_secret: {ProtocolData(early_secret).dump()}")
-        empty_msg_digest = self.hmac_prf.empty_msg_digest()
+        empty_msg_digest = self.kdf.empty_msg_digest()
         logging.debug(f"empty msg digest: {ProtocolData(empty_msg_digest).dump()}")
-        derived = self.hmac_prf.hkdf_expand_label(
+        derived = self.kdf.hkdf_expand_label(
             early_secret, "derived", empty_msg_digest, self.mac.key_len
         )
 
-        handshake_secret = self.hmac_prf.hkdf_extract(self.premaster_secret, derived)
+        handshake_secret = self.kdf.hkdf_extract(self.premaster_secret, derived)
         logging.debug(f"handshake secret: {ProtocolData(handshake_secret).dump()}")
-        hello_digest = self.hmac_prf.finalize_msg_digest(intermediate=True)
+        hello_digest = self.kdf.finalize_msg_digest(intermediate=True)
         logging.debug(f"hello_digest: {ProtocolData(hello_digest).dump()}")
-        c_hs_tr_secret = self.hmac_prf.hkdf_expand_label(
+        c_hs_tr_secret = self.kdf.hkdf_expand_label(
             handshake_secret, "c hs traffic", hello_digest, self.mac.key_len
         )
-        c_enc = self.hmac_prf.hkdf_expand_label(
+        c_enc = self.kdf.hkdf_expand_label(
             c_hs_tr_secret, "key", b"", self.cipher.key_len
         )
-        c_iv = self.hmac_prf.hkdf_expand_label(
+        c_iv = self.kdf.hkdf_expand_label(
             c_hs_tr_secret, "iv", b"", self.cipher.iv_len
         )
-        s_hs_tr_secret = self.hmac_prf.hkdf_expand_label(
+        s_hs_tr_secret = self.kdf.hkdf_expand_label(
             handshake_secret, "s hs traffic", hello_digest, self.mac.key_len
         )
-        s_enc = self.hmac_prf.hkdf_expand_label(
+        s_enc = self.kdf.hkdf_expand_label(
             s_hs_tr_secret, "key", b"", self.cipher.key_len
         )
-        s_iv = self.hmac_prf.hkdf_expand_label(
+        s_iv = self.kdf.hkdf_expand_label(
             s_hs_tr_secret, "iv", b"", self.cipher.iv_len
         )
         logging.info(f"client hs traffic secret: {ProtocolData(c_hs_tr_secret).dump()}")
@@ -677,18 +677,18 @@ class TlsConnection(object):
             )
         )
 
-        derived = self.hmac_prf.hkdf_expand_label(
+        derived = self.kdf.hkdf_expand_label(
             handshake_secret, "derived", empty_msg_digest, self.mac.key_len
         )
 
-        self.master_secret = self.hmac_prf.hkdf_extract(None, derived)
+        self.master_secret = self.kdf.hkdf_extract(None, derived)
 
     def key_derivation(self):
         if self.cipher.c_type is tls.CipherType.AEAD:
             iv_len = 0
         else:
             iv_len = self.cipher.iv_len
-        key_material = self.hmac_prf.prf(
+        key_material = self.kdf.prf(
             self.master_secret,
             b"key expansion",
             self.server_random + self.client_random,

@@ -112,7 +112,7 @@ class _BackendTls12(_Backend):
         return self._hkdf_expand(secret, hkdf_label, length)
 
 
-class HmacPrf(object):
+class Kdf(object):
     def __init__(self):
         self._backend = None
 
@@ -163,12 +163,4 @@ class HmacPrf(object):
         return self._backend.hkdf_extract(secret, salt)
 
     def hkdf_expand_label(self, secret, label, msg_digest, length):
-        logging.debug("*****")
-        logging.debug("hkdf_expand_label")
-        logging.debug(f"secret: {ProtocolData(secret).dump()}")
-        logging.debug(f"label: {label}")
-        logging.debug(f"msg_digest: {ProtocolData(msg_digest).dump()}")
-        x = self._backend.hkdf_expand_label(secret, label, msg_digest, length)
-        logging.debug(f"out: {ProtocolData(x).dump()}")
-        logging.debug("*****")
-        return x
+        return self._backend.hkdf_expand_label(secret, label, msg_digest, length)

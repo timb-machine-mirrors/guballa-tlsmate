@@ -11,7 +11,7 @@ from tlsclient.client import Client
 from tlsclient.record_layer import RecordLayer
 from tlsclient.recorder import Recorder
 from tlsclient.socket import Socket
-from tlsclient.hmac_prf import HmacPrf
+from tlsclient.kdf import Kdf
 
 from tlsclient.testmanager import TestManager
 import tlsclient.testsuites.eval_cipher_suites as tmp1
@@ -39,7 +39,7 @@ class Container(containers.DeclarativeContainer):
         Socket, server=config.server, port=config.port, recorder=recorder
     )
 
-    hmac_prf = providers.Factory(HmacPrf)
+    kdf = providers.Factory(Kdf)
 
     record_layer = providers.Factory(RecordLayer, socket=socket, recorder=recorder)
 
@@ -51,7 +51,7 @@ class Container(containers.DeclarativeContainer):
         entity=tls.Entity.CLIENT,
         record_layer=record_layer,
         recorder=recorder,
-        hmac_prf=hmac_prf,
+        kdf=kdf,
     )
 
     client = providers.Factory(
