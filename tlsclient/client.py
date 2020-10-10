@@ -3,7 +3,6 @@
 """
 import tlsclient.constants as tls
 import tlsclient.extensions as ext
-import tlsclient.key_exchange as kex
 from tlsclient.protocol import ProtocolData
 from tlsclient.messages import ClientHello
 

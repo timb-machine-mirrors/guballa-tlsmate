@@ -168,9 +168,28 @@ class RecordLayer(object):
                     "Unknown cipher type", tls.AlertDescription.INTERNAL_ERROR
                 )
 
+    def _tls13_protect(self, state, content_type, version, fragment):
+        fragment.append_uint8(content_type.value)
+        aad = ProtocolData()
+        aad.append_uint8(tls.ContentType.APPLICATION_DATA.value)
+        aad.append_uint16(version.value)
+        aad.append_uint16(len(fragment) + 16)
+        nonce_val = int.from_bytes(state.keys.iv, "big", signed=False) ^ state.seq_nbr
+        nonce = nonce_val.to_bytes(state.cipher.iv_len, "big", signed=False)
+        cipher = state.cipher_object(state.keys.enc)
+        encoded = cipher.encrypt(nonce, bytes(fragment), bytes(aad))
+
+        self._add_to_sendbuffer(tls.ContentType.APPLICATION_DATA, version, encoded)
+
+        state.seq_nbr += 1
+
     def _compress(self, content_type, version, fragment):
         # not supported yet
-        self._protect(content_type, version, fragment)
+        state = self._write_state
+        if state is not None and state.version is tls.Version.TLS13:
+            self._tls13_protect(state, content_type, version, fragment)
+        else:
+            self._protect(content_type, version, fragment)
 
     def _fragment(self, message_block):
         message = message_block.fragment
@@ -293,6 +312,7 @@ class RecordLayer(object):
                 "decoded record: padding not Ok",
                 tls.AlertDescription.UNEXPECTED_MESSAGE,
             )
+        state.seq_nbr += 1
         return structs.MessageBlock(
             content_type=tls.ContentType.val2enum(decoded[idx], alert_on_failure=True),
             version=version,
@@ -363,7 +383,10 @@ class RecordLayer(object):
         fragment = ProtocolData(self._receive_buffer[5 : (length + 5)])
         self._receive_buffer = ProtocolData(self._receive_buffer[(length + 5) :])
 
-        if self._read_state is not None and content_type is tls.ContentType.APPLICATION_DATA:
+        if (
+            self._read_state is not None
+            and content_type is tls.ContentType.APPLICATION_DATA
+        ):
             state = self._read_state
             if state.version is tls.Version.TLS13:
                 return self._tls13_unprotect(state, content_type, version, fragment)

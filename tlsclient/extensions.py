@@ -175,6 +175,18 @@ class ExtSupportedGroups(Extension):
         ext_body.extend(group_list)
         return ext_body
 
+    def deserialize_ext_body(self, ext_body):
+        length, offset = ext_body.unpack_uint16(0)
+        end_of_list = offset + length
+        while offset < end_of_list:
+            group, offset = ext_body.unpack_uint16(offset)
+            try:
+                group = tls.SupportedGroups(group)
+            except ValueError:
+                pass
+            self.supported_groups.append(group)
+        return self
+
 
 class ExtSignatureAlgorithms(Extension):
 
@@ -285,7 +297,7 @@ deserialization_map = {
     # tls.Extension.CLIENT_AUTHZ = 7
     # tls.Extension.SERVER_AUTHZ = 8
     # tls.Extension.CERT_TYPE = 9
-    # tls.Extension.SUPPORTED_GROUPS = 10
+    tls.Extension.SUPPORTED_GROUPS: ExtSupportedGroups,
     tls.Extension.EC_POINT_FORMATS: ExtEcPointFormats,
     # tls.Extension.SRP = 12
     # tls.Extension.SIGNATURE_ALGORITHMS = 13

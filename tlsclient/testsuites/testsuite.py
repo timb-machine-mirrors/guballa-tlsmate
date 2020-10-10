@@ -113,14 +113,14 @@ class MyTestSuite(TestSuite):
 
             conn.send(msg.ClientHello)
             conn.wait(msg.ServerHello)
-            conn.wait(msg.ChangeCipherSpec)
+            conn.wait(msg.ChangeCipherSpec, optional=True)
+            conn.wait(msg.EncryptedExtensions)
             conn.wait(msg.Certificate, optional=True)
-            conn.wait(msg.ServerKeyExchange, optional=True)
-            conn.wait(msg.ServerHelloDone)
-            conn.send(msg.ClientKeyExchange, msg.Finished)
-            conn.wait(msg.NewSessionTicket, optional=True)
-            conn.wait(msg.ChangeCipherSpec)
+            conn.wait(msg.CertificateVerify, optional=True)
             conn.wait(msg.Finished)
+            conn.send(msg.Finished)
+            conn.wait(msg.NewSessionTicket)
+            conn.wait(msg.NewSessionTicket)
             conn.send(msg.AppData(b"GET / HTTP/1.1\n"))
             while True:
                 app_data = conn.wait(msg.AppData)
@@ -129,6 +129,7 @@ class MyTestSuite(TestSuite):
             for line in app_data.data.decode("utf-8").split("\n"):
                 if line.startswith("s_server"):
                     logging.debug("openssl_command: " + line)
+
 
 #        with client.create_connection() as conn:
 #            conn.send(msg.ClientHello)

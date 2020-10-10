@@ -9,7 +9,7 @@ SessionStateId = collections.namedtuple(
 
 SessionStateTicket = collections.namedtuple(
     "SessionStateTicket",
-    ["ticket", "lifetime_hint", "cipher_suite", "version", "master_secret"],
+    ["ticket", "lifetime", "cipher_suite", "version", "master_secret"],
 )
 
 

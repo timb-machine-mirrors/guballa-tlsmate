@@ -162,6 +162,7 @@ class Certificate(HandshakeMessage):
     msg_type = tls.HandshakeType.CERTIFICATE
 
     def __init__(self):
+        self.request_context = None
         self.certificates = []
 
     def _serialize_msg_body(self, conn):
@@ -170,11 +171,40 @@ class Certificate(HandshakeMessage):
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         self.certificates = []
+        if conn.version is tls.Version.TLS13:
+            length, offset = fragment.unpack_uint8(offset)
+            if length:
+                self.request_context, offset = fragment.unpack_bytes(offset, length)
         list_len, offset = fragment.unpack_uint24(offset)
         while offset < len(fragment):
             cert_len, offset = fragment.unpack_uint24(offset)
             cert, offset = fragment.unpack_bytes(offset, cert_len)
             self.certificates.append(cert)
+            # TODO: save the extensions
+            if conn.version is tls.Version.TLS13:
+                ext_len, offset = fragment.unpack_uint16(offset)
+                if ext_len:
+                    extensions, offset = fragment.unpack_bytes(ext_len)
+        return self
+
+
+class CertificateVerify(HandshakeMessage):
+
+    msg_type = tls.HandshakeType.CERTIFICATE_VERIFY
+
+    def __init__(self):
+        self.signature_scheme = None
+        self.signature = None
+
+    def _serialize_msg_body(self, conn):
+        # TODO
+        pass
+
+    def _deserialize_msg_body(self, fragment, offset, conn):
+        scheme, offset = fragment.unpack_uint16(offset)
+        self.signature_scheme = tls.SignatureScheme(scheme)
+        length, offset = fragment.unpack_uint16(offset)
+        self.signature, offset = fragment.unpack_bytes(offset, length)
         return self
 
 
@@ -329,17 +359,58 @@ class NewSessionTicket(HandshakeMessage):
     msg_type = tls.HandshakeType.NEW_SESSION_TICKET
 
     def __init__(self):
-        # TODO for server side implementation
-        pass
+        self.lifetime = None
+        self.age_add = None
+        self.nonce = None
+        self.ticket = None
+        self.extensions = []
 
     def _serialize_msg_body(self, conn):
         # TODO for server side implementation
         return ProtocolData()
 
     def _deserialize_msg_body(self, fragment, offset, conn):
-        self.lifetime_hint, offset = fragment.unpack_uint32(offset)
-        length, offset = fragment.unpack_uint16(offset)
-        self.ticket, offset = fragment.unpack_bytes(offset, length)
+        if conn.version is tls.Version.TLS13:
+            self.lifetime, offset = fragment.unpack_uint32(offset)
+            self.age_add, offset = fragment.unpack_uint32(offset)
+            length, offset = fragment.unpack_uint8(offset)
+            self.nonce, offset = fragment.unpack_bytes(offset, length)
+            length, offset = fragment.unpack_uint16(offset)
+            self.ticket, offset = fragment.unpack_bytes(offset, length)
+
+            # TODO: move deserialization to dedicated method
+            if offset < len(fragment):
+                # extensions present
+                ext_len, offset = fragment.unpack_uint16(offset)
+                while offset < len(fragment):
+                    extension, offset = ext.Extension.deserialize(fragment, offset)
+                    self.extensions.append(extension)
+            return self
+        else:
+            self.lifetime, offset = fragment.unpack_uint32(offset)
+            length, offset = fragment.unpack_uint16(offset)
+            self.ticket, offset = fragment.unpack_bytes(offset, length)
+        return self
+
+
+class EncryptedExtensions(HandshakeMessage):
+
+    msg_type = tls.HandshakeType.ENCRYPTED_EXTENSIONS
+
+    def __init__(self):
+        self.extensions = []
+
+    def _serialize_msg_body(self, conn):
+        # TODO for server side implementation
+        return ProtocolData()
+
+    def _deserialize_msg_body(self, fragment, offset, conn):
+        if offset < len(fragment):
+            # extensions present
+            ext_len, offset = fragment.unpack_uint16(offset)
+            while offset < len(fragment):
+                extension, offset = ext.Extension.deserialize(fragment, offset)
+                self.extensions.append(extension)
         return self
 
 
@@ -468,12 +539,12 @@ _hs_deserialization_map = {
     tls.HandshakeType.SERVER_HELLO: ServerHello,
     tls.HandshakeType.NEW_SESSION_TICKET: NewSessionTicket,
     # tls.HandshakeType.END_OF_EARLY_DATA = 5
-    # tls.HandshakeType.ENCRYPTED_EXTENSIONS = 8
+    tls.HandshakeType.ENCRYPTED_EXTENSIONS: EncryptedExtensions,
     tls.HandshakeType.CERTIFICATE: Certificate,
     tls.HandshakeType.SERVER_KEY_EXCHANGE: ServerKeyExchange,
     # tls.HandshakeType.CERTIFICATE_REQUEST = 13
     tls.HandshakeType.SERVER_HELLO_DONE: ServerHelloDone,
-    # tls.HandshakeType.CERTIFICATE_VERIFY = 15
+    tls.HandshakeType.CERTIFICATE_VERIFY: CertificateVerify,
     # tls.HandshakeType.CLIENT_KEY_EXCHANGE = 16
     tls.HandshakeType.FINISHED: Finished,
     # tls.HandshakeType.KEY_UPDATE = 24

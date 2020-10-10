@@ -36,7 +36,7 @@ class TlsConnectionMsgs(object):
         tls.HandshakeType.SERVER_HELLO: "server_hello",
         tls.HandshakeType.NEW_SESSION_TICKET: None,
         tls.HandshakeType.END_OF_EARLY_DATA: None,
-        tls.HandshakeType.ENCRYPTED_EXTENSIONS: None,
+        tls.HandshakeType.ENCRYPTED_EXTENSIONS: "server_encrypted_extensions",
         tls.HandshakeType.CERTIFICATE: "server_certificate",
         tls.HandshakeType.SERVER_KEY_EXCHANGE: "server_key_exchange",
         tls.HandshakeType.CERTIFICATE_REQUEST: None,
@@ -53,6 +53,7 @@ class TlsConnectionMsgs(object):
     def __init__(self):
         self.client_hello = None
         self.server_hello = None
+        self.server_encrypted_extensions = None
         self.server_certificate = None
         self.server_key_exchange = None
         self.server_hello_done = None
@@ -177,21 +178,60 @@ class TlsConnection(object):
         self._post_sending_hook = self.update_keys
         return msg
 
+    def post_generate_finished(self):
+        c_app_tr_secret = self.hmac_prf.hkdf_expand_label(
+            self.master_secret,
+            "c ap traffic",
+            self.server_finished_digest,
+            self.mac.key_len,
+        )
+        logging.debug(f"c_app_tr_secret: {ProtocolData(c_app_tr_secret).dump()}")
+        c_enc = self.hmac_prf.hkdf_expand_label(
+            c_app_tr_secret, "key", b"", self.cipher.key_len
+        )
+        c_iv = self.hmac_prf.hkdf_expand_label(
+            c_app_tr_secret, "iv", b"", self.cipher.iv_len
+        )
+
+        self.record_layer.update_state(
+            structs.StateUpdateParams(
+                cipher=self.cipher,
+                mac=None,
+                keys=structs.SymmetricKeys(enc=c_enc, mac=None, iv=c_iv),
+                compr=None,
+                enc_then_mac=False,
+                version=self.version,
+                is_write_state=True,
+            )
+        )
+
     def generate_finished(self, cls):
         intermediate = not self._finished_treated
         hash_val = self.hmac_prf.finalize_msg_digest(intermediate=intermediate)
-        if self.entity == tls.Entity.CLIENT:
-            label = b"client finished"
+        if self.version is tls.Version.TLS13:
+            # TODO: server side implementation
+            finished_key = self.hmac_prf.hkdf_expand_label(
+                self.c_hs_tr_secret, "finished", b"", self.mac.key_len
+            )
+            logging.debug(f"finished_key: {ProtocolData(finished_key).dump()}")
+            val = ProtocolData(self.hmac_prf.hkdf_extract(hash_val, finished_key))
+            self._post_sending_hook = self.post_generate_finished
+
         else:
-            label = b"server finished"
-        val = ProtocolData(self.hmac_prf.prf(self.master_secret, label, hash_val, 12))
+            if self.entity == tls.Entity.CLIENT:
+                label = b"client finished"
+            else:
+                label = b"server finished"
+            val = ProtocolData(
+                self.hmac_prf.prf(self.master_secret, label, hash_val, 12)
+            )
+            self.update_write_state()
         self.recorder.trace(msg_digest_finished_sent=hash_val)
         self.recorder.trace(verify_data_finished_sent=val)
         logging.debug(f"Finished.verify_data(out): {val.dump()}")
-        self.update_write_state()
         msg = cls()
         msg.verify_data = val
-        if not self._finished_treated:
+        if self._finished_treated:
             logging.info("Handshake finished, secure connection established")
         self._finished_treated = True
         return msg
@@ -367,23 +407,68 @@ class TlsConnection(object):
     def on_finished_received(self, msg):
         verify_data = ProtocolData(msg.verify_data)
         logging.debug(f"Finished.verify_data(in): {verify_data.dump()}")
-        intermediate = not self._finished_treated
-        hash_val = self.hmac_prf.finalize_msg_digest(intermediate=intermediate)
-        if self.entity == tls.Entity.CLIENT:
-            label = b"server finished"
-        else:
-            label = b"client finished"
-        val = self.hmac_prf.prf(self.master_secret, label, hash_val, 12)
-        self.recorder.trace(msg_digest_finished_rec=hash_val)
-        self.recorder.trace(verify_data_finished_rec=verify_data)
-        self.recorder.trace(verify_data_finished_calc=val)
-        if verify_data != val:
-            raise FatalAlert(
-                "Received Finidhed: verify_data does not match",
-                tls.AlertDescription.BAD_RECORD_MAC,
+
+        if self.version is tls.Version.TLS13:
+            finished_key = self.hmac_prf.hkdf_expand_label(
+                self.s_hs_tr_secret, "finished", b"", self.mac.key_len
             )
+            logging.debug(f"finished_key: {ProtocolData(finished_key).dump()}")
+            calc_verify_data = self.hmac_prf.hkdf_extract(
+                self.pre_server_finished_digest, finished_key
+            )
+            logging.debug(f"calc. verify_data: {ProtocolData(calc_verify_data).dump()}")
+            if calc_verify_data != verify_data:
+                raise FatalAlert(
+                    "Received Finidhed: verify_data does not match",
+                    tls.AlertDescription.DECRYPT_ERROR,
+                )
+            self.server_finished_digest = self.hmac_prf.finalize_msg_digest(
+                intermediate=True
+            )
+            s_app_tr_secret = self.hmac_prf.hkdf_expand_label(
+                self.master_secret,
+                "s ap traffic",
+                self.server_finished_digest,
+                self.mac.key_len,
+            )
+            logging.debug(f"s_app_tr_secret: ProtocolData(s_app_tr_secret).dump()")
+            c_enc = self.hmac_prf.hkdf_expand_label(
+                s_app_tr_secret, "key", b"", self.cipher.key_len
+            )
+            c_iv = self.hmac_prf.hkdf_expand_label(
+                s_app_tr_secret, "iv", b"", self.cipher.iv_len
+            )
+
+            self.record_layer.update_state(
+                structs.StateUpdateParams(
+                    cipher=self.cipher,
+                    mac=None,
+                    keys=structs.SymmetricKeys(enc=c_enc, mac=None, iv=c_iv),
+                    compr=None,
+                    enc_then_mac=False,
+                    version=self.version,
+                    is_write_state=False,
+                )
+            )
+
+        else:
+            intermediate = not self._finished_treated
+            hash_val = self.hmac_prf.finalize_msg_digest(intermediate=intermediate)
+            if self.entity == tls.Entity.CLIENT:
+                label = b"server finished"
+            else:
+                label = b"client finished"
+            val = self.hmac_prf.prf(self.master_secret, label, hash_val, 12)
+            self.recorder.trace(msg_digest_finished_rec=hash_val)
+            self.recorder.trace(verify_data_finished_rec=verify_data)
+            self.recorder.trace(verify_data_finished_calc=val)
+            if verify_data != val:
+                raise FatalAlert(
+                    "Received Finidhed: verify_data does not match",
+                    tls.AlertDescription.BAD_RECORD_MAC,
+                )
         logging.info("Received Finished sucessfully verified")
-        if not self._finished_treated:
+        if self._finished_treated:
             logging.info("Handshake finished, secure connection established")
         self._finished_treated = True
         return self
@@ -392,11 +477,20 @@ class TlsConnection(object):
         self.client.save_session_state_ticket(
             structs.SessionStateTicket(
                 ticket=msg.ticket,
-                lifetime_hint=msg.lifetime_hint,
+                lifetime=msg.lifetime,
                 cipher_suite=self.cipher_suite,
                 version=self.version,
                 master_secret=self.master_secret,
             )
+        )
+
+    def on_encrypted_extensions_received(self, msg):
+        for ext in msg.extensions:
+            logging.debug(f"extension {ext.extension_id.name}")
+
+    def on_certificate_verify_received(self, msg):
+        self.pre_server_finished_digest = self.hmac_prf.finalize_msg_digest(
+            intermediate=True
         )
 
     _on_msg_received = {
@@ -405,6 +499,8 @@ class TlsConnection(object):
         tls.CCSType.CHANGE_CIPHER_SPEC: on_change_cipher_spec_received,
         tls.HandshakeType.FINISHED: on_finished_received,
         tls.HandshakeType.NEW_SESSION_TICKET: on_new_session_ticket_received,
+        tls.HandshakeType.ENCRYPTED_EXTENSIONS: on_encrypted_extensions_received,
+        tls.HandshakeType.CERTIFICATE_VERIFY: on_certificate_verify_received,
     }
 
     def on_msg_received(self, msg):
@@ -538,15 +634,25 @@ class TlsConnection(object):
         c_hs_tr_secret = self.hmac_prf.hkdf_expand_label(
             handshake_secret, "c hs traffic", hello_digest, self.mac.key_len
         )
-        c_enc = self.hmac_prf.hkdf_expand_label(c_hs_tr_secret, "key", b"", self.cipher.key_len)
-        c_iv = self.hmac_prf.hkdf_expand_label(c_hs_tr_secret, "iv", b"", self.cipher.iv_len)
+        c_enc = self.hmac_prf.hkdf_expand_label(
+            c_hs_tr_secret, "key", b"", self.cipher.key_len
+        )
+        c_iv = self.hmac_prf.hkdf_expand_label(
+            c_hs_tr_secret, "iv", b"", self.cipher.iv_len
+        )
         s_hs_tr_secret = self.hmac_prf.hkdf_expand_label(
             handshake_secret, "s hs traffic", hello_digest, self.mac.key_len
         )
-        s_enc = self.hmac_prf.hkdf_expand_label(s_hs_tr_secret, "key", b"", self.cipher.key_len)
-        s_iv = self.hmac_prf.hkdf_expand_label(s_hs_tr_secret, "iv", b"", self.cipher.iv_len)
+        s_enc = self.hmac_prf.hkdf_expand_label(
+            s_hs_tr_secret, "key", b"", self.cipher.key_len
+        )
+        s_iv = self.hmac_prf.hkdf_expand_label(
+            s_hs_tr_secret, "iv", b"", self.cipher.iv_len
+        )
         logging.info(f"client hs traffic secret: {ProtocolData(c_hs_tr_secret).dump()}")
         logging.info(f"server hs traffic secret: {ProtocolData(s_hs_tr_secret).dump()}")
+        self.s_hs_tr_secret = s_hs_tr_secret
+        self.c_hs_tr_secret = c_hs_tr_secret
 
         self.record_layer.update_state(
             structs.StateUpdateParams(
@@ -556,7 +662,7 @@ class TlsConnection(object):
                 compr=None,
                 enc_then_mac=False,
                 version=self.version,
-                is_write_state=True
+                is_write_state=True,
             )
         )
         self.record_layer.update_state(
@@ -567,7 +673,7 @@ class TlsConnection(object):
                 compr=None,
                 enc_then_mac=False,
                 version=self.version,
-                is_write_state=False
+                is_write_state=False,
             )
         )
 
@@ -575,7 +681,7 @@ class TlsConnection(object):
             handshake_secret, "derived", empty_msg_digest, self.mac.key_len
         )
 
-        master_secret = self.hmac_prf.hkdf_extract(None, derived)
+        self.master_secret = self.hmac_prf.hkdf_extract(None, derived)
 
     def key_derivation(self):
         if self.cipher.c_type is tls.CipherType.AEAD:
