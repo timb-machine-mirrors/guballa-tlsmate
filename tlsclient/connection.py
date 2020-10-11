@@ -306,6 +306,7 @@ class TlsConnection(object):
 
     def send(self, *messages):
         for msg in messages:
+            logging.info(f"Sending {msg.msg_type.name}")
             self._post_sending_hook = None
             if inspect.isclass(msg):
                 msg = self.generate_outgoing_msg(msg)
@@ -314,7 +315,6 @@ class TlsConnection(object):
             msg_data = msg.serialize(self)
             if msg.content_type == tls.ContentType.HANDSHAKE:
                 self.kdf.update_msg_digest(msg_data)
-            logging.info(f"Sending {msg.msg_type.name}")
 
             self.record_layer.send_message(
                 structs.MessageBlock(
@@ -532,8 +532,8 @@ class TlsConnection(object):
                 raise ValueError("Content type unknow")
 
         if (msg_class == Any) or isinstance(msg, msg_class):
-            self.on_msg_received(msg)
             logging.info(f"Receiving {msg.msg_type.name}")
+            self.on_msg_received(msg)
             self.msg.store_received_msg(msg)
             return msg
         else:
