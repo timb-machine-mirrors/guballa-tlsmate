@@ -316,6 +316,17 @@ supported_cipher_suites = {
         cipher=tls.SupportedCipher.CHACHA20_POLY1305,
         mac=tls.SupportedHash.SHA256,
     ),
+
+
+    tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CCM: structs.CipherSuite(
+        key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
+        cipher=tls.SupportedCipher.AES_128_CCM,
+        mac=tls.SupportedHash.SHA256,
+    ),
+
+
+
+
 }
 
 
@@ -351,6 +362,14 @@ supported_ciphers = {
         algo=aead.AESGCM,
         c_type=tls.CipherType.AEAD,
         key_len=32,
+        block_size=16,
+        iv_len=4,
+    ),
+    tls.SupportedCipher.AES_128_CCM: structs.Cipher(
+        primitive=tls.CipherPrimitive.AES,
+        algo=aead.AESCCM,
+        c_type=tls.CipherType.AEAD,
+        key_len=16,
         block_size=16,
         iv_len=4,
     ),

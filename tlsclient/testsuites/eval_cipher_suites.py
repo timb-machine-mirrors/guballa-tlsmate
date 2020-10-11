@@ -148,3 +148,4 @@ class MyTestSuite(TestSuite):
         self.enum_version(tls.Version.TLS10, cipher_suites[:])
         self.enum_version(tls.Version.TLS11, cipher_suites[:])
         self.enum_version(tls.Version.TLS12, cipher_suites[:])
+        self.enum_version(tls.Version.TLS13, cipher_suites[:])

@@ -81,6 +81,7 @@ class TcRecorder(metaclass=abc.ABCMeta):
         client.signature_algorithms = self.signature_algorithms
         self.update_client(client)
 
+        end_of_tc_reached = False
         with client.create_connection() as conn:
             conn.send(msg.ClientHello)
             conn.wait(msg.ServerHello)
@@ -105,6 +106,8 @@ class TcRecorder(metaclass=abc.ABCMeta):
                 if line.startswith("s_server"):
                     logging.debug("openssl_command: " + line)
                     conn.recorder.trace(openssl_command=line)
+            end_of_tc_reached = True
+        assert end_of_tc_reached is True
         return conn
 
     def record_testcase(self):

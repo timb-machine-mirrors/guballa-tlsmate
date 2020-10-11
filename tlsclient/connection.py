@@ -5,6 +5,8 @@
 import inspect
 import logging
 import os
+import io
+import traceback as tb
 import time
 from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
@@ -130,7 +132,9 @@ class TlsConnection(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is FatalAlert:
-            logging.debug("exception: " + exc_value.message)
+            str_io = io.StringIO()
+            tb.print_exception(exc_type, exc_value, traceback, file=str_io)
+            logging.debug(str_io.getvalue())
             self.send(
                 Alert(level=tls.AlertLevel.FATAL, description=exc_value.description)
             )
@@ -403,6 +407,8 @@ class TlsConnection(object):
     def on_change_cipher_spec_received(self, msg):
         if self.version is not tls.Version.TLS13:
             self.update_read_state()
+            intermediate = not self._finished_treated
+            self._pre_finished_digest = self.kdf.finalize_msg_digest(intermediate=intermediate)
 
     def on_finished_received(self, msg):
         verify_data = ProtocolData(msg.verify_data)
@@ -419,7 +425,7 @@ class TlsConnection(object):
             logging.debug(f"calc. verify_data: {ProtocolData(calc_verify_data).dump()}")
             if calc_verify_data != verify_data:
                 raise FatalAlert(
-                    "Received Finidhed: verify_data does not match",
+                    "Received Finished: verify_data does not match",
                     tls.AlertDescription.DECRYPT_ERROR,
                 )
             self.server_finished_digest = self.kdf.finalize_msg_digest(
@@ -452,14 +458,12 @@ class TlsConnection(object):
             )
 
         else:
-            intermediate = not self._finished_treated
-            hash_val = self.kdf.finalize_msg_digest(intermediate=intermediate)
             if self.entity == tls.Entity.CLIENT:
                 label = b"server finished"
             else:
                 label = b"client finished"
-            val = self.kdf.prf(self.master_secret, label, hash_val, 12)
-            self.recorder.trace(msg_digest_finished_rec=hash_val)
+            val = self.kdf.prf(self.master_secret, label, self._pre_finished_digest, 12)
+            self.recorder.trace(msg_digest_finished_rec=self._pre_finished_digest)
             self.recorder.trace(verify_data_finished_rec=verify_data)
             self.recorder.trace(verify_data_finished_calc=val)
             if verify_data != val:
@@ -685,18 +689,18 @@ class TlsConnection(object):
 
     def key_derivation(self):
         if self.cipher.c_type is tls.CipherType.AEAD:
-            iv_len = 0
+            mac_len = 0
         else:
-            iv_len = self.cipher.iv_len
+            mac_len = self.mac.key_len
         key_material = self.kdf.prf(
             self.master_secret,
             b"key expansion",
             self.server_random + self.client_random,
-            2 * (self.mac.key_len + self.cipher.key_len + iv_len),
+            2 * (mac_len + self.cipher.key_len + self.cipher.iv_len),
         )
         key_material = ProtocolData(key_material)
-        c_mac, offset = key_material.unpack_bytes(0, self.mac.key_len)
-        s_mac, offset = key_material.unpack_bytes(offset, self.mac.key_len)
+        c_mac, offset = key_material.unpack_bytes(0, mac_len)
+        s_mac, offset = key_material.unpack_bytes(offset, mac_len)
         c_enc, offset = key_material.unpack_bytes(offset, self.cipher.key_len)
         s_enc, offset = key_material.unpack_bytes(offset, self.cipher.key_len)
         c_iv, offset = key_material.unpack_bytes(offset, self.cipher.iv_len)

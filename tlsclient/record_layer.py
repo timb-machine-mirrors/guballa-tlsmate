@@ -275,7 +275,7 @@ class RecordLayer(object):
         aad.append_uint8(content_type.value)
         aad.append_uint16(version.value)
         aad.append_uint16(len(cipher_text) - 16)  # substract what aes_gcm adds
-        nonce = bytes(state.keys.iv_value + nonce_explicit)
+        nonce = bytes(state.keys.iv + nonce_explicit)
         aesgcm = aead.AESGCM(state.keys.enc)
         state.seq_nbr += 1
         return ProtocolData(aesgcm.decrypt(nonce, cipher_text, bytes(aad)))
@@ -385,7 +385,7 @@ class RecordLayer(object):
 
         if (
             self._read_state is not None
-            and content_type is tls.ContentType.APPLICATION_DATA
+            and content_type is not tls.ContentType.CHANGE_CIPHER_SPEC
         ):
             state = self._read_state
             if state.version is tls.Version.TLS13:

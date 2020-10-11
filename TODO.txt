@@ -1,13 +1,13 @@
 
-    - support for sessions tickets
     - support for renegotiation
-    - support for tls13
     - support for SSL2 (low prio)
-    - refactoring: instead of passing every attribute to the record layer as a single
-      item, we could pass the namedtuples we have already anyway when mapping a
-      cipher suite to the cipher and mac.
-    - generate a server profile (including export to yaml)
     - verify signatures (signed public key)
     - certificate validation and extraction to server profile
     - add a progress feedback, e.g. print a dot for each handshake
     - debug-logging: First log the incoming message type, then the parameters
+    - implement CCM and CCM_8
+    - HelloRetryRequest
+    - more scan results
+    - improved error handling
+    - ProtocolData: try to minimize castings to/from bytes/bytearray, e.g. 
+      provide a class with static methods only
