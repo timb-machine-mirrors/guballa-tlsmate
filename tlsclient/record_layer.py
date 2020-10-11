@@ -115,7 +115,10 @@ class RecordLayer(object):
         state.seq_nbr += 1
 
     def _protect_aead_cipher(self, state, content_type, version, fragment):
-        aesgcm = aead.AESGCM(state.keys.enc)
+        kwargs = {}
+        if state.cipher.aead_expansion != 16:
+            kwargs["tag_length"] = state.cipher.aead_expansion
+        aes_aead = state.cipher.algo(state.keys.enc, **kwargs)
         nonce_explicit = ProtocolData()
         nonce_explicit.append_uint64(state.seq_nbr)
         nonce = state.keys.iv + nonce_explicit
@@ -124,7 +127,7 @@ class RecordLayer(object):
         aad.append_uint8(content_type.value)
         aad.append_uint16(version.value)
         aad.append_uint16(len(fragment))
-        cipher_text = aesgcm.encrypt(nonce, bytes(fragment), bytes(aad))
+        cipher_text = aes_aead.encrypt(nonce, bytes(fragment), bytes(aad))
         aead_ciphered = ProtocolData()
         aead_ciphered.extend(nonce_explicit)
         aead_ciphered.extend(cipher_text)
@@ -274,11 +277,14 @@ class RecordLayer(object):
         aad.append_uint64(state.seq_nbr)
         aad.append_uint8(content_type.value)
         aad.append_uint16(version.value)
-        aad.append_uint16(len(cipher_text) - 16)  # substract what aes_gcm adds
+        aad.append_uint16(len(cipher_text) - state.cipher.aead_expansion)
         nonce = bytes(state.keys.iv + nonce_explicit)
-        aesgcm = aead.AESGCM(state.keys.enc)
+        kwargs = {}
+        if state.cipher.aead_expansion != 16:
+            kwargs["tag_length"] = state.cipher.aead_expansion
+        aes_aead = state.cipher.algo(state.keys.enc, **kwargs)
         state.seq_nbr += 1
-        return ProtocolData(aesgcm.decrypt(nonce, cipher_text, bytes(aad)))
+        return ProtocolData(aes_aead.decrypt(nonce, cipher_text, bytes(aad)))
 
     def _unprotect_chacha_cipher(self, state, content_type, version, fragment):
         nonce_val = int.from_bytes(state.keys.iv, "big", signed=False) ^ state.seq_nbr
@@ -287,7 +293,7 @@ class RecordLayer(object):
         aad.append_uint64(state.seq_nbr)
         aad.append_uint8(content_type.value)
         aad.append_uint16(version.value)
-        aad.append_uint16(len(fragment) - 16)  # substract what chacha-poly adds
+        aad.append_uint16(len(fragment) - state.cipher.aead_expansion)
         chachapoly = aead.ChaCha20Poly1305(state.keys.enc)
         state.seq_nbr += 1
         return ProtocolData(chachapoly.decrypt(nonce, bytes(fragment), bytes(aad)))
@@ -403,31 +409,3 @@ class RecordLayer(object):
             self._write_state = state
         else:
             self._read_state = state
-
-
-#    def update_write_state(self, new_state):
-#        state = RecordLayerState(new_state)
-#        if state.cipher.c_type == tls.CipherType.STREAM:
-#            cipher = Cipher(state.cipher.algo(state.keys.enc), mode=None)
-#            state.cipher_object = cipher.encryptor()
-#        self._write_state_app = state
-#        self._write_state_hs = state
-#
-#    def update_read_state(self, new_state):
-#        state = RecordLayerState(new_state)
-#        if state.cipher.c_type == tls.CipherType.STREAM:
-#            cipher = Cipher(state.cipher.algo(state.keys.enc), mode=None)
-#            state.cipher_object = cipher.decryptor()
-#        self._read_state_app = state
-#
-#    def tls13_update_read_state_app(self, new_state):
-#        self._read_state_app = RecordLayerState(new_state)
-#
-#    def tls13_update_read_state_hs(self, new_state):
-#        self._read_state_hs = RecordLayerState(new_state)
-#
-#    def tls13_update_write_state_app(self, new_state):
-#        self._write_state_app = RecordLayerState(new_state)
-#
-#    def tls13_update_write_state_hs(self, new_state):
-#        self._write_state_hs = RecordLayerState(new_state)

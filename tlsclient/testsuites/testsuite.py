@@ -17,7 +17,7 @@ class MyTestSuite(TestSuite):
         client = self.client
         client.versions = [tls.Version.TLS12]
         client.cipher_suites = [
-            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CCM,
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8,
             #tls.CipherSuite.TLS_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
             # tls.CipherSuite.TLS_AES_256_GCM_SHA384,
@@ -109,7 +109,7 @@ class MyTestSuite(TestSuite):
         # client.support_encrypt_then_mac = True
         # client.support_extended_master_secret = True
 
-        client.support_session_ticket = True
+        #client.support_session_ticket = True
         with client.create_connection() as conn:
 
             conn.send(msg.ClientHello)

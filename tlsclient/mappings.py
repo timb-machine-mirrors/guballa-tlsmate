@@ -23,6 +23,16 @@ supported_cipher_suites = {
         cipher=tls.SupportedCipher.AES_128_CBC,
         mac=tls.SupportedHash.SHA,
     ),
+    tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_CCM: structs.CipherSuite(
+        key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
+        cipher=tls.SupportedCipher.AES_128_CCM,
+        mac=tls.SupportedHash.SHA256,
+    ),
+    tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_CCM_8: structs.CipherSuite(
+        key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
+        cipher=tls.SupportedCipher.AES_128_CCM_8,
+        mac=tls.SupportedHash.SHA256,
+    ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.AES_128_CBC,
@@ -41,6 +51,16 @@ supported_cipher_suites = {
     tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.AES_256_CBC,
+        mac=tls.SupportedHash.SHA256,
+    ),
+    tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_CCM: structs.CipherSuite(
+        key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
+        cipher=tls.SupportedCipher.AES_256_CCM,
+        mac=tls.SupportedHash.SHA256,
+    ),
+    tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_CCM_8: structs.CipherSuite(
+        key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
+        cipher=tls.SupportedCipher.AES_256_CCM_8,
         mac=tls.SupportedHash.SHA256,
     ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_CAMELLIA_128_CBC_SHA: structs.CipherSuite(
@@ -138,6 +158,16 @@ supported_cipher_suites = {
         cipher=tls.SupportedCipher.AES_128_CBC,
         mac=tls.SupportedHash.SHA256,
     ),
+    tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CCM: structs.CipherSuite(
+        key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
+        cipher=tls.SupportedCipher.AES_128_CCM,
+        mac=tls.SupportedHash.SHA256,
+    ),
+    tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8: structs.CipherSuite(
+        key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
+        cipher=tls.SupportedCipher.AES_128_CCM_8,
+        mac=tls.SupportedHash.SHA256,
+    ),
     tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
         cipher=tls.SupportedCipher.AES_128_GCM,
@@ -152,6 +182,16 @@ supported_cipher_suites = {
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
         cipher=tls.SupportedCipher.AES_256_CBC,
         mac=tls.SupportedHash.SHA384,
+    ),
+    tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CCM: structs.CipherSuite(
+        key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
+        cipher=tls.SupportedCipher.AES_256_CCM,
+        mac=tls.SupportedHash.SHA256,
+    ),
+    tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CCM_8: structs.CipherSuite(
+        key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
+        cipher=tls.SupportedCipher.AES_256_CCM_8,
+        mac=tls.SupportedHash.SHA256,
     ),
     tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
@@ -248,6 +288,16 @@ supported_cipher_suites = {
         cipher=tls.SupportedCipher.AES_128_CBC,
         mac=tls.SupportedHash.SHA256,
     ),
+    tls.CipherSuite.TLS_RSA_WITH_AES_128_CCM: structs.CipherSuite(
+        key_ex=tls.KeyExchangeAlgorithm.RSA,
+        cipher=tls.SupportedCipher.AES_128_CCM,
+        mac=tls.SupportedHash.SHA256,
+    ),
+    tls.CipherSuite.TLS_RSA_WITH_AES_128_CCM_8: structs.CipherSuite(
+        key_ex=tls.KeyExchangeAlgorithm.RSA,
+        cipher=tls.SupportedCipher.AES_128_CCM_8,
+        mac=tls.SupportedHash.SHA256,
+    ),
     tls.CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.AES_128_GCM,
@@ -261,6 +311,16 @@ supported_cipher_suites = {
     tls.CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.AES_256_CBC,
+        mac=tls.SupportedHash.SHA256,
+    ),
+    tls.CipherSuite.TLS_RSA_WITH_AES_256_CCM: structs.CipherSuite(
+        key_ex=tls.KeyExchangeAlgorithm.RSA,
+        cipher=tls.SupportedCipher.AES_256_CCM,
+        mac=tls.SupportedHash.SHA256,
+    ),
+    tls.CipherSuite.TLS_RSA_WITH_AES_256_CCM_8: structs.CipherSuite(
+        key_ex=tls.KeyExchangeAlgorithm.RSA,
+        cipher=tls.SupportedCipher.AES_256_CCM_8,
         mac=tls.SupportedHash.SHA256,
     ),
     tls.CipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384: structs.CipherSuite(
@@ -316,17 +376,16 @@ supported_cipher_suites = {
         cipher=tls.SupportedCipher.CHACHA20_POLY1305,
         mac=tls.SupportedHash.SHA256,
     ),
-
-
-    tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CCM: structs.CipherSuite(
-        key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
+    tls.CipherSuite.TLS_AES_128_CCM_SHA256: structs.CipherSuite(
+        key_ex=None,
         cipher=tls.SupportedCipher.AES_128_CCM,
         mac=tls.SupportedHash.SHA256,
     ),
-
-
-
-
+    tls.CipherSuite.TLS_AES_128_CCM_8_SHA256: structs.CipherSuite(
+        key_ex=None,
+        cipher=tls.SupportedCipher.AES_128_CCM_8,
+        mac=tls.SupportedHash.SHA256,
+    ),
 }
 
 
@@ -340,6 +399,7 @@ supported_ciphers = {
         key_len=16,
         block_size=16,
         iv_len=16,
+        aead_expansion=None,
     ),
     tls.SupportedCipher.AES_256_CBC: structs.Cipher(
         primitive=tls.CipherPrimitive.AES,
@@ -348,6 +408,7 @@ supported_ciphers = {
         key_len=32,
         block_size=16,
         iv_len=16,
+        aead_expansion=None,
     ),
     tls.SupportedCipher.AES_128_GCM: structs.Cipher(
         primitive=tls.CipherPrimitive.AES,
@@ -356,6 +417,7 @@ supported_ciphers = {
         key_len=16,
         block_size=16,
         iv_len=4,
+        aead_expansion=16,
     ),
     tls.SupportedCipher.AES_256_GCM: structs.Cipher(
         primitive=tls.CipherPrimitive.AES,
@@ -364,6 +426,7 @@ supported_ciphers = {
         key_len=32,
         block_size=16,
         iv_len=4,
+        aead_expansion=16,
     ),
     tls.SupportedCipher.AES_128_CCM: structs.Cipher(
         primitive=tls.CipherPrimitive.AES,
@@ -372,6 +435,34 @@ supported_ciphers = {
         key_len=16,
         block_size=16,
         iv_len=4,
+        aead_expansion=16,
+    ),
+    tls.SupportedCipher.AES_128_CCM_8: structs.Cipher(
+        primitive=tls.CipherPrimitive.AES,
+        algo=aead.AESCCM,
+        c_type=tls.CipherType.AEAD,
+        key_len=16,
+        block_size=16,
+        iv_len=4,
+        aead_expansion=8,
+    ),
+    tls.SupportedCipher.AES_256_CCM: structs.Cipher(
+        primitive=tls.CipherPrimitive.AES,
+        algo=aead.AESCCM,
+        c_type=tls.CipherType.AEAD,
+        key_len=32,
+        block_size=16,
+        iv_len=4,
+        aead_expansion=16,
+    ),
+    tls.SupportedCipher.AES_256_CCM_8: structs.Cipher(
+        primitive=tls.CipherPrimitive.AES,
+        algo=aead.AESCCM,
+        c_type=tls.CipherType.AEAD,
+        key_len=32,
+        block_size=16,
+        iv_len=4,
+        aead_expansion=8,
     ),
     tls.SupportedCipher.CHACHA20_POLY1305: structs.Cipher(
         primitive=tls.CipherPrimitive.CHACHA,
@@ -380,6 +471,7 @@ supported_ciphers = {
         key_len=32,
         block_size=16,
         iv_len=12,
+        aead_expansion=16,
     ),
     tls.SupportedCipher.TRIPPLE_DES_EDE_CBC: structs.Cipher(
         primitive=tls.CipherPrimitive.TRIPPLE_DES,
@@ -388,6 +480,7 @@ supported_ciphers = {
         key_len=24,
         block_size=8,
         iv_len=8,
+        aead_expansion=None,
     ),
     tls.SupportedCipher.CAMELLIA_128_CBC: structs.Cipher(
         primitive=tls.CipherPrimitive.CAMELLIA,
@@ -396,6 +489,7 @@ supported_ciphers = {
         key_len=16,
         block_size=16,
         iv_len=16,
+        aead_expansion=None,
     ),
     tls.SupportedCipher.CAMELLIA_256_CBC: structs.Cipher(
         primitive=tls.CipherPrimitive.CAMELLIA,
@@ -404,6 +498,7 @@ supported_ciphers = {
         key_len=32,
         block_size=16,
         iv_len=16,
+        aead_expansion=None,
     ),
     tls.SupportedCipher.IDEA_CBC: structs.Cipher(
         primitive=tls.CipherPrimitive.IDEA,
@@ -412,6 +507,7 @@ supported_ciphers = {
         key_len=16,
         block_size=8,
         iv_len=8,
+        aead_expansion=None,
     ),
     tls.SupportedCipher.RC4_128: structs.Cipher(
         primitive=tls.CipherPrimitive.RC4,
@@ -420,6 +516,7 @@ supported_ciphers = {
         key_len=16,
         block_size=None,
         iv_len=0,
+        aead_expansion=None,
     ),
     tls.SupportedCipher.TLS13_AES_128_GCM: structs.Cipher(
         primitive=tls.CipherPrimitive.AES,
@@ -428,6 +525,7 @@ supported_ciphers = {
         key_len=16,
         block_size=16,
         iv_len=12,
+        aead_expansion=16,
     ),
     tls.SupportedCipher.TLS13_AES_256_GCM: structs.Cipher(
         primitive=tls.CipherPrimitive.AES,
@@ -436,6 +534,7 @@ supported_ciphers = {
         key_len=32,
         block_size=16,
         iv_len=12,
+        aead_expansion=16,
     ),
 }
 

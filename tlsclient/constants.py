@@ -695,6 +695,7 @@ class SupportedCipher(ExtendedEnum):
     AES_128_GCM = enum.auto()
     AES_256_CBC = enum.auto()
     AES_256_CCM = enum.auto()
+    AES_256_CCM_8 = enum.auto()
     AES_256_GCM = enum.auto()
     CAMELLIA_128_CBC = enum.auto()
     CAMELLIA_128_GCM = enum.auto()

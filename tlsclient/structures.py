@@ -14,7 +14,7 @@ SessionStateTicket = collections.namedtuple(
 
 
 Cipher = collections.namedtuple(
-    "Cipher", "primitive algo c_type key_len block_size iv_len"
+    "Cipher", "primitive algo c_type key_len block_size iv_len, aead_expansion"
 )
 
 Mac = collections.namedtuple("Mac", "hash_algo mac_len key_len hmac_algo")
