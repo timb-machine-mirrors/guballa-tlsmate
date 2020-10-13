@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Module containing the test suite
 """
-import logging
 import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.testmanager import TestManager, TestSuite

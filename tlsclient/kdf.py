@@ -3,7 +3,6 @@
 """
 
 import abc
-import logging
 import math
 import struct
 from cryptography.hazmat.primitives import hashes, hmac

@@ -251,8 +251,9 @@ class KeyExchangeDH(object):
         pub_key_len, offset = pdu.unpack_uint16(fragment, offset)
         self.public_key, offset = pdu.unpack_bytes(fragment, offset, pub_key_len)
         if signature_present:
-            sig_scheme, offset = pdu.unpack_uint16(fragment, offset)
-            self.sig_scheme = tls.SignatureScheme.val2enum(sig_scheme)
+            if conn.version is not tls.Version.SSL30:
+                sig_scheme, offset = pdu.unpack_uint16(fragment, offset)
+                self.sig_scheme = tls.SignatureScheme.val2enum(sig_scheme)
             sig_length, offset = pdu.unpack_uint16(fragment, offset)
             self.signature, offset = pdu.unpack_bytes(fragment, offset, sig_length)
         return self
