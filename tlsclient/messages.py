@@ -7,7 +7,7 @@ import tlsclient.constants as tls
 from tlsclient.protocol import ProtocolData
 import tlsclient.extensions as ext
 from tlsclient.alert import FatalAlert
-
+from tlsclient import pdu
 
 class TlsMessage(metaclass=abc.ABCMeta):
     @abc.abstractmethod
@@ -53,9 +53,9 @@ class HandshakeMessage(TlsMessage):
     def serialize(self, conn):
         msg_body = self._serialize_msg_body(conn)
 
-        handshake_msg = ProtocolData()
-        handshake_msg.append_uint8(self.msg_type.value)
-        handshake_msg.append_uint24(len(msg_body))
+        handshake_msg = bytearray()
+        handshake_msg.extend(pdu.pack_uint8(self.msg_type.value))
+        handshake_msg.extend(pdu.pack_uint24(len(msg_body)))
         handshake_msg.extend(msg_body)
         return handshake_msg
 
@@ -73,42 +73,42 @@ class ClientHello(HandshakeMessage):
         self.extensions = []
 
     def _serialize_msg_body(self, conn):
-        msg = ProtocolData()
+        msg = bytearray()
 
         # version
         version = self.client_version
         if type(version) == tls.Version:
             version = version.value
-        msg.append_uint16(version)
+        msg.extend(pdu.pack_uint16(version))
 
         # random
         msg.extend(self.random)
 
         # session_id
-        msg.append_uint8(len(self.session_id))
+        msg.extend(pdu.pack_uint8(len(self.session_id)))
         msg.extend(self.session_id)
 
         # cipher suites
-        msg.append_uint16(2 * len(self.cipher_suites))
+        msg.extend(pdu.pack_uint16(2 * len(self.cipher_suites)))
         for cipher_suite in self.cipher_suites:
             if type(cipher_suite) == int:
-                msg.append_uint16(cipher_suite)
+                msg.extend(pdu.pack_uint16(cipher_suite))
             else:
-                msg.append_uint16(cipher_suite.value)
+                msg.extend(pdu.pack_uint16(cipher_suite.value))
 
         # compression methods
-        msg.append_uint8(len(self.compression_methods))
+        msg.extend(pdu.pack_uint8(len(self.compression_methods)))
         for comp_meth in self.compression_methods:
             if type(comp_meth) == tls.CompressionMethod:
                 comp_meth = comp_meth.value
-            msg.append_uint8(comp_meth)
+            msg.extend(pdu.pack_uint8(comp_meth))
 
         # extensions
         if self.extensions is not None:
-            ext_bytes = ProtocolData()
+            ext_bytes = bytearray()
             for extension in self.extensions:
                 ext_bytes.extend(extension.serialize(conn))
-            msg.append_uint16(len(ext_bytes))
+            msg.extend(pdu.pack_uint16(len(ext_bytes)))
             msg.extend(ext_bytes)
 
         return msg
@@ -323,15 +323,15 @@ class ClientKeyExchange(HandshakeMessage):
         self.ecdh_public = None
 
     def _serialize_msg_body(self, conn):
-        msg = ProtocolData()
+        msg = bytearray()
         if self.rsa_encrypted_pms is not None:
-            msg.append_uint16(len(self.rsa_encrypted_pms))
+            msg.extend(pdu.pack_uint16(len(self.rsa_encrypted_pms)))
             msg.extend(self.rsa_encrypted_pms)
         elif self.dh_public is not None:
-            msg.append_uint16(len(self.dh_public))
+            msg.extend(pdu.pack_uint16(len(self.dh_public)))
             msg.extend(self.dh_public)
         elif self.ecdh_public is not None:
-            msg.append_uint8(len(self.ecdh_public))
+            msg.extend(pdu.pack_uint8(len(self.ecdh_public)))
             msg.extend(self.ecdh_public)
 
         return msg
@@ -348,7 +348,7 @@ class Finished(HandshakeMessage):
         self.verify_data = None
 
     def _serialize_msg_body(self, conn):
-        return ProtocolData(self.verify_data)
+        return bytes(self.verify_data)
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         self.verify_data = fragment[offset:]
@@ -368,7 +368,7 @@ class NewSessionTicket(HandshakeMessage):
 
     def _serialize_msg_body(self, conn):
         # TODO for server side implementation
-        return ProtocolData()
+        return bytearray()
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         if conn.version is tls.Version.TLS13:
@@ -403,7 +403,7 @@ class EncryptedExtensions(HandshakeMessage):
 
     def _serialize_msg_body(self, conn):
         # TODO for server side implementation
-        return ProtocolData()
+        return bytearray()
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         if offset < len(fragment):
@@ -436,8 +436,8 @@ class ChangeCipherSpecMessage(TlsMessage):
 
     def serialize(self, conn):
         self._serialize_msg_body(conn)
-        ccs_msg = ProtocolData()
-        ccs_msg.append_uint8(self.msg_type.value)
+        ccs_msg = bytearray()
+        ccs_msg.extend(pdu.pack_uint8(self.msg_type.value))
         return ccs_msg
 
     @abc.abstractmethod
@@ -475,15 +475,15 @@ class Alert(TlsMessage):
         )
 
     def serialize(self, conn):
-        alert = ProtocolData()
+        alert = bytearray()
         if self.level == int:
-            alert.append_uint8(self.level)
+            alert.extend(pdu.pack_uint8(self.level))
         else:
-            alert.append_uint8(self.level.value)
+            alert.extend(pdu.pack_uint8(self.level.value))
         if self.description == int:
-            alert.append_uint8(self.description)
+            alert.extend(pdu.pack_uint8(self.description))
         else:
-            alert.append_uint8(self.description.value)
+            alert.extend(pdu.pack_uint8(self.description.value))
 
         return alert
 
@@ -523,7 +523,7 @@ class AppDataMessage(TlsMessage):
 
 class AppData(AppDataMessage):
     def __init__(self, *content):
-        self.data = ProtocolData()
+        self.data = bytearray()
         for data in content:
             self.data.extend(data)
 
@@ -578,14 +578,14 @@ class SSL2ClientHello(SSL2Message):
         self.challenge = os.urandom(16)
 
     def serialize(self, conn):
-        msg = ProtocolData()
-        msg.append_uint8(self.msg_type.value)
-        msg.append_uint16(self.client_version.value)
-        msg.append_uint16(3*len(self.cipher_specs))
-        msg.append_uint16(len(self.session_id))
-        msg.append_uint16(len(self.challenge))
+        msg = bytearray()
+        msg.extend(pdu.pack_uint8(self.msg_type.value))
+        msg.extend(pdu.pack_uint16(self.client_version.value))
+        msg.extend(pdu.pack_uint16(3*len(self.cipher_specs)))
+        msg.extend(pdu.pack_uint16(len(self.session_id)))
+        msg.extend(pdu.pack_uint16(len(self.challenge)))
         for ck in self.cipher_specs:
-            msg.append_uint24(ck.value)
+            msg.extend(pdu.pack_uint24(ck.value))
         msg.extend(self.session_id)
         msg.extend(self.challenge)
         return msg

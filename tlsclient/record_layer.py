@@ -7,7 +7,7 @@ from tlsclient.alert import FatalAlert
 import struct
 import tlsclient.constants as tls
 import tlsclient.structures as structs
-
+from tlsclient import pdu
 from cryptography.hazmat.primitives import hmac
 from cryptography.hazmat.primitives.ciphers import Cipher, modes, aead
 
@@ -51,19 +51,19 @@ class RecordLayer(object):
         self._ssl2 = False
 
     def _add_to_sendbuffer(self, content_type, version, fragment):
-        self._send_buffer.append_uint8(content_type.value)
-        self._send_buffer.append_uint16(version.value)
-        self._send_buffer.append_uint16(len(fragment))
+        self._send_buffer.extend(pdu.pack_uint8(content_type.value))
+        self._send_buffer.extend(pdu.pack_uint16(version.value))
+        self._send_buffer.extend(pdu.pack_uint16(len(fragment)))
         self._send_buffer.extend(fragment)
         if self._flush_each_fragment:
             self.flush()
 
     def _append_mac(self, state, content_type, version, fragment):
-        mac_input = ProtocolData()
-        mac_input.append_uint64(state.seq_nbr)
-        mac_input.append_uint8(content_type.value)
-        mac_input.append_uint16(version.value)
-        mac_input.append_uint16(len(fragment))
+        mac_input = bytearray()
+        mac_input.extend(pdu.pack_uint64(state.seq_nbr))
+        mac_input.extend(pdu.pack_uint8(content_type.value))
+        mac_input.extend(pdu.pack_uint16(version.value))
+        mac_input.extend(pdu.pack_uint16(len(fragment)))
         mac_input.extend(fragment)
         mac = hmac.HMAC(state.keys.mac, state.mac.hash_algo())
         mac.update(mac_input)
@@ -80,8 +80,8 @@ class RecordLayer(object):
             iv = state.iv
         else:
             # iv should be random but we want to have it reproducable
-            iv = ProtocolData(state.iv[:-4])
-            iv.append_uint32(state.seq_nbr)
+            iv = bytearray(state.iv[:-4])
+            iv.extend(pdu.pack_uint32(state.seq_nbr))
 
         cipher = Cipher(state.cipher.algo(state.keys.enc), modes.CBC(iv))
         encryptor = cipher.encryptor()
@@ -98,12 +98,12 @@ class RecordLayer(object):
 
         if state.enc_then_mac:
             fragment = self._encrypt_cbc(state, fragment)
-            fragment = ProtocolData(fragment)
+            #fragment = ProtocolData(fragment)
             self._append_mac(state, content_type, version, fragment)
         else:
             self._append_mac(state, content_type, version, fragment)
             fragment = self._encrypt_cbc(state, fragment)
-            fragment = ProtocolData(fragment)
+            #fragment = ProtocolData(fragment)
 
         self._add_to_sendbuffer(content_type, version, fragment)
 
@@ -120,16 +120,16 @@ class RecordLayer(object):
         if state.cipher.aead_expansion != 16:
             kwargs["tag_length"] = state.cipher.aead_expansion
         aes_aead = state.cipher.algo(state.keys.enc, **kwargs)
-        nonce_explicit = ProtocolData()
-        nonce_explicit.append_uint64(state.seq_nbr)
+        nonce_explicit = bytearray()
+        nonce_explicit.extend(pdu.pack_uint64(state.seq_nbr))
         nonce = state.keys.iv + nonce_explicit
-        aad = ProtocolData()
-        aad.append_uint64(state.seq_nbr)
-        aad.append_uint8(content_type.value)
-        aad.append_uint16(version.value)
-        aad.append_uint16(len(fragment))
+        aad = bytearray()
+        aad.extend(pdu.pack_uint64(state.seq_nbr))
+        aad.extend(pdu.pack_uint8(content_type.value))
+        aad.extend(pdu.pack_uint16(version.value))
+        aad.extend(pdu.pack_uint16(len(fragment)))
         cipher_text = aes_aead.encrypt(nonce, bytes(fragment), bytes(aad))
-        aead_ciphered = ProtocolData()
+        aead_ciphered = bytearray()
         aead_ciphered.extend(nonce_explicit)
         aead_ciphered.extend(cipher_text)
 
@@ -140,11 +140,11 @@ class RecordLayer(object):
     def _protect_chacha_cipher(self, state, content_type, version, fragment):
         nonce_val = int.from_bytes(state.keys.iv, "big", signed=False) ^ state.seq_nbr
         nonce = nonce_val.to_bytes(state.cipher.iv_len, "big", signed=False)
-        aad = ProtocolData()
-        aad.append_uint64(state.seq_nbr)
-        aad.append_uint8(content_type.value)
-        aad.append_uint16(version.value)
-        aad.append_uint16(len(fragment))
+        aad = bytearray()
+        aad.extend(pdu.pack_uint64(state.seq_nbr))
+        aad.extend(pdu.pack_uint8(content_type.value))
+        aad.extend(pdu.pack_uint16(version.value))
+        aad.extend(pdu.pack_uint16(len(fragment)))
         chachapoly = aead.ChaCha20Poly1305(state.keys.enc)
         cipher_text = chachapoly.encrypt(nonce, bytes(fragment), bytes(aad))
 
@@ -173,11 +173,11 @@ class RecordLayer(object):
                 )
 
     def _tls13_protect(self, state, content_type, version, fragment):
-        fragment.append_uint8(content_type.value)
-        aad = ProtocolData()
-        aad.append_uint8(tls.ContentType.APPLICATION_DATA.value)
-        aad.append_uint16(version.value)
-        aad.append_uint16(len(fragment) + 16)
+        fragment.extend(pdu.pack_uint8(content_type.value))
+        aad = bytearray()
+        aad.extend(pdu.pack_uint8(tls.ContentType.APPLICATION_DATA.value))
+        aad.extend(pdu.pack_uint16(version.value))
+        aad.extend(pdu.pack_uint16(len(fragment) + 16))
         nonce_val = int.from_bytes(state.keys.iv, "big", signed=False) ^ state.seq_nbr
         nonce = nonce_val.to_bytes(state.cipher.iv_len, "big", signed=False)
         cipher = state.cipher_object(state.keys.enc)
@@ -357,7 +357,7 @@ class RecordLayer(object):
     def send_message(self, message_block):
         if message_block.content_type is tls.ContentType.SSL2:
             self._ssl2 = True
-            self._send_buffer.append_uint16(len(message_block.fragment) | 0x8000)
+            self._send_buffer.extend(pdu.pack_uint16(len(message_block.fragment) | 0x8000))
             self._send_buffer.extend(message_block.fragment)
         else:
             self._fragment(message_block)
