@@ -397,9 +397,9 @@ class RecordLayer(object):
 
         while len(self._receive_buffer) < (length + rl_len):
             data = self._socket.recv_data(timeout=timeout)
-            if data is None:
+            if data is None or not len(data):
                 # TODO: timeout
-                pass
+                return None
             self._receive_buffer.extend(data)
 
         # here we have received at least a complete record layer fragment

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Module containing the test suite
 """
+import logging
 import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.testmanager import TestManager, TestSuite
@@ -16,58 +17,62 @@ class MyTestSuite(TestSuite):
         client = self.client
         client.versions = [tls.Version.TLS12]
         client.cipher_suites = [
-            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8,
+            # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8,
             # tls.CipherSuite.TLS_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
             # tls.CipherSuite.TLS_AES_256_GCM_SHA384,
-            # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-            # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
             # tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
-            # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-            # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-            # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
-            # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
-            # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
-            # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-            # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-            # tls.CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
-            # tls.CipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384,
-            # tls.CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
-            # tls.CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA,
-            # tls.CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
-            # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
-            # tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
-            # tls.CipherSuite.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,
-            # tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_128_CBC_SHA,
-            # tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_256_CBC_SHA,
-            # tls.CipherSuite.TLS_RSA_WITH_IDEA_CBC_SHA,
-            # tls.CipherSuite.TLS_RSA_WITH_RC4_128_SHA,
-            # tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV,
+            #tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+            #tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+            #tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+            #tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
+            #tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+            #tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+            #tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+            #tls.CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
+            #tls.CipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384,
+            #tls.CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+            #tls.CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA,
+            #tls.CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+            #tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+            #tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
+            #tls.CipherSuite.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,
+            #tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_128_CBC_SHA,
+            #tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_256_CBC_SHA,
+            #tls.CipherSuite.TLS_RSA_WITH_IDEA_CBC_SHA,
+            #tls.CipherSuite.TLS_RSA_WITH_RC4_128_SHA,
+            #tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV,
+            #tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_GCM_SHA384,
+            #tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
+            #tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_CBC_SHA256,
+            #tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA256
         ]
         client.supported_groups = [
-            # tls.SupportedGroups.X25519,
-            # tls.SupportedGroups.X448,
-            # tls.SupportedGroups.SECT163K1,
-            # tls.SupportedGroups.SECT163R2,
-            # tls.SupportedGroups.SECT233K1,
-            # tls.SupportedGroups.SECT233R1,
-            # tls.SupportedGroups.SECT283K1,
-            # tls.SupportedGroups.SECT283R1,
-            # tls.SupportedGroups.SECT409K1,
-            # tls.SupportedGroups.SECT409R1,
-            # tls.SupportedGroups.SECT571K1,
-            # tls.SupportedGroups.SECT571R1,
-            # tls.SupportedGroups.SECP224R1,
-            # tls.SupportedGroups.SECP256K1,
-            # tls.SupportedGroups.BRAINPOOLP256R1,
-            # tls.SupportedGroups.BRAINPOOLP384R1,
-            # tls.SupportedGroups.BRAINPOOLP512R1,
+            tls.SupportedGroups.X448,
+            tls.SupportedGroups.SECT163K1,
+            tls.SupportedGroups.SECT163R2,
+            tls.SupportedGroups.SECT233K1,
+            tls.SupportedGroups.SECT233R1,
+            tls.SupportedGroups.SECT283K1,
+            tls.SupportedGroups.SECT283R1,
+            tls.SupportedGroups.SECT409K1,
+            tls.SupportedGroups.SECT409R1,
+            tls.SupportedGroups.SECT571K1,
+            tls.SupportedGroups.SECT571R1,
+            tls.SupportedGroups.SECP224R1,
+            tls.SupportedGroups.SECP256K1,
+            tls.SupportedGroups.BRAINPOOLP256R1,
+            tls.SupportedGroups.BRAINPOOLP384R1,
+            tls.SupportedGroups.BRAINPOOLP512R1,
             tls.SupportedGroups.SECP256R1,
-            # tls.SupportedGroups.SECP384R1,
-            # tls.SupportedGroups.SECP521R1,
-            # tls.SupportedGroups.FFDHE2048,
-            # tls.SupportedGroups.FFDHE4096,
+            tls.SupportedGroups.SECP384R1,
+            tls.SupportedGroups.SECP521R1,
+            tls.SupportedGroups.FFDHE2048,
+            tls.SupportedGroups.FFDHE4096,
+            tls.SupportedGroups.X25519,
         ]
         client.signature_algorithms = [
             tls.SignatureScheme.RSA_PKCS1_SHA1,
@@ -86,13 +91,13 @@ class MyTestSuite(TestSuite):
             tls.SignatureScheme.ISO_IBS2,
             tls.SignatureScheme.ISO_CHINESE_IBS,
             tls.SignatureScheme.SM2SIG_SM3,
-            tls.SignatureScheme.GOSTR34102012_256A,
-            tls.SignatureScheme.GOSTR34102012_256B,
-            tls.SignatureScheme.GOSTR34102012_256C,
-            tls.SignatureScheme.GOSTR34102012_256D,
-            tls.SignatureScheme.GOSTR34102012_512A,
-            tls.SignatureScheme.GOSTR34102012_512B,
-            tls.SignatureScheme.GOSTR34102012_512C,
+            #tls.SignatureScheme.GOSTR34102012_256A,
+            #tls.SignatureScheme.GOSTR34102012_256B,
+            #tls.SignatureScheme.GOSTR34102012_256C,
+            #tls.SignatureScheme.GOSTR34102012_256D,
+            #tls.SignatureScheme.GOSTR34102012_512A,
+            #tls.SignatureScheme.GOSTR34102012_512B,
+            #tls.SignatureScheme.GOSTR34102012_512C,
             tls.SignatureScheme.RSA_PSS_RSAE_SHA256,
             tls.SignatureScheme.RSA_PSS_RSAE_SHA384,
             tls.SignatureScheme.RSA_PSS_RSAE_SHA512,
@@ -109,35 +114,21 @@ class MyTestSuite(TestSuite):
         # client.support_extended_master_secret = True
 
         # client.support_session_ticket = True
+        # client.support_supported_groups = False
         with client.create_connection() as conn:
-            ssl_client_hello = msg.SSL2ClientHello()
-            ssl_client_hello.cipher_specs = [
-                tls.SSLCipherKind.SSL_CK_RC4_128_WITH_MD5,
-                tls.SSLCipherKind.SSL_CK_RC4_128_EXPORT40_WITH_MD5,
-                tls.SSLCipherKind.SSL_CK_RC2_128_CBC_WITH_MD5,
-                tls.SSLCipherKind.SSL_CK_RC2_128_CBC_EXPORT40_WITH_MD5,
-                tls.SSLCipherKind.SSL_CK_IDEA_128_CBC_WITH_MD5,
-                tls.SSLCipherKind.SSL_CK_DES_64_CBC_WITH_MD5,
-                tls.SSLCipherKind.SSL_CK_DES_192_EDE3_CBC_WITH_MD5,
-            ]
-
-            conn.send(msg.SSL2ClientHello)
-            conn.wait(msg.SSL2ServerHello)
-
-
-#            conn.send(msg.ClientHello)
-#            conn.wait(msg.ServerHello)
-#            conn.wait(msg.Certificate, optional=True)
-#            conn.wait(msg.ServerKeyExchange, optional=True)
-#            conn.wait(msg.ServerHelloDone)
-#            conn.send(msg.ClientKeyExchange, msg.ChangeCipherSpec, msg.Finished)
-#            conn.wait(msg.ChangeCipherSpec)
-#            conn.wait(msg.Finished)
-#            conn.send(msg.AppData(b"GET / HTTP/1.1\n"))
-#            while True:
-#                app_data = conn.wait(msg.AppData)
-#                if len(app_data.data):
-#                    break
-#            for line in app_data.data.decode("utf-8").split("\n"):
-#                if line.startswith("s_server"):
-#                    logging.debug("openssl_command: " + line)
+            conn.send(msg.ClientHello)
+            conn.wait(msg.ServerHello)
+            conn.wait(msg.Certificate, optional=True)
+            conn.wait(msg.ServerKeyExchange, optional=True)
+            conn.wait(msg.ServerHelloDone)
+            conn.send(msg.ClientKeyExchange, msg.ChangeCipherSpec, msg.Finished)
+            conn.wait(msg.ChangeCipherSpec)
+            conn.wait(msg.Finished)
+            conn.send(msg.AppData(b"GET / HTTP/1.1\n"))
+            while True:
+                app_data = conn.wait(msg.AppData)
+                if len(app_data.data):
+                    break
+            for line in app_data.data.decode("utf-8").split("\n"):
+                if line.startswith("s_server"):
+                    logging.debug("openssl_command: " + line)

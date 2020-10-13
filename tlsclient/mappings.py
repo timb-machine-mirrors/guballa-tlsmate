@@ -62,6 +62,11 @@ supported_cipher_suites = {
         cipher=tls.SupportedCipher.AES_256_CCM_8,
         mac=tls.SupportedHash.SHA256,
     ),
+    tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_GCM_SHA384: structs.CipherSuite(
+        key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
+        cipher=tls.SupportedCipher.AES_256_GCM,
+        mac=tls.SupportedHash.SHA384,
+    ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_CAMELLIA_128_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.CAMELLIA_128_CBC,
