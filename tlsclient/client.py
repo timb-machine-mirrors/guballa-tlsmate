@@ -3,7 +3,6 @@
 """
 import tlsclient.constants as tls
 import tlsclient.extensions as ext
-from tlsclient.protocol import ProtocolData
 from tlsclient.messages import ClientHello
 
 
@@ -153,11 +152,11 @@ class Client(object):
         msg.random = None  # will be provided autonomously
 
         if self.support_session_ticket and self.session_state_ticket is not None:
-            msg.session_id = ProtocolData().fromhex("dead beaf")
+            msg.session_id = bytes.fromhex("dead beaf")
         elif self.support_session_id and self.session_state_id is not None:
             msg.session_id = self.session_state_id.session_id
         else:
-            msg.session_id = ProtocolData()
+            msg.session_id = b""
         msg.cipher_suites = self.cipher_suites
         msg.compression_methods = self.compression_methods
         if msg.client_version == tls.Version.SSL30:

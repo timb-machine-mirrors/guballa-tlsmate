@@ -5,9 +5,9 @@
 import abc
 import collections
 import os
-from tlsclient.protocol import ProtocolData
 from tlsclient import mappings
 import tlsclient.constants as tls
+from tlsclient import pdu
 
 from cryptography.hazmat.primitives.asymmetric import ec, x25519, x448, dh
 from cryptography import x509
@@ -48,7 +48,7 @@ class KeyExchange(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def get_transferable_key(self):
-        """Returns the ProtocolData for whatever is transferred to the peer
+        """Returns the pdu-format for whatever is transferred to the peer
         """
         raise NotImplementedError
 
@@ -78,8 +78,8 @@ class RsaKeyExchange(KeyExchange):
         The client selects a random number, preceeded by the TLS version as sent in
         the ClientHello.
         """
-        pms = ProtocolData()
-        pms.append_uint16(self._conn.client_version_sent)
+        pms = bytearray()
+        pms.extend(pdu.pack_uint16(self._conn.client_version_sent))
         random = self._recorder.inject(pms_rsa=os.urandom(46))
         pms.extend(random)
         self._pms = pms
@@ -144,7 +144,7 @@ class DhKeyExchange(KeyExchange):
         if self._recorder.is_recording():
             self._recorder.trace(x_val=self._priv_key.private_numbers().x)
             self._recorder.trace(y_val=y_val)
-        return ProtocolData(self._priv_key.exchange(rem_pub_key).lstrip(b"\0"))
+        return self._priv_key.exchange(rem_pub_key).lstrip(b"\0")
 
     def set_remote_key(self, rem_pub_key, g_val=None, p_val=None):
         self._pval = int.from_bytes(p_val, "big")
@@ -187,7 +187,7 @@ class EcdhKeyExchange(KeyExchange):
         rem_pub_key = ec.EllipticCurvePublicKey.from_encoded_point(
             self._algo(), bytes(self._rem_pub_key)
         )
-        return ProtocolData(self._priv_key.exchange(ec.ECDH(), rem_pub_key))
+        return self._priv_key.exchange(ec.ECDH(), rem_pub_key)
 
     def set_remote_key(self, rem_pub_key):
         self._rem_pub_key = rem_pub_key
@@ -238,7 +238,7 @@ class XKeyExchange(KeyExchange):
         if self._priv_key is None:
             self._create_key_pair()
         rem_pub_key = self._public_key_lib.from_public_bytes(bytes(self._rem_pub_key))
-        return ProtocolData(self._priv_key.exchange(rem_pub_key))
+        return self._priv_key.exchange(rem_pub_key)
 
     def set_remote_key(self, rem_pub_key):
         self._rem_pub_key = rem_pub_key

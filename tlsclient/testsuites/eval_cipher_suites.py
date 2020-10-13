@@ -112,11 +112,14 @@ class MyTestSuite(TestSuite):
                     cert_chain_id = self.server_profile.get_cert_chain_id(
                         [server_hello.certificate]
                     )
-                self.server_profile.new_version(tls.Version.SSL20, tls.SPBool.C_UNDETERMINED)
+                self.server_profile.new_version(
+                    tls.Version.SSL20, tls.SPBool.C_UNDETERMINED
+                )
                 for cs in server_hello.cipher_specs:
-                    cs_tuple = structs.SPCipherSuite(cipher_suite=cs, cert_chain_id=cert_chain_id)
+                    cs_tuple = structs.SPCipherSuite(
+                        cipher_suite=cs, cert_chain_id=cert_chain_id
+                    )
                     self.server_profile.add_cipher_suite(tls.Version.SSL20, cs_tuple)
-
 
     def run(self):
         self.client.versions = [tls.Version.TLS12]

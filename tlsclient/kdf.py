@@ -8,7 +8,6 @@ import math
 import struct
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.kdf.hkdf import HKDFExpand
-from tlsclient.protocol import ProtocolData
 
 
 class _Backend(metaclass=abc.ABCMeta):

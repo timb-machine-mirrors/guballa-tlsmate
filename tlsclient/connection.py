@@ -8,7 +8,6 @@ import os
 import io
 import traceback as tb
 import time
-from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
 from tlsclient import pdu
@@ -26,8 +25,8 @@ import tlsclient.key_exchange as kex
 
 
 def get_random_value():
-    random = ProtocolData()
-    random.append_uint32(int(time.time()))
+    random = bytearray()
+    random.extend(pdu.pack_uint32(int(time.time())))
     random.extend(os.urandom(28))
     return random
 
@@ -220,7 +219,7 @@ class TlsConnection(object):
                 self.c_hs_tr_secret, "finished", b"", self.mac.key_len
             )
             logging.debug(f"finished_key: {pdu.dump(finished_key)}")
-            val = ProtocolData(self.kdf.hkdf_extract(hash_val, finished_key))
+            val = self.kdf.hkdf_extract(hash_val, finished_key)
             self._post_sending_hook = self.post_generate_finished
 
         else:
@@ -228,9 +227,7 @@ class TlsConnection(object):
                 label = b"client finished"
             else:
                 label = b"server finished"
-            val = ProtocolData(
-                self.kdf.prf(self.master_secret, label, hash_val, 12)
-            )
+            val = self.kdf.prf(self.master_secret, label, hash_val, 12)
             self.update_write_state()
         self.recorder.trace(msg_digest_finished_sent=hash_val)
         self.recorder.trace(verify_data_finished_sent=val)
@@ -410,11 +407,12 @@ class TlsConnection(object):
         if self.version is not tls.Version.TLS13:
             self.update_read_state()
             intermediate = not self._finished_treated
-            self._pre_finished_digest = self.kdf.finalize_msg_digest(intermediate=intermediate)
+            self._pre_finished_digest = self.kdf.finalize_msg_digest(
+                intermediate=intermediate
+            )
 
     def on_finished_received(self, msg):
-        verify_data = ProtocolData(msg.verify_data)
-        logging.debug(f"Finished.verify_data(in): {pdu.dump(verify_data)}")
+        logging.debug(f"Finished.verify_data(in): {pdu.dump(msg.verify_data)}")
 
         if self.version is tls.Version.TLS13:
             finished_key = self.kdf.hkdf_expand_label(
@@ -425,7 +423,7 @@ class TlsConnection(object):
                 self.pre_server_finished_digest, finished_key
             )
             logging.debug(f"calc. verify_data: {pdu.dump(calc_verify_data)}")
-            if calc_verify_data != verify_data:
+            if calc_verify_data != msg.verify_data:
                 raise FatalAlert(
                     "Received Finished: verify_data does not match",
                     tls.AlertDescription.DECRYPT_ERROR,
@@ -466,9 +464,9 @@ class TlsConnection(object):
                 label = b"client finished"
             val = self.kdf.prf(self.master_secret, label, self._pre_finished_digest, 12)
             self.recorder.trace(msg_digest_finished_rec=self._pre_finished_digest)
-            self.recorder.trace(verify_data_finished_rec=verify_data)
+            self.recorder.trace(verify_data_finished_rec=msg.verify_data)
             self.recorder.trace(verify_data_finished_calc=val)
-            if verify_data != val:
+            if msg.verify_data != val:
                 raise FatalAlert(
                     "Received Finidhed: verify_data does not match",
                     tls.AlertDescription.BAD_RECORD_MAC,
@@ -520,7 +518,7 @@ class TlsConnection(object):
             msg = self.queued_msg
             self.queued_msg = None
         else:
-            #content_type, version, fragment = self.record_layer.wait_fragment(timeout)
+            # content_type, version, fragment = self.record_layer.wait_fragment(timeout)
             mb = self.record_layer.wait_fragment(timeout)
             if mb is None:
                 return None
@@ -601,20 +599,17 @@ class TlsConnection(object):
     def generate_master_secret(self):
         if self.extended_ms:
             msg_digest = self.kdf.finalize_msg_digest(intermediate=True)
-            self.master_secret = ProtocolData(
-                self.kdf.prf(
-                    self.premaster_secret, b"extended master secret", msg_digest, 48
-                )
+            self.master_secret = self.kdf.prf(
+                self.premaster_secret, b"extended master secret", msg_digest, 48
             )
         else:
-            self.master_secret = ProtocolData(
-                self.kdf.prf(
-                    self.premaster_secret,
-                    b"master secret",
-                    self.client_random + self.server_random,
-                    48,
-                )
+            self.master_secret = self.kdf.prf(
+                self.premaster_secret,
+                b"master secret",
+                self.client_random + self.server_random,
+                48,
             )
+
         logging.info(f"master_secret: {pdu.dump(self.master_secret)}")
         self.recorder.trace(master_secret=self.master_secret)
         if self._new_session_id is not None:
@@ -648,18 +643,14 @@ class TlsConnection(object):
         c_enc = self.kdf.hkdf_expand_label(
             c_hs_tr_secret, "key", b"", self.cipher.key_len
         )
-        c_iv = self.kdf.hkdf_expand_label(
-            c_hs_tr_secret, "iv", b"", self.cipher.iv_len
-        )
+        c_iv = self.kdf.hkdf_expand_label(c_hs_tr_secret, "iv", b"", self.cipher.iv_len)
         s_hs_tr_secret = self.kdf.hkdf_expand_label(
             handshake_secret, "s hs traffic", hello_digest, self.mac.key_len
         )
         s_enc = self.kdf.hkdf_expand_label(
             s_hs_tr_secret, "key", b"", self.cipher.key_len
         )
-        s_iv = self.kdf.hkdf_expand_label(
-            s_hs_tr_secret, "iv", b"", self.cipher.iv_len
-        )
+        s_iv = self.kdf.hkdf_expand_label(s_hs_tr_secret, "iv", b"", self.cipher.iv_len)
         logging.info(f"client hs traffic secret: {pdu.dump(c_hs_tr_secret)}")
         logging.info(f"server hs traffic secret: {pdu.dump(s_hs_tr_secret)}")
         self.s_hs_tr_secret = s_hs_tr_secret
@@ -705,7 +696,6 @@ class TlsConnection(object):
             self.server_random + self.client_random,
             2 * (mac_len + self.cipher.key_len + self.cipher.iv_len),
         )
-        #key_material = ProtocolData(key_material)
         c_mac, offset = pdu.unpack_bytes(key_material, 0, mac_len)
         s_mac, offset = pdu.unpack_bytes(key_material, offset, mac_len)
         c_enc, offset = pdu.unpack_bytes(key_material, offset, self.cipher.key_len)

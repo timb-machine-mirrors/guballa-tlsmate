@@ -7,7 +7,6 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers import algorithms, aead
 import tlsclient.key_exchange as keyex
 import tlsclient.structures as structs
-from tlsclient.protocol import ProtocolData
 
 # this map contains all cipher suites for which a full handshake is supported,
 # i.e., application data can be exchanged encrypted
@@ -618,7 +617,7 @@ key_exchange = {
 dh_numbers = {
     tls.SupportedGroups.FFDHE2048: structs.DHNumbers(
         g_val=2,
-        p_val=ProtocolData.fromhex(
+        p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF ADF85458 A2BB4A9A AFDC5620 273D3CF1"
             "D8B9C583 CE2D3695 A9E13641 146433FB CC939DCE 249B3EF9"
             "7D2FE363 630C75D8 F681B202 AEC4617A D3DF1ED5 D5FD6561"
@@ -634,7 +633,7 @@ dh_numbers = {
     ),
     tls.SupportedGroups.FFDHE3072: structs.DHNumbers(
         g_val=2,
-        p_val=ProtocolData.fromhex(
+        p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF ADF85458 A2BB4A9A AFDC5620 273D3CF1"
             "D8B9C583 CE2D3695 A9E13641 146433FB CC939DCE 249B3EF9"
             "7D2FE363 630C75D8 F681B202 AEC4617A D3DF1ED5 D5FD6561"
@@ -655,7 +654,7 @@ dh_numbers = {
     ),
     tls.SupportedGroups.FFDHE4096: structs.DHNumbers(
         g_val=2,
-        p_val=ProtocolData.fromhex(
+        p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF ADF85458 A2BB4A9A AFDC5620 273D3CF1"
             "D8B9C583 CE2D3695 A9E13641 146433FB CC939DCE 249B3EF9"
             "7D2FE363 630C75D8 F681B202 AEC4617A D3DF1ED5 D5FD6561"
@@ -682,7 +681,7 @@ dh_numbers = {
     ),
     tls.SupportedGroups.FFDHE6144: structs.DHNumbers(
         g_val=2,
-        p_val=ProtocolData.fromhex(
+        p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF ADF85458 A2BB4A9A AFDC5620 273D3CF1"
             "D8B9C583 CE2D3695 A9E13641 146433FB CC939DCE 249B3EF9"
             "7D2FE363 630C75D8 F681B202 AEC4617A D3DF1ED5 D5FD6561"
@@ -719,7 +718,7 @@ dh_numbers = {
     ),
     tls.SupportedGroups.FFDHE8192: structs.DHNumbers(
         g_val=2,
-        p_val=ProtocolData.fromhex(
+        p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF ADF85458 A2BB4A9A AFDC5620 273D3CF1"
             "D8B9C583 CE2D3695 A9E13641 146433FB CC939DCE 249B3EF9"
             "7D2FE363 630C75D8 F681B202 AEC4617A D3DF1ED5 D5FD6561"

@@ -3,11 +3,11 @@
 """
 
 import abc
-from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
 import tlsclient.constants as tls
 import tlsclient.structures as structs
 from tlsclient import pdu
+
 
 class Extension(metaclass=abc.ABCMeta):
     @abc.abstractmethod
@@ -32,15 +32,6 @@ class Extension(metaclass=abc.ABCMeta):
         extension.deserialize_ext_body(ext_body)
         return extension, offset
 
-        #ext_id, offset = fragment.unpack_uint16(offset)
-        #ext_id = tls.Extension.val2enum(ext_id, alert_on_failure=True)
-        #ext_len, offset = fragment.unpack_uint16(offset)
-        #ext_body, offset = fragment.unpack_bytes(offset, ext_len)
-        #cls_name = deserialization_map[ext_id]
-        #extension = cls_name()
-        #extension.deserialize_ext_body(ext_body)
-        #return extension, offset
-
 
 class ExtServerNameIndication(Extension):
 
@@ -51,7 +42,7 @@ class ExtServerNameIndication(Extension):
 
     def serialize_ext_body(self, conn):
         # we only support exacly one list element: host_name
-        ext = bytearray(pdu.pack_uint8(0)) # host_name
+        ext = bytearray(pdu.pack_uint8(0))  # host_name
         ext.extend(pdu.pack_uint16(len(self.host_name)))
         ext.extend(pdu.pack_str(self.host_name))
         ext_body = bytearray(pdu.pack_uint16(len(ext)))

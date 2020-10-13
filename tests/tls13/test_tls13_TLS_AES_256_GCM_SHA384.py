@@ -48,6 +48,7 @@ class TestCase(TcRecorder):
         ]
 
         client.support_session_ticket = True
+        end_of_tc_reached = False
         with client.create_connection() as conn:
 
             conn.send(msg.ClientHello)
@@ -69,6 +70,9 @@ class TestCase(TcRecorder):
                 if line.startswith("s_server"):
                     logging.debug("openssl_command: " + line)
                     conn.recorder.trace(openssl_command=line)
+            end_of_tc_reached = True
+
+        assert end_of_tc_reached is True
 
 
 if __name__ == "__main__":

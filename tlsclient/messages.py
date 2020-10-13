@@ -4,10 +4,10 @@
 import abc
 import os
 import tlsclient.constants as tls
-from tlsclient.protocol import ProtocolData
 import tlsclient.extensions as ext
 from tlsclient.alert import FatalAlert
 from tlsclient import pdu
+
 
 class TlsMessage(metaclass=abc.ABCMeta):
     @abc.abstractmethod
@@ -30,9 +30,9 @@ class HandshakeMessage(TlsMessage):
 
     @classmethod
     def deserialize(cls, fragment, conn):
-        msg_type, offset = fragment.unpack_uint8(0)
+        msg_type, offset = pdu.unpack_uint8(fragment, 0)
         msg_type = tls.HandshakeType.val2enum(msg_type, alert_on_failure=True)
-        length, offset = fragment.unpack_uint24(offset)
+        length, offset = pdu.unpack_uint24(fragment, offset)
         if length + offset != len(fragment):
             raise FatalAlert(
                 "Length of {} incorrect".format(msg_type),
@@ -67,7 +67,7 @@ class ClientHello(HandshakeMessage):
     def __init__(self):
         self.client_version = tls.Version.TLS12
         self.random = None
-        self.session_id = ProtocolData()
+        self.session_id = bytes()
         self.cipher_suites = [tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256]
         self.compression_methods = [tls.CompressionMethod.NULL]
         self.extensions = []
@@ -135,23 +135,23 @@ class ServerHello(HandshakeMessage):
 
     def _deserialize_msg_body(self, fragment, offset, conn):
 
-        version, offset = fragment.unpack_uint16(offset)
+        version, offset = pdu.unpack_uint16(fragment, offset)
         self.version = tls.Version.val2enum(version, alert_on_failure=True)
-        self.random, offset = fragment.unpack_bytes(offset, 32)
-        session_id_len, offset = fragment.unpack_uint8(offset)
-        self.session_id, offset = fragment.unpack_bytes(offset, session_id_len)
-        cipher_suite, offset = fragment.unpack_uint16(offset)
+        self.random, offset = pdu.unpack_bytes(fragment, offset, 32)
+        session_id_len, offset = pdu.unpack_uint8(fragment, offset)
+        self.session_id, offset = pdu.unpack_bytes(fragment, offset, session_id_len)
+        cipher_suite, offset = pdu.unpack_uint16(fragment, offset)
         self.cipher_suite = tls.CipherSuite.val2enum(
             cipher_suite, alert_on_failure=True
         )
-        compression_method, offset = fragment.unpack_uint8(offset)
+        compression_method, offset = pdu.unpack_uint8(fragment, offset)
         self.compression_method = tls.CompressionMethod.val2enum(
             compression_method, alert_on_failure=True
         )
         self.extensions = []
         if offset < len(fragment):
             # extensions present
-            ext_len, offset = fragment.unpack_uint16(offset)
+            ext_len, offset = pdu.unpack_uint16(fragment, offset)
             while offset < len(fragment):
                 extension, offset = ext.Extension.deserialize(fragment, offset)
                 self.extensions.append(extension)
@@ -173,19 +173,21 @@ class Certificate(HandshakeMessage):
     def _deserialize_msg_body(self, fragment, offset, conn):
         self.certificates = []
         if conn.version is tls.Version.TLS13:
-            length, offset = fragment.unpack_uint8(offset)
+            length, offset = pdu.unpack_uint8(fragment, offset)
             if length:
-                self.request_context, offset = fragment.unpack_bytes(offset, length)
-        list_len, offset = fragment.unpack_uint24(offset)
+                self.request_context, offset = pdu.unpack_bytes(
+                    fragment, offset, length
+                )
+        list_len, offset = pdu.unpack_uint24(fragment, offset)
         while offset < len(fragment):
-            cert_len, offset = fragment.unpack_uint24(offset)
-            cert, offset = fragment.unpack_bytes(offset, cert_len)
+            cert_len, offset = pdu.unpack_uint24(fragment, offset)
+            cert, offset = pdu.unpack_bytes(fragment, offset, cert_len)
             self.certificates.append(cert)
             # TODO: save the extensions
             if conn.version is tls.Version.TLS13:
-                ext_len, offset = fragment.unpack_uint16(offset)
+                ext_len, offset = pdu.unpack_uint16(fragment, offset)
                 if ext_len:
-                    extensions, offset = fragment.unpack_bytes(ext_len)
+                    extensions, offset = pdu.unpack_bytes(fragment, ext_len)
         return self
 
 
@@ -202,19 +204,19 @@ class CertificateVerify(HandshakeMessage):
         pass
 
     def _deserialize_msg_body(self, fragment, offset, conn):
-        scheme, offset = fragment.unpack_uint16(offset)
+        scheme, offset = pdu.unpack_uint16(fragment, offset)
         self.signature_scheme = tls.SignatureScheme(scheme)
-        length, offset = fragment.unpack_uint16(offset)
-        self.signature, offset = fragment.unpack_bytes(offset, length)
+        length, offset = pdu.unpack_uint16(fragment, offset)
+        self.signature, offset = pdu.unpack_bytes(fragment, offset, length)
         return self
 
 
 class KeyExchangeEC(object):
     def deserialize_ECParameters(self, fragment, offset, conn):
-        curve_type, offset = fragment.unpack_uint8(offset)
+        curve_type, offset = pdu.unpack_uint8(fragment, offset)
         self.curve_type = tls.EcCurveType.val2enum(curve_type)
         if self.curve_type is tls.EcCurveType.NAMED_CURVE:
-            named_curve, offset = fragment.unpack_uint16(offset)
+            named_curve, offset = pdu.unpack_uint16(fragment, offset)
             self.named_curve = tls.SupportedGroups.val2enum(named_curve)
         # TODO: add other curve types
         return offset
@@ -223,8 +225,8 @@ class KeyExchangeEC(object):
         # ECParameters    curve_params;
         offset = self.deserialize_ECParameters(fragment, offset, conn)
         # ECPoint         public;
-        point_len, offset = fragment.unpack_uint8(offset)
-        self.public, offset = fragment.unpack_bytes(offset, point_len)
+        point_len, offset = pdu.unpack_uint8(fragment, offset)
+        self.public, offset = pdu.unpack_bytes(fragment, offset, point_len)
 
         return offset
 
@@ -232,27 +234,27 @@ class KeyExchangeEC(object):
         # ServerECDHParams    params;
         offset = self.deserialize_ServerECDHParams(fragment, offset, conn)
         # Signature           signed_params;
-        signature_scheme, offset = fragment.unpack_uint16(offset)
+        signature_scheme, offset = pdu.unpack_uint16(fragment, offset)
         self.signature_scheme = tls.SignatureScheme.val2enum(signature_scheme)
-        signature_len, offset = fragment.unpack_uint8(offset)
-        self.signature, offset = fragment.unpack_bytes(offset, signature_len)
+        signature_len, offset = pdu.unpack_uint8(fragment, offset)
+        self.signature, offset = pdu.unpack_bytes(fragment, offset, signature_len)
         return self
 
 
 class KeyExchangeDH(object):
     def _deserialize_msg_body(self, fragment, offset, conn, signature_present=True):
-        p_length, offset = fragment.unpack_uint16(offset)
-        self.p_val, offset = fragment.unpack_bytes(offset, p_length)
-        g_len, offset = fragment.unpack_uint16(offset)
-        g_bytes, offset = fragment.unpack_bytes(offset, g_len)
+        p_length, offset = pdu.unpack_uint16(fragment, offset)
+        self.p_val, offset = pdu.unpack_bytes(fragment, offset, p_length)
+        g_len, offset = pdu.unpack_uint16(fragment, offset)
+        g_bytes, offset = pdu.unpack_bytes(fragment, offset, g_len)
         self.g_val = int.from_bytes(g_bytes, "big")
-        pub_key_len, offset = fragment.unpack_uint16(offset)
-        self.public_key, offset = fragment.unpack_bytes(offset, pub_key_len)
+        pub_key_len, offset = pdu.unpack_uint16(fragment, offset)
+        self.public_key, offset = pdu.unpack_bytes(fragment, offset, pub_key_len)
         if signature_present:
-            sig_scheme, offset = fragment.unpack_uint16(offset)
+            sig_scheme, offset = pdu.unpack_uint16(fragment, offset)
             self.sig_scheme = tls.SignatureScheme.val2enum(sig_scheme)
-            sig_length, offset = fragment.unpack_uint16(offset)
-            self.signature, offset = fragment.unpack_bytes(offset, sig_length)
+            sig_length, offset = pdu.unpack_uint16(fragment, offset)
+            self.signature, offset = pdu.unpack_bytes(fragment, offset, sig_length)
         return self
 
 
@@ -372,25 +374,25 @@ class NewSessionTicket(HandshakeMessage):
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         if conn.version is tls.Version.TLS13:
-            self.lifetime, offset = fragment.unpack_uint32(offset)
-            self.age_add, offset = fragment.unpack_uint32(offset)
-            length, offset = fragment.unpack_uint8(offset)
-            self.nonce, offset = fragment.unpack_bytes(offset, length)
-            length, offset = fragment.unpack_uint16(offset)
-            self.ticket, offset = fragment.unpack_bytes(offset, length)
+            self.lifetime, offset = pdu.unpack_uint32(fragment, offset)
+            self.age_add, offset = pdu.unpack_uint32(fragment, offset)
+            length, offset = pdu.unpack_uint8(fragment, offset)
+            self.nonce, offset = pdu.unpack_bytes(fragment, offset, length)
+            length, offset = pdu.unpack_uint16(fragment, offset)
+            self.ticket, offset = pdu.unpack_bytes(fragment, offset, length)
 
             # TODO: move deserialization to dedicated method
             if offset < len(fragment):
                 # extensions present
-                ext_len, offset = fragment.unpack_uint16(offset)
+                ext_len, offset = pdu.unpack_uint16(fragment, offset)
                 while offset < len(fragment):
                     extension, offset = ext.Extension.deserialize(fragment, offset)
                     self.extensions.append(extension)
             return self
         else:
-            self.lifetime, offset = fragment.unpack_uint32(offset)
-            length, offset = fragment.unpack_uint16(offset)
-            self.ticket, offset = fragment.unpack_bytes(offset, length)
+            self.lifetime, offset = pdu.unpack_uint32(fragment, offset)
+            length, offset = pdu.unpack_uint16(fragment, offset)
+            self.ticket, offset = pdu.unpack_bytes(fragment, offset, length)
         return self
 
 
@@ -408,7 +410,7 @@ class EncryptedExtensions(HandshakeMessage):
     def _deserialize_msg_body(self, fragment, offset, conn):
         if offset < len(fragment):
             # extensions present
-            ext_len, offset = fragment.unpack_uint16(offset)
+            ext_len, offset = pdu.unpack_uint16(fragment, offset)
             while offset < len(fragment):
                 extension, offset = ext.Extension.deserialize(fragment, offset)
                 self.extensions.append(extension)
@@ -427,7 +429,7 @@ class ChangeCipherSpecMessage(TlsMessage):
                 "Received ChangedCipherSpec has unexpected length",
                 tls.AlertDescription.DECODE_ERROR,
             )
-        msg_type, offset = fragment.unpack_uint8(0)
+        msg_type, offset = pdu.unpack_uint8(fragment, 0)
         msg_type = tls.CCSType.val2enum(msg_type, alert_on_failure=True)
         cls_name = _ccs_deserialization_map[msg_type]
         msg = cls_name()
@@ -490,9 +492,9 @@ class Alert(TlsMessage):
     @classmethod
     def deserialize(cls, fragment, conn):
         msg = cls()
-        alert_level, offset = fragment.unpack_uint8(0)
+        alert_level, offset = pdu.unpack_uint8(fragment, 0)
         msg.level = tls.AlertLevel.val2enum(alert_level)
-        descr, offset = fragment.unpack_uint8(offset)
+        descr, offset = pdu.unpack_uint8(fragment, offset)
         msg.description = tls.AlertDescription(descr)
         return msg
 
@@ -534,8 +536,6 @@ class AppData(AppDataMessage):
         return self.data
 
 
-
-
 class SSL2Message(TlsMessage):
 
     content_type = tls.ContentType.SSL2
@@ -543,7 +543,7 @@ class SSL2Message(TlsMessage):
 
     @classmethod
     def deserialize(cls, fragment, conn, length=0):
-        msg_type, offset = fragment.unpack_uint8(0)
+        msg_type, offset = pdu.unpack_uint8(fragment, 0)
         msg_type = tls.SSLMessagType.val2enum(msg_type, alert_on_failure=True)
 
         cls_name = _ssl2_deserialization_map[msg_type]
@@ -554,10 +554,10 @@ class SSL2Message(TlsMessage):
     def _deserialize_msg_body(self, msg_body, length, conn):
         pass
 
-
     @abc.abstractmethod
     def serialize(self, conn):
         pass
+
 
 class SSL2ClientHello(SSL2Message):
 
@@ -574,14 +574,14 @@ class SSL2ClientHello(SSL2Message):
             tls.SSLCipherKind.SSL_CK_DES_64_CBC_WITH_MD5,
             tls.SSLCipherKind.SSL_CK_DES_192_EDE3_CBC_WITH_MD5,
         ]
-        self.session_id = ProtocolData()
+        self.session_id = bytes()
         self.challenge = os.urandom(16)
 
     def serialize(self, conn):
         msg = bytearray()
         msg.extend(pdu.pack_uint8(self.msg_type.value))
         msg.extend(pdu.pack_uint16(self.client_version.value))
-        msg.extend(pdu.pack_uint16(3*len(self.cipher_specs)))
+        msg.extend(pdu.pack_uint16(3 * len(self.cipher_specs)))
         msg.extend(pdu.pack_uint16(len(self.session_id)))
         msg.extend(pdu.pack_uint16(len(self.challenge)))
         for ck in self.cipher_specs:
@@ -610,18 +610,18 @@ class SSL2ServerHello(SSL2Message):
         pass
 
     def _deserialize_msg_body(self, fragment, offset, conn):
-        self.session_id_hit, offset = fragment.unpack_uint8(offset)
-        self.cert_type, offset = fragment.unpack_uint8(offset)
-        version, offset = fragment.unpack_uint16(offset)
+        self.session_id_hit, offset = pdu.unpack_uint8(fragment, offset)
+        self.cert_type, offset = pdu.unpack_uint8(fragment, offset)
+        version, offset = pdu.unpack_uint16(fragment, offset)
         self.version = tls.SSLVersion.val2enum(version)
-        cert_len, offset = fragment.unpack_uint16(offset)
-        cipher_len, offset = fragment.unpack_uint16(offset)
-        conn_id_len, offset = fragment.unpack_uint16(offset)
-        self.certificate, offset = fragment.unpack_bytes(offset, cert_len)
+        cert_len, offset = pdu.unpack_uint16(fragment, offset)
+        cipher_len, offset = pdu.unpack_uint16(fragment, offset)
+        conn_id_len, offset = pdu.unpack_uint16(fragment, offset)
+        self.certificate, offset = pdu.unpack_bytes(fragment, offset, cert_len)
         for _ in range(int(cipher_len / 3)):
-            cipher, offset = fragment.unpack_uint24(offset)
+            cipher, offset = pdu.unpack_uint24(fragment, offset)
             self.cipher_specs.append(tls.SSLCipherKind.val2enum(cipher))
-        self.connection_id, offset = fragment.unpack_bytes(offset, conn_id_len)
+        self.connection_id, offset = pdu.unpack_bytes(fragment, offset, conn_id_len)
         return self
 
 
@@ -647,4 +647,4 @@ _hs_deserialization_map = {
 
 _ccs_deserialization_map = {tls.CCSType.CHANGE_CIPHER_SPEC: ChangeCipherSpec}
 
-_ssl2_deserialization_map = {tls.SSLMessagType.SSL2_SERVER_HELLO: SSL2ServerHello,}
+_ssl2_deserialization_map = {tls.SSLMessagType.SSL2_SERVER_HELLO: SSL2ServerHello}

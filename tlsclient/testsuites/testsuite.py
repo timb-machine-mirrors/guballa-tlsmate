@@ -18,7 +18,7 @@ class MyTestSuite(TestSuite):
         client.versions = [tls.Version.TLS12]
         client.cipher_suites = [
             tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8,
-            #tls.CipherSuite.TLS_AES_128_GCM_SHA256,
+            # tls.CipherSuite.TLS_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
             # tls.CipherSuite.TLS_AES_256_GCM_SHA384,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
@@ -26,7 +26,7 @@ class MyTestSuite(TestSuite):
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
             # tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-            #tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+            # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
@@ -109,7 +109,7 @@ class MyTestSuite(TestSuite):
         # client.support_encrypt_then_mac = True
         # client.support_extended_master_secret = True
 
-        #client.support_session_ticket = True
+        # client.support_session_ticket = True
         with client.create_connection() as conn:
             ssl_client_hello = msg.SSL2ClientHello()
             ssl_client_hello.cipher_specs = [
@@ -124,6 +124,7 @@ class MyTestSuite(TestSuite):
 
             conn.send(msg.SSL2ClientHello)
             conn.wait(msg.SSL2ServerHello)
+
 
 #            conn.send(msg.ClientHello)
 #            conn.wait(msg.ServerHello)

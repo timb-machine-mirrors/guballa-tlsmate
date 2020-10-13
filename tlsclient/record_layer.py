@@ -2,7 +2,6 @@
 """Module containing the class implementing the record layer
 """
 
-from tlsclient.protocol import ProtocolData
 from tlsclient.alert import FatalAlert
 import struct
 import tlsclient.constants as tls
@@ -40,8 +39,8 @@ class RecordLayerState(object):
 
 class RecordLayer(object):
     def __init__(self, socket, recorder):
-        self._send_buffer = ProtocolData()
-        self._receive_buffer = ProtocolData()
+        self._send_buffer = bytearray()
+        self._receive_buffer = bytearray()
         self._fragment_max_size = 4 * 4096
         self._write_state = None
         self._read_state = None
@@ -98,12 +97,10 @@ class RecordLayer(object):
 
         if state.enc_then_mac:
             fragment = self._encrypt_cbc(state, fragment)
-            #fragment = ProtocolData(fragment)
             self._append_mac(state, content_type, version, fragment)
         else:
             self._append_mac(state, content_type, version, fragment)
             fragment = self._encrypt_cbc(state, fragment)
-            #fragment = ProtocolData(fragment)
 
         self._add_to_sendbuffer(content_type, version, fragment)
 
@@ -212,11 +209,11 @@ class RecordLayer(object):
         msg_len = len(fragment) - state.mac.mac_len
         mac_received = fragment[msg_len:]
         msg = fragment[:msg_len]
-        mac_input = ProtocolData()
-        mac_input.append_uint64(state.seq_nbr)
-        mac_input.append_uint8(content_type.value)
-        mac_input.append_uint16(version)
-        mac_input.append_uint16(msg_len)
+        mac_input = bytearray()
+        mac_input.extend(pdu.pack_uint64(state.seq_nbr))
+        mac_input.extend(pdu.pack_uint8(content_type.value))
+        mac_input.extend(pdu.pack_uint16(version))
+        mac_input.extend(pdu.pack_uint16(msg_len))
         mac_input.extend(msg)
         mac = hmac.HMAC(state.keys.mac, state.mac.hash_algo())
         mac.update(mac_input)
@@ -257,53 +254,53 @@ class RecordLayer(object):
 
         if state.enc_then_mac:
             fragment = self._verify_mac(state, content_type, version, fragment)
-            plain_text = ProtocolData(self._decode_cbc(state, fragment))
+            plain_text = self._decode_cbc(state, fragment)
         else:
             fragment = self._decode_cbc(state, fragment)
             plain_text = self._verify_mac(state, content_type, version, fragment)
 
         state.seq_nbr += 1
-        return ProtocolData(plain_text)
+        return plain_text
 
     def _unprotect_stream_cipher(self, state, content_type, version, fragment):
         fragment = state.cipher_object.update(fragment)
         clear_text = self._verify_mac(state, content_type, version, fragment)
         state.seq_nbr += 1
-        return ProtocolData(clear_text)
+        return clear_text
 
     def _unprotect_aead_cipher(self, state, content_type, version, fragment):
         nonce_explicit = fragment[:8]
         cipher_text = bytes(fragment[8:])
-        aad = ProtocolData()
-        aad.append_uint64(state.seq_nbr)
-        aad.append_uint8(content_type.value)
-        aad.append_uint16(version.value)
-        aad.append_uint16(len(cipher_text) - state.cipher.aead_expansion)
+        aad = bytearray()
+        aad.extend(pdu.pack_uint64(state.seq_nbr))
+        aad.extend(pdu.pack_uint8(content_type.value))
+        aad.extend(pdu.pack_uint16(version.value))
+        aad.extend(pdu.pack_uint16(len(cipher_text) - state.cipher.aead_expansion))
         nonce = bytes(state.keys.iv + nonce_explicit)
         kwargs = {}
         if state.cipher.aead_expansion != 16:
             kwargs["tag_length"] = state.cipher.aead_expansion
         aes_aead = state.cipher.algo(state.keys.enc, **kwargs)
         state.seq_nbr += 1
-        return ProtocolData(aes_aead.decrypt(nonce, cipher_text, bytes(aad)))
+        return aes_aead.decrypt(nonce, cipher_text, bytes(aad))
 
     def _unprotect_chacha_cipher(self, state, content_type, version, fragment):
         nonce_val = int.from_bytes(state.keys.iv, "big", signed=False) ^ state.seq_nbr
         nonce = nonce_val.to_bytes(state.cipher.iv_len, "big", signed=False)
-        aad = ProtocolData()
-        aad.append_uint64(state.seq_nbr)
-        aad.append_uint8(content_type.value)
-        aad.append_uint16(version.value)
-        aad.append_uint16(len(fragment) - state.cipher.aead_expansion)
+        aad = bytearray()
+        aad.extend(pdu.pack_uint64(state.seq_nbr))
+        aad.extend(pdu.pack_uint8(content_type.value))
+        aad.extend(pdu.pack_uint16(version.value))
+        aad.extend(pdu.pack_uint16(len(fragment) - state.cipher.aead_expansion))
         chachapoly = aead.ChaCha20Poly1305(state.keys.enc)
         state.seq_nbr += 1
-        return ProtocolData(chachapoly.decrypt(nonce, bytes(fragment), bytes(aad)))
+        return chachapoly.decrypt(nonce, bytes(fragment), bytes(aad))
 
     def _tls13_unprotect(self, state, content_type, version, fragment):
-        aad = ProtocolData()
-        aad.append_uint8(content_type.value)
-        aad.append_uint16(version.value)
-        aad.append_uint16(len(fragment))
+        aad = bytearray()
+        aad.extend(pdu.pack_uint8(content_type.value))
+        aad.extend(pdu.pack_uint16(version.value))
+        aad.extend(pdu.pack_uint16(len(fragment)))
         nonce_val = int.from_bytes(state.keys.iv, "big", signed=False) ^ state.seq_nbr
         nonce = nonce_val.to_bytes(state.cipher.iv_len, "big", signed=False)
         cipher = state.cipher_object(state.keys.enc)
@@ -323,7 +320,7 @@ class RecordLayer(object):
         return structs.MessageBlock(
             content_type=tls.ContentType.val2enum(decoded[idx], alert_on_failure=True),
             version=version,
-            fragment=ProtocolData(decoded[:idx]),
+            fragment=decoded[:idx],
         )
 
     def _uncompress(self, fragment):
@@ -357,7 +354,9 @@ class RecordLayer(object):
     def send_message(self, message_block):
         if message_block.content_type is tls.ContentType.SSL2:
             self._ssl2 = True
-            self._send_buffer.extend(pdu.pack_uint16(len(message_block.fragment) | 0x8000))
+            self._send_buffer.extend(
+                pdu.pack_uint16(len(message_block.fragment) | 0x8000)
+            )
             self._send_buffer.extend(message_block.fragment)
         else:
             self._fragment(message_block)
@@ -367,7 +366,7 @@ class RecordLayer(object):
 
     def flush(self):
         self._socket.sendall(self._send_buffer)
-        self._send_buffer = ProtocolData()
+        self._send_buffer = bytearray()
 
     def wait_fragment(self, timeout=5000):
         # wait for record layer header
@@ -382,19 +381,19 @@ class RecordLayer(object):
         if self._ssl2:
             content_type = tls.ContentType.SSL2
             version = tls.Version.SSL20
-            length, offset = self._receive_buffer.unpack_uint16(0)
+            length, offset = pdu.unpack_uint16(self._receive_buffer, 0)
             if (length & 0x8000) == 0:
-                length &= 0x3FFF # don't evaluate is-escape bit
-                offset += 1 # skip padding byte
+                length &= 0x3FFF  # don't evaluate is-escape bit
+                offset += 1  # skip padding byte
                 rl_len = 3
             else:
                 length &= 0x7FFF
         else:
-            content_type, offset = self._receive_buffer.unpack_uint8(0)
+            content_type, offset = pdu.unpack_uint8(self._receive_buffer, 0)
             content_type = tls.ContentType.val2enum(content_type, alert_on_failure=True)
-            version, offset = self._receive_buffer.unpack_uint16(offset)
+            version, offset = pdu.unpack_uint16(self._receive_buffer, offset)
             version = tls.Version.val2enum(version, alert_on_failure=True)
-            length, offset = self._receive_buffer.unpack_uint16(offset)
+            length, offset = pdu.unpack_uint16(self._receive_buffer, offset)
 
         while len(self._receive_buffer) < (length + rl_len):
             data = self._socket.recv_data(timeout=timeout)
@@ -404,8 +403,8 @@ class RecordLayer(object):
             self._receive_buffer.extend(data)
 
         # here we have received at least a complete record layer fragment
-        fragment = ProtocolData(self._receive_buffer[rl_len : (length + rl_len)])
-        self._receive_buffer = ProtocolData(self._receive_buffer[(length + rl_len) :])
+        fragment = self._receive_buffer[rl_len : (length + rl_len)]
+        self._receive_buffer = self._receive_buffer[(length + rl_len) :]
 
         if (
             self._read_state is not None

@@ -753,6 +753,7 @@ class SSLMessagType(ExtendedEnum):
     SSL2_REQUEST_CERTIFICATE = 7
     SSL2_CLIENT_CERTIFICATE = 8
 
+
 class SSLCipherKind(ExtendedEnum):
     SSL_CK_RC4_128_WITH_MD5 = 0x010080
     SSL_CK_RC4_128_EXPORT40_WITH_MD5 = 0x020080
@@ -761,6 +762,7 @@ class SSLCipherKind(ExtendedEnum):
     SSL_CK_IDEA_128_CBC_WITH_MD5 = 0x050080
     SSL_CK_DES_64_CBC_WITH_MD5 = 0x060040
     SSL_CK_DES_192_EDE3_CBC_WITH_MD5 = 0x0700C0
+
 
 class SSLVersion(ExtendedEnum):
     SSL2 = 0x0002
