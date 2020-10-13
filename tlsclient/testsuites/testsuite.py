@@ -111,20 +111,33 @@ class MyTestSuite(TestSuite):
 
         #client.support_session_ticket = True
         with client.create_connection() as conn:
+            ssl_client_hello = msg.SSL2ClientHello()
+            ssl_client_hello.cipher_specs = [
+                tls.SSLCipherKind.SSL_CK_RC4_128_WITH_MD5,
+                tls.SSLCipherKind.SSL_CK_RC4_128_EXPORT40_WITH_MD5,
+                tls.SSLCipherKind.SSL_CK_RC2_128_CBC_WITH_MD5,
+                tls.SSLCipherKind.SSL_CK_RC2_128_CBC_EXPORT40_WITH_MD5,
+                tls.SSLCipherKind.SSL_CK_IDEA_128_CBC_WITH_MD5,
+                tls.SSLCipherKind.SSL_CK_DES_64_CBC_WITH_MD5,
+                tls.SSLCipherKind.SSL_CK_DES_192_EDE3_CBC_WITH_MD5,
+            ]
 
-            conn.send(msg.ClientHello)
-            conn.wait(msg.ServerHello)
-            conn.wait(msg.Certificate, optional=True)
-            conn.wait(msg.ServerKeyExchange, optional=True)
-            conn.wait(msg.ServerHelloDone)
-            conn.send(msg.ClientKeyExchange, msg.ChangeCipherSpec, msg.Finished)
-            conn.wait(msg.ChangeCipherSpec)
-            conn.wait(msg.Finished)
-            conn.send(msg.AppData(b"GET / HTTP/1.1\n"))
-            while True:
-                app_data = conn.wait(msg.AppData)
-                if len(app_data.data):
-                    break
-            for line in app_data.data.decode("utf-8").split("\n"):
-                if line.startswith("s_server"):
-                    logging.debug("openssl_command: " + line)
+            conn.send(msg.SSL2ClientHello)
+            conn.wait(msg.SSL2ServerHello)
+
+#            conn.send(msg.ClientHello)
+#            conn.wait(msg.ServerHello)
+#            conn.wait(msg.Certificate, optional=True)
+#            conn.wait(msg.ServerKeyExchange, optional=True)
+#            conn.wait(msg.ServerHelloDone)
+#            conn.send(msg.ClientKeyExchange, msg.ChangeCipherSpec, msg.Finished)
+#            conn.wait(msg.ChangeCipherSpec)
+#            conn.wait(msg.Finished)
+#            conn.send(msg.AppData(b"GET / HTTP/1.1\n"))
+#            while True:
+#                app_data = conn.wait(msg.AppData)
+#                if len(app_data.data):
+#                    break
+#            for line in app_data.data.decode("utf-8").split("\n"):
+#                if line.startswith("s_server"):
+#                    logging.debug("openssl_command: " + line)

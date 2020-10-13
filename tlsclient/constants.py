@@ -53,6 +53,7 @@ class ContentType(ExtendedEnum):
     ALERT = 21
     HANDSHAKE = 22
     APPLICATION_DATA = 23
+    SSL2 = 256
 
 
 class CompressionMethod(ExtendedEnum):
@@ -739,3 +740,27 @@ class SPBool(enum.Enum):
     C_TRUE = 1
     C_NA = 2
     C_UNDETERMINED = 3
+
+
+class SSLMessagType(ExtendedEnum):
+    SSL2_ERROR = 0
+    SSL2_CLIENT_HELLO = 1
+    SSL2_CLIENT_MASTER_KEY = 2
+    SSL2_CLIENT_FINISHED = 3
+    SSL2_SERVER_HELLO = 4
+    SSL2_SERVER_VERIFY = 5
+    SSL2_SERVER_FINISHED = 6
+    SSL2_REQUEST_CERTIFICATE = 7
+    SSL2_CLIENT_CERTIFICATE = 8
+
+class SSLCipherKind(ExtendedEnum):
+    SSL_CK_RC4_128_WITH_MD5 = 0x010080
+    SSL_CK_RC4_128_EXPORT40_WITH_MD5 = 0x020080
+    SSL_CK_RC2_128_CBC_WITH_MD5 = 0x030080
+    SSL_CK_RC2_128_CBC_EXPORT40_WITH_MD5 = 0x040080
+    SSL_CK_IDEA_128_CBC_WITH_MD5 = 0x050080
+    SSL_CK_DES_64_CBC_WITH_MD5 = 0x060040
+    SSL_CK_DES_192_EDE3_CBC_WITH_MD5 = 0x0700C0
+
+class SSLVersion(ExtendedEnum):
+    SSL2 = 0x0002

@@ -2,6 +2,7 @@
 """Module providing classes for each TLS message.
 """
 import abc
+import os
 import tlsclient.constants as tls
 from tlsclient.protocol import ProtocolData
 import tlsclient.extensions as ext
@@ -533,6 +534,97 @@ class AppData(AppDataMessage):
         return self.data
 
 
+
+
+class SSL2Message(TlsMessage):
+
+    content_type = tls.ContentType.SSL2
+    msg_type = None
+
+    @classmethod
+    def deserialize(cls, fragment, conn, length=0):
+        msg_type, offset = fragment.unpack_uint8(0)
+        msg_type = tls.SSLMessagType.val2enum(msg_type, alert_on_failure=True)
+
+        cls_name = _ssl2_deserialization_map[msg_type]
+        msg = cls_name()._deserialize_msg_body(fragment, offset, conn)
+        return msg
+
+    @abc.abstractmethod
+    def _deserialize_msg_body(self, msg_body, length, conn):
+        pass
+
+
+    @abc.abstractmethod
+    def serialize(self, conn):
+        pass
+
+class SSL2ClientHello(SSL2Message):
+
+    msg_type = tls.SSLMessagType.SSL2_CLIENT_HELLO
+
+    def __init__(self):
+        self.client_version = tls.SSLVersion.SSL2
+        self.cipher_specs = [
+            tls.SSLCipherKind.SSL_CK_RC4_128_WITH_MD5,
+            tls.SSLCipherKind.SSL_CK_RC4_128_EXPORT40_WITH_MD5,
+            tls.SSLCipherKind.SSL_CK_RC2_128_CBC_WITH_MD5,
+            tls.SSLCipherKind.SSL_CK_RC2_128_CBC_EXPORT40_WITH_MD5,
+            tls.SSLCipherKind.SSL_CK_IDEA_128_CBC_WITH_MD5,
+            tls.SSLCipherKind.SSL_CK_DES_64_CBC_WITH_MD5,
+            tls.SSLCipherKind.SSL_CK_DES_192_EDE3_CBC_WITH_MD5,
+        ]
+        self.session_id = ProtocolData()
+        self.challenge = os.urandom(16)
+
+    def serialize(self, conn):
+        msg = ProtocolData()
+        msg.append_uint8(self.msg_type.value)
+        msg.append_uint16(self.client_version.value)
+        msg.append_uint16(3*len(self.cipher_specs))
+        msg.append_uint16(len(self.session_id))
+        msg.append_uint16(len(self.challenge))
+        for ck in self.cipher_specs:
+            msg.append_uint24(ck.value)
+        msg.extend(self.session_id)
+        msg.extend(self.challenge)
+        return msg
+
+    def _deserialize_msg_body(self, fragment, length, conn):
+        return self
+
+
+class SSL2ServerHello(SSL2Message):
+
+    msg_type = tls.SSLMessagType.SSL2_CLIENT_HELLO
+
+    def __init__(self):
+        self.session_id_hit = None
+        self.cert_type = None
+        self.version = None
+        self.cipher_specs = []
+        self.connection_id = None
+        self.certificate = None
+
+    def serialize(self, conn):
+        pass
+
+    def _deserialize_msg_body(self, fragment, offset, conn):
+        self.session_id_hit, offset = fragment.unpack_uint8(offset)
+        self.cert_type, offset = fragment.unpack_uint8(offset)
+        version, offset = fragment.unpack_uint16(offset)
+        self.version = tls.SSLVersion.val2enum(version)
+        cert_len, offset = fragment.unpack_uint16(offset)
+        cipher_len, offset = fragment.unpack_uint16(offset)
+        conn_id_len, offset = fragment.unpack_uint16(offset)
+        self.certificate, offset = fragment.unpack_bytes(offset, cert_len)
+        for _ in range(int(cipher_len / 3)):
+            cipher, offset = fragment.unpack_uint24(offset)
+            self.cipher_specs.append(tls.SSLCipherKind.val2enum(cipher))
+        self.connection_id, offset = fragment.unpack_bytes(offset, conn_id_len)
+        return self
+
+
 _hs_deserialization_map = {
     # tls.HandshakeType.HELLO_REQUEST = 0
     tls.HandshakeType.CLIENT_HELLO: ClientHello,
@@ -554,3 +646,5 @@ _hs_deserialization_map = {
 }
 
 _ccs_deserialization_map = {tls.CCSType.CHANGE_CIPHER_SPEC: ChangeCipherSpec}
+
+_ssl2_deserialization_map = {tls.SSLMessagType.SSL2_SERVER_HELLO: SSL2ServerHello,}

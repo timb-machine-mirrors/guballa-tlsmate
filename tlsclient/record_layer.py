@@ -48,6 +48,7 @@ class RecordLayer(object):
         self._socket = socket
         self._flush_each_fragment = False
         self._recorder = recorder
+        self._ssl2 = False
 
     def _add_to_sendbuffer(self, content_type, version, fragment):
         self._send_buffer.append_uint8(content_type.value)
@@ -354,7 +355,12 @@ class RecordLayer(object):
         )
 
     def send_message(self, message_block):
-        self._fragment(message_block)
+        if message_block.content_type is tls.ContentType.SSL2:
+            self._ssl2 = True
+            self._send_buffer.append_uint16(len(message_block.fragment) | 0x8000)
+            self._send_buffer.extend(message_block.fragment)
+        else:
+            self._fragment(message_block)
 
     def close_socket(self):
         self._socket.close_socket()
@@ -365,20 +371,32 @@ class RecordLayer(object):
 
     def wait_fragment(self, timeout=5000):
         # wait for record layer header
-        while len(self._receive_buffer) < 5:
+        rl_len = 2 if self._ssl2 else 5
+        while len(self._receive_buffer) < rl_len:
             data = self._socket.recv_data(timeout=timeout)
-            if data is None:
+            if data is None or not len(data):
                 # TODO: timeout
-                pass
+                return None
             self._receive_buffer.extend(data)
 
-        content_type, offset = self._receive_buffer.unpack_uint8(0)
-        content_type = tls.ContentType.val2enum(content_type, alert_on_failure=True)
-        version, offset = self._receive_buffer.unpack_uint16(offset)
-        version = tls.Version.val2enum(version, alert_on_failure=True)
-        length, offset = self._receive_buffer.unpack_uint16(offset)
+        if self._ssl2:
+            content_type = tls.ContentType.SSL2
+            version = tls.Version.SSL20
+            length, offset = self._receive_buffer.unpack_uint16(0)
+            if (length & 0x8000) == 0:
+                length &= 0x3FFF # don't evaluate is-escape bit
+                offset += 1 # skip padding byte
+                rl_len = 3
+            else:
+                length &= 0x7FFF
+        else:
+            content_type, offset = self._receive_buffer.unpack_uint8(0)
+            content_type = tls.ContentType.val2enum(content_type, alert_on_failure=True)
+            version, offset = self._receive_buffer.unpack_uint16(offset)
+            version = tls.Version.val2enum(version, alert_on_failure=True)
+            length, offset = self._receive_buffer.unpack_uint16(offset)
 
-        while len(self._receive_buffer) < (length + 5):
+        while len(self._receive_buffer) < (length + rl_len):
             data = self._socket.recv_data(timeout=timeout)
             if data is None:
                 # TODO: timeout
@@ -386,8 +404,8 @@ class RecordLayer(object):
             self._receive_buffer.extend(data)
 
         # here we have received at least a complete record layer fragment
-        fragment = ProtocolData(self._receive_buffer[5 : (length + 5)])
-        self._receive_buffer = ProtocolData(self._receive_buffer[(length + 5) :])
+        fragment = ProtocolData(self._receive_buffer[rl_len : (length + rl_len)])
+        self._receive_buffer = ProtocolData(self._receive_buffer[(length + rl_len) :])
 
         if (
             self._read_state is not None

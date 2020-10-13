@@ -19,6 +19,8 @@ class MyTestSuite(TestSuite):
         with self.client.create_connection() as conn:
             conn.send(msg.ClientHello)
             server_hello = conn.wait(msg.ServerHello)
+            if server_hello is None:
+                return None
             certificate = conn.wait(msg.Certificate, optional=True)
             cert_chain_id = None
             if certificate is not None:
@@ -100,6 +102,22 @@ class MyTestSuite(TestSuite):
 
         logging.info(f"enumeration for {version.name} finished")
 
+    def ssl2_enum_version(self):
+        with self.client.create_connection() as conn:
+            conn.send(msg.SSL2ClientHello)
+            server_hello = conn.wait(msg.SSL2ServerHello)
+            if server_hello is not None:
+                cert_chain_id = 0
+                if server_hello.certificate is not None:
+                    cert_chain_id = self.server_profile.get_cert_chain_id(
+                        [server_hello.certificate]
+                    )
+                self.server_profile.new_version(tls.Version.SSL20, tls.SPBool.C_UNDETERMINED)
+                for cs in server_hello.cipher_specs:
+                    cs_tuple = structs.SPCipherSuite(cipher_suite=cs, cert_chain_id=cert_chain_id)
+                    self.server_profile.add_cipher_suite(tls.Version.SSL20, cs_tuple)
+
+
     def run(self):
         self.client.versions = [tls.Version.TLS12]
         self.client.supported_groups = [
@@ -144,6 +162,7 @@ class MyTestSuite(TestSuite):
         cipher_suites.remove(tls.CipherSuite.TLS_FALLBACK_SCSV)
         cipher_suites.remove(tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV)
 
+        self.ssl2_enum_version()
         self.enum_version(tls.Version.SSL30, cipher_suites[:])
         self.enum_version(tls.Version.TLS10, cipher_suites[:])
         self.enum_version(tls.Version.TLS11, cipher_suites[:])

@@ -17,6 +17,7 @@ from tlsclient.messages import (
     AppDataMessage,
     Alert,
     Any,
+    SSL2Message,
 )
 from tlsclient import mappings
 import tlsclient.structures as structs
@@ -518,16 +519,21 @@ class TlsConnection(object):
             msg = self.queued_msg
             self.queued_msg = None
         else:
-            content_type, version, fragment = self.record_layer.wait_fragment(timeout)
-            if content_type is tls.ContentType.HANDSHAKE:
-                msg = HandshakeMessage.deserialize(fragment, self)
-                self.kdf.update_msg_digest(fragment)
-            elif content_type is tls.ContentType.ALERT:
-                msg = Alert.deserialize(fragment, self)
-            elif content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
-                msg = ChangeCipherSpecMessage.deserialize(fragment, self)
-            elif content_type is tls.ContentType.APPLICATION_DATA:
-                msg = AppDataMessage.deserialize(fragment, self)
+            #content_type, version, fragment = self.record_layer.wait_fragment(timeout)
+            mb = self.record_layer.wait_fragment(timeout)
+            if mb is None:
+                return None
+            if mb.content_type is tls.ContentType.HANDSHAKE:
+                msg = HandshakeMessage.deserialize(mb.fragment, self)
+                self.kdf.update_msg_digest(mb.fragment)
+            elif mb.content_type is tls.ContentType.ALERT:
+                msg = Alert.deserialize(mb.fragment, self)
+            elif mb.content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
+                msg = ChangeCipherSpecMessage.deserialize(mb.fragment, self)
+            elif mb.content_type is tls.ContentType.APPLICATION_DATA:
+                msg = AppDataMessage.deserialize(mb.fragment, self)
+            elif mb.content_type is tls.ContentType.SSL2:
+                msg = SSL2Message.deserialize(mb.fragment, self)
             else:
                 raise ValueError("Content type unknow")
 
