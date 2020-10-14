@@ -2,11 +2,16 @@
 """Module containing the server profile class
 """
 import abc
-
+from tlsclient import constants as tls
+from tlsclient import mappings
 
 class Serializable(metaclass=abc.ABCMeta):
 
     serialize_map = {}
+
+    def __init__(self):
+        self._plugins = {}
+
 
     @staticmethod
     def serialize(item):
@@ -23,15 +28,29 @@ class Serializable(metaclass=abc.ABCMeta):
     def serialize_obj(self):
         obj = {}
         for attr, val in self.__dict__.items():
+            if attr.startswith("_"):
+                continue
             if attr in self.serialize_map:
                 func = self.serialize_map[attr]
                 if func is None:
                     continue
                 else:
                     val = func(val)
-            obj[attr] = Serializable.serialize(val)
+            res = Serializable.serialize(val)
+            if res is not None:
+                obj[attr] = res
+        for name, plugin in self._plugins.items():
+            if name in obj:
+                raise ValueError(f"Node name {name} already in use")
+            res = plugin.serialize_obj()
+            if res is not None:
+                obj[name] = res
         return obj
 
+    def register_node_name(self, name, plugin):
+        if name in self._plugins:
+            raise ValueError(f"Node name {name} already in use")
+        self._plugins[name] = plugin
 
 class SPVersions(Serializable):
 
@@ -48,14 +67,26 @@ class SPVersions(Serializable):
         ],
     }
 
+
     def __init__(self, version, preference):
+        super().__init__()
         self.version = version
         self.cipher_suites = []
         self.server_preference = preference
 
+    def get_dhe_cipher_suite(self):
+        for cipher in self.cipher_suites:
+            cs = mappings.supported_cipher_suites.get(cipher.cipher_suite)
+            if cs is not None:
+                if cs.key_ex in [
+                    tls.KeyExchangeAlgorithm.DHE_DSS, tls.KeyExchangeAlgorithm.DHE_RSA
+                ]:
+                    return cipher.cipher_suite
+        return None
+
 
 class SPCertificateChain(Serializable):
-    next_identifier = 0
+    next_id = 0
 
     serialize_map = {
         "hash_val": None,
@@ -63,18 +94,20 @@ class SPCertificateChain(Serializable):
     }
 
     @classmethod
-    def get_next_identifier(cls):
-        cls.next_identifier += 1
-        return cls.next_identifier
+    def get_next_id(cls):
+        cls.next_id += 1
+        return cls.next_id
 
     def __init__(self, hash_val, cert_chain):
-        self.identifier = self.get_next_identifier()
+        super().__init__()
+        self.id = self.get_next_id()
         self.hash_val = hash_val
         self.cert_chain = cert_chain
 
 
 class ServerProfile(Serializable):
     def __init__(self):
+        super().__init__()
         self.versions = []
         self.certificate_chains = []
 
@@ -82,15 +115,21 @@ class ServerProfile(Serializable):
         hash_val = hash(tuple(bytes(cert) for cert in cert_chain))
         for chain in self.certificate_chains:
             if hash_val == chain.hash_val:
-                return chain.identifier
+                return chain.id
         new_chain = SPCertificateChain(hash_val, cert_chain)
         self.certificate_chains.append(new_chain)
-        return new_chain.identifier
+        return new_chain.id
 
     def new_version(self, version, server_pref):
         if version in [vers.version for vers in self.versions]:
             raise ValueError(f"server profile: version {version.name} already present")
         self.versions.append(SPVersions(version, server_pref))
+
+    def get_version(self, version):
+        for vers in self.versions:
+            if vers.version is version:
+                return vers
+        return None
 
     def add_cipher_suite(self, version, cs_tuple):
         for vers in self.versions:

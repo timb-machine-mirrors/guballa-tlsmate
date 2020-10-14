@@ -16,8 +16,9 @@ from tlsclient.kdf import Kdf
 from tlsclient.testmanager import TestManager
 import tlsclient.testsuites.eval_cipher_suites as tmp1
 import tlsclient.testsuites.testsuite as tmp2
+import tlsclient.testsuites.supported_groups as tmp3
 
-tmp1, tmp2  # make linters happy
+tmp1, tmp2, tmp3  # make linters happy
 
 discovered_plugins = {
     name: importlib.import_module(name)
