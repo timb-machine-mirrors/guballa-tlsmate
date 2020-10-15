@@ -7,3 +7,4 @@
     - HelloRetryRequest
     - more scan results
     - improved error handling
+    - log description for received alters

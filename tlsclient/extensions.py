@@ -9,6 +9,13 @@ import tlsclient.structures as structs
 from tlsclient import pdu
 
 
+def get_extension(extensions, ext_id):
+    for extension in extensions:
+        if extension.extension_id == ext_id:
+            return extension
+    return None
+
+
 class Extension(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def serialize_ext_body(self):

@@ -5,13 +5,14 @@ import abc
 from tlsclient import constants as tls
 from tlsclient import mappings
 
+
 class Serializable(metaclass=abc.ABCMeta):
 
     serialize_map = {}
 
     def __init__(self):
         self._plugins = {}
-
+        self._error = None
 
     @staticmethod
     def serialize(item):
@@ -26,6 +27,8 @@ class Serializable(metaclass=abc.ABCMeta):
                 return item
 
     def serialize_obj(self):
+        if self._error is not None:
+            return {"error": self._error}
         obj = {}
         for attr, val in self.__dict__.items():
             if attr.startswith("_"):
@@ -52,6 +55,9 @@ class Serializable(metaclass=abc.ABCMeta):
             raise ValueError(f"Node name {name} already in use")
         self._plugins[name] = plugin
 
+    def set_error(self, message):
+        self._error = message
+
 class SPVersions(Serializable):
 
     serialize_map = {
@@ -67,22 +73,26 @@ class SPVersions(Serializable):
         ],
     }
 
-
     def __init__(self, version, preference):
         super().__init__()
         self.version = version
         self.cipher_suites = []
         self.server_preference = preference
 
+    # TODO: check if this logic should be moved to where it is actually needed.
     def get_dhe_cipher_suite(self):
         for cipher in self.cipher_suites:
             cs = mappings.supported_cipher_suites.get(cipher.cipher_suite)
             if cs is not None:
                 if cs.key_ex in [
-                    tls.KeyExchangeAlgorithm.DHE_DSS, tls.KeyExchangeAlgorithm.DHE_RSA
+                    tls.KeyExchangeAlgorithm.DHE_DSS,
+                    tls.KeyExchangeAlgorithm.DHE_RSA,
                 ]:
                     return cipher.cipher_suite
         return None
+
+    def get_cipher_suites(self):
+        return [cs.cipher_suite for cs in self.cipher_suites]
 
 
 class SPCertificateChain(Serializable):

@@ -22,6 +22,7 @@ from tlsclient.messages import (
 from tlsclient import mappings
 import tlsclient.structures as structs
 import tlsclient.key_exchange as kex
+import tlsclient.extensions as ext
 
 
 def get_random_value():
@@ -35,28 +36,30 @@ class TlsConnectionMsgs(object):
 
     map_msg2attr = {
         tls.HandshakeType.HELLO_REQUEST: None,
-        tls.HandshakeType.CLIENT_HELLO: None,
+        tls.HandshakeType.CLIENT_HELLO: "client_hello",
         tls.HandshakeType.SERVER_HELLO: "server_hello",
         tls.HandshakeType.NEW_SESSION_TICKET: None,
         tls.HandshakeType.END_OF_EARLY_DATA: None,
-        tls.HandshakeType.ENCRYPTED_EXTENSIONS: "server_encrypted_extensions",
-        tls.HandshakeType.CERTIFICATE: "server_certificate",
+        tls.HandshakeType.ENCRYPTED_EXTENSIONS: "encrypted_extensions",
+        tls.HandshakeType.CERTIFICATE: "_server_certificate",
         tls.HandshakeType.SERVER_KEY_EXCHANGE: "server_key_exchange",
         tls.HandshakeType.CERTIFICATE_REQUEST: None,
         tls.HandshakeType.SERVER_HELLO_DONE: "server_hello_done",
         tls.HandshakeType.CERTIFICATE_VERIFY: None,
         tls.HandshakeType.CLIENT_KEY_EXCHANGE: None,
-        tls.HandshakeType.FINISHED: "server_finished",
+        tls.HandshakeType.FINISHED: "_finished",
         tls.HandshakeType.KEY_UPDATE: None,
         tls.HandshakeType.COMPRESSED_CERTIFICATE: None,
         tls.HandshakeType.EKT_KEY: None,
         tls.HandshakeType.MESSAGE_HASH: None,
+        tls.CCSType.CHANGE_CIPHER_SPEC: "_change_cipher_spec",
+        tls.ContentType.ALERT: "_alert"
     }
 
     def __init__(self):
         self.client_hello = None
         self.server_hello = None
-        self.server_encrypted_extensions = None
+        self.encrypted_extensions = None
         self.server_certificate = None
         self.server_key_exchange = None
         self.server_hello_done = None
@@ -69,15 +72,22 @@ class TlsConnectionMsgs(object):
         self.client_alert = None
         self.server_alert = None
 
-    def store_received_msg(self, msg):
-        if msg.content_type == tls.ContentType.HANDSHAKE:
-            attr = self.map_msg2attr.get(msg.msg_type, None)
-            if attr is not None:
-                setattr(self, attr, msg)
-        elif msg.content_type == tls.ContentType.CHANGE_CIPHER_SPEC:
-            self.server_change_cipher_spec = msg
-        elif msg.content_type == tls.ContentType.ALERT:
-            self.server_alert = msg
+    def store_msg(self, msg, received=True):
+        attr = self.map_msg2attr.get(msg.msg_type, None)
+        if attr is not None:
+            if attr.startswith("_"):
+                prefix = "server" if received else "client"
+                attr = prefix + attr
+            setattr(self, attr, msg)
+
+        # if msg.content_type == tls.ContentType.HANDSHAKE:
+        #     attr = self.map_msg2attr.get(msg.msg_type, None)
+        #     if attr is not None:
+        #         setattr(self, attr, msg)
+        # elif msg.content_type == tls.ContentType.CHANGE_CIPHER_SPEC:
+        #     self.server_change_cipher_spec = msg
+        # elif msg.content_type == tls.ContentType.ALERT:
+        #     self.server_alert = msg
 
 
 class TlsConnection(object):
@@ -153,13 +163,6 @@ class TlsConnection(object):
         key_share = kex.instantiate_named_group(group, self, self.recorder)
         self.key_shares[group] = key_share
         return key_share.get_key_share()
-
-    # TODO: Move this to the extension module, as it is a static method anyway
-    def get_extension(self, extensions, ext_id):
-        for ext in extensions:
-            if ext.extension_id == ext_id:
-                return ext
-        return None
 
     def generate_client_hello(self, msg_cls):
         msg = self.client.client_hello()
@@ -312,6 +315,7 @@ class TlsConnection(object):
             else:
                 self.on_sending_message(msg)
             msg_data = msg.serialize(self)
+            self.msg.store_msg(msg, received=False)
             if msg.content_type == tls.ContentType.HANDSHAKE:
                 self.kdf.update_msg_digest(msg_data)
 
@@ -329,7 +333,7 @@ class TlsConnection(object):
         self.record_layer.flush()
 
     def on_server_hello_tls13(self, msg):
-        key_share_ext = self.get_extension(msg.extensions, tls.Extension.KEY_SHARE)
+        key_share_ext = ext.get_extension(msg.extensions, tls.Extension.KEY_SHARE)
         if key_share_ext is None:
             raise FatalAlert(
                 "ServerHello-TLS13: extension KEY_SHARE not present",
@@ -337,7 +341,7 @@ class TlsConnection(object):
             )
         share_entry = key_share_ext.key_shares[0]
         self.key_exchange = self.key_shares[share_entry.group]
-        self.key_exchange.set_remote_key(share_entry.key_exchange)
+        self.key_exchange.set_remote_key(share_entry.key_exchange, group=share_entry.group)
         self.premaster_secret = self.key_exchange.get_shared_secret()
         logging.info(f"premaster_secret: {pdu.dump(self.premaster_secret)}")
         self.tls13_key_schedule()
@@ -356,11 +360,11 @@ class TlsConnection(object):
             else:
                 self._new_session_id = msg.session_id
         self.encrypt_then_mac = (
-            self.get_extension(msg.extensions, tls.Extension.ENCRYPT_THEN_MAC)
+            ext.get_extension(msg.extensions, tls.Extension.ENCRYPT_THEN_MAC)
             is not None
         )
         self.extended_ms = (
-            self.get_extension(msg.extensions, tls.Extension.EXTENDED_MASTER_SECRET)
+            ext.get_extension(msg.extensions, tls.Extension.EXTENDED_MASTER_SECRET)
             is not None
         )
 
@@ -371,9 +375,9 @@ class TlsConnection(object):
             f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite.name}"
         )
         for extension in msg.extensions:
-            ext = extension.extension_id
-            logging.info(f"extension {ext.value} {ext.name}")
-        supported_versions = self.get_extension(
+            extension = extension.extension_id
+            logging.info(f"extension {extension.value} {extension.name}")
+        supported_versions = ext.get_extension(
             msg.extensions, tls.Extension.SUPPORTED_VERSIONS
         )
         if supported_versions is not None:
@@ -489,8 +493,11 @@ class TlsConnection(object):
         )
 
     def on_encrypted_extensions_received(self, msg):
-        for ext in msg.extensions:
-            logging.debug(f"extension {ext.extension_id.name}")
+        for extension in msg.extensions:
+            logging.debug(f"extension {extension.extension_id.name}")
+            if extension.extension_id is tls.Extension.SUPPORTED_GROUPS:
+                for group in extension.supported_groups:
+                    logging.debug(f"supported group: {group.name}")
 
     def on_certificate_verify_received(self, msg):
         self.pre_server_finished_digest = self.kdf.finalize_msg_digest(
@@ -536,10 +543,10 @@ class TlsConnection(object):
             else:
                 raise ValueError("Content type unknow")
 
-        if (msg_class == Any) or isinstance(msg, msg_class):
             logging.info(f"Receiving {msg.msg_type.name}")
+            self.msg.store_msg(msg, received=True)
+        if (msg_class == Any) or isinstance(msg, msg_class):
             self.on_msg_received(msg)
-            self.msg.store_received_msg(msg)
             return msg
         else:
             if optional:

@@ -781,9 +781,8 @@ well_known_dh_params = [
             "29024E08 8A67CC74 020BBEA6 3B139B22 514A0879 8E3404DD"
             "EF9519B3 CD3A431B 302B0A6D F25F1437 4FE1356D 6D51C245"
             "E485B576 625E7EC6 F44C42E9 A63A3620 FFFFFFFF FFFFFFFF"
-        )
+        ),
     ),
-
     # RFC2409, Second Oakley Group, 1024 bits
     structs.DHNumbers(
         g_val=2,
@@ -794,9 +793,8 @@ well_known_dh_params = [
             "E485B576 625E7EC6 F44C42E9 A637ED6B 0BFF5CB6 F406B7ED"
             "EE386BFB 5A899FA5 AE9F2411 7C4B1FE6 49286651 ECE65381"
             "FFFFFFFF FFFFFFFF"
-         )
+        ),
     ),
-
     # RFC3526 1536-bit MODP Group
     structs.DHNumbers(
         g_val=2,
@@ -809,9 +807,8 @@ well_known_dh_params = [
             "C2007CB8 A163BF05 98DA4836 1C55D39A 69163FA8 FD24CF5F"
             "83655D23 DCA3AD96 1C62F356 208552BB 9ED52907 7096966D"
             "670C354E 4ABC9804 F1746C08 CA237327 FFFFFFFF FFFFFFFF"
-         )
+        ),
     ),
-
     # RFC3526 2048-bit MODP Group
     structs.DHNumbers(
         g_val=2,
@@ -827,9 +824,8 @@ well_known_dh_params = [
             "E39E772C 180E8603 9B2783A2 EC07A28F B5C55DF0 6F4C52C9"
             "DE2BCBF6 95581718 3995497C EA956AE5 15D22618 98FA0510"
             "15728E5A 8AACAA68 FFFFFFFF FFFFFFFF"
-        )
+        ),
     ),
-
     # RFC3526 3072-bit MODP Group
     structs.DHNumbers(
         g_val=2,
@@ -850,9 +846,8 @@ well_known_dh_params = [
             "F12FFA06 D98A0864 D8760273 3EC86A64 521F2B18 177B200C"
             "BBE11757 7A615D6C 770988C0 BAD946E2 08E24FA0 74E5AB31"
             "43DB5BFC E0FD108E 4B82D120 A93AD2CA FFFFFFFF FFFFFFFF"
-        )
+        ),
     ),
-
     # RFC3526 4096-bit MODP Group
     structs.DHNumbers(
         g_val=2,
@@ -879,9 +874,8 @@ well_known_dh_params = [
             "1F612970 CEE2D7AF B81BDD76 2170481C D0069127 D5B05AA9"
             "93B4EA98 8D8FDDC1 86FFB7DC 90A6C08F 4DF435C9 34063199"
             "FFFFFFFF FFFFFFFF"
-        )
+        ),
     ),
-
     # RFC3526 6144-bit MODP Group
     structs.DHNumbers(
         g_val=2,
@@ -914,9 +908,8 @@ well_known_dh_params = [
             "B7C5DA76 F550AA3D 8A1FBFF0 EB19CCB1 A313D55C DA56C9EC 2EF29632"
             "387FE8D7 6E3C0468 043E8F66 3F4860EE 12BF2D5B 0B7474D6 E694F91E"
             "6DCC4024 FFFFFFFF FFFFFFFF"
-        )
+        ),
     ),
-
     # RFC3526 8192-bit MODP Group
     structs.DHNumbers(
         g_val=2,
@@ -964,6 +957,6 @@ well_known_dh_params = [
             "4009438B 481C6CD7 889A002E D5EE382B C9190DA6 FC026E47"
             "9558E447 5677E9AA 9E3050E2 765694DF C81F56E8 80B96E71"
             "60C980DD 98EDD3DF FFFFFFFF FFFFFFFF"
-        )
+        ),
     ),
 ]

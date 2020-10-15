@@ -67,7 +67,7 @@ class RsaKeyExchange(KeyExchange):
         self._pms = None
         super().__init__(*args, **kwargs)
 
-    def set_remote_key(self, rem_pub_key):
+    def set_remote_key(self, rem_pub_key, **kwargs):
         """Not applicable for RSA based ley transport
         """
         raise NotImplementedError
@@ -146,7 +146,13 @@ class DhKeyExchange(KeyExchange):
             self._recorder.trace(y_val=y_val)
         return self._priv_key.exchange(rem_pub_key).lstrip(b"\0")
 
-    def set_remote_key(self, rem_pub_key, g_val=None, p_val=None):
+    def set_remote_key(self, rem_pub_key, g_val=None, p_val=None, group=None):
+        if group is not None:
+            dh_numbers = mappings.dh_numbers.get(group)
+            if dh_numbers is None:
+                FatalAlert(f"FF-DH group {group.name} unknown", tls.AlertDescription.HANDSHAKE_FAILURE)
+            p_val = dh_numbers.p_val
+            g_val = dh_numbers.g_val
         self._pval = int.from_bytes(p_val, "big")
         self._gval = g_val
         self._rem_pub_key = int.from_bytes(rem_pub_key, "big")
@@ -189,7 +195,7 @@ class EcdhKeyExchange(KeyExchange):
         )
         return self._priv_key.exchange(ec.ECDH(), rem_pub_key)
 
-    def set_remote_key(self, rem_pub_key):
+    def set_remote_key(self, rem_pub_key, **kwargs):
         self._rem_pub_key = rem_pub_key
 
     def get_transferable_key(self):
@@ -240,7 +246,7 @@ class XKeyExchange(KeyExchange):
         rem_pub_key = self._public_key_lib.from_public_bytes(bytes(self._rem_pub_key))
         return self._priv_key.exchange(rem_pub_key)
 
-    def set_remote_key(self, rem_pub_key):
+    def set_remote_key(self, rem_pub_key, **kwargs):
         self._rem_pub_key = rem_pub_key
 
     def get_transferable_key(self):
