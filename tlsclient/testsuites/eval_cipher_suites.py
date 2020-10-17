@@ -50,7 +50,7 @@ class MyTestSuite(TestSuite):
             self.client.cipher_suites.remove(server_cs)
         return server_pref
 
-    def enum_version(self, version, cipher_suites):
+    def tls_enum_version(self, version, cipher_suites):
         logging.info(f"starting to enumerate {version.name}")
         self.client.versions = [version]
         cs_tuples = {}
@@ -121,6 +121,13 @@ class MyTestSuite(TestSuite):
                     )
                     self.server_profile.add_cipher_suite(tls.Version.SSL20, cs_tuple)
 
+    def enum_version(self, version, cipher_suites):
+        if version is tls.Version.SSL20:
+            self.ssl2_enum_version()
+        else:
+            self.tls_enum_version(version, cipher_suites)
+
+
     def run(self):
         self.client.versions = [tls.Version.TLS12]
         self.client.supported_groups = [
@@ -149,6 +156,7 @@ class MyTestSuite(TestSuite):
         ]
         self.client.signature_algorithms = [
             tls.SignatureScheme.ED25519,
+            tls.SignatureScheme.ED448,
             tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
             tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
             tls.SignatureScheme.ECDSA_SECP521R1_SHA512,
@@ -161,13 +169,9 @@ class MyTestSuite(TestSuite):
             tls.SignatureScheme.ECDSA_SHA1,
             tls.SignatureScheme.RSA_PKCS1_SHA1,
         ]
-        cipher_suites = list(tls.CipherSuite.__members__.values())
+        cipher_suites = tls.CipherSuite.all()
         cipher_suites.remove(tls.CipherSuite.TLS_FALLBACK_SCSV)
         cipher_suites.remove(tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV)
 
-        self.ssl2_enum_version()
-        self.enum_version(tls.Version.SSL30, cipher_suites[:])
-        self.enum_version(tls.Version.TLS10, cipher_suites[:])
-        self.enum_version(tls.Version.TLS11, cipher_suites[:])
-        self.enum_version(tls.Version.TLS12, cipher_suites[:])
-        self.enum_version(tls.Version.TLS13, cipher_suites[:])
+        for version in tls.Version.all():
+            self.enum_version(version, cipher_suites[:])

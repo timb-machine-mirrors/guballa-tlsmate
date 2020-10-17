@@ -23,6 +23,9 @@ class ExtendedEnum(enum.Enum):
             raise FatalAlert(message, AlertDescription.ILLEGAL_PARAMETER)
         return enum
 
+    @classmethod
+    def all(cls):
+        return list(cls.__members__.values())
 
 class ExtendedIntEnum(enum.IntEnum):
     @classmethod
@@ -33,6 +36,9 @@ class ExtendedIntEnum(enum.IntEnum):
             raise FatalAlert(message, AlertDescription.ILLEGAL_PARAMETER)
         return enum
 
+    @classmethod
+    def all(cls):
+        return list(cls.__members__.values())
 
 class Entity(ExtendedEnum):
     CLIENT = 0
