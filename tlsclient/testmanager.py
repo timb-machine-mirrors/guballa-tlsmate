@@ -12,7 +12,6 @@ class ScanError(Exception):
         self.message = message
 
 
-
 class TestSuite(metaclass=abc.ABCMeta):
 
     prio = 100
@@ -27,34 +26,31 @@ class TestSuite(metaclass=abc.ABCMeta):
 
 
 class TestManager(object):
-    test_suite_names = []
-    prio_pool = {}
+    cli_help = {}
+    test_suites = {}
 
     @classmethod
-    def register(cls, test_suite_cls):
-        if test_suite_cls.name in cls.test_suite_names:
+    def register_cli(cls, argument, cli_help="", classes=[]):
+        if argument in cls.cli_help:
             raise ValueError(
-                f"Test suite with the name {test_suite_cls.name} is already registered"
+                f"CLI option {argument} is already registered"
             )
-        cls.prio_pool.setdefault(test_suite_cls.prio, {})
-        cls.prio_pool[test_suite_cls.prio][test_suite_cls.name] = test_suite_cls
-        return test_suite_cls
+        cls.cli_help[argument] = cli_help
+        cls.test_suites[argument] = classes
 
-    def test_suites(self):
-        for prio in self.prio_pool.values():
-            for test_suite in prio.values():
-                yield test_suite
-
-    def run(self, container, test_suite_names):
-        for prio in sorted(self.prio_pool.keys()):
-            prio_elem = self.prio_pool[prio]
-            for name in sorted(prio_elem.keys()):
-                test_suite_cls = prio_elem[name]
-                if test_suite_cls.name in test_suite_names:
-                    logging.debug(f"starting test suite {test_suite_cls.name}")
-                    test_suite = test_suite_cls()
-                    test_suite.inject_dependencies(
-                        container.server_profile(), container.client()
-                    )
-                    test_suite.run()
-                    logging.debug(f"test suite {test_suite_cls.name} finished")
+    def run(self, container, selected_test_suite_args):
+        prio_pool = {}
+        for arg in selected_test_suite_args:
+            for cls in self.test_suites[arg]:
+                prio_pool.setdefault(cls.prio, [])
+                if cls not in prio_pool[cls.prio]:
+                    prio_pool[cls.prio].append(cls)
+        for prio_list in sorted(prio_pool.keys()):
+            for cls in sorted(prio_pool[prio_list], key=lambda cls: cls.name):
+                logging.debug(f"starting test suite {cls.name}")
+                test_suite = cls()
+                test_suite.inject_dependencies(
+                    container.server_profile(), container.client()
+                )
+                test_suite.run()
+                logging.debug(f"test suite {cls.name} finished")

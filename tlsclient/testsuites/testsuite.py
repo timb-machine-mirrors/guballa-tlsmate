@@ -7,11 +7,9 @@ import tlsclient.constants as tls
 from tlsclient.testmanager import TestManager, TestSuite
 
 
-@TestManager.register
-class MyTestSuite(TestSuite):
+class ScanScratch(TestSuite):
     name = "test"
-    descr = "Scratch test suite"
-    prio = 100
+    prio = 90
 
     def run(self):
         client = self.client

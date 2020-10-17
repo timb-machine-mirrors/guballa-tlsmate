@@ -7,6 +7,11 @@ import logging
 import yaml
 
 import tlsclient.dependency_injection as dependency
+from tlsclient.testmanager import TestManager
+from tlsclient.testsuites.eval_cipher_suites import ScanCipherSuites
+from tlsclient.testsuites.scanner_info import ScanStart, ScanEnd
+from tlsclient.testsuites.supported_groups import ScanSupportedGroups
+from tlsclient.testsuites.testsuite import ScanScratch
 
 from tlsclient.version import __version__
 
@@ -66,19 +71,25 @@ def main():
     """The entry point for the command line interface
     """
 
+    TestManager.register_cli(
+        "--scan",
+        cli_help="performs a basic scan",
+        classes=[ScanCipherSuites, ScanStart, ScanEnd, ScanSupportedGroups],
+    )
+    TestManager.register_cli(
+        "--scratch", cli_help="this is just a scratch scenario", classes=[ScanScratch]
+    )
+
     config = {"server": "localhost", "port": 44330}
 
     container = dependency.Container(config=config)
     test_manager = container.test_manager()
     parser = build_parser()
-    all_names = []
-    for test_suite in test_manager.test_suites():
-        all_names.append(test_suite.name)
+
+    test_suite_args = sorted(test_manager.test_suites.keys())
+    for arg in test_suite_args:
         parser.add_argument(
-            "--" + test_suite.name,
-            help=test_suite.descr,
-            action="store_true",
-            default=False,
+            arg, help=test_manager.cli_help[arg], action="store_true", default=False
         )
 
     args = parser.parse_args()
@@ -87,14 +98,14 @@ def main():
         sys.exit(0)
     set_logging(args.logging)
 
-    test_suite_names = []
-    for name in all_names:
-        if getattr(args, name):
-            test_suite_names.append(name)
+    selected_test_suite_args = []
+    for arg in test_suite_args:
+        if getattr(args, arg[2:]):
+            selected_test_suite_args.append(arg)
 
-    if not test_suite_names:
-        options = " ".join(["--" + name for name in all_names])
-        parser.error("specify at least of the following options: " + options)
+    if not selected_test_suite_args:
+        options = " ".join(test_suite_args)
+        parser.error("specify at least one of the following options: " + options)
 
-    test_manager.run(container, test_suite_names)
+    test_manager.run(container, selected_test_suite_args)
     print(yaml.dump(container.server_profile().serialize_obj(), indent=4))

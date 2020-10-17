@@ -50,13 +50,17 @@ class Serializable(metaclass=abc.ABCMeta):
                 obj[name] = res
         return obj
 
-    def register_node_name(self, name, plugin):
-        if name in self._plugins:
-            raise ValueError(f"Node name {name} already in use")
-        self._plugins[name] = plugin
+    def register(self, serializable_obj):
+        node_name = serializable_obj.node_name
+        if node_name in self._plugins:
+            raise ValueError(
+                f"Cannot register plugin: node name {node_name} already in use"
+            )
+        self._plugins[node_name] = serializable_obj
 
     def set_error(self, message):
         self._error = message
+
 
 class SPVersions(Serializable):
 

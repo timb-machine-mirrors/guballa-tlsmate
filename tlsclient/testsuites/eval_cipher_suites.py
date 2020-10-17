@@ -9,10 +9,8 @@ from tlsclient.testmanager import TestManager, TestSuite
 import tlsclient.structures as structs
 
 
-@TestManager.register
-class MyTestSuite(TestSuite):
-    name = "enum"
-    descr = "enumerate TLS versions and cipher suites"
+class ScanCipherSuites(TestSuite):
+    name = "basic"
     prio = 10
 
     def get_server_cs_and_cert(self):
@@ -126,7 +124,6 @@ class MyTestSuite(TestSuite):
             self.ssl2_enum_version()
         else:
             self.tls_enum_version(version, cipher_suites)
-
 
     def run(self):
         self.client.versions = [tls.Version.TLS12]

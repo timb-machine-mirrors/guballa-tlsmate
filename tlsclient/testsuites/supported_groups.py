@@ -34,7 +34,7 @@ class _GroupsProfile(Serializable):
         self._version = version
         self._client = testsuite.client
         self._version_prof = vers_prof
-        vers_prof.register_node_name(self.node_name, self)
+        vers_prof.register(self)
 
     @abc.abstractmethod
     def _get_cipher_suites(self):
@@ -212,8 +212,7 @@ class _TLS13_GroupsProfile(_GroupsProfile):
                     )
 
 
-@TestManager.register
-class MyTestSuite(TestSuite):
+class ScanSupportedGroups(TestSuite):
     name = "groups"
     descr = "check for FF-DH and EC groups"
     prio = 20
