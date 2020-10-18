@@ -1,7 +1,7 @@
 
 stages:
   - test
-  - deploy
+    #  - deploy
 
 test/python36:
   stage: test
