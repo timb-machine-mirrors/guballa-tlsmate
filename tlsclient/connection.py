@@ -41,7 +41,7 @@ class TlsConnectionMsgs(object):
         tls.HandshakeType.NEW_SESSION_TICKET: None,
         tls.HandshakeType.END_OF_EARLY_DATA: None,
         tls.HandshakeType.ENCRYPTED_EXTENSIONS: "encrypted_extensions",
-        tls.HandshakeType.CERTIFICATE: "_server_certificate",
+        tls.HandshakeType.CERTIFICATE: "_certificate",
         tls.HandshakeType.SERVER_KEY_EXCHANGE: "server_key_exchange",
         tls.HandshakeType.CERTIFICATE_REQUEST: None,
         tls.HandshakeType.SERVER_HELLO_DONE: "server_hello_done",
