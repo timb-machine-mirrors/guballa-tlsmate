@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """Module for dependency injection
 """
-import importlib
-import pkgutil
 from dependency_injector import containers, providers
 import tlsclient.constants as tls
 from tlsclient.server_profile import ServerProfile
@@ -14,12 +12,6 @@ from tlsclient.socket import Socket
 from tlsclient.kdf import Kdf
 
 from tlsclient.testmanager import TestManager
-
-discovered_plugins = {
-    name: importlib.import_module(name)
-    for finder, name, ispkg in pkgutil.iter_modules()
-    if name.startswith("tlsclient_")
-}
 
 
 class Container(containers.DeclarativeContainer):

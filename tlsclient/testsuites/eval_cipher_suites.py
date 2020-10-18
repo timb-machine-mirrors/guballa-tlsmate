@@ -5,7 +5,7 @@
 import logging
 import tlsclient.messages as msg
 import tlsclient.constants as tls
-from tlsclient.testmanager import TestManager, TestSuite
+from tlsclient.testmanager import TestSuite
 import tlsclient.structures as structs
 
 

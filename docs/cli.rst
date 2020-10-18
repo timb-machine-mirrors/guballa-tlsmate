@@ -4,7 +4,6 @@ CLI Reference Documentation
 ===========================
 
 .. argparse::
-   :prog: boilerplate
+   :prog: tlsclient
    :func: build_parser
-   :module: boilerplate.command
-
+   :module: tlsclient.command

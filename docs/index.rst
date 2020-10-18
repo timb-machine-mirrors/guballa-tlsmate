@@ -1,34 +1,34 @@
-.. boilerplate documentation master file
+.. tlsclient documentation master file
 
-Welcome to boilerplate's documentation!
-=======================================
+Welcome to tlsclients's documentation!
+======================================
 
 This project provides a Python implementation for bla bla bla.
 The project is hosted on `GitLab <https://gitlab.com/guballa/boilerplate>`_.
 
 
-
 .. toctree::
-   :caption: Some description here
+   :caption: General
    :maxdepth: 2
 
-   file_a
-   file_b
-   file_c
+   overview
+   installation
+   usage
+
 
 .. toctree::
-   :caption: Some description here
+   :caption: Command Line Interface
    :maxdepth: 2
 
-   file_1
-   file_2
+   cli
+
 
 .. toctree::
-   :caption: Another description
+   :caption: Python Modules
    :maxdepth: 2
 
-   file_y
-   file_z
+   modules
+
 
 Indices and tables
 ==================

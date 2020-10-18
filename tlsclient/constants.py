@@ -7,8 +7,27 @@ from tlsclient.alert import FatalAlert
 
 
 class ExtendedEnum(enum.Enum):
+    """Class to extend the enum.Enum class by additional methods
+    """
+
     @classmethod
     def val2enum(cls, value, alert_on_failure=False):
+        """Class method to map a value to the corresponding enum.
+
+        Args:
+            value (int): The enum value which is used to map to an enum
+            alert_on_failure (bool, optional): If set to True and the value is
+                not a valid enum value, an :obj:`FatalAlert` exception will be
+                raised. Defaults to False.
+
+        Returns:
+            The corresponding enum or None, if the mapping fails and
+            `alert_on_failure` is set to False.
+
+        Raises:
+            FatalAlert: In case the given value is not a valid enum and
+                `alert_on_failure` is True
+        """
         enum = cls._value2member_map_.get(value)
         if (enum is None) and alert_on_failure:
             message = f"Value {value} not defined for {cls}"
@@ -17,6 +36,22 @@ class ExtendedEnum(enum.Enum):
 
     @classmethod
     def str2enum(cls, name, alert_on_failure=False):
+        """Class method to map a string to the corresponding enum.
+
+        Args:
+            name (str): The name which must correspond to the name of the enum.
+            alert_on_failure (bool, optional): If set to True and the name is
+                not a valid enum value, an :obj:`FatalAlert` exception will be
+                raised. Defaults to False.
+
+        Returns:
+            The corresponding enum or None, if the mapping fails and
+            `alert_on_failure` is set to False.
+
+        Raises:
+            FatalAlert: In case the given name is not a valid enum and
+                `alert_on_failure` is True
+        """
         enum = cls._member_map_.get(name)
         if (enum is None) and alert_on_failure:
             message = f"Value {name} not defined for {cls}"
@@ -27,9 +62,26 @@ class ExtendedEnum(enum.Enum):
     def all(cls):
         return list(cls.__members__.values())
 
+
 class ExtendedIntEnum(enum.IntEnum):
     @classmethod
     def val2enum(cls, value, alert_on_failure=False):
+        """Class method to map a value to the corresponding enum.
+
+        Args:
+            value (int): The enum value which is used to map to an enum
+            alert_on_failure (bool, optional): If set to True and the value is
+                not a valid enum value, an :obj:`FatalAlert` exception will be
+                raised. Defaults to False.
+
+        Returns:
+            The corresponding enum or None, if the mapping fails and
+            `alert_on_failure` is set to False.
+
+        Raises:
+            FatalAlert: In case the given value is not a valid enum and
+                `alert_on_failure` is True
+        """
         enum = cls._value2member_map_.get(value)
         if (enum is None) and alert_on_failure:
             message = f"Value {value} not defined for {cls}"
@@ -38,14 +90,28 @@ class ExtendedIntEnum(enum.IntEnum):
 
     @classmethod
     def all(cls):
+        """Class method which returns all enums defined.
+
+        Returns:
+            list of all defined enums
+        """
         return list(cls.__members__.values())
 
+
 class Entity(ExtendedEnum):
+    """Enum used to represent the entity of the TLS connection endpoint.
+    """
+
     CLIENT = 0
     SERVER = 1
 
 
 class Version(ExtendedIntEnum):
+    """Enum for the TLS versions.
+
+    The values defined correspond to the values used in PDUs.
+    """
+
     SSL20 = 0x0200
     SSL30 = 0x0300
     TLS10 = 0x0301
@@ -55,6 +121,11 @@ class Version(ExtendedIntEnum):
 
 
 class ContentType(ExtendedEnum):
+    """Enum representing the TLS-Handshake protocols.
+
+    The values defined correspond to the values used in PDUs as defined by IANA.
+    """
+
     CHANGE_CIPHER_SPEC = 20
     ALERT = 21
     HANDSHAKE = 22
@@ -63,11 +134,21 @@ class ContentType(ExtendedEnum):
 
 
 class CompressionMethod(ExtendedEnum):
+    """Enum representing the TLS compression methods.
+
+    The values defined correspond to the values used in PDUs as defined by IANA.
+    """
+
     NULL = 0
     DEFLATE = 1
 
 
 class Extension(ExtendedEnum):
+    """Enum representing the TLS extensions.
+
+    The values defined correspond to the values used in PDUs as defined by IANA.
+    """
+
     SERVER_NAME = 0
     MAX_FRAGMENT_LENGTH = 1
     CLIENT_CERTIFICATE_URL = 2
@@ -123,6 +204,11 @@ class Extension(ExtendedEnum):
 
 
 class CipherSuite(ExtendedEnum):
+    """Enum representing the TLS cipher suites (exclusing SSL20).
+
+    The values defined correspond to the values used in PDUs as defined by IANA.
+    """
+
     TLS_NULL_WITH_NULL_NULL = 0x0000
     TLS_RSA_WITH_NULL_MD5 = 0x0001
     TLS_RSA_WITH_NULL_SHA = 0x0002
@@ -476,6 +562,11 @@ class CipherSuite(ExtendedEnum):
 
 
 class AlertDescription(ExtendedEnum):
+    """Enum representing the alert descriptions.
+
+    The values defined correspond to the values used in PDUs as defined by IANA.
+    """
+
     CLOSE_NOTIFY = 0
     UNEXPECTED_MESSAGE = 10
     BAD_RECORD_MAC = 20
@@ -506,11 +597,21 @@ class AlertDescription(ExtendedEnum):
 
 
 class AlertLevel(ExtendedEnum):
+    """Enum representing the alert level.
+
+    The values defined correspond to the values used in PDUs as defined by IANA.
+    """
+
     WARNING = 1
     FATAL = 2
 
 
 class HandshakeType(ExtendedEnum):
+    """Enum representing the handshake message types.
+
+    The values defined correspond to the values used in PDUs as defined by IANA.
+    """
+
     HELLO_REQUEST = 0
     CLIENT_HELLO = 1
     SERVER_HELLO = 2
@@ -531,10 +632,20 @@ class HandshakeType(ExtendedEnum):
 
 
 class CCSType(ExtendedEnum):
+    """Enum representing the message types for the Change Cipher Spec protocol.
+
+    The values defined correspond to the values used in PDUs as defined by IANA.
+    """
+
     CHANGE_CIPHER_SPEC = 1
 
 
 class SupportedGroups(ExtendedEnum):
+    """Enum representing the supported groups.
+
+    The values defined correspond to the values used in PDUs as defined by IANA.
+    """
+
     SECT163K1 = 1
     SECT163R1 = 2
     SECT163R2 = 3
@@ -586,6 +697,11 @@ class SupportedGroups(ExtendedEnum):
 
 
 class SignatureAlgorithm(ExtendedEnum):
+    """Enum representing the signature algorithms.
+
+    The values defined correspond to the values used in PDUs as defined by IANA.
+    """
+
     ANONYMOUS = 0
     RSA = 1
     DSA = 2
@@ -595,6 +711,11 @@ class SignatureAlgorithm(ExtendedEnum):
 
 
 class HashAlgorithm(ExtendedEnum):
+    """Enum representing the hash primitives.
+
+    The values defined correspond to the values used in PDUs as defined by IANA.
+    """
+
     NONE = 0
     MD5 = 1
     SHA1 = 2
@@ -606,6 +727,11 @@ class HashAlgorithm(ExtendedEnum):
 
 
 class SignatureScheme(ExtendedEnum):
+    """Enum representing the signature schemes.
+
+    The values defined correspond to the values used in PDUs as defined by IANA.
+    """
+
     RSA_PKCS1_SHA1 = 0x0201
     ECDSA_SHA1 = 0x0203
     RSA_PKCS1_SHA256 = 0x0401
@@ -643,18 +769,31 @@ class SignatureScheme(ExtendedEnum):
 
 
 class EcPointFormat(ExtendedEnum):
+    """Enum representing the Elliptic Curve Point Formats.
+
+    The values defined correspond to the values used in PDUs as defined by IANA.
+    """
+
     UNCOMPRESSED = 0
     ANSIX962_COMPRESSED_PRIME = 1
     ANSIX962_COMPRESSED_CHAR2 = 2
 
 
 class EcCurveType(ExtendedEnum):
+    """Enum representing the curve type as received in the ServerKeyExchange message.
+
+    The values defined correspond to the values used in PDUs as defined by IANA.
+    """
+
     EXPLICIT_PRIME = 1
     EXPLICIT_CHAR2 = 2
     NAMED_CURVE = 3
 
 
 class KeyExchangeAlgorithm(ExtendedEnum):
+    """Enum representing the key exchange mechanisms.
+    """
+
     # RFC5246, 7.4.3.
     DHE_DSS = enum.auto()
     DHE_RSA = enum.auto()
@@ -671,12 +810,18 @@ class KeyExchangeAlgorithm(ExtendedEnum):
 
 
 class KeyExchangeType(ExtendedEnum):
+    """Enum representing the key exchange types.
+    """
+
     RSA = enum.auto()
     DH = enum.auto()
     ECDH = enum.auto()
 
 
 class KeyAuthentication(ExtendedEnum):
+    """Enum representing the key authentication method.
+    """
+
     NONE = enum.auto()
     RSA = enum.auto()
     DSS = enum.auto()
@@ -684,6 +829,9 @@ class KeyAuthentication(ExtendedEnum):
 
 
 class CipherPrimitive(ExtendedEnum):
+    """Enum representing the cipher primitive.
+    """
+
     NULL = enum.auto()
     AES = enum.auto()
     CAMELLIA = enum.auto()
@@ -695,6 +843,12 @@ class CipherPrimitive(ExtendedEnum):
 
 
 class SupportedCipher(ExtendedEnum):
+    """Enum representing the ciphers supported by tlsclient.
+
+    "Supported" means, a handshake can be completed sucessfully, and a secured
+    channel is established between both peers.
+    """
+
     NULL = enum.auto()
     AES_128_CBC = enum.auto()
     AES_128_CCM = enum.auto()
@@ -719,6 +873,9 @@ class SupportedCipher(ExtendedEnum):
 
 
 class SupportedCipherMode(ExtendedEnum):
+    """Enum representing the mode of the symmetric cipher primitive.
+    """
+
     NULL = enum.auto()
     CBC = enum.auto()
     CCM = enum.auto()
@@ -727,6 +884,9 @@ class SupportedCipherMode(ExtendedEnum):
 
 
 class SupportedHash(ExtendedEnum):
+    """Enum representing the hash primitives supported by tlsclient.
+    """
+
     NULL = enum.auto()
     MD5 = enum.auto()
     SHA = enum.auto()
@@ -735,6 +895,9 @@ class SupportedHash(ExtendedEnum):
 
 
 class CipherType(ExtendedEnum):
+    """Enum representing the type of the cipher.
+    """
+
     NULL = enum.auto()
     BLOCK = enum.auto()
     STREAM = enum.auto()
@@ -742,6 +905,16 @@ class CipherType(ExtendedEnum):
 
 
 class SPBool(enum.Enum):
+    """Enum representing a pseudo-boolean value in the server profile.
+
+    In addition to True and false the two values are defined:
+        * C_UNDETERMINED: Used when tlsclient has not even tried to determine the
+            value or if the value could not determined at all (for whatever reason).
+        * C_NA: Used as an indication this the boolean value is not applicable, e.g.
+            when the server does not support any CBC-cipher suite, support for the
+            extension ENCRYPT_THEN_MAC is not applicable.
+    """
+
     C_FALSE = 0
     C_TRUE = 1
     C_NA = 2
@@ -749,6 +922,11 @@ class SPBool(enum.Enum):
 
 
 class SSLMessagType(ExtendedEnum):
+    """Enum representing the message types for SSL2.
+
+    The values defined correspond to the values used in PDUs as defined by IANA.
+    """
+
     SSL2_ERROR = 0
     SSL2_CLIENT_HELLO = 1
     SSL2_CLIENT_MASTER_KEY = 2
@@ -761,6 +939,15 @@ class SSLMessagType(ExtendedEnum):
 
 
 class SSLCipherKind(ExtendedEnum):
+    """Enum representing cipher suite ("cipher kind" in SSL2 jargon).
+
+    The values defined correspond to the values used in PDUs.
+
+    Note:
+        The cipher kind has a length of 3 bytes and is completely disjunct from the
+        TLS cipher suites.
+    """
+
     SSL_CK_RC4_128_WITH_MD5 = 0x010080
     SSL_CK_RC4_128_EXPORT40_WITH_MD5 = 0x020080
     SSL_CK_RC2_128_CBC_WITH_MD5 = 0x030080
@@ -771,4 +958,9 @@ class SSLCipherKind(ExtendedEnum):
 
 
 class SSLVersion(ExtendedEnum):
+    """Enum representing the SSL2 version.
+
+    The values defined correspond to the values used in PDUs.
+    """
+
     SSL2 = 0x0002

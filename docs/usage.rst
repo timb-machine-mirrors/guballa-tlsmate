@@ -1,3 +1,5 @@
+Usage
+-----
 
 .. include:: ../README.rst
    :start-after: inclusion-marker-start-usage

@@ -1,54 +1,35 @@
 # -*- coding: utf-8 -*-
 """Module containing the test suite
 """
-import logging
+# import logging
 import tlsclient.messages as msg
 import tlsclient.constants as tls
-from tlsclient.testmanager import TestSuite
+from tlsclient.testmanager import TestManager, TestSuite
+import tlsclient.mappings as mappings
 
 
-class ScanScratch(TestSuite):
-    name = "test"
-    prio = 90
+class MyTestSuite(TestSuite):
+    name = "testme"
+    descr = "Scratch test suite"
+    prio = 100
 
     def run(self):
+        version_profile = self.server_profile.get_version(tls.Version.TLS12)
         client = self.client
-        client.versions = [tls.Version.TLS11]
-        client.cipher_suites = [
-            # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8,
-            # tls.CipherSuite.TLS_AES_128_GCM_SHA256,
-            # tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
-            # tls.CipherSuite.TLS_AES_256_GCM_SHA384,
-            # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-            # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-            # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
-            # tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
-            # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-            # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-            # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
-            # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
-            # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
-            # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-            # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-            # tls.CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
-            # tls.CipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384,
-            # tls.CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
-            # tls.CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA,
-            # tls.CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
-            # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
-            # tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
-            # tls.CipherSuite.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,
-            # tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_128_CBC_SHA,
-            # tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_256_CBC_SHA,
-            # tls.CipherSuite.TLS_RSA_WITH_IDEA_CBC_SHA,
-            # tls.CipherSuite.TLS_RSA_WITH_RC4_128_SHA,
-            # tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV,
-            # tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_GCM_SHA384,
-            # tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
-            # tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_CBC_SHA256,
-            # tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA256
-            tls.CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA
-        ]
+        client.versions = [tls.Version.TLS12]
+        tls12_ciphers = version_profile.get_cipher_suites()
+        used_ciphers = []
+        for cipher in tls12_ciphers:
+            obj = mappings.supported_cipher_suites.get(cipher)
+            if obj is not None:
+                if obj.key_ex in [
+                    tls.KeyExchangeAlgorithm.ECDHE_RSA,
+                    tls.KeyExchangeAlgorithm.ECDH_RSA,
+                    tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
+                    tls.KeyExchangeAlgorithm.ECDH_ECDSA,
+                ]:
+                    used_ciphers.append(cipher)
+        client.support_supported_groups = True
         client.supported_groups = [
             tls.SupportedGroups.X448,
             tls.SupportedGroups.SECT163K1,
@@ -127,30 +108,27 @@ class ScanScratch(TestSuite):
         #     tls.SupportedGroups.FFDHE6144,
         #     tls.SupportedGroups.FFDHE8192,
         # ]
-        with client.create_connection() as conn:
-            conn.send(msg.ClientHello)
-            conn.wait(msg.ServerHello)
 
-            # conn.wait(msg.ChangeCipherSpec, optional=True)
-            # conn.wait(msg.EncryptedExtensions)
-            # conn.wait(msg.Certificate)
-            # conn.wait(msg.CertificateVerify)
-            # conn.wait(msg.Finished)
-            # conn.send(msg.Finished)
-            # conn.wait(msg.NewSessionTicket)
-            # conn.wait(msg.NewSessionTicket)
+        for cipher in used_ciphers:
+            client.cipher_suites = [cipher]
+            with client.create_connection() as conn:
+                conn.send(msg.ClientHello)
+                conn.wait(msg.ServerHello)
 
-            conn.wait(msg.Certificate, optional=True)
-            conn.wait(msg.ServerKeyExchange, optional=True)
-            conn.wait(msg.ServerHelloDone)
-            conn.send(msg.ClientKeyExchange, msg.ChangeCipherSpec, msg.Finished)
-            conn.wait(msg.ChangeCipherSpec)
-            conn.wait(msg.Finished)
-            conn.send(msg.AppData(b"GET / HTTP/1.1\n"))
-            while True:
-                app_data = conn.wait(msg.AppData)
-                if len(app_data.data):
-                    break
-            for line in app_data.data.decode("utf-8").split("\n"):
-                if line.startswith("s_server"):
-                    logging.debug("openssl_command: " + line)
+                # conn.wait(msg.ChangeCipherSpec, optional=True)
+                # conn.wait(msg.EncryptedExtensions)
+                # conn.wait(msg.Certificate)
+                # conn.wait(msg.CertificateVerify)
+                # conn.wait(msg.Finished)
+                # conn.send(msg.Finished)
+                # conn.wait(msg.NewSessionTicket)
+                # conn.wait(msg.NewSessionTicket)
+
+                conn.wait(msg.Certificate, optional=True)
+                ske = conn.wait(msg.ServerKeyExchange)
+                print(f"cipher {cipher.name}: {ske.ec.named_curve.name}")
+
+
+TestManager.register_cli(
+    "--ccc", cli_help="performs a regular scan", classes=[MyTestSuite]
+)

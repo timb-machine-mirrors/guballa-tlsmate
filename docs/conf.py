@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath('../'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'boilerplate'
+project = 'tlsclient'
 copyright = '2020, Jens Guballa'
 author = 'Jens Guballa'
 
@@ -34,6 +34,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.viewcode',
+    'sphinx.ext.napoleon',
     'sphinx_rtd_theme',
     'sphinxarg.ext',
 ]

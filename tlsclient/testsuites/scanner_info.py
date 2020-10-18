@@ -5,14 +5,13 @@ import sys
 import time
 import datetime
 from tlsclient.server_profile import Serializable
-from tlsclient.testmanager import TestManager, TestSuite
+from tlsclient.testmanager import TestSuite
 from tlsclient.version import __version__
 
 
 class _ScannerProfile(Serializable):
 
     node_name = "scan_info"
-
 
     def __init__(self, server_profile):
         super().__init__()
@@ -32,6 +31,7 @@ class _ScannerProfile(Serializable):
 
 
 _scanner_profile = None
+
 
 class ScanStart(TestSuite):
     name = "scanstart"

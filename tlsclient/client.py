@@ -21,20 +21,24 @@ class Client(object):
     and not a message instance is provided in the test case.
 
     Attributes:
-        compression_methods (list of :obj:`CompressionMethod`): a list of
-            supported compression methods. This list will be used to populate
-            the compression list in the ClientHello message.
+        compression_methods (list of :obj:`CompressionMethod`):
+            a list of supported compression methods. This list will be used to
+            populate the compression list in the ClientHello message.
             Default: [CompressionMethod.NULL]
+
         support_session_id (bool): An indication if the client supports resumption
             via the session id.
+
         session_state_id (:obj:`SessionStateId`): the stored sessions state usable to
             resume a session with the session_id
         support_session_ticket: (bool): An indication if the client supports
             resumption via the session_ticket extension
         session_state_ticket (:obj`SessionStateTicket`): the stored sessions state
             usable to resume a session with the session_ticket extension
-        support_sni (bool): an indication if the SNI extension is supported
-        server_name (str): the server name which will included in the SNI extension
+        support_sni (bool):
+            an indication if the SNI extension is supported
+        server_name (str):
+            the server name which will included in the SNI extension
         support_extended_master_secret (bool): an indication if the client supports
             the extensions EXTENDED_MASTER_SECRET
         support_ec_point_formats (bool): an indication if the client supports

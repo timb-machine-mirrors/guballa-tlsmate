@@ -7,4 +7,6 @@
     - HelloRetryRequest
     - more scan results
     - improved error handling
-    - log description for received alters
+    - log description for received alerts
+    - more checks on server_hello: have the stuff selected by the server
+      actually been offered?

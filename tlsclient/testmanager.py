@@ -7,7 +7,6 @@ import abc
 
 
 class ScanError(Exception):
-
     def __init__(self, message):
         self.message = message
 
@@ -32,9 +31,7 @@ class TestManager(object):
     @classmethod
     def register_cli(cls, argument, cli_help="", classes=[]):
         if argument in cls.cli_help:
-            raise ValueError(
-                f"CLI option {argument} is already registered"
-            )
+            raise ValueError(f"CLI option {argument} is already registered")
         cls.cli_help[argument] = cli_help
         cls.test_suites[argument] = classes
 

@@ -5,6 +5,8 @@ import sys
 import argparse
 import logging
 import yaml
+import importlib
+import pkgutil
 
 import tlsclient.dependency_injection as dependency
 from tlsclient.testmanager import TestManager
@@ -34,6 +36,20 @@ def args_version(subparsers):
     parser_version.set_defaults(subparser=parser_version)
 
 
+def add_plugins_to_parser(parser):
+    """Generate the CLI options for the plugins
+
+    :param parsers: parsers object
+    :type parser: object
+    """
+
+    plugin_cli_options = TestManager.test_suites.keys()
+    for arg in plugin_cli_options:
+        parser.add_argument(
+            arg, help=TestManager.cli_help[arg], action="store_true", default=False
+        )
+
+
 def build_parser():
     """Creates the parser object
 
@@ -55,6 +71,8 @@ def build_parser():
         default="error",
     )
 
+    add_plugins_to_parser(parser)
+
     return parser
 
 
@@ -71,26 +89,12 @@ def main():
     """The entry point for the command line interface
     """
 
-    TestManager.register_cli(
-        "--scan",
-        cli_help="performs a basic scan",
-        classes=[ScanCipherSuites, ScanStart, ScanEnd, ScanSupportedGroups],
-    )
-    TestManager.register_cli(
-        "--scratch", cli_help="this is just a scratch scenario", classes=[ScanScratch]
-    )
-
     config = {"server": "localhost", "port": 44330}
 
     container = dependency.Container(config=config)
+
     test_manager = container.test_manager()
     parser = build_parser()
-
-    test_suite_args = sorted(test_manager.test_suites.keys())
-    for arg in test_suite_args:
-        parser.add_argument(
-            arg, help=test_manager.cli_help[arg], action="store_true", default=False
-        )
 
     args = parser.parse_args()
     if args.version:
@@ -98,14 +102,33 @@ def main():
         sys.exit(0)
     set_logging(args.logging)
 
-    selected_test_suite_args = []
-    for arg in test_suite_args:
+    plugin_cli_options = sorted(TestManager.test_suites.keys())
+    selected_plugins = []
+    for arg in plugin_cli_options:
         if getattr(args, arg[2:]):
-            selected_test_suite_args.append(arg)
+            selected_plugins.append(arg)
 
-    if not selected_test_suite_args:
-        options = " ".join(test_suite_args)
+    if not selected_plugins:
+        options = " ".join(selected_plugins)
         parser.error("specify at least one of the following options: " + options)
 
-    test_manager.run(container, selected_test_suite_args)
+    test_manager.run(container, selected_plugins)
     print(yaml.dump(container.server_profile().serialize_obj(), indent=4))
+
+
+# always register the basic plugins provided with tlsclient
+TestManager.register_cli(
+    "--scan",
+    cli_help="performs a basic scan",
+    classes=[ScanCipherSuites, ScanStart, ScanEnd, ScanSupportedGroups],
+)
+TestManager.register_cli(
+    "--scratch", cli_help="this is just a scratch scenario", classes=[ScanScratch]
+)
+
+# and now look for additional user provided plugins
+discovered_plugins = {
+    name: importlib.import_module(name)
+    for finder, name, ispkg in pkgutil.iter_modules()
+    if name.startswith("tlsclient_")
+}

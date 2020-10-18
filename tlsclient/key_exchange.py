@@ -8,6 +8,7 @@ import os
 from tlsclient import mappings
 import tlsclient.constants as tls
 from tlsclient import pdu
+from tlsclient.alert import FatalAlert
 
 from cryptography.hazmat.primitives.asymmetric import ec, x25519, x448, dh
 from cryptography import x509
@@ -150,7 +151,10 @@ class DhKeyExchange(KeyExchange):
         if group is not None:
             dh_numbers = mappings.dh_numbers.get(group)
             if dh_numbers is None:
-                FatalAlert(f"FF-DH group {group.name} unknown", tls.AlertDescription.HANDSHAKE_FAILURE)
+                FatalAlert(
+                    f"FF-DH group {group.name} unknown",
+                    tls.AlertDescription.HANDSHAKE_FAILURE,
+                )
             p_val = dh_numbers.p_val
             g_val = dh_numbers.g_val
         self._pval = int.from_bytes(p_val, "big")

@@ -53,7 +53,7 @@ class TlsConnectionMsgs(object):
         tls.HandshakeType.EKT_KEY: None,
         tls.HandshakeType.MESSAGE_HASH: None,
         tls.CCSType.CHANGE_CIPHER_SPEC: "_change_cipher_spec",
-        tls.ContentType.ALERT: "_alert"
+        tls.ContentType.ALERT: "_alert",
     }
 
     def __init__(self):
@@ -341,7 +341,9 @@ class TlsConnection(object):
             )
         share_entry = key_share_ext.key_shares[0]
         self.key_exchange = self.key_shares[share_entry.group]
-        self.key_exchange.set_remote_key(share_entry.key_exchange, group=share_entry.group)
+        self.key_exchange.set_remote_key(
+            share_entry.key_exchange, group=share_entry.group
+        )
         self.premaster_secret = self.key_exchange.get_shared_secret()
         logging.info(f"premaster_secret: {pdu.dump(self.premaster_secret)}")
         self.tls13_key_schedule()
