@@ -333,7 +333,7 @@ class TlsConnection(object):
         self.record_layer.flush()
 
     def on_server_hello_tls13(self, msg):
-        key_share_ext = ext.get_extension(msg.extensions, tls.Extension.KEY_SHARE)
+        key_share_ext = msg.get_extension(tls.Extension.KEY_SHARE)
         if key_share_ext is None:
             raise FatalAlert(
                 "ServerHello-TLS13: extension KEY_SHARE not present",
@@ -362,12 +362,10 @@ class TlsConnection(object):
             else:
                 self._new_session_id = msg.session_id
         self.encrypt_then_mac = (
-            ext.get_extension(msg.extensions, tls.Extension.ENCRYPT_THEN_MAC)
-            is not None
+            msg.get_extension(tls.Extension.ENCRYPT_THEN_MAC) is not None
         )
         self.extended_ms = (
-            ext.get_extension(msg.extensions, tls.Extension.EXTENDED_MASTER_SECRET)
-            is not None
+            msg.get_extension(tls.Extension.EXTENDED_MASTER_SECRET) is not None
         )
 
     def on_server_hello_received(self, msg):
@@ -379,9 +377,7 @@ class TlsConnection(object):
         for extension in msg.extensions:
             extension = extension.extension_id
             logging.info(f"extension {extension.value} {extension.name}")
-        supported_versions = ext.get_extension(
-            msg.extensions, tls.Extension.SUPPORTED_VERSIONS
-        )
+        supported_versions = msg.get_extension(tls.Extension.SUPPORTED_VERSIONS)
         if supported_versions is not None:
             self.version = supported_versions.versions[0]
         else:

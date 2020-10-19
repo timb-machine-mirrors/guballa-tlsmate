@@ -8,6 +8,12 @@ import tlsclient.extensions as ext
 from tlsclient.exception import FatalAlert
 from tlsclient import pdu
 
+def _get_extension(extensions, ext_id):
+    for extension in extensions:
+        if extension.extension_id == ext_id:
+            return extension
+    return None
+
 
 class TlsMessage(metaclass=abc.ABCMeta):
     @abc.abstractmethod
@@ -116,6 +122,8 @@ class ClientHello(HandshakeMessage):
     def _deserialize_msg_body(self, msg_body, length, conn):
         return self
 
+    def get_extension(self, ext_id):
+        return _get_extension(self.extensions, ext_id)
 
 class ServerHello(HandshakeMessage):
 
@@ -157,6 +165,9 @@ class ServerHello(HandshakeMessage):
                 self.extensions.append(extension)
         return self
 
+
+    def get_extension(self, ext_id):
+        return _get_extension(self.extensions, ext_id)
 
 class Certificate(HandshakeMessage):
 
@@ -396,6 +407,9 @@ class NewSessionTicket(HandshakeMessage):
             self.ticket, offset = pdu.unpack_bytes(fragment, offset, length)
         return self
 
+    def get_extension(self, ext_id):
+        return _get_extension(self.extensions, ext_id)
+
 
 class EncryptedExtensions(HandshakeMessage):
 
@@ -417,6 +431,8 @@ class EncryptedExtensions(HandshakeMessage):
                 self.extensions.append(extension)
         return self
 
+    def get_extension(self, ext_id):
+        return _get_extension(self.extensions, ext_id)
 
 class ChangeCipherSpecMessage(TlsMessage):
 
