@@ -9,6 +9,17 @@ from tlsclient.exception import FatalAlert
 from tlsclient import pdu
 
 def _get_extension(extensions, ext_id):
+    """Helper function to search for an extension
+
+    Arguments:
+        extensions (list of :obj:`tlsclient.constants.Extensions`): the list
+            to search for the extension
+        ext_id (:obj:`tlsclient.constants.Extensions): the extension to to look for
+
+    Returns:
+        :obj:`tlsclient.constants.Extensions`: The extension if present, or None
+            otherwise.
+    """
     for extension in extensions:
         if extension.extension_id == ext_id:
             return extension
@@ -16,23 +27,57 @@ def _get_extension(extensions, ext_id):
 
 
 class TlsMessage(metaclass=abc.ABCMeta):
+    """Abstract base class for TLS messages
+    """
     @abc.abstractmethod
     def deserialize(cls, fragment, conn):
+        """Method to deserialize the message received from the network
+
+        Arguments:
+            fragment (bytearray): The byte array representation of the message in
+                network order (big endian).
+            conn (:obj:`tlsclient.connection.TlsConnectio`): The connection object,
+                needed for some odd cases, e.g. when deserializing a ServerKeyExchange
+                message, as the layout purely depends on the key exchange method.
+
+        Returns:
+            :obj:`TlsMessage`:
+                The deserialized message represented in a python object.
+        """
         pass
 
     @abc.abstractmethod
     def serialize(self, conn):
+        """A method to serialize this object.
+
+        Arguments:
+            conn (:obj:`tlsclient.connection.TlsConnectio`): The connection object,
+                needed for some odd cases, e.g. when serializing a ServerKeyExchange
+                message, as the layout purely depends on the key exchange method.
+
+        Returns:
+            bytearray: The bytes of the message in network order (big endian).
+        """
         pass
 
 
 class Any(object):
+    """Class to represent any message to wait for in a test case.
+    """
     pass
 
 
 class HandshakeMessage(TlsMessage):
+    """A base class for all handshake messages.
+    """
 
     content_type = tls.ContentType.HANDSHAKE
+    """ :obj:`tlsclient.constants.ContentType.HANDSHAKE`
+    """
+
     msg_type = None
+    """ :obj:`tlsclient.constants.HandshakeType`: The type of the handshake message.
+    """
 
     @classmethod
     def deserialize(cls, fragment, conn):
@@ -49,11 +94,29 @@ class HandshakeMessage(TlsMessage):
         return msg
 
     @abc.abstractmethod
-    def _deserialize_msg_body(self, msg_body, length, conn):
+    def _deserialize_msg_body(self, msg_body, offset, conn):
+        """Method to deserialize a handshake message.
+
+        Arguments:
+            msg_body (bytearray): The bytes which contain the serialized handhshake
+                message.
+            offset (int): The offset within the bytes where the handshake message
+                starts.
+            conn (:obj:`tlsclient.connection.TlsConnection`): the connection object,
+                used to retrieve additional information required to deserialize
+                the handshake message.
+
+        Returns:
+            :obj:`HandshakeMessage`: the deserialized message object, i.e. self.
+        """
         pass
 
     @abc.abstractmethod
     def _serialize_msg_body(self, conn):
+        """Serializes the message body.
+
+        I.e., the message body only is serialized, without the common handshake header.
+        """
         pass
 
     def serialize(self, conn):
@@ -67,8 +130,26 @@ class HandshakeMessage(TlsMessage):
 
 
 class ClientHello(HandshakeMessage):
+    """This class respresents a ClientHello message.
+
+    Attributes:
+        client_version (:obj:`tlsclient.constants.Version`):
+            The version the client offers to the server.
+        random (bytes): The random value.
+        session_id (bytes): The session id.
+        cipher_suites (list of :obj:`tlsclient.constants.CipherSuite`): The list
+            of cipher suites offered to the server
+        compression_methods (list of :obj:`tlsclient.constants.CompressionMethod`):
+            The list of compression methods offered to the server.
+        extensions (list of :obj:`tlsclient.constants.Extensions`): The list of
+            extensions offered to the server. It can be a class (in this case the
+            content of the extension is filled according to the client profile), or
+            an instance, which leaves the user the full control of the contents.
+    """
 
     msg_type = tls.HandshakeType.CLIENT_HELLO
+    """:obj:`tlsclient.constants.HandshakeType.CLIENT_HELLO`
+    """
 
     def __init__(self):
         self.client_version = tls.Version.TLS12
@@ -123,11 +204,35 @@ class ClientHello(HandshakeMessage):
         return self
 
     def get_extension(self, ext_id):
+        """Method to extract a specific extension.
+
+        Arguments:
+            ext_id (:obj:`tlsclient.constants.Extensions`): The extension id to
+                look for.
+
+        Returns:
+            :obj:`tlsclient.extensions.Extension`:
+                The extension object or None if not present.
+        """
         return _get_extension(self.extensions, ext_id)
 
 class ServerHello(HandshakeMessage):
+    """This class respresents a ServerHello message.
+
+    Attributes:
+        version (:obj:`tlsclient.constants.Version`): The version selected by
+            the server.
+        random (bytes): The random value from the server.
+        session_id (bytes): The session id from the server.
+        compression_method (:obj:`tlsclient.constants.CompressionMethod`): The
+            selected compression method by the server.
+        extensions (list of :obj:`tlsclient.constants.Extensions`): The list of
+            extensions as returned from the server.
+    """
 
     msg_type = tls.HandshakeType.SERVER_HELLO
+    """:obj:`tlsclient.constants.HandshakeType.SERVER_HELLO`
+    """
 
     def __init__(self):
         self.version = None
@@ -167,9 +272,14 @@ class ServerHello(HandshakeMessage):
 
 
     def get_extension(self, ext_id):
+        ClientHello.get_extension.__doc__
         return _get_extension(self.extensions, ext_id)
 
+ServerHello.get_extension.__doc__ = ClientHello.get_extension.__doc__
+
 class Certificate(HandshakeMessage):
+    """This class respresents a Certificate message.
+    """
 
     msg_type = tls.HandshakeType.CERTIFICATE
 
@@ -203,6 +313,8 @@ class Certificate(HandshakeMessage):
 
 
 class CertificateVerify(HandshakeMessage):
+    """This class respresents a CertificateVerify message.
+    """
 
     msg_type = tls.HandshakeType.CERTIFICATE_VERIFY
 
@@ -271,6 +383,8 @@ class KeyExchangeDH(object):
 
 
 class ServerKeyExchange(HandshakeMessage):
+    """This class respresents a ServerKeyExchange message.
+    """
 
     msg_type = tls.HandshakeType.SERVER_KEY_EXCHANGE
 

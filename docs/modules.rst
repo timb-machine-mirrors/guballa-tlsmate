@@ -8,3 +8,4 @@ Python API Reference Documentation
     py_client
     py_constants
     py_exception
+    py_messages
