@@ -8,7 +8,7 @@ import os
 from tlsclient import mappings
 import tlsclient.constants as tls
 from tlsclient import pdu
-from tlsclient.alert import FatalAlert
+from tlsclient.exception import FatalAlert
 
 from cryptography.hazmat.primitives.asymmetric import ec, x25519, x448, dh
 from cryptography import x509

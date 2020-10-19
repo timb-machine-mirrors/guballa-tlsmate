@@ -8,7 +8,7 @@ import os
 import io
 import traceback as tb
 import time
-from tlsclient.alert import FatalAlert
+from tlsclient.exception import FatalAlert
 import tlsclient.constants as tls
 from tlsclient import pdu
 from tlsclient.messages import (

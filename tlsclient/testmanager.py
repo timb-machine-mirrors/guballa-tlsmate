@@ -6,10 +6,6 @@ import logging
 import abc
 
 
-class ScanError(Exception):
-    def __init__(self, message):
-        self.message = message
-
 
 class TestSuite(metaclass=abc.ABCMeta):
 

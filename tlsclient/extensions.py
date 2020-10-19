@@ -3,7 +3,7 @@
 """
 
 import abc
-from tlsclient.alert import FatalAlert
+from tlsclient.exception import FatalAlert
 import tlsclient.constants as tls
 import tlsclient.structures as structs
 from tlsclient import pdu

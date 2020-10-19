@@ -2,7 +2,7 @@
 """Module containing the class implementing the record layer
 """
 
-from tlsclient.alert import FatalAlert
+from tlsclient.exception import FatalAlert
 import struct
 import tlsclient.constants as tls
 import tlsclient.structures as structs

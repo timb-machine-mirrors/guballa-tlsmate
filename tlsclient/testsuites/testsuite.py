@@ -146,7 +146,7 @@ class ScanScratch(TestSuite):
             conn.send(msg.ClientKeyExchange, msg.ChangeCipherSpec, msg.Finished)
             conn.wait(msg.ChangeCipherSpec)
             conn.wait(msg.Finished)
-            conn.send(msg.AppData(b"GET / HTTP/1.1\n"))
+            conn.send(msg.AppData(b"GET / HTTP/1.1\r\nHost: localhost:44330\r\n\r\n"))
             while True:
                 app_data = conn.wait(msg.AppData)
                 if len(app_data.data):
@@ -154,3 +154,4 @@ class ScanScratch(TestSuite):
             for line in app_data.data.decode("utf-8").split("\n"):
                 if line.startswith("s_server"):
                     logging.debug("openssl_command: " + line)
+            conn.wait(msg.AppData)

@@ -2,7 +2,7 @@
 """Module impleminting helper functions for handling protocol data units
 """
 import struct
-from tlsclient.alert import FatalAlert
+from tlsclient.exception import FatalAlert
 import tlsclient.constants as tls
 
 

@@ -5,7 +5,7 @@ import abc
 import os
 import tlsclient.constants as tls
 import tlsclient.extensions as ext
-from tlsclient.alert import FatalAlert
+from tlsclient.exception import FatalAlert
 from tlsclient import pdu
 
 

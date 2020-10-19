@@ -3,7 +3,7 @@
 """
 
 import enum
-from tlsclient.alert import FatalAlert
+from tlsclient.exception import FatalAlert
 
 
 class ExtendedEnum(enum.Enum):
