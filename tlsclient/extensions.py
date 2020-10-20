@@ -10,11 +10,29 @@ from tlsclient import pdu
 
 
 class Extension(metaclass=abc.ABCMeta):
+    """Abstract class for all extensions.
+    """
+
     @abc.abstractmethod
     def serialize_ext_body(self):
+        """Serializes the content of an extension, i.e. excluding the header.
+
+        Returns:
+            bytes: The serialized extensions body.
+        """
         pass
 
     def serialize(self, conn):
+        """Serializes an extensions, including the extensions header.
+
+        Arguments:
+            conn (:obj:`tlsclient.connection.TlsConnection`): The connection object,
+                needed for some odd cases, e.g. when serializing a key share
+                extensions.
+
+        Returns:
+            bytes: The serialized extension.
+        """
         ext_body = self.serialize_ext_body(conn)
         ext = bytearray(pdu.pack_uint16(self.extension_id.value))
         ext.extend(pdu.pack_uint16(len(ext_body)))
@@ -23,6 +41,16 @@ class Extension(metaclass=abc.ABCMeta):
 
     @staticmethod
     def deserialize(fragment, offset):
+        """Deserializes an extension.
+
+        Arguments:
+            fragment (bytes): A PDU buffer as received from the network.
+            offset (int): The offset within the fragment where the extension starts.
+
+        Returns:
+            :obj:`Extension`, new offset: The deserialized extension as an
+                python object and the new offset into the fragment.
+        """
         ext_id, offset = pdu.unpack_uint16(fragment, offset)
         ext_id = tls.Extension.val2enum(ext_id, alert_on_failure=True)
         ext_len, offset = pdu.unpack_uint16(fragment, offset)
@@ -34,8 +62,15 @@ class Extension(metaclass=abc.ABCMeta):
 
 
 class ExtServerNameIndication(Extension):
+    """Represents the ServerNameIndication extension.
+
+    Attributes:
+        host_name (str): The name which identifies the host.
+    """
 
     extension_id = tls.Extension.SERVER_NAME
+    """:obj:`tlsclient.constants.Extension.SERVER_NAME`
+    """
 
     def __init__(self, **kwargs):
         self.host_name = kwargs.get("host_name")
@@ -72,8 +107,12 @@ class ExtServerNameIndication(Extension):
 
 
 class ExtExtendedMasterSecret(Extension):
+    """Represents the ExtendedMasterSecret extension.
+    """
 
     extension_id = tls.Extension.EXTENDED_MASTER_SECRET
+    """:obj:`tlsclient.constants.Extension.EXTENDED_MASTER_SECRET`
+    """
 
     def serialize_ext_body(self, conn):
         return b""
@@ -88,8 +127,12 @@ class ExtExtendedMasterSecret(Extension):
 
 
 class ExtEncryptThenMac(Extension):
+    """Represents the EncryptThenMac extension.
+    """
 
     extension_id = tls.Extension.ENCRYPT_THEN_MAC
+    """:obj:`tlsclient.constants.Extension.ENCRYPT_THEN_MAC`
+    """
 
     def serialize_ext_body(self, conn):
         return b""
@@ -104,8 +147,15 @@ class ExtEncryptThenMac(Extension):
 
 
 class ExtRenegotiationInfo(Extension):
+    """Represents the RenegotiationInfo extension.
+
+    Attributes:
+        opaque (bytes): The opaque bytes.
+    """
 
     extension_id = tls.Extension.RENEGOTIATION_INFO
+    """:obj:`tlsclient.constants.Extension.RENEGOTIATION_INFO`
+    """
 
     def __init__(self, **kwargs):
         self.opaque = kwargs.get("opaque", b"\0")
@@ -119,8 +169,16 @@ class ExtRenegotiationInfo(Extension):
 
 
 class ExtEcPointFormats(Extension):
+    """Represents the EcPointFormat extension.
+
+    Attributes:
+        point_formats (list of :obj:`tlsclient.constants.EcPointFormat`): The list
+        of supported point formats.
+    """
 
     extension_id = tls.Extension.EC_POINT_FORMATS
+    """:obj:`tlsclient.constants.Extension.EC_POINT_FORMATS`
+    """
 
     def __init__(self, **kwargs):
         self.point_formats = kwargs.get(
@@ -154,8 +212,16 @@ class ExtEcPointFormats(Extension):
 
 
 class ExtSupportedGroups(Extension):
+    """Represents the SupportedGroup extension.
+
+    Attributes:
+        supported_groups (list of :obj:`tlsclient.constants.SupportedGroup`): The list
+        of supported groups.
+    """
 
     extension_id = tls.Extension.SUPPORTED_GROUPS
+    """:obj:`tlsclient.constants.Extension.SUPPORTED_GROUPS`
+    """
 
     def __init__(self, **kwargs):
         self.supported_groups = kwargs.get("supported_groups", [])
@@ -186,8 +252,16 @@ class ExtSupportedGroups(Extension):
 
 
 class ExtSignatureAlgorithms(Extension):
+    """Represents the SignatureAlgorithms extension.
+
+    Attributes:
+        signature_algorithms (list of :obj:`tlsclient.constants.SignatureScheme`): The
+        of supported signature algorithms.
+    """
 
     extension_id = tls.Extension.SIGNATURE_ALGORITHMS
+    """:obj:`tlsclient.constants.Extension.SIGNATURE_ALGORITHMS`
+    """
 
     def __init__(self, **kwargs):
         self.signature_algorithms = kwargs.get("signature_algorithms", [])
@@ -208,8 +282,15 @@ class ExtSignatureAlgorithms(Extension):
 
 
 class ExtSessionTicket(Extension):
+    """Represents the SessionTicket extension.
+
+    Attributes:
+        ticket (bytes): The ticket.
+    """
 
     extension_id = tls.Extension.SESSION_TICKET
+    """:obj:`tlsclient.constants.Extension.SIGNATURE_ALGORITHMS`
+    """
 
     def __init__(self, **kwargs):
         self.ticket = kwargs.get("ticket")
@@ -225,8 +306,16 @@ class ExtSessionTicket(Extension):
 
 
 class ExtSupportedVersions(Extension):
+    """Represents the SupportedVersion extension.
+
+    Attributes:
+        versions (list of :obj:`tlsclient.constants.Version`): The list of TLS versions
+            supported.
+    """
 
     extension_id = tls.Extension.SUPPORTED_VERSIONS
+    """:obj:`tlsclient.constants.Extension.SUPPORTED_VERSIONS`
+    """
 
     def __init__(self, **kwargs):
         self.versions = kwargs.get("versions")
@@ -251,8 +340,21 @@ class ExtSupportedVersions(Extension):
 
 
 class ExtKeyShare(Extension):
+    """Represents the KeyShare extension.
+
+    Given the list of supported groups, during serialization the shares are actually
+    generated and the resultign public keys are included into the extension. The user
+    must ensure that the key share uses the same sequence for the groups than
+    provided in the SupportedGroup extension.
+
+    Attributes:
+        key_shares (list of :obj:`tlsclient.constants.SupportedGroup`): The list of
+            supported groups for which key shares shall be generated.
+    """
 
     extension_id = tls.Extension.KEY_SHARE
+    """:obj:`tlsclient.constants.Extension.SIGNATURE_ALGORITHMS`
+    """
 
     def __init__(self, **kwargs):
         self.key_shares = kwargs.get("key_shares")
@@ -283,6 +385,8 @@ class ExtKeyShare(Extension):
         return self
 
 
+"""Map the extensions id to the corresponding class.
+"""
 deserialization_map = {
     tls.Extension.SERVER_NAME: ExtServerNameIndication,
     # tls.Extension.MAX_FRAGMENT_LENGTH = 1
