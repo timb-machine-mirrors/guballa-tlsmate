@@ -7,30 +7,78 @@ import abc
 
 
 class TestSuite(metaclass=abc.ABCMeta):
+    """Provides a base class for the implementation of test suites.
+
+    Attributes:
+        server_profile (:obj:`tlsclient.server_profile.ServerProfile`): The server
+            profile instance. Can be used to get data from it (e.g. which cipher
+            suites are supported for which TLS versions), or to extend it.
+        client (:obj:`tlsclient.client.Client`): The client object.
+    """
 
     prio = 100
 
-    def inject_dependencies(self, server_profile, client):
+    def _inject_dependencies(self, server_profile, client):
+        """Method to inject the server profile and the client into the object
+        """
         self.server_profile = server_profile
         self.client = client
 
     @abc.abstractmethod
     def run(self):
+        """Entry point for the test suite.
+
+        The test manager will call this method which will implement the test suite.
+        """
         raise NotImplementedError
 
 
 class TestManager(object):
+    """Manages the plugins (test suites) and runs them.
+
+    The test manager provides an interface to register test suites.
+
+    The registered plugins are triggered (via their run-method) based on their
+    priority.
+
+    Attributes:
+        cli_help (dict): Mapps the plugins identified by their cli-name (i.e. their
+            command line option name) to the corresponding CLI help text.
+        test_suite (dict): Maps the cli-names of the registered plugins to the
+            corresponding classes.
+    """
+
     cli_help = {}
     test_suites = {}
 
     @classmethod
     def register_cli(cls, argument, cli_help="", classes=[]):
+        """Function to register a test suite.
+
+        Arguments:
+            argument (str): The CLI option argument used to execute the plugin.
+            cli_help (str): The CLI help text for the argument.
+            classes (list of :obj:`TestSuite`): A list of plugins associated with
+                the argument name.
+
+        Raises:
+            ValueError: If another plugin is already registered under the given
+            argument name.
+        """
         if argument in cls.cli_help:
             raise ValueError(f"CLI option {argument} is already registered")
         cls.cli_help[argument] = cli_help
         cls.test_suites[argument] = classes
 
     def run(self, container, selected_test_suite_args):
+        """Function to actually start the test manager.
+
+        Arguments:
+            container (:obj:`tlsclient.dependency_injection.Container`): The container
+                object used to inject the depencies into the test suite objects.
+            selected_test_suite_args (list of str): The list of CLI options which
+                were given on the CLI to select a set of plugins.
+        """
         prio_pool = {}
         for arg in selected_test_suite_args:
             for cls in self.test_suites[arg]:
@@ -41,7 +89,7 @@ class TestManager(object):
             for cls in sorted(prio_pool[prio_list], key=lambda cls: cls.name):
                 logging.debug(f"starting test suite {cls.name}")
                 test_suite = cls()
-                test_suite.inject_dependencies(
+                test_suite._inject_dependencies(
                     container.server_profile(), container.client()
                 )
                 test_suite.run()

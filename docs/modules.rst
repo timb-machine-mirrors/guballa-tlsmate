@@ -10,3 +10,7 @@ Python API Reference Documentation
     py_exception
     py_messages
     py_extensions
+    py_kdf
+    py_socket
+    py_pdu
+    py_testmanager

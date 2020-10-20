@@ -5,7 +5,8 @@ import logging
 import abc
 import tlsclient.messages as msg
 import tlsclient.constants as tls
-from tlsclient.testmanager import TestSuite, ScanError
+from tlsclient.testmanager import TestSuite
+from tlsclient.exception import ScanError
 from tlsclient import mappings
 from tlsclient.server_profile import Serializable
 import tlsclient.extensions as ext

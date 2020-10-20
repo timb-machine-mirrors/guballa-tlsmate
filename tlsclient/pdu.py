@@ -7,40 +7,117 @@ import tlsclient.constants as tls
 
 
 def pack_uint8(val):
+    """Packs a uint8 value into a byte object.
+
+    Arguments:
+        val (int): The value to pack.
+
+    Returns:
+        bytes: The bytes object representing the value in network order (big endian).
+
+    Raises:
+        ValueError: If the value cannot be respresented in one byte.
+    """
     if val > 0xFF:
         raise ValueError(f"Cannot pack {val} into 1 byte")
     return struct.pack("!B", val)
 
 
 def pack_uint16(val):
+    """Packs a uint16 value into a byte object.
+
+    Arguments:
+        val (int): The value to pack.
+
+    Returns:
+        bytes: The bytes object representing the value in network order (big endian).
+
+    Raises:
+        ValueError: If the value cannot be respresented in two bytes.
+    """
     if val > 0xFFFF:
         raise ValueError(f"Cannot pack {val} into 2 bytes")
     return struct.pack("!H", val)
 
 
 def pack_uint24(val):
+    """Packs a uint24 value into a byte object.
+
+    Arguments:
+        val (int): The value to pack.
+
+    Returns:
+        bytes: The bytes object representing the value in network order (big endian).
+
+    Raises:
+        ValueError: If the value cannot be respresented in three bytes.
+    """
     if val > 0xFFFFFF:
         raise ValueError(f"Cannot pack {val} into 3 bytes")
     return struct.pack("!I", val)[1:]
 
 
 def pack_uint32(val):
+    """Packs a uint32 value into a byte object.
+
+    Arguments:
+        val (int): The value to pack.
+
+    Returns:
+        bytes: The bytes object representing the value in network order (big endian).
+
+    Raises:
+        ValueError: If the value cannot be respresented in four bytes.
+    """
     if val > 0xFFFFFFFF:
         raise ValueError(f"Cannot pack {val} into 4 bytes")
     return struct.pack("!I", val)
 
 
 def pack_uint64(val):
+    """Packs a uint64 value into a byte object.
+
+    Arguments:
+        val (int): The value to pack.
+
+    Returns:
+        bytes: The bytes object representing the value in network order (big endian).
+
+    Raises:
+        ValueError: If the value cannot be respresented in eight bytes.
+    """
     if val > 0xFFFFFFFFFFFFFFFF:
         raise ValueError(f"Cannot pack {val} into 8 bytes")
     return struct.pack("!Q", val)
 
 
 def pack_str(string):
+    """Packs a string into a byte object.
+
+    Arguments:
+        string (str): The string to pack.
+
+    Returns:
+        bytes: The bytes object representing the string in network order (big endian).
+    """
     return bytes(map(ord, string))
 
 
 def unpack_uint8(data, offset):
+    """Unpacks a value from a given an buffer.
+
+    Arguments:
+        data (bytes): The buffer to unpack from.
+        offset (int): The offset within the buffer.
+
+    Returns:
+        value, offset: The tuple with the result. The first entry is the value that
+        has been unpacked, the second one is the new offset in the buffer, i.e. it
+        points to the next byte after the unpacked value.
+
+    Raises:
+        :obj:`tlsclient.exception.FatalAlert`: If the buffer boundary is exceeded.
+    """
     if offset >= len(data):
         raise FatalAlert(
             "Message length error when unpacking uint8",
@@ -50,6 +127,20 @@ def unpack_uint8(data, offset):
 
 
 def unpack_uint16(data, offset):
+    """Unpacks a value from a given an buffer.
+
+    Arguments:
+        data (bytes): The buffer to unpack from.
+        offset (int): The offset within the buffer.
+
+    Returns:
+        value, offset: The tuple with the result. The first entry is the value that
+        has been unpacked, the second one is the new offset in the buffer, i.e. it
+        points to the next byte after the unpacked value.
+
+    Raises:
+        :obj:`tlsclient.exception.FatalAlert`: If the buffer boundary is exceeded.
+    """
     if offset + 1 >= len(data):
         raise FatalAlert(
             "Message length error when unpacking uint16",
@@ -59,6 +150,20 @@ def unpack_uint16(data, offset):
 
 
 def unpack_uint24(data, offset):
+    """Unpacks a value from a given an buffer.
+
+    Arguments:
+        data (bytes): The buffer to unpack from.
+        offset (int): The offset within the buffer.
+
+    Returns:
+        value, offset: The tuple with the result. The first entry is the value that
+        has been unpacked, the second one is the new offset in the buffer, i.e. it
+        points to the next byte after the unpacked value.
+
+    Raises:
+        :obj:`tlsclient.exception.FatalAlert`: If the buffer boundary is exceeded.
+    """
     if offset + 2 >= len(data):
         raise FatalAlert(
             "Message length error when unpacking uint24",
@@ -69,6 +174,20 @@ def unpack_uint24(data, offset):
 
 
 def unpack_uint32(data, offset):
+    """Unpacks a value from a given an buffer.
+
+    Arguments:
+        data (bytes): The buffer to unpack from.
+        offset (int): The offset within the buffer.
+
+    Returns:
+        value, offset: The tuple with the result. The first entry is the value that
+        has been unpacked, the second one is the new offset in the buffer, i.e. it
+        points to the next byte after the unpacked value.
+
+    Raises:
+        :obj:`tlsclient.exception.FatalAlert`: If the buffer boundary is exceeded.
+    """
     if offset + 3 >= len(data):
         raise FatalAlert(
             "Message length error when unpacking uint32",
@@ -78,6 +197,21 @@ def unpack_uint32(data, offset):
 
 
 def unpack_bytes(data, offset, length):
+    """Unpacks a given number of bytes from a given an buffer.
+
+    Arguments:
+        data (bytes): The buffer to unpack from.
+        offset (int): The offset within the buffer.
+        length (int): The number of bytes to unpack.
+
+    Returns:
+        value, offset: The tuple with the result. The first entry is the value that
+        has been unpacked, the second one is the new offset in the buffer, i.e. it
+        points to the next byte after the unpacked value.
+
+    Raises:
+        :obj:`tlsclient.exception.FatalAlert`: If the buffer boundary is exceeded.
+    """
     if offset + length > len(data):
         raise FatalAlert(
             "Message length error when unpacking bytes",
@@ -87,4 +221,13 @@ def unpack_bytes(data, offset, length):
 
 
 def dump(data):
+    """Provide a human readable representation of a bytes object.
+
+    Arguments:
+        data (bytes): The data to represent
+
+    Returns:
+        str: A human readable string, with a blank between each byte, and the
+        length of the string appended in brackets.
+    """
     return " ".join(f"{y:02x}" for y in data) + f" ({len(data)})"

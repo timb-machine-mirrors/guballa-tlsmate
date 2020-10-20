@@ -33,7 +33,7 @@ class _Backend(metaclass=abc.ABCMeta):
 
         Returns:
             bytes: The calculated HMAC value, having the same length than the output
-                of the hash algorithm.
+            of the hash algorithm.
         """
         hmac_object = hmac.HMAC(secret, hash_algo())
         hmac_object.update(msg)
@@ -320,6 +320,7 @@ class Kdf(object):
         Arguments
             secret (bytes): The secret used for the extract function.
             salt (bytes): The salt for the extract function.
+
         Returns:
             bytes: The byte sequence generated having the same length than the
             hash algorithm used in the underlying hash function.
