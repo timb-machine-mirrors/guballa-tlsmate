@@ -2,6 +2,7 @@
 """Module containing exception definitions
 """
 
+
 class FatalAlert(Exception):
     """Exception which leads to the closure of the TLS connection with a fatal alert.
 
@@ -10,6 +11,7 @@ class FatalAlert(Exception):
         description (:obj:`tlsclient.constants.AlertDescription`): an enum used in the
             alert sent to the peer.
     """
+
     def __init__(self, message, description):
         self.description = description
         self.message = message
@@ -24,6 +26,6 @@ class ScanError(Exception):
     Attributes:
         message (str): A human readable string describing the cause.
     """
+
     def __init__(self, message):
         self.message = message
-

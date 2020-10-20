@@ -22,7 +22,6 @@ from tlsclient.messages import (
 from tlsclient import mappings
 import tlsclient.structures as structs
 import tlsclient.key_exchange as kex
-import tlsclient.extensions as ext
 
 
 def get_random_value():

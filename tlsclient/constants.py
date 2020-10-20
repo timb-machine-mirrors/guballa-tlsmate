@@ -204,7 +204,7 @@ class Extension(ExtendedEnum):
 
 
 class CipherSuite(ExtendedEnum):
-    """Enum representing the TLS cipher suites (exclusing SSL20).
+    """Enum representing the TLS cipher suites (excluding SSL20).
 
     The values defined correspond to the values used in PDUs as defined by IANA.
     """

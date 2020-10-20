@@ -6,7 +6,6 @@ import logging
 import abc
 
 
-
 class TestSuite(metaclass=abc.ABCMeta):
 
     prio = 100

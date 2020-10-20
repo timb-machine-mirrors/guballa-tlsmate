@@ -47,7 +47,7 @@ class ScanScratch(TestSuite):
             # tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
             # tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_CBC_SHA256,
             # tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA256
-            #tls.CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA
+            # tls.CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA
         ]
         client.supported_groups = [
             tls.SupportedGroups.X448,
