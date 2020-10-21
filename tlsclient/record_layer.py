@@ -1,14 +1,10 @@
 # -*- coding: utf-8 -*-
 """Module containing the class implementing the record layer
 """
-from tlsclient.exception import FatalAlert
-import struct
 import tlsclient.constants as tls
 import tlsclient.structures as structs
 from tlsclient import pdu
 from tlsclient.record_layer_state import RecordLayerState
-from cryptography.hazmat.primitives import hmac
-from cryptography.hazmat.primitives.ciphers import Cipher, modes, aead
 
 
 class RecordLayer(object):
@@ -26,9 +22,15 @@ class RecordLayer(object):
         self._recorder = recorder
         self._ssl2 = False
 
-    def _add_to_sendbuffer(self, rl_msg):
-        """Adds a record layer message to the send queue.
+    def _send_fragment(self, rl_msg):
+        """Protects a fragment and adds it to the send queue.
+
+        Arguments:
+            rl_msg (:obj:`tlsclient.structures.RecordLayerMsg`): The record layer
+                message to be sent.
         """
+        if self._write_state is not None:
+            rl_msg = self._write_state.protect_msg(rl_msg)
         self._send_buffer.extend(pdu.pack_uint8(rl_msg.content_type.value))
         self._send_buffer.extend(pdu.pack_uint16(rl_msg.version.value))
         self._send_buffer.extend(pdu.pack_uint16(len(rl_msg.fragment)))
@@ -36,12 +38,14 @@ class RecordLayer(object):
         if self._flush_each_fragment:
             self.flush()
 
-    def _send_fragment(self, rl_msg):
-        if self._write_state is not None:
-            rl_msg = self._write_state.protect_msg(rl_msg)
-        self._add_to_sendbuffer(rl_msg)
-
     def _fragment(self, rl_msg):
+        """Fragments a given message according the maximum fragment size.
+
+        Each fragment is then protected (if applicable) and added to the send queue.
+
+        Arguments:
+            rl_msg (:obj:`tlsclient.structures.RecordLayerMsg`): The message to be sent.
+        """
         if len(rl_msg.fragment) <= self._fragment_max_size:
             self._send_fragment(rl_msg)
             return
@@ -65,25 +69,57 @@ class RecordLayer(object):
                 )
             )
 
+    def send_message(self, message):
+        """Does everything the record layer needs to do for sending a message.
 
-    def send_message(self, message_block):
-        if message_block.content_type is tls.ContentType.SSL2:
+        The message is fragmented and protected (i.e. encrypted and authenticated) if
+        applicable. Compression is not supported.
+
+        Minimal support for SSL2 is provided as well (no fragmentation, no protection).
+
+        The message may result in multiple fragments to be sent. The fragments are
+        added to the send queue but actually not sent to the network yet. Use the
+        flush method to do so.
+
+        Arguments:
+            message (:obj:`tlsclient.structures.RecordLayerMsg`): The message to send.
+        """
+        if message.content_type is tls.ContentType.SSL2:
             self._ssl2 = True
-            self._send_buffer.extend(
-                pdu.pack_uint16(len(message_block.fragment) | 0x8000)
-            )
-            self._send_buffer.extend(message_block.fragment)
+            self._send_buffer.extend(pdu.pack_uint16(len(message.fragment) | 0x8000))
+            self._send_buffer.extend(message.fragment)
         else:
-            self._fragment(message_block)
+            self._fragment(message)
 
     def close_socket(self):
+        """Closes the socket. Obviously.
+        """
         self._socket.close_socket()
 
     def flush(self):
+        """Send all fragments in the send queue.
+
+        This function is useful if e.g. multiple handshake messages shall be sent
+        in one TCP packet.
+        """
         self._socket.sendall(self._send_buffer)
         self._send_buffer = bytearray()
 
     def wait_fragment(self, timeout=5000):
+        """Wait for a fragment to be received from the network.
+
+        Arguments:
+            timeout (int): The timeout in milli seconds to wait for the message. This
+                parameter is optional and defaults to 5000 (5 seconds).
+
+        Returns:
+            :obj:`tlsclient.structures.RecordLayerMsg`:
+            A complete record layer message. If a timeout occurs, None is returned.
+
+        Raises:
+            FatalAlert: If anything went wrong, e.g. message could not be
+                authenticated, wrong padding, etc.
+        """
         # wait for record layer header
         rl_len = 2 if self._ssl2 else 5
         while len(self._receive_buffer) < rl_len:
@@ -134,8 +170,17 @@ class RecordLayer(object):
             return self._read_state.unprotect_msg(rl_msg)
 
     def update_state(self, new_state):
+        """Update the record layer state.
+
+        I.e. sent or received fragments are encrypted and authenticated.
+
+        Arguments:
+            new_state (:obj:`tlsclient.structures.StateUpdateParams`): A complete
+                state (either a read state or a write state), containing the
+                keying material for the symmetric ciphers and other relevant elements.
+        """
         state = RecordLayerState(new_state)
-        if state.is_write_state:
+        if new_state.is_write_state:
             self._write_state = state
         else:
             self._read_state = state

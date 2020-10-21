@@ -15,3 +15,5 @@ Python API Reference Documentation
     py_pdu
     py_testmanager
     py_structures
+    py_record_layer
+    py_record_layer_state
