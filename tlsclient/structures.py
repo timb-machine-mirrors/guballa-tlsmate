@@ -7,6 +7,7 @@ import tlsclient.constants as tls
 import cryptography.hazmat.primitives.ciphers.algorithms
 import cryptography.hazmat.primitives.hashes
 
+
 class SessionStateId(NamedTuple):
     """Set of items to store a session id in the client.
     """
@@ -19,6 +20,7 @@ class SessionStateId(NamedTuple):
 class SessionStateTicket(NamedTuple):
     """Set of items to store a session ticket in the client.
     """
+    ticket: bytes
     lifetime: int
     cipher_suite: tls.CipherSuite
     version: tls.Version
@@ -80,7 +82,7 @@ class CipherSuite(NamedTuple):
     mac: tls.SupportedHash
 
 
-class MessageBlock(NamedTuple):
+class RecordLayerMsg(NamedTuple):
     """Set of properties describing a record layer message.
     """
     content_type: tls.ContentType

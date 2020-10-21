@@ -319,7 +319,7 @@ class TlsConnection(object):
                 self.kdf.update_msg_digest(msg_data)
 
             self.record_layer.send_message(
-                structs.MessageBlock(
+                structs.RecordLayerMsg(
                     content_type=msg.content_type,
                     version=self.record_layer_version,
                     fragment=msg_data,

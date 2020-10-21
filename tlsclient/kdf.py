@@ -271,7 +271,7 @@ class Kdf(object):
             return
         if self._backend is None:
             if self._msg_digest_queue is None:
-                self._msg_digest_queue = msg
+                self._msg_digest_queue = bytearray(msg)
             else:
                 self._msg_digest_queue.extend(msg)
         else:

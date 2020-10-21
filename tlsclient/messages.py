@@ -125,11 +125,11 @@ class HandshakeMessage(TlsMessage):
     def serialize(self, conn):
         msg_body = self._serialize_msg_body(conn)
 
-        handshake_msg = bytearray()
-        handshake_msg.extend(pdu.pack_uint8(self.msg_type.value))
-        handshake_msg.extend(pdu.pack_uint24(len(msg_body)))
-        handshake_msg.extend(msg_body)
-        return handshake_msg
+        return (
+            pdu.pack_uint8(self.msg_type.value)
+            + pdu.pack_uint24(len(msg_body))
+            + msg_body
+        )
 
 
 class ClientHello(HandshakeMessage):
@@ -861,7 +861,7 @@ class AppData(AppDataMessage):
         self.data = fragment
 
     def _serialize_msg_body(self, conn):
-        return self.data
+        return bytes(self.data)
 
 
 class SSL2Message(TlsMessage):
