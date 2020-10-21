@@ -14,3 +14,4 @@ Python API Reference Documentation
     py_socket
     py_pdu
     py_testmanager
+    py_structures

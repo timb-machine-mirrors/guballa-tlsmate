@@ -2,43 +2,116 @@
 """Module defining various structures
 """
 import collections
+from typing import NamedTuple
+import tlsclient.constants as tls
 
-SessionStateId = collections.namedtuple(
-    "SessionStateId", ["session_id", "cipher_suite", "version", "master_secret"]
-)
+import cryptography.hazmat.primitives.ciphers.algorithms
+import cryptography.hazmat.primitives.hashes
 
-SessionStateTicket = collections.namedtuple(
-    "SessionStateTicket",
-    ["ticket", "lifetime", "cipher_suite", "version", "master_secret"],
-)
-
-
-Cipher = collections.namedtuple(
-    "Cipher", "primitive algo c_type key_len block_size iv_len, aead_expansion"
-)
-
-Mac = collections.namedtuple("Mac", "hash_algo mac_len key_len hmac_algo")
-
-SymmetricKeys = collections.namedtuple("SymmetricKeys", "mac enc iv")
-
-KeyExchangeAlgo = collections.namedtuple("KeyExchangeAlgo", "cls")
-
-StateUpdateParams = collections.namedtuple(
-    "StateUpdateParams",
-    ["cipher", "mac", "keys", "compr", "enc_then_mac", "version", "is_write_state"],
-)
+class SessionStateId(NamedTuple):
+    """Set of items to store a session id in the client.
+    """
+    session_id: bytes
+    cipher_suite: tls.CipherSuite
+    version: tls.Version
+    master_secret: bytes
 
 
-CipherSuite = collections.namedtuple("CipherSuite", "key_ex cipher mac")
+class SessionStateTicket(NamedTuple):
+    """Set of items to store a session ticket in the client.
+    """
+    lifetime: int
+    cipher_suite: tls.CipherSuite
+    version: tls.Version
+    master_secret: bytes
 
-MessageBlock = collections.namedtuple("MessageBlock", "content_type version fragment")
+
+class Cipher(NamedTuple):
+    """Set of properties describing a cipher.
+    """
+    primitive: tls.CipherPrimitive
+    algo: cryptography.hazmat.primitives.ciphers.algorithms.AES  # just an example
+    c_type: tls.CipherType
+    key_len: int
+    block_size: int
+    iv_len: int
+    aead_expansion: int
 
 
-Groups = collections.namedtuple("Groups", "curve_algo")
-SPCipherSuite = collections.namedtuple("SPCipherSuite", "cipher_suite cert_chain_id")
+class Mac(NamedTuple):
+    """Set of properties describing a MAC.
+    """
+    hash_algo: cryptography.hazmat.primitives.hashes.SHA1  # just an example
+    mac_len: int
+    key_len: int
+    hmac_algo: cryptography.hazmat.primitives.hashes.SHA1  # just an example
 
-KeyExchange = collections.namedtuple("KeyExchange", "key_ex_type key_auth")
 
-KeyShareEntry = collections.namedtuple("KeyShareEntry", "group key_exchange")
+class SymmetricKeys(NamedTuple):
+    """Set of keys
+    """
+    mac: bytes
+    enc: bytes
+    iv: bytes
 
-DHNumbers = collections.namedtuple("DHNumbers", "g_val p_val")
+
+class KeyExchangeAlgo(NamedTuple):
+    """Set of properties describing a key exchange algorithm.
+    """
+    cls: type
+
+
+class StateUpdateParams(NamedTuple):
+    """Set of properties used to update the record layer state.
+    """
+    cipher: Cipher
+    mac: Mac
+    keys: SymmetricKeys
+    compr: tls.CompressionMethod
+    enc_then_mac: bool
+    version: tls.Version
+    is_write_state: bool
+
+
+class CipherSuite(NamedTuple):
+    """Set of properties for a cipher suite.
+    """
+    key_ex: tls.KeyExchangeAlgorithm
+    cipher: tls.SupportedCipher
+    mac: tls.SupportedHash
+
+
+class MessageBlock(NamedTuple):
+    """Set of properties describing a record layer message.
+    """
+    content_type: tls.ContentType
+    version: tls.Version
+    fragment: bytes
+
+
+class SPCipherSuite(NamedTuple):
+    """Properties describing a cipher suite in the server profile.
+    """
+    cipher_suite: tls.CipherSuite
+    cert_chain_id: int
+
+
+class KeyExchange(NamedTuple):
+    """Set of properties describing a key exchange method.
+    """
+    key_ex_type: tls.KeyExchangeType
+    key_auth: tls.KeyAuthentication
+
+
+class KeyShareEntry(NamedTuple):
+    """Set of properties describing a key share entry.
+    """
+    group: tls.SupportedGroups
+    key_exchange: bytes
+
+
+class DHNumbers(NamedTuple):
+    """Set of properties describing a DH group.
+    """
+    g_val: int
+    p_val: bytes
