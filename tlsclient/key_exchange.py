@@ -3,7 +3,7 @@
 """
 
 import abc
-import collections
+from typing import NamedTuple
 import os
 from tlsclient import mappings
 import tlsclient.constants as tls
@@ -262,39 +262,43 @@ class XKeyExchange(KeyExchange):
         return self.get_transferable_key()
 
 
-Group = collections.namedtuple("Group", "cls algo")
+class _Group(NamedTuple):
+    """Structure for a group
+    """
+    cls: type
+    algo: type
 
 _supported_groups = {
-    tls.SupportedGroups.SECT163K1: Group(cls=EcdhKeyExchange, algo=ec.SECT163K1),
-    tls.SupportedGroups.SECT163R2: Group(cls=EcdhKeyExchange, algo=ec.SECT163R2),
-    tls.SupportedGroups.SECT233K1: Group(cls=EcdhKeyExchange, algo=ec.SECT233K1),
-    tls.SupportedGroups.SECT233R1: Group(cls=EcdhKeyExchange, algo=ec.SECT233R1),
-    tls.SupportedGroups.SECT283K1: Group(cls=EcdhKeyExchange, algo=ec.SECT283K1),
-    tls.SupportedGroups.SECT283R1: Group(cls=EcdhKeyExchange, algo=ec.SECT283R1),
-    tls.SupportedGroups.SECT409K1: Group(cls=EcdhKeyExchange, algo=ec.SECT409K1),
-    tls.SupportedGroups.SECT409R1: Group(cls=EcdhKeyExchange, algo=ec.SECT409R1),
-    tls.SupportedGroups.SECT571K1: Group(cls=EcdhKeyExchange, algo=ec.SECT571K1),
-    tls.SupportedGroups.SECT571R1: Group(cls=EcdhKeyExchange, algo=ec.SECT571R1),
-    tls.SupportedGroups.SECP192R1: Group(cls=EcdhKeyExchange, algo=ec.SECP192R1),
-    tls.SupportedGroups.SECP224R1: Group(cls=EcdhKeyExchange, algo=ec.SECP224R1),
-    tls.SupportedGroups.SECP256K1: Group(cls=EcdhKeyExchange, algo=ec.SECP256K1),
-    tls.SupportedGroups.SECP256R1: Group(cls=EcdhKeyExchange, algo=ec.SECP256R1),
-    tls.SupportedGroups.SECP384R1: Group(cls=EcdhKeyExchange, algo=ec.SECP384R1),
-    tls.SupportedGroups.SECP521R1: Group(cls=EcdhKeyExchange, algo=ec.SECP521R1),
-    tls.SupportedGroups.BRAINPOOLP256R1: Group(
+    tls.SupportedGroups.SECT163K1: _Group(cls=EcdhKeyExchange, algo=ec.SECT163K1),
+    tls.SupportedGroups.SECT163R2: _Group(cls=EcdhKeyExchange, algo=ec.SECT163R2),
+    tls.SupportedGroups.SECT233K1: _Group(cls=EcdhKeyExchange, algo=ec.SECT233K1),
+    tls.SupportedGroups.SECT233R1: _Group(cls=EcdhKeyExchange, algo=ec.SECT233R1),
+    tls.SupportedGroups.SECT283K1: _Group(cls=EcdhKeyExchange, algo=ec.SECT283K1),
+    tls.SupportedGroups.SECT283R1: _Group(cls=EcdhKeyExchange, algo=ec.SECT283R1),
+    tls.SupportedGroups.SECT409K1: _Group(cls=EcdhKeyExchange, algo=ec.SECT409K1),
+    tls.SupportedGroups.SECT409R1: _Group(cls=EcdhKeyExchange, algo=ec.SECT409R1),
+    tls.SupportedGroups.SECT571K1: _Group(cls=EcdhKeyExchange, algo=ec.SECT571K1),
+    tls.SupportedGroups.SECT571R1: _Group(cls=EcdhKeyExchange, algo=ec.SECT571R1),
+    tls.SupportedGroups.SECP192R1: _Group(cls=EcdhKeyExchange, algo=ec.SECP192R1),
+    tls.SupportedGroups.SECP224R1: _Group(cls=EcdhKeyExchange, algo=ec.SECP224R1),
+    tls.SupportedGroups.SECP256K1: _Group(cls=EcdhKeyExchange, algo=ec.SECP256K1),
+    tls.SupportedGroups.SECP256R1: _Group(cls=EcdhKeyExchange, algo=ec.SECP256R1),
+    tls.SupportedGroups.SECP384R1: _Group(cls=EcdhKeyExchange, algo=ec.SECP384R1),
+    tls.SupportedGroups.SECP521R1: _Group(cls=EcdhKeyExchange, algo=ec.SECP521R1),
+    tls.SupportedGroups.BRAINPOOLP256R1: _Group(
         cls=EcdhKeyExchange, algo=ec.BrainpoolP256R1
     ),
-    tls.SupportedGroups.BRAINPOOLP384R1: Group(
+    tls.SupportedGroups.BRAINPOOLP384R1: _Group(
         cls=EcdhKeyExchange, algo=ec.BrainpoolP384R1
     ),
-    tls.SupportedGroups.BRAINPOOLP512R1: Group(
+    tls.SupportedGroups.BRAINPOOLP512R1: _Group(
         cls=EcdhKeyExchange, algo=ec.BrainpoolP512R1
     ),
-    tls.SupportedGroups.X25519: Group(cls=XKeyExchange, algo=None),
-    tls.SupportedGroups.X448: Group(cls=XKeyExchange, algo=None),
-    tls.SupportedGroups.FFDHE2048: Group(cls=DhKeyExchange, algo=None),
-    tls.SupportedGroups.FFDHE3072: Group(cls=DhKeyExchange, algo=None),
-    tls.SupportedGroups.FFDHE4096: Group(cls=DhKeyExchange, algo=None),
-    tls.SupportedGroups.FFDHE6144: Group(cls=DhKeyExchange, algo=None),
-    tls.SupportedGroups.FFDHE8192: Group(cls=DhKeyExchange, algo=None),
+    tls.SupportedGroups.X25519: _Group(cls=XKeyExchange, algo=None),
+    tls.SupportedGroups.X448: _Group(cls=XKeyExchange, algo=None),
+    tls.SupportedGroups.FFDHE2048: _Group(cls=DhKeyExchange, algo=None),
+    tls.SupportedGroups.FFDHE3072: _Group(cls=DhKeyExchange, algo=None),
+    tls.SupportedGroups.FFDHE4096: _Group(cls=DhKeyExchange, algo=None),
+    tls.SupportedGroups.FFDHE6144: _Group(cls=DhKeyExchange, algo=None),
+    tls.SupportedGroups.FFDHE8192: _Group(cls=DhKeyExchange, algo=None),
 }

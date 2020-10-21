@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Module defining various structures
 """
-import collections
 from typing import NamedTuple
 import tlsclient.constants as tls
 

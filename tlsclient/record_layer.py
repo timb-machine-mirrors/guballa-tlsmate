@@ -11,7 +11,9 @@ from cryptography.hazmat.primitives import hmac
 from cryptography.hazmat.primitives.ciphers import Cipher, modes, aead
 
 
-class RecordLayerState(object):
+class _RecordLayerState(object):
+    """Class to represent an dynamic record layer state
+    """
     def __init__(self, param):
 
         self.keys = param.keys
@@ -38,6 +40,9 @@ class RecordLayerState(object):
 
 
 class RecordLayer(object):
+    """Class implementing the record layer.
+    """
+
     def __init__(self, socket, recorder):
         self._send_buffer = bytearray()
         self._receive_buffer = bytearray()
@@ -421,7 +426,7 @@ class RecordLayer(object):
             )
 
     def update_state(self, new_state):
-        state = RecordLayerState(new_state)
+        state = _RecordLayerState(new_state)
         if state.is_write_state:
             self._write_state = state
         else:
