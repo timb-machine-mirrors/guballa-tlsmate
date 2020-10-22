@@ -9,7 +9,6 @@ from tlsclient.testmanager import TestSuite
 from tlsclient.exception import ScanError
 from tlsclient import mappings
 from tlsclient.server_profile import Serializable
-import tlsclient.extensions as ext
 
 
 class _GroupsProfile(Serializable):
@@ -48,15 +47,19 @@ class _GroupsProfile(Serializable):
     def _determine_supported_groups(self):
         offered_groups = self._offered_groups[:]
         supported_groups = []
-        while len(offered_groups):
-            server_group = self._get_group_from_server(offered_groups)
-            if server_group is None:
-                break
-            if server_group not in offered_groups:
-                self.ext_supp_groups_supported = tls.SPBool.C_FALSE
-                return
-            supported_groups.append(server_group)
-            offered_groups.remove(server_group)
+        max_items = 20
+        while offered_groups:
+            sub_set = offered_groups[:max_items]
+            offered_groups = offered_groups[max_items:]
+            while sub_set:
+                server_group = self._get_group_from_server(sub_set)
+                if server_group is None:
+                    break
+                if server_group not in sub_set:
+                    self.ext_supp_groups_supported = tls.SPBool.C_FALSE
+                    return
+                supported_groups.append(server_group)
+                sub_set.remove(server_group)
         if not supported_groups:
             raise ScanError("no groups supported at all")
         self.ext_supp_groups_supported = tls.SPBool.C_TRUE
@@ -176,9 +179,7 @@ class _TLS13_GroupsProfile(_GroupsProfile):
         if conn.msg.server_hello is None:
             return None
         try:
-            key_share_ext = ext.get_extension(
-                conn.msg.server_hello.extensions, tls.Extension.KEY_SHARE
-            )
+            key_share_ext = conn.msg.server_hello.get_extension(tls.Extension.KEY_SHARE)
             key_share = key_share_ext.key_shares[0]
             if key_share.group not in offered_groups:
                 raise ScanError("selected group was not offered")
@@ -187,7 +188,10 @@ class _TLS13_GroupsProfile(_GroupsProfile):
         return key_share
 
     def _get_group_from_server(self, offered_groups):
-        return self._get_share_from_server(offered_groups).group
+        share = self._get_share_from_server(offered_groups)
+        if share is not None:
+            return share.group
+        return None
 
     def _determine_advertised_group(self):
         self._client.supported_groups = self.groups[:1]
@@ -199,10 +203,12 @@ class _TLS13_GroupsProfile(_GroupsProfile):
             conn.wait(msg.ChangeCipherSpec, optional=True)
             encrypted_extensions = conn.wait(msg.EncryptedExtensions)
         if encrypted_extensions is not None:
-            supported_group_ext = ext.get_extension(
-                encrypted_extensions.extensions, tls.Extension.SUPPORTED_GROUPS
+            supported_group_ext = encrypted_extensions.get_extension(
+                tls.Extension.SUPPORTED_GROUPS
             )
-            if supported_group_ext is not None:
+            if supported_group_ext is None:
+                self.groups_advertised = tls.SPBool.C_FALSE
+            else:
                 advertised_groups = supported_group_ext.supported_groups
                 if set(advertised_groups) == set(self.groups):
                     self.groups = advertised_groups

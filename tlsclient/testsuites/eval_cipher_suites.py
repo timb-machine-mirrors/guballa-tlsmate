@@ -57,7 +57,7 @@ class ScanCipherSuites(TestSuite):
         # get a list of all supported cipher suites, don't send more than
         # max_items cipher suites in the ClientHello
         max_items = 32
-        while len(cipher_suites) > 0:
+        while cipher_suites:
             sub_set = cipher_suites[:max_items]
             cipher_suites = cipher_suites[max_items:]
 

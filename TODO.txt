@@ -10,3 +10,5 @@
     - log description for received alerts
     - more checks on server_hello: have the stuff selected by the server
       actually been offered?
+    - use __str__ for messages and extension displaying their names
+    - use :class:`XXX` iso :obj: in the *.rst files where appropriate

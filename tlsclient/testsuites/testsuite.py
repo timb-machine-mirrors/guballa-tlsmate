@@ -74,6 +74,7 @@ class ScanScratch(TestSuite):
             tls.SupportedGroups.X25519,
         ]
         client.signature_algorithms = [
+            tls.SignatureScheme.ECDSA_SECP521R1_SHA512,
             tls.SignatureScheme.RSA_PKCS1_SHA1,
             tls.SignatureScheme.ECDSA_SHA1,
             tls.SignatureScheme.RSA_PKCS1_SHA256,
@@ -83,7 +84,6 @@ class ScanScratch(TestSuite):
             tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
             tls.SignatureScheme.RSA_PKCS1_SHA384_LEGACY,
             tls.SignatureScheme.RSA_PKCS1_SHA512,
-            tls.SignatureScheme.ECDSA_SECP521R1_SHA512,
             tls.SignatureScheme.RSA_PKCS1_SHA512_LEGACY,
             tls.SignatureScheme.ECCSI_SHA256,
             tls.SignatureScheme.ISO_IBS1,

@@ -265,8 +265,10 @@ class XKeyExchange(KeyExchange):
 class _Group(NamedTuple):
     """Structure for a group
     """
+
     cls: type
     algo: type
+
 
 _supported_groups = {
     tls.SupportedGroups.SECT163K1: _Group(cls=EcdhKeyExchange, algo=ec.SECT163K1),

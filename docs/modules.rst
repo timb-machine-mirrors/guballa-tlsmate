@@ -17,3 +17,4 @@ Python API Reference Documentation
     py_structures
     py_record_layer
     py_record_layer_state
+    py_utils
