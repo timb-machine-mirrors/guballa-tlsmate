@@ -365,13 +365,20 @@ class KeyExchangeEC(object):
         curve_type (:obj:`tlsclient.constants.EcCurveType`): The type of the curve.
         named_curve: (:obj:`tlsclient.constants.SupportedGroups`): The curve name, as
             defined by the supported groups.
-        public (bytes): the public key from the peer.
+        public (bytes): The public key from the peer.
+        sig_scheme (:obj:`tlsclient.constants.SignatureScheme`): The scheme of the
+            signature, if present.
+        signature (bytes): The signature.
+        signed_params (bytes): The part of the message which has been signed.
     """
 
     def __init__(self):
         self.curve_type = None
         self.named_curve = None
         self.public = None
+        self.sig_scheme = None
+        self.signature = None
+        self.signed_params = None
 
     def _deserialize_ECParameters(self, fragment, offset, conn):
         """Deserializes the EC-paramters.
@@ -416,17 +423,18 @@ class KeyExchangeEC(object):
             fragment (bytes): A PDU buffer as received from the network.
             offset (int): The offset within the fragment where the DH-params start.
             conn (:obj:`tlsclient.connection.TlsConnection`): The connection object.
-            signature_present (bool): An indication, if the signature is present
-                in the fragment. Set to False for anonymous DH-key exchange.
         Returns:
             :obj:`KeyExchangeEC`: The object representing the EC parameters, i.e. self.
         """
+        signed_params_start = offset
         # ServerECDHParams    params;
         offset = self._deserialize_ServerECDHParams(fragment, offset, conn)
+        self.signed_params = fragment[signed_params_start:offset]
         # Signature           signed_params;
-        signature_scheme, offset = pdu.unpack_uint16(fragment, offset)
-        self.signature_scheme = tls.SignatureScheme.val2enum(signature_scheme)
-        signature_len, offset = pdu.unpack_uint8(fragment, offset)
+        if conn.version is tls.Version.TLS12:
+            sig_scheme, offset = pdu.unpack_uint16(fragment, offset)
+            self.sig_scheme = tls.SignatureScheme.val2enum(sig_scheme)
+        signature_len, offset = pdu.unpack_uint16(fragment, offset)
         self.signature, offset = pdu.unpack_bytes(fragment, offset, signature_len)
         return self
 
@@ -451,8 +459,10 @@ class KeyExchangeDH(object):
         self.public_key = None
         self.sig_scheme = None
         self.signature = None
+        self.signed_params = None
 
     def _deserialize_msg_body(self, fragment, offset, conn, signature_present=True):
+        signed_params_start = offset
         p_length, offset = pdu.unpack_uint16(fragment, offset)
         self.p_val, offset = pdu.unpack_bytes(fragment, offset, p_length)
         g_len, offset = pdu.unpack_uint16(fragment, offset)
@@ -461,6 +471,7 @@ class KeyExchangeDH(object):
         pub_key_len, offset = pdu.unpack_uint16(fragment, offset)
         self.public_key, offset = pdu.unpack_bytes(fragment, offset, pub_key_len)
         if signature_present:
+            self.signed_params = fragment[signed_params_start:offset]
             if conn.version is not tls.Version.SSL30:
                 sig_scheme, offset = pdu.unpack_uint16(fragment, offset)
                 self.sig_scheme = tls.SignatureScheme.val2enum(sig_scheme)

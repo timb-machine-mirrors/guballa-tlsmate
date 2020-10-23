@@ -22,6 +22,10 @@ from tlsclient.messages import (
 from tlsclient import mappings
 import tlsclient.structures as structs
 import tlsclient.key_exchange as kex
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes
+from cryptography.exceptions import InvalidSignature
 
 
 def get_random_value():
@@ -389,8 +393,47 @@ class TlsConnection(object):
         else:
             self.on_server_hello_tls12(msg)
 
+    def verify_ec_signature(self, ske_msg):
+        mapping = {
+            tls.HashAlgorithm.SHA1: hashes.SHA1,
+            tls.HashAlgorithm.SHA224: hashes.SHA224,
+            tls.HashAlgorithm.SHA256: hashes.SHA256,
+            tls.HashAlgorithm.SHA384: hashes.SHA384,
+            tls.HashAlgorithm.SHA512: hashes.SHA512,
+        }
+        bin_cert = self.msg.server_certificate.certificates[0]
+        cert = x509.load_der_x509_certificate(bin_cert)
+        pub_key = cert.public_key()
+        data = (
+            self.msg.client_hello.random
+            + self.msg.server_hello.random
+            + ske_msg.ec.signed_params
+        )
+        if self.version is tls.Version.TLS12:
+            sig_scheme = ske_msg.ec.sig_scheme
+        else:
+            sig_scheme = tls.SignatureScheme.ECDSA_SHA1
+        sig_algo = tls.SignatureAlgorithm.val2enum(sig_scheme.value >> 8)
+        hash_algo = tls.HashAlgorithm.val2enum(sig_scheme.value & 0xFF)
+        try:
+            if sig_algo is tls.SignatureAlgorithm.ECDSA:
+                hash_cls = mapping[hash_algo]
+                pub_key.verify(ske_msg.ec.signature, data, ec.ECDSA(hash_cls()))
+            elif sig_algo is tls.SignatureAlgorithm.ED25519:
+                pass
+            elif sig_algo is tls.SignatureAlgorithm.ED448:
+                pass
+        except InvalidSignature:
+            raise FatalAlert(
+                "Cannot verify signed key exchange parameters",
+                tls.AlertDescription.HANDSHAKE_FAILURE,
+            )
+
     def on_server_key_exchange_received(self, msg):
         if msg.ec is not None:
+            if msg.ec.signed_params is not None:
+                self.verify_ec_signature(msg)
+
             if msg.ec.named_curve is not None:
                 logging.info(f"named curve: {msg.ec.named_curve.name}")
                 self.key_exchange = kex.instantiate_named_group(

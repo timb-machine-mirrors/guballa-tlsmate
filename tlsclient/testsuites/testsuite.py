@@ -75,10 +75,10 @@ class ScanScratch(TestSuite):
         ]
         client.signature_algorithms = [
             tls.SignatureScheme.ECDSA_SECP521R1_SHA512,
+            tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
             tls.SignatureScheme.RSA_PKCS1_SHA1,
             tls.SignatureScheme.ECDSA_SHA1,
             tls.SignatureScheme.RSA_PKCS1_SHA256,
-            tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
             tls.SignatureScheme.RSA_PKCS1_SHA256_LEGACY,
             tls.SignatureScheme.RSA_PKCS1_SHA384,
             tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
