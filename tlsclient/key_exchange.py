@@ -5,7 +5,7 @@
 import abc
 from typing import NamedTuple
 import os
-from tlsclient import mappings
+from tlsclient import dh_numbers
 import tlsclient.constants as tls
 from tlsclient import pdu
 from tlsclient.exception import FatalAlert
@@ -109,13 +109,13 @@ class DhKeyExchange(KeyExchange):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self._group_name is not None:
-            dh_numbers = mappings.dh_numbers.get(self._group_name)
-            if dh_numbers is None:
+            dh_nbrs = dh_numbers.dh_numbers.get(self._group_name)
+            if dh_nbrs is None:
                 raise ValueError(
                     f"No numbers defined for DH-group {self._group_name.name}"
                 )
-            self._gval = dh_numbers.g_val
-            self._pval = int.from_bytes(dh_numbers.p_val, "big")
+            self._gval = dh_nbrs.g_val
+            self._pval = int.from_bytes(dh_nbrs.p_val, "big")
         else:
             self._pval = None
             self._gval = None
@@ -149,14 +149,14 @@ class DhKeyExchange(KeyExchange):
 
     def set_remote_key(self, rem_pub_key, g_val=None, p_val=None, group=None):
         if group is not None:
-            dh_numbers = mappings.dh_numbers.get(group)
-            if dh_numbers is None:
+            dh_nbrs = dh_numbers.dh_numbers.get(group)
+            if dh_nbrs is None:
                 FatalAlert(
                     f"FF-DH group {group.name} unknown",
                     tls.AlertDescription.HANDSHAKE_FAILURE,
                 )
-            p_val = dh_numbers.p_val
-            g_val = dh_numbers.g_val
+            p_val = dh_nbrs.p_val
+            g_val = dh_nbrs.g_val
         self._pval = int.from_bytes(p_val, "big")
         self._gval = g_val
         self._rem_pub_key = int.from_bytes(rem_pub_key, "big")

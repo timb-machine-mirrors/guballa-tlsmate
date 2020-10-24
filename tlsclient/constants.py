@@ -817,6 +817,7 @@ class KeyExchangeAlgorithm(ExtendedEnum):
     SRP_SHA = enum.auto()
     SRP_SHA_DSS = enum.auto()
     SRP_SHA_RSA = enum.auto()
+    TLS13_KEY_SHARE = enum.auto()
 
 
 class KeyExchangeType(ExtendedEnum):

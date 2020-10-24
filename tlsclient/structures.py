@@ -33,13 +33,14 @@ class Cipher(NamedTuple):
     """Set of properties describing a cipher.
     """
 
-    primitive: tls.CipherPrimitive
-    algo: cryptography.hazmat.primitives.ciphers.algorithms.AES  # just an example
-    c_type: tls.CipherType
-    key_len: int
-    block_size: int
-    iv_len: int
-    aead_expansion: int
+    primitive: tls.CipherPrimitive = None
+    algo: cryptography.hazmat.primitives.ciphers.algorithms.AES = None
+    c_type: tls.CipherType = None
+    key_len: int = None
+    block_size: int = None
+    iv_len: int = None
+    aead_expansion: int = None
+    cipher_supported: bool = False
 
 
 class Mac(NamedTuple):
@@ -113,6 +114,7 @@ class KeyExchange(NamedTuple):
 
     key_ex_type: tls.KeyExchangeType
     key_auth: tls.KeyAuthentication
+    key_ex_supported: bool
 
 
 class KeyShareEntry(NamedTuple):
@@ -121,11 +123,3 @@ class KeyShareEntry(NamedTuple):
 
     group: tls.SupportedGroups
     key_exchange: bytes
-
-
-class DHNumbers(NamedTuple):
-    """Set of properties describing a DH group.
-    """
-
-    g_val: int
-    p_val: bytes
