@@ -206,7 +206,8 @@ class Extension(ExtendedEnum):
 class CipherSuite(ExtendedEnum):
     """Enum representing the TLS cipher suites (excluding SSL20).
 
-    The values defined correspond to the values used in PDUs as defined by IANA.
+    The values defined correspond to the values used in PDUs as defined by IANA,
+    excluding cipher suites registered for drafts.
     """
 
     TLS_NULL_WITH_NULL_NULL = 0x0000
@@ -539,15 +540,6 @@ class CipherSuite(ExtendedEnum):
     TLS_ECCPWD_WITH_AES_256_GCM_SHA384 = 0xC0B1
     TLS_ECCPWD_WITH_AES_128_CCM_SHA256 = 0xC0B2
     TLS_ECCPWD_WITH_AES_256_CCM_SHA384 = 0xC0B3
-    TLS_SHA256_SHA256 = 0xC0B4
-    TLS_SHA384_SHA384 = 0xC0B5
-    TLS_GOSTR341112_256_WITH_KUZNYECHIK_CTR_OMAC = 0xC100
-    TLS_GOSTR341112_256_WITH_MAGMA_CTR_OMAC = 0xC101
-    TLS_GOSTR341112_256_WITH_28147_CNT_IMIT = 0xC102
-    TLS_GOSTR341112_256_WITH_KUZNYECHIK_MGM_L = 0xC103
-    TLS_GOSTR341112_256_WITH_MAGMA_MGM_L = 0xC104
-    TLS_GOSTR341112_256_WITH_KUZNYECHIK_MGM_S = 0xC105
-    TLS_GOSTR341112_256_WITH_MAGMA_MGM_S = 0xC106
     TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256 = 0xCCA8
     TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256 = 0xCCA9
     TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256 = 0xCCAA
@@ -718,7 +710,7 @@ class HashPrimitive(ExtendedEnum):
     for the hash primitive given in the cipher suite.
     """
 
-    NONE = 0
+    NULL = 0
     MD5 = 1
     SHA1 = 2
     SHA224 = 3
@@ -796,19 +788,35 @@ class KeyExchangeAlgorithm(ExtendedEnum):
     """Enum representing the key exchange mechanisms.
     """
 
-    # RFC5246, 7.4.3.
     DHE_DSS = enum.auto()
+    DHE_DSS_EXPORT = enum.auto()
+    DHE_PSK = enum.auto()
     DHE_RSA = enum.auto()
+    DHE_RSA_EXPORT = enum.auto()
     DH_ANON = enum.auto()
-    RSA = enum.auto()
+    DH_ANON_EXPORT = enum.auto()
     DH_DSS = enum.auto()
+    DH_DSS_EXPORT = enum.auto()
     DH_RSA = enum.auto()
-    # RFC4492
-    ECDH_ECDSA = enum.auto()
+    DH_RSA_EXPORT = enum.auto()
+    ECCPWD = enum.auto()
     ECDHE_ECDSA = enum.auto()
-    ECDH_RSA = enum.auto()
+    ECDHE_PSK = enum.auto()
     ECDHE_RSA = enum.auto()
-    EC_DIFFIE_HELLMAN = enum.auto()
+    ECDH_ANON = enum.auto()
+    ECDH_ECDSA = enum.auto()
+    ECDH_RSA = enum.auto()
+    KRB5 = enum.auto()
+    KRB5_EXPORT = enum.auto()
+    NULL = enum.auto()
+    PSK = enum.auto()
+    PSK_DHE = enum.auto()
+    RSA = enum.auto()
+    RSA_EXPORT = enum.auto()
+    RSA_PSK = enum.auto()
+    SRP_SHA = enum.auto()
+    SRP_SHA_DSS = enum.auto()
+    SRP_SHA_RSA = enum.auto()
 
 
 class KeyExchangeType(ExtendedEnum):
@@ -851,25 +859,35 @@ class SupportedCipher(ExtendedEnum):
     channel is established between both peers.
     """
 
-    NULL = enum.auto()
+    TRIPPLE_DES_EDE_CBC = enum.auto()
+    AES_128 = enum.auto()
     AES_128_CBC = enum.auto()
     AES_128_CCM = enum.auto()
     AES_128_CCM_8 = enum.auto()
     AES_128_GCM = enum.auto()
+    AES_256 = enum.auto()
     AES_256_CBC = enum.auto()
     AES_256_CCM = enum.auto()
     AES_256_CCM_8 = enum.auto()
     AES_256_GCM = enum.auto()
+    ARIA_128_CBC = enum.auto()
+    ARIA_128_GCM = enum.auto()
+    ARIA_256_CBC = enum.auto()
+    ARIA_256_GCM = enum.auto()
     CAMELLIA_128_CBC = enum.auto()
     CAMELLIA_128_GCM = enum.auto()
     CAMELLIA_256_CBC = enum.auto()
     CAMELLIA_256_GCM = enum.auto()
     CHACHA20_POLY1305 = enum.auto()
+    DES40_CBC = enum.auto()
+    DES_CBC = enum.auto()
+    DES_CBC_40 = enum.auto()
     IDEA_CBC = enum.auto()
+    NULL = enum.auto()
+    RC2_CBC_40 = enum.auto()
     RC4_128 = enum.auto()
     RC4_40 = enum.auto()
     SEED_CBC = enum.auto()
-    TRIPPLE_DES_EDE_CBC = enum.auto()
     TLS13_AES_128_GCM = enum.auto()
     TLS13_AES_256_GCM = enum.auto()
 
