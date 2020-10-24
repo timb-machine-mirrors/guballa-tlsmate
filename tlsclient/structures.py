@@ -62,13 +62,6 @@ class SymmetricKeys(NamedTuple):
     iv: bytes
 
 
-class KeyExchangeAlgo(NamedTuple):
-    """Set of properties describing a key exchange algorithm.
-    """
-
-    cls: type
-
-
 class StateUpdateParams(NamedTuple):
     """Set of properties used to update the record layer state.
     """

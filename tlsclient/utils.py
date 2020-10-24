@@ -12,6 +12,7 @@ class _CipherSuiteDetails(NamedTuple):
 
     cipher_suite: tls.CipherSuite
     full_hs: bool = False
+    key_exchange_supported: bool = False
     key_algo: tls.KeyExchangeAlgorithm = None
     key_exch: tls.KeyExchangeType = None
     key_auth: tls.KeyAuthentication = None
@@ -35,17 +36,21 @@ def _get_cipher_suite_details(cipher_suite):
     cs = mappings.supported_cipher_suites.get(cipher_suite)
     if cs is None:
         return _CipherSuiteDetails(cipher_suite=cipher_suite)
-    if cs.key_ex is None:
-        key_ex_type = None
-        key_auth = None
-    else:
-        key = mappings.key_exchange[cs.key_ex]
+    ciph = mappings.supported_ciphers[cs.cipher]
+    key = mappings.key_exchange.get(cs.key_ex)
+    if key is not None:
         key_ex_type = key.key_ex_type
         key_auth = key.key_auth
-    ciph = mappings.supported_ciphers[cs.cipher]
+        key_ex_supp = key.key_ex_supported
+    else:
+        key_ex_type = None
+        key_auth = None
+        key_ex_supp = None
+
     return _CipherSuiteDetails(
         cipher_suite=cipher_suite,
-        full_hs=True,
+        full_hs=(key_ex_supp and ciph.cipher_supported),
+        key_exchange_supported=key_ex_supp,
         key_algo=cs.key_ex,
         key_exch=key_ex_type,
         key_auth=key_auth,
@@ -67,6 +72,8 @@ def filter_cipher_suites(
     cipher_mode=None,
     mac=None,
     version=None,
+    full_hs=None,
+    key_exchange_supported=None,
     remove=False,
 ):
     """Filters a list of cipher suites.
@@ -74,11 +81,6 @@ def filter_cipher_suites(
     Various match conditions can be specified. A cipher suite is filtered, if all
     given conditions match (AND-logic). All filtered cipher suites are returned in
     a list.
-
-    :Note:
-        Only cipher suites will be filtered for which a complete handshake is
-        supported. This means, if no condition at all is given, only those
-        full-handshake-supporting cipher suites will be returned.
 
     Arguments:
         cs_list (list of :class:`tlsclient.constants.CipherSuite`): A list of cipher
@@ -107,10 +109,17 @@ def filter_cipher_suites(
         mac (list of :class:`tlsclient.constants.HashPrimitive`): Optional match
             condition. If the mac (e.g. "SHA384") of a cipher suite is in the give
             list, it is a match.
-        version: (:class:`tlsclient.constants.Version`): Optional match condition.
+        version (:class:`tlsclient.constants.Version`): Optional match condition.
             Cipher suites supported by the given TLS version are a match. This is
             rather rudimentarily implemented: AEAD ciphers only for TLS1.2, specific
             ciphers only for TLS1.3.
+        full_hs (bool): Optional match condition. If the implementation supports a
+            full handshake with a cipher suite, i.e. an encrypted connection can
+            successfully established, it is a match. It means the key exchange,
+            the symmetric cipher and the hash primitive are all supported.
+        key_exchange_supported (bool): Optional match condition. If the key exchange
+            for a cipher suite is supported, it is a match. Note, that this does not
+            mean that the symmetric cipher is supported as well.
         remove (bool): An indication if the filtered cipher suites shall be removed
             from the original list of cipher suites. Defaults to False.
 
@@ -119,7 +128,7 @@ def filter_cipher_suites(
         The list of cipher suites that match all the given conditions.
     """
 
-    filter_funcs = [lambda cs: cs.full_hs]
+    filter_funcs = []
     if key_algo is not None:
         filter_funcs.append(lambda cs: cs.key_algo in key_algo)
     if key_exch is not None:
@@ -138,13 +147,23 @@ def filter_cipher_suites(
         filter_funcs.append(lambda cs: cs.mac in mac)
     if version in [tls.Version.SSL30, tls.Version.TLS10, tls.Version.TLS11]:
         filter_funcs.append(
-            lambda cs: cs.key_exch is not None
+            lambda cs: cs.key_algo is not tls.KeyExchangeAlgorithm.TLS13_KEY_SHARE
             and cs.cipher_type is not tls.CipherType.AEAD
         )
     if version is tls.Version.TLS12:
-        filter_funcs.append(lambda cs: cs.key_exch is not None)
+        filter_funcs.append(
+            lambda cs: cs.key_algo is not tls.KeyExchangeAlgorithm.TLS13_KEY_SHARE
+        )
     if version is tls.Version.TLS13:
-        filter_funcs.append(lambda cs: cs.full_hs and cs.key_exch is None)
+        filter_funcs.append(
+            lambda cs: cs.key_algo is tls.KeyExchangeAlgorithm.TLS13_KEY_SHARE
+        )
+    if full_hs is not None:
+        filter_funcs.append(lambda cs: cs.full_hs is full_hs)
+    if key_exchange_supported is not None:
+        filter_funcs.append(
+            lambda cs: cs.key_exchange_supported is key_exchange_supported
+        )
 
     filtered = []
     for cs in cs_list:
