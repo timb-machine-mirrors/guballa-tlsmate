@@ -13,7 +13,7 @@ class _Backend(metaclass=abc.ABCMeta):
     """Base class for backend implementations
 
     Arguments:
-        algo (:obj:`cryptography.hazmat.primitives.hashes.HashAlgorithm`): The hash
+        algo (:obj:`cryptography.hazmat.primitives.hashes.HashPrimitive`): The hash
             algorithm to be used in the backend.
     """
 
@@ -28,7 +28,7 @@ class _Backend(metaclass=abc.ABCMeta):
         Arguments:
             secret (bytes): The secret used for the HMAC.
             msg (bytes): The array of bytes for which the HMAC shall be generated.
-            hash_algo (:obj:`cryptography.hazmat.primitives.hashes.HashAlgorithm`): The
+            hash_algo (:obj:`cryptography.hazmat.primitives.hashes.HashPrimitive`): The
                 hash algorithm used in the HMAC function.
 
         Returns:
@@ -50,7 +50,7 @@ class _Backend(metaclass=abc.ABCMeta):
             secret (bytes): The key used for the expand function.
             seed (bytes): The seed for the function.
             size (int): The desired number of bytes for the output
-            hash_algo (:obj:`cryptography.hazmat.primitives.hashes.HashAlgorithm`): The
+            hash_algo (:obj:`cryptography.hazmat.primitives.hashes.HashPrimitive`): The
                 hash algorithm used in the underlying HMAC function.
 
         Returns:
@@ -244,7 +244,7 @@ class Kdf(object):
             means at least the ClientHello must be queued.
 
         Arguments:
-            hash_algo (:obj:`cryptography.hazmat.primitives.hashes.HashAlgorithm`): The
+            hash_algo (:obj:`cryptography.hazmat.primitives.hashes.HashPrimitive`): The
                 negotiated hash algorithm implementation, determined with the
                 reception of the ServerHello.
         """

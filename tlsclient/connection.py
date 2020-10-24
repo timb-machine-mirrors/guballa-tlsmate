@@ -395,11 +395,11 @@ class TlsConnection(object):
 
     def verify_ec_signature(self, ske_msg):
         mapping = {
-            tls.HashAlgorithm.SHA1: hashes.SHA1,
-            tls.HashAlgorithm.SHA224: hashes.SHA224,
-            tls.HashAlgorithm.SHA256: hashes.SHA256,
-            tls.HashAlgorithm.SHA384: hashes.SHA384,
-            tls.HashAlgorithm.SHA512: hashes.SHA512,
+            tls.HashPrimitive.SHA1: hashes.SHA1,
+            tls.HashPrimitive.SHA224: hashes.SHA224,
+            tls.HashPrimitive.SHA256: hashes.SHA256,
+            tls.HashPrimitive.SHA384: hashes.SHA384,
+            tls.HashPrimitive.SHA512: hashes.SHA512,
         }
         bin_cert = self.msg.server_certificate.certificates[0]
         cert = x509.load_der_x509_certificate(bin_cert)
@@ -414,7 +414,7 @@ class TlsConnection(object):
         else:
             sig_scheme = tls.SignatureScheme.ECDSA_SHA1
         sig_algo = tls.SignatureAlgorithm.val2enum(sig_scheme.value >> 8)
-        hash_algo = tls.HashAlgorithm.val2enum(sig_scheme.value & 0xFF)
+        hash_algo = tls.HashPrimitive.val2enum(sig_scheme.value & 0xFF)
         try:
             if sig_algo is tls.SignatureAlgorithm.ECDSA:
                 hash_cls = mapping[hash_algo]

@@ -710,10 +710,12 @@ class SignatureAlgorithm(ExtendedEnum):
     ED448 = 8
 
 
-class HashAlgorithm(ExtendedEnum):
+class HashPrimitive(ExtendedEnum):
     """Enum representing the hash primitives.
 
-    The values defined correspond to the values used in PDUs as defined by IANA.
+    The values defined correspond to the values used in PDUs as defined by IANA,
+    e.g. for the signature algorithms. But we use this enum generally, i.e., as well
+    for the hash primitive given in the cipher suite.
     """
 
     NONE = 0
@@ -881,17 +883,6 @@ class SupportedCipherMode(ExtendedEnum):
     CCM = enum.auto()
     CCM_8 = enum.auto()
     GCM = enum.auto()
-
-
-class SupportedHash(ExtendedEnum):
-    """Enum representing the hash primitives supported by tlsclient.
-    """
-
-    NULL = enum.auto()
-    MD5 = enum.auto()
-    SHA = enum.auto()
-    SHA256 = enum.auto()
-    SHA384 = enum.auto()
 
 
 class CipherType(ExtendedEnum):

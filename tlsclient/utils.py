@@ -19,7 +19,7 @@ class _CipherSuiteDetails(NamedTuple):
     cipher_prim: tls.CipherPrimitive = None
     cipher: tls.SupportedCipher = None
     cipher_mode: tls.SupportedCipherMode = None
-    mac: tls.SupportedHash = None
+    mac: tls.HashPrimitive = None
 
 
 def _get_cipher_suite_details(cipher_suite):
@@ -104,7 +104,7 @@ def filter_cipher_suites(
         cipher_mode (list of :class:`tlsclient.constants.SupportedCipherMode`): Optional
             match condition. If the cipher_mode (e.g. "GCM") of a cipher suite is in
             the given list, it is a match.
-        mac (list of :class:`tlsclient.constants.SupportedHash`): Optional match
+        mac (list of :class:`tlsclient.constants.HashPrimitive`): Optional match
             condition. If the mac (e.g. "SHA384") of a cipher suite is in the give
             list, it is a match.
         version: (:class:`tlsclient.constants.Version`): Optional match condition.

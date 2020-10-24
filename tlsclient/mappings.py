@@ -15,352 +15,352 @@ supported_cipher_suites = {
     tls.CipherSuite.TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.TRIPPLE_DES_EDE_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.AES_128_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_CCM: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.AES_128_CCM,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_CCM_8: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.AES_128_CCM_8,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.AES_128_CBC,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_GCM_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.AES_128_GCM,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.AES_256_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.AES_256_CBC,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_CCM: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.AES_256_CCM,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_CCM_8: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.AES_256_CCM_8,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_GCM_SHA384: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.AES_256_GCM,
-        mac=tls.SupportedHash.SHA384,
+        mac=tls.HashPrimitive.SHA384,
     ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_CAMELLIA_128_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.CAMELLIA_128_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_CAMELLIA_128_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.CAMELLIA_128_CBC,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.CAMELLIA_256_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.CAMELLIA_256_CBC,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DHE_RSA,
         cipher=tls.SupportedCipher.CHACHA20_POLY1305,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_DH_ANON_WITH_3DES_EDE_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DH_ANON,
         cipher=tls.SupportedCipher.TRIPPLE_DES_EDE_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DH_ANON,
         cipher=tls.SupportedCipher.AES_128_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DH_ANON,
         cipher=tls.SupportedCipher.AES_128_CBC,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_DH_ANON_WITH_AES_128_GCM_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DH_ANON,
         cipher=tls.SupportedCipher.AES_128_GCM,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_DH_ANON_WITH_AES_256_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DH_ANON,
         cipher=tls.SupportedCipher.AES_256_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_DH_ANON_WITH_AES_256_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DH_ANON,
         cipher=tls.SupportedCipher.AES_256_CBC,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_DH_ANON_WITH_AES_256_GCM_SHA384: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DH_ANON,
         cipher=tls.SupportedCipher.AES_256_GCM,
-        mac=tls.SupportedHash.SHA384,
+        mac=tls.HashPrimitive.SHA384,
     ),
     tls.CipherSuite.TLS_DH_ANON_WITH_CAMELLIA_128_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DH_ANON,
         cipher=tls.SupportedCipher.CAMELLIA_128_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_DH_ANON_WITH_CAMELLIA_128_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DH_ANON,
         cipher=tls.SupportedCipher.CAMELLIA_128_CBC,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_DH_ANON_WITH_CAMELLIA_256_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DH_ANON,
         cipher=tls.SupportedCipher.CAMELLIA_256_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_DH_ANON_WITH_CAMELLIA_256_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.DH_ANON,
         cipher=tls.SupportedCipher.CAMELLIA_256_CBC,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
         cipher=tls.SupportedCipher.TRIPPLE_DES_EDE_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
         cipher=tls.SupportedCipher.AES_128_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
         cipher=tls.SupportedCipher.AES_128_CBC,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CCM: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
         cipher=tls.SupportedCipher.AES_128_CCM,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
         cipher=tls.SupportedCipher.AES_128_CCM_8,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
         cipher=tls.SupportedCipher.AES_128_GCM,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
         cipher=tls.SupportedCipher.AES_256_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
         cipher=tls.SupportedCipher.AES_256_CBC,
-        mac=tls.SupportedHash.SHA384,
+        mac=tls.HashPrimitive.SHA384,
     ),
     tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CCM: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
         cipher=tls.SupportedCipher.AES_256_CCM,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CCM_8: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
         cipher=tls.SupportedCipher.AES_256_CCM_8,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
         cipher=tls.SupportedCipher.AES_256_GCM,
-        mac=tls.SupportedHash.SHA384,
+        mac=tls.HashPrimitive.SHA384,
     ),
     tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_CAMELLIA_128_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
         cipher=tls.SupportedCipher.CAMELLIA_128_CBC,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_CAMELLIA_256_CBC_SHA384: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
         cipher=tls.SupportedCipher.CAMELLIA_256_CBC,
-        mac=tls.SupportedHash.SHA384,
+        mac=tls.HashPrimitive.SHA384,
     ),
     tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
         cipher=tls.SupportedCipher.CHACHA20_POLY1305,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_RC4_128_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
         cipher=tls.SupportedCipher.RC4_128,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_RSA,
         cipher=tls.SupportedCipher.TRIPPLE_DES_EDE_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_RSA,
         cipher=tls.SupportedCipher.AES_128_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_RSA,
         cipher=tls.SupportedCipher.AES_128_CBC,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_RSA,
         cipher=tls.SupportedCipher.AES_128_GCM,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_RSA,
         cipher=tls.SupportedCipher.AES_256_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_RSA,
         cipher=tls.SupportedCipher.AES_256_CBC,
-        mac=tls.SupportedHash.SHA384,
+        mac=tls.HashPrimitive.SHA384,
     ),
     tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_RSA,
         cipher=tls.SupportedCipher.AES_256_GCM,
-        mac=tls.SupportedHash.SHA384,
+        mac=tls.HashPrimitive.SHA384,
     ),
     tls.CipherSuite.TLS_ECDHE_RSA_WITH_CAMELLIA_128_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_RSA,
         cipher=tls.SupportedCipher.CAMELLIA_128_CBC,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_ECDHE_RSA_WITH_CAMELLIA_256_CBC_SHA384: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_RSA,
         cipher=tls.SupportedCipher.CAMELLIA_256_CBC,
-        mac=tls.SupportedHash.SHA384,
+        mac=tls.HashPrimitive.SHA384,
     ),
     tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_RSA,
         cipher=tls.SupportedCipher.CHACHA20_POLY1305,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_ECDHE_RSA_WITH_RC4_128_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.ECDHE_RSA,
         cipher=tls.SupportedCipher.RC4_128,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.TRIPPLE_DES_EDE_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.AES_128_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.AES_128_CBC,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_RSA_WITH_AES_128_CCM: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.AES_128_CCM,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_RSA_WITH_AES_128_CCM_8: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.AES_128_CCM_8,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.AES_128_GCM,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.AES_256_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.AES_256_CBC,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_RSA_WITH_AES_256_CCM: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.AES_256_CCM,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_RSA_WITH_AES_256_CCM_8: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.AES_256_CCM_8,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.AES_256_GCM,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_128_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.CAMELLIA_128_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_128_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.CAMELLIA_128_CBC,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_256_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.CAMELLIA_256_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_RSA_WITH_CAMELLIA_256_CBC_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.CAMELLIA_256_CBC,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_RSA_WITH_IDEA_CBC_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.IDEA_CBC,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     tls.CipherSuite.TLS_RSA_WITH_RC4_128_SHA: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.RSA,
         cipher=tls.SupportedCipher.RC4_128,
-        mac=tls.SupportedHash.SHA,
+        mac=tls.HashPrimitive.SHA1,
     ),
     # ********************
     # TLS1.3 cipher suites
@@ -368,27 +368,27 @@ supported_cipher_suites = {
     tls.CipherSuite.TLS_AES_128_GCM_SHA256: structs.CipherSuite(
         key_ex=None,
         cipher=tls.SupportedCipher.TLS13_AES_128_GCM,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_AES_256_GCM_SHA384: structs.CipherSuite(
         key_ex=None,
         cipher=tls.SupportedCipher.TLS13_AES_256_GCM,
-        mac=tls.SupportedHash.SHA384,
+        mac=tls.HashPrimitive.SHA384,
     ),
     tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256: structs.CipherSuite(
         key_ex=None,
         cipher=tls.SupportedCipher.CHACHA20_POLY1305,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_AES_128_CCM_SHA256: structs.CipherSuite(
         key_ex=None,
         cipher=tls.SupportedCipher.AES_128_CCM,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_AES_128_CCM_8_SHA256: structs.CipherSuite(
         key_ex=None,
         cipher=tls.SupportedCipher.AES_128_CCM_8,
-        mac=tls.SupportedHash.SHA256,
+        mac=tls.HashPrimitive.SHA256,
     ),
 }
 
@@ -545,16 +545,16 @@ supported_ciphers = {
 # map hash algorithms to mac parameters
 
 supported_macs = {
-    tls.SupportedHash.SHA256: structs.Mac(
+    tls.HashPrimitive.SHA256: structs.Mac(
         hash_algo=hashes.SHA256, mac_len=32, key_len=32, hmac_algo=hashes.SHA256
     ),
-    tls.SupportedHash.SHA: structs.Mac(
+    tls.HashPrimitive.SHA1: structs.Mac(
         hash_algo=hashes.SHA1, mac_len=20, key_len=20, hmac_algo=hashes.SHA256
     ),
-    tls.SupportedHash.SHA384: structs.Mac(
+    tls.HashPrimitive.SHA384: structs.Mac(
         hash_algo=hashes.SHA384, mac_len=48, key_len=48, hmac_algo=hashes.SHA384
     ),
-    tls.SupportedHash.MD5: structs.Mac(
+    tls.HashPrimitive.MD5: structs.Mac(
         hash_algo=hashes.MD5, mac_len=16, key_len=16, hmac_algo=hashes.SHA256
     ),
 }

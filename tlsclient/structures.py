@@ -87,7 +87,7 @@ class CipherSuite(NamedTuple):
 
     key_ex: tls.KeyExchangeAlgorithm
     cipher: tls.SupportedCipher
-    mac: tls.SupportedHash
+    mac: tls.HashPrimitive
 
 
 class RecordLayerMsg(NamedTuple):
