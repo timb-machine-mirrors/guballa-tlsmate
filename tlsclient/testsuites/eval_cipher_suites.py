@@ -7,7 +7,7 @@ import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.testmanager import TestSuite
 import tlsclient.structures as structs
-
+import tlsclient.utils as utils
 
 class ScanCipherSuites(TestSuite):
     name = "basic"
@@ -48,7 +48,8 @@ class ScanCipherSuites(TestSuite):
             self.client.cipher_suites.remove(server_cs)
         return server_pref
 
-    def tls_enum_version(self, version, cipher_suites):
+    def tls_enum_version(self, version):
+        cipher_suites = utils.filter_cipher_suites(tls.CipherSuite.all(), version=version)
         logging.info(f"starting to enumerate {version.name}")
         self.client.versions = [version]
         cs_tuples = {}
@@ -119,11 +120,11 @@ class ScanCipherSuites(TestSuite):
                     )
                     self.server_profile.add_cipher_suite(tls.Version.SSL20, cs_tuple)
 
-    def enum_version(self, version, cipher_suites):
+    def enum_version(self, version):
         if version is tls.Version.SSL20:
             self.ssl2_enum_version()
         else:
-            self.tls_enum_version(version, cipher_suites)
+            self.tls_enum_version(version)
 
     def run(self):
         self.client.versions = [tls.Version.TLS12]
@@ -166,9 +167,6 @@ class ScanCipherSuites(TestSuite):
             tls.SignatureScheme.ECDSA_SHA1,
             tls.SignatureScheme.RSA_PKCS1_SHA1,
         ]
-        cipher_suites = tls.CipherSuite.all()
-        cipher_suites.remove(tls.CipherSuite.TLS_FALLBACK_SCSV)
-        cipher_suites.remove(tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV)
 
         for version in tls.Version.all():
-            self.enum_version(version, cipher_suites[:])
+            self.enum_version(version)
