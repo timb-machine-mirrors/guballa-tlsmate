@@ -87,7 +87,7 @@ class CipherSuite(NamedTuple):
     """
 
     key_ex: tls.KeyExchangeAlgorithm
-    cipher: tls.SupportedCipher
+    cipher: tls.SymmetricCipher
     mac: tls.HashPrimitive
 
 

@@ -853,7 +853,7 @@ class CipherPrimitive(ExtendedEnum):
     CHACHA = enum.auto()
 
 
-class SupportedCipher(ExtendedEnum):
+class SymmetricCipher(ExtendedEnum):
     """Enum representing the ciphers supported by tlsclient.
 
     "Supported" means, a handshake can be completed sucessfully, and a secured
@@ -893,7 +893,7 @@ class SupportedCipher(ExtendedEnum):
     TLS13_AES_256_GCM = enum.auto()
 
 
-class SupportedCipherMode(ExtendedEnum):
+class SymmetricCipherMode(ExtendedEnum):
     """Enum representing the mode of the symmetric cipher primitive.
     """
 

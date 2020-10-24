@@ -17,8 +17,8 @@ class _CipherSuiteDetails(NamedTuple):
     key_auth: tls.KeyAuthentication = None
     cipher_type: tls.CipherType = None
     cipher_prim: tls.CipherPrimitive = None
-    cipher: tls.SupportedCipher = None
-    cipher_mode: tls.SupportedCipherMode = None
+    cipher: tls.SymmetricCipher = None
+    cipher_mode: tls.SymmetricCipherMode = None
     mac: tls.HashPrimitive = None
 
 
@@ -98,10 +98,10 @@ def filter_cipher_suites(
         cipher_prim (list of :class:`tlsclient.constants.CipherPrimitive`): Optional
             match condition. If the cipher_prim (e.g. "AES") of a cipher suite is in
             the given list, it is a match.
-        cipher (list of :class:`tlsclient.constants.SupportedCipher`): Optional
+        cipher (list of :class:`tlsclient.constants.SymmetricCipher`): Optional
             match condition. If the cipher (e.g. "AES_256_CCM_8") of a cipher suite
             is in the given list, it is a match.
-        cipher_mode (list of :class:`tlsclient.constants.SupportedCipherMode`): Optional
+        cipher_mode (list of :class:`tlsclient.constants.SymmetricCipherMode`): Optional
             match condition. If the cipher_mode (e.g. "GCM") of a cipher suite is in
             the given list, it is a match.
         mac (list of :class:`tlsclient.constants.HashPrimitive`): Optional match
