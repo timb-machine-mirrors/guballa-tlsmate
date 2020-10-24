@@ -2038,6 +2038,18 @@ key_exchange = {
         key_ex_type=tls.KeyExchangeType.DH,
         key_auth=tls.KeyAuthentication.RSA,
     ),
+    tls.KeyExchangeAlgorithm.ECCPWD: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.NONE,
+        key_auth=tls.KeyAuthentication.NONE,
+    ),
+    tls.KeyExchangeAlgorithm.ECDHE_PSK: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.ECDH,
+        key_auth=tls.KeyAuthentication.NONE,
+    ),
+    tls.KeyExchangeAlgorithm.ECDH_ANON: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.ECDH,
+        key_auth=tls.KeyAuthentication.NONE,
+    ),
     tls.KeyExchangeAlgorithm.KRB5: structs.KeyExchange(
         key_ex_type=tls.KeyExchangeType.NONE,
         key_auth=tls.KeyAuthentication.NONE,

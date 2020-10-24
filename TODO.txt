@@ -12,3 +12,4 @@
       actually been offered?
     - use __str__ for messages and extension displaying their names
     - use :class:`XXX` iso :obj: in the *.rst files where appropriate
+    - cover all key exchange algorithms in mappings.key_exchange
