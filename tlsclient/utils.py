@@ -1,29 +1,12 @@
 # -*- coding: utf-8 -*-
 """Module defining some utilities
 """
-from typing import NamedTuple
 import tlsclient.constants as tls
 from tlsclient import mappings
+import tlsclient.structures as structs
 
 
-class _CipherSuiteDetails(NamedTuple):
-    """Structure which provides details for a cipher suite.
-    """
-
-    cipher_suite: tls.CipherSuite
-    full_hs: bool = False
-    key_exchange_supported: bool = False
-    key_algo: tls.KeyExchangeAlgorithm = None
-    key_exch: tls.KeyExchangeType = None
-    key_auth: tls.KeyAuthentication = None
-    cipher_type: tls.CipherType = None
-    cipher_prim: tls.CipherPrimitive = None
-    cipher: tls.SymmetricCipher = None
-    cipher_mode: tls.SymmetricCipherMode = None
-    mac: tls.HashPrimitive = None
-
-
-def _get_cipher_suite_details(cipher_suite):
+def get_cipher_suite_details(cipher_suite):
     """Get details for a given cipher suite
 
     Arguments:
@@ -35,29 +18,25 @@ def _get_cipher_suite_details(cipher_suite):
     """
     cs = mappings.supported_cipher_suites.get(cipher_suite)
     if cs is None:
-        return _CipherSuiteDetails(cipher_suite=cipher_suite)
+        return structs.CipherSuiteDetails(cipher_suite=cipher_suite)
     ciph = mappings.supported_ciphers[cs.cipher]
     key = mappings.key_exchange.get(cs.key_ex)
     if key is not None:
-        key_ex_type = key.key_ex_type
-        key_auth = key.key_auth
         key_ex_supp = key.key_ex_supported
     else:
-        key_ex_type = None
-        key_auth = None
-        key_ex_supp = None
+        key_ex_supp = False
+    mac_struct = mappings.supported_macs.get(cs.mac)
 
-    return _CipherSuiteDetails(
+    return structs.CipherSuiteDetails(
         cipher_suite=cipher_suite,
         full_hs=(key_ex_supp and ciph.cipher_supported),
         key_exchange_supported=key_ex_supp,
         key_algo=cs.key_ex,
-        key_exch=key_ex_type,
-        key_auth=key_auth,
-        cipher_type=ciph.c_type,
-        cipher_prim=ciph.primitive,
+        key_algo_struct=key,
         cipher=cs.cipher,
+        cipher_struct=ciph,
         mac=cs.mac,
+        mac_struct=mac_struct,
     )
 
 
@@ -85,15 +64,15 @@ def filter_cipher_suites(
     Arguments:
         cs_list (list of :class:`tlsclient.constants.CipherSuite`): A list of cipher
             suites to be filtered.
+        key_algo (list of :class:`tlsclient.constants.KeyExchangeAlgorithm`): Optional
+            match condition. If the key_algo (a combination of key_exch and key_auth,
+            e.g. "DHE_RSA") of a cipher suite is in the given list, it is a match.
         key_exch (list of :class:`tlsclient.constants.KeyExchangeType`): Optional
             match condition. If the key_exch (e.g. "ECDH") of a cipher suite is in
             the given list, it is a match.
         key_auth (list of :class:`tlsclient.constants.KeyAuthentication`): Optional
             match condition. If the key_auth (e.g. "ECDSA") of a cipher suite is in
             the given list, it is a match.
-        key_algo (list of :class:`tlsclient.constants.KeyExchangeAlgorithm`): Optional
-            match condition. If the key_algo (a combination of key_exch and key_auth,
-            e.g. "DHE_RSA") of a cipher suite is in the given list, it is a match.
         cipher_type (list of :class:`tlsclient.constants.CipherType`): Optional
             match condition. If the cipher_type (e.g. "STREAM") of a cipher suite
             is in the list, it is a match.
@@ -103,9 +82,6 @@ def filter_cipher_suites(
         cipher (list of :class:`tlsclient.constants.SymmetricCipher`): Optional
             match condition. If the cipher (e.g. "AES_256_CCM_8") of a cipher suite
             is in the given list, it is a match.
-        cipher_mode (list of :class:`tlsclient.constants.SymmetricCipherMode`): Optional
-            match condition. If the cipher_mode (e.g. "GCM") of a cipher suite is in
-            the given list, it is a match.
         mac (list of :class:`tlsclient.constants.HashPrimitive`): Optional match
             condition. If the mac (e.g. "SHA384") of a cipher suite is in the give
             list, it is a match.
@@ -132,23 +108,24 @@ def filter_cipher_suites(
     if key_algo is not None:
         filter_funcs.append(lambda cs: cs.key_algo in key_algo)
     if key_exch is not None:
-        filter_funcs.append(lambda cs: cs.key_exch in key_exch)
+        filter_funcs.append(lambda cs: getattr(cs.key_algo_struct, "key_ex_type", None) in key_exch)
     if key_auth is not None:
-        filter_funcs.append(lambda cs: cs.key_auth in key_auth)
+        filter_funcs.append(lambda cs: getattr(cs.key_algo_struct, "key_auth", None) in key_auth)
     if cipher_type is not None:
-        filter_funcs.append(lambda cs: cs.cipher_type in cipher_type)
+        filter_funcs.append(lambda cs: getattr(cs.cipher_struct, "c_type", None) in cipher_type)
     if cipher_prim is not None:
-        filter_funcs.append(lambda cs: cs.cipher_prim in cipher_prim)
+        filter_funcs.append(lambda cs: getattr(cs.cipher_struct, "primitive", None) in cipher_prim)
     if cipher is not None:
         filter_funcs.append(lambda cs: cs.cipher in cipher)
-    if cipher_mode is not None:
-        filter_funcs.append(lambda cs: cs.cipher_mode in cipher_mode)
     if mac is not None:
         filter_funcs.append(lambda cs: cs.mac in mac)
     if version in [tls.Version.SSL30, tls.Version.TLS10, tls.Version.TLS11]:
         filter_funcs.append(
             lambda cs: cs.key_algo is not tls.KeyExchangeAlgorithm.TLS13_KEY_SHARE
-            and cs.cipher_type is not tls.CipherType.AEAD
+            and (
+                cs.cipher_struct is None
+                or cs.cipher_struct.c_type is not tls.CipherType.AEAD
+            )
         )
     if version is tls.Version.TLS12:
         filter_funcs.append(
@@ -167,7 +144,7 @@ def filter_cipher_suites(
 
     filtered = []
     for cs in cs_list:
-        cs_details = _get_cipher_suite_details(cs)
+        cs_details = get_cipher_suite_details(cs)
         match = True
         for filt_func in filter_funcs:
             if not filt_func(cs_details):

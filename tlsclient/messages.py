@@ -472,7 +472,7 @@ class KeyExchangeDH(object):
         self.public_key, offset = pdu.unpack_bytes(fragment, offset, pub_key_len)
         if signature_present:
             self.signed_params = fragment[signed_params_start:offset]
-            if conn.version is not tls.Version.SSL30:
+            if conn.version is tls.Version.TLS12:
                 sig_scheme, offset = pdu.unpack_uint16(fragment, offset)
                 self.sig_scheme = tls.SignatureScheme.val2enum(sig_scheme)
             sig_length, offset = pdu.unpack_uint16(fragment, offset)
@@ -508,21 +508,25 @@ class ServerKeyExchange(HandshakeMessage):
     def _deserialize_msg_body(self, fragment, offset, conn):
         self.ec = None
         self.dh = None
-        if conn.key_ex_type is tls.KeyExchangeType.ECDH:
+        if conn.cs_details.key_algo_struct.key_ex_type is tls.KeyExchangeType.ECDH:
             # RFC 4492
             self.ec = KeyExchangeEC()._deserialize_msg_body(fragment, offset, conn)
-        elif conn.key_ex_type is tls.KeyExchangeType.DH:
+        elif conn.cs_details.key_algo_struct.key_ex_type is tls.KeyExchangeType.DH:
             # RFC5246
             self.dh = KeyExchangeDH()._deserialize_msg_body(
                 fragment,
                 offset,
                 conn,
-                signature_present=(conn.key_auth is not tls.KeyAuthentication.NONE),
+                signature_present=(
+                    conn.cs_details.key_algo_struct.key_auth
+                    is not tls.KeyAuthentication.NONE
+                ),
             )
         else:
             raise FatalAlert(
                 (
-                    f"Key exchange algorithm {conn.key_ex_type} is incompatible "
+                    f"Key exchange algorithm "
+                    f"{conn.cs_details.key_algo_struct.key_ex_type} is incompatible "
                     f"with ServerKeyExchange message"
                 ),
                 tls.AlertDescription.UNEXPECTED_MESSAGE,

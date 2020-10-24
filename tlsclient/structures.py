@@ -105,9 +105,10 @@ class KeyExchange(NamedTuple):
     """Set of properties describing a key exchange method.
     """
 
-    key_ex_type: tls.KeyExchangeType
-    key_auth: tls.KeyAuthentication
-    key_ex_supported: bool
+    key_ex_type: tls.KeyExchangeType = None
+    key_auth: tls.KeyAuthentication = None
+    key_ex_supported: bool = False
+    default_sig_scheme: tls.SignatureScheme = None
 
 
 class KeyShareEntry(NamedTuple):
@@ -116,3 +117,18 @@ class KeyShareEntry(NamedTuple):
 
     group: tls.SupportedGroups
     key_exchange: bytes
+
+
+class CipherSuiteDetails(NamedTuple):
+    """Structure which provides details for a cipher suite.
+    """
+
+    cipher_suite: tls.CipherSuite
+    full_hs: bool = False
+    key_exchange_supported: bool = False
+    key_algo: tls.KeyExchangeAlgorithm = None
+    key_algo_struct: KeyExchange = None
+    cipher: tls.SymmetricCipher = None
+    cipher_struct: Cipher = None
+    mac: tls.HashPrimitive = None
+    mac_struct: Mac = None

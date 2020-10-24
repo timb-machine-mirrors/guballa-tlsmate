@@ -20,11 +20,11 @@ from tlsclient.messages import (
     SSL2Message,
 )
 from tlsclient import mappings
+from tlsclient import utils
 import tlsclient.structures as structs
 import tlsclient.key_exchange as kex
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography import x509
-from cryptography.hazmat.primitives import hashes
 from cryptography.exceptions import InvalidSignature
 
 
@@ -138,8 +138,6 @@ class TlsConnection(object):
         self.cipher = None
         self.mac = None
 
-        self.cipher_suite_supported = False
-
     def __enter__(self):
         logging.debug("New TLS connection created")
         return self
@@ -173,40 +171,38 @@ class TlsConnection(object):
         return msg
 
     def generate_client_key_exchange(self, cls):
-        if self.key_exchange is None and self.key_ex_type is tls.KeyExchangeType.RSA:
+        key_ex_type = self.cs_details.key_algo_struct.key_ex_type
+        if self.key_exchange is None and key_ex_type is tls.KeyExchangeType.RSA:
             self.key_exchange = kex.RsaKeyExchange(self, self.recorder)
         self.premaster_secret = self.key_exchange.get_shared_secret()
         self.recorder.trace(pre_master_secret=self.premaster_secret)
         logging.info(f"premaster_secret: {pdu.dump(self.premaster_secret)}")
         msg = cls()
         transferable_key = self.key_exchange.get_transferable_key()
-        if self.key_ex_type is tls.KeyExchangeType.RSA:
+        if key_ex_type is tls.KeyExchangeType.RSA:
             msg.rsa_encrypted_pms = transferable_key
-        elif self.key_ex_type is tls.KeyExchangeType.ECDH:
+        elif key_ex_type is tls.KeyExchangeType.ECDH:
             msg.ecdh_public = transferable_key
-        elif self.key_ex_type is tls.KeyExchangeType.DH:
+        elif key_ex_type is tls.KeyExchangeType.DH:
             msg.dh_public = transferable_key
         self._post_sending_hook = self.update_keys
         return msg
 
     def post_generate_finished(self):
+        ciph = self.cs_details.cipher_struct
         c_app_tr_secret = self.kdf.hkdf_expand_label(
             self.master_secret,
             "c ap traffic",
             self.server_finished_digest,
-            self.mac.key_len,
+            self.cs_details.mac_struct.key_len,
         )
         logging.debug(f"c_app_tr_secret: {pdu.dump(c_app_tr_secret)}")
-        c_enc = self.kdf.hkdf_expand_label(
-            c_app_tr_secret, "key", b"", self.cipher.key_len
-        )
-        c_iv = self.kdf.hkdf_expand_label(
-            c_app_tr_secret, "iv", b"", self.cipher.iv_len
-        )
+        c_enc = self.kdf.hkdf_expand_label(c_app_tr_secret, "key", b"", ciph.key_len)
+        c_iv = self.kdf.hkdf_expand_label(c_app_tr_secret, "iv", b"", ciph.iv_len)
 
         self.record_layer.update_state(
             structs.StateUpdateParams(
-                cipher=self.cipher,
+                cipher=ciph,
                 mac=None,
                 keys=structs.SymmetricKeys(enc=c_enc, mac=None, iv=c_iv),
                 compr=None,
@@ -222,7 +218,7 @@ class TlsConnection(object):
         if self.version is tls.Version.TLS13:
             # TODO: server side implementation
             finished_key = self.kdf.hkdf_expand_label(
-                self.c_hs_tr_secret, "finished", b"", self.mac.key_len
+                self.c_hs_tr_secret, "finished", b"", self.cs_details.mac_struct.key_len
             )
             logging.debug(f"finished_key: {pdu.dump(finished_key)}")
             val = self.kdf.hkdf_extract(hash_val, finished_key)
@@ -393,36 +389,34 @@ class TlsConnection(object):
         else:
             self.on_server_hello_tls12(msg)
 
-    def verify_ec_signature(self, ske_msg):
-        mapping = {
-            tls.HashPrimitive.SHA1: hashes.SHA1,
-            tls.HashPrimitive.SHA224: hashes.SHA224,
-            tls.HashPrimitive.SHA256: hashes.SHA256,
-            tls.HashPrimitive.SHA384: hashes.SHA384,
-            tls.HashPrimitive.SHA512: hashes.SHA512,
-        }
+    def verify_ske_signature(self, params):
         bin_cert = self.msg.server_certificate.certificates[0]
         cert = x509.load_der_x509_certificate(bin_cert)
         pub_key = cert.public_key()
         data = (
             self.msg.client_hello.random
             + self.msg.server_hello.random
-            + ske_msg.ec.signed_params
+            + params.signed_params
         )
-        if self.version is tls.Version.TLS12:
-            sig_scheme = ske_msg.ec.sig_scheme
+        if params.sig_scheme is None:
+            sig_scheme = self.cs_details.key_algo_struct.default_sig_scheme
         else:
-            sig_scheme = tls.SignatureScheme.ECDSA_SHA1
-        sig_algo = tls.SignatureAlgorithm.val2enum(sig_scheme.value >> 8)
-        hash_algo = tls.HashPrimitive.val2enum(sig_scheme.value & 0xFF)
+            sig_scheme = params.sig_scheme
+        hash_algo = tls.SignatureAlgorithm.val2enum(sig_scheme.value >> 8)
+        sig_algo = tls.HashPrimitive.val2enum(sig_scheme.value & 0xFF)
         try:
             if sig_algo is tls.SignatureAlgorithm.ECDSA:
-                hash_cls = mapping[hash_algo]
-                pub_key.verify(ske_msg.ec.signature, data, ec.ECDSA(hash_cls()))
+                hash_cls = mappings.supported_macs[hash_algo]
+                pub_key.verify(params.signature, data, ec.ECDSA(hash_cls()))
             elif sig_algo is tls.SignatureAlgorithm.ED25519:
-                pass
+                raise NotImplementedError
             elif sig_algo is tls.SignatureAlgorithm.ED448:
-                pass
+                raise NotImplementedError
+            elif sig_algo is tls.SignatureAlgorithm.RSA:
+                hash_cls = mappings.supported_macs[hash_algo]
+                pub_key.verify(params.signature, data, ec.ECDSA(hash_cls()))
+            elif sig_algo is tls.SignatureAlgorithm.DSA:
+                raise NotImplementedError
         except InvalidSignature:
             raise FatalAlert(
                 "Cannot verify signed key exchange parameters",
@@ -432,7 +426,7 @@ class TlsConnection(object):
     def on_server_key_exchange_received(self, msg):
         if msg.ec is not None:
             if msg.ec.signed_params is not None:
-                self.verify_ec_signature(msg)
+                self.verify_ske_signature(msg.ec)
 
             if msg.ec.named_curve is not None:
                 logging.info(f"named curve: {msg.ec.named_curve.name}")
@@ -442,6 +436,8 @@ class TlsConnection(object):
                 self.key_exchange.set_remote_key(msg.ec.public)
         elif msg.dh is not None:
             dh = msg.dh
+            if dh.signed_params is not None:
+                self.verify_ske_signature(dh)
             self.key_exchange = kex.DhKeyExchange(self, self.recorder)
             self.key_exchange.set_remote_key(
                 dh.public_key, g_val=dh.g_val, p_val=dh.p_val
@@ -456,11 +452,12 @@ class TlsConnection(object):
             )
 
     def on_finished_received(self, msg):
+        ciph = self.cs_details.cipher_struct
         logging.debug(f"Finished.verify_data(in): {pdu.dump(msg.verify_data)}")
 
         if self.version is tls.Version.TLS13:
             finished_key = self.kdf.hkdf_expand_label(
-                self.s_hs_tr_secret, "finished", b"", self.mac.key_len
+                self.s_hs_tr_secret, "finished", b"", self.cs_details.mac_struct.key_len
             )
             logging.debug(f"finished_key: {pdu.dump(finished_key)}")
             calc_verify_data = self.kdf.hkdf_extract(
@@ -479,19 +476,17 @@ class TlsConnection(object):
                 self.master_secret,
                 "s ap traffic",
                 self.server_finished_digest,
-                self.mac.key_len,
+                self.cs_details.mac_struct.key_len,
             )
             logging.debug(f"s_app_tr_secret: {pdu.dump(s_app_tr_secret)}")
             c_enc = self.kdf.hkdf_expand_label(
-                s_app_tr_secret, "key", b"", self.cipher.key_len
+                s_app_tr_secret, "key", b"", ciph.key_len
             )
-            c_iv = self.kdf.hkdf_expand_label(
-                s_app_tr_secret, "iv", b"", self.cipher.iv_len
-            )
+            c_iv = self.kdf.hkdf_expand_label(s_app_tr_secret, "iv", b"", ciph.iv_len)
 
             self.record_layer.update_state(
                 structs.StateUpdateParams(
-                    cipher=self.cipher,
+                    cipher=ciph,
                     mac=None,
                     keys=structs.SymmetricKeys(enc=c_enc, mac=None, iv=c_iv),
                     compr=None,
@@ -620,28 +615,22 @@ class TlsConnection(object):
 
     def update_cipher_suite(self, cipher_suite):
         self.cipher_suite = cipher_suite
-        cs_info = mappings.supported_cipher_suites.get(cipher_suite)
-        if cs_info is None:
+        self.cs_details = utils.get_cipher_suite_details(cipher_suite)
+
+        if not self.cs_details.full_hs:
             logging.debug(
                 f"full handshake for cipher suite {cipher_suite.name} not supported"
             )
             return
 
-        if cs_info.key_ex is not None:
-            key_ex = mappings.key_exchange[cs_info.key_ex]
-            self.key_ex_type = key_ex.key_ex_type
-            self.key_auth = key_ex.key_auth
-
-        self.cipher = mappings.supported_ciphers[cs_info.cipher]
-        self.mac = mappings.supported_macs[cs_info.mac]
-
         if self.version < tls.Version.TLS12:
             self.kdf.set_msg_digest_algo(None)
         else:
-            self.kdf.set_msg_digest_algo(self.mac.hmac_algo)
-        self.cipher_suite_supported = True
-        logging.debug(f"hash_primitive: {cs_info.mac.name}")
-        logging.debug(f"cipher_primitive: {self.cipher.primitive.name}")
+            self.kdf.set_msg_digest_algo(self.cs_details.mac_struct.hmac_algo)
+        logging.debug(f"hash_primitive: {self.cs_details.mac.name}")
+        logging.debug(
+            f"cipher_primitive: {self.cs_details.cipher_struct.primitive.name}"
+        )
 
     def generate_master_secret(self):
         if self.extended_ms:
@@ -671,13 +660,14 @@ class TlsConnection(object):
         return
 
     def tls13_key_schedule(self):
-
+        ciph = self.cs_details.cipher_struct
+        mac = self.cs_details.mac_struct
         early_secret = self.kdf.hkdf_extract(None, b"")
         logging.debug(f"early_secret: {pdu.dump(early_secret)}")
         empty_msg_digest = self.kdf.empty_msg_digest()
         logging.debug(f"empty msg digest: {pdu.dump(empty_msg_digest)}")
         derived = self.kdf.hkdf_expand_label(
-            early_secret, "derived", empty_msg_digest, self.mac.key_len
+            early_secret, "derived", empty_msg_digest, mac.key_len
         )
 
         handshake_secret = self.kdf.hkdf_extract(self.premaster_secret, derived)
@@ -685,19 +675,15 @@ class TlsConnection(object):
         hello_digest = self.kdf.finalize_msg_digest(intermediate=True)
         logging.debug(f"hello_digest: {pdu.dump(hello_digest)}")
         c_hs_tr_secret = self.kdf.hkdf_expand_label(
-            handshake_secret, "c hs traffic", hello_digest, self.mac.key_len
+            handshake_secret, "c hs traffic", hello_digest, mac.key_len
         )
-        c_enc = self.kdf.hkdf_expand_label(
-            c_hs_tr_secret, "key", b"", self.cipher.key_len
-        )
-        c_iv = self.kdf.hkdf_expand_label(c_hs_tr_secret, "iv", b"", self.cipher.iv_len)
+        c_enc = self.kdf.hkdf_expand_label(c_hs_tr_secret, "key", b"", ciph.key_len)
+        c_iv = self.kdf.hkdf_expand_label(c_hs_tr_secret, "iv", b"", ciph.iv_len)
         s_hs_tr_secret = self.kdf.hkdf_expand_label(
-            handshake_secret, "s hs traffic", hello_digest, self.mac.key_len
+            handshake_secret, "s hs traffic", hello_digest, mac.key_len
         )
-        s_enc = self.kdf.hkdf_expand_label(
-            s_hs_tr_secret, "key", b"", self.cipher.key_len
-        )
-        s_iv = self.kdf.hkdf_expand_label(s_hs_tr_secret, "iv", b"", self.cipher.iv_len)
+        s_enc = self.kdf.hkdf_expand_label(s_hs_tr_secret, "key", b"", ciph.key_len)
+        s_iv = self.kdf.hkdf_expand_label(s_hs_tr_secret, "iv", b"", ciph.iv_len)
         logging.info(f"client hs traffic secret: {pdu.dump(c_hs_tr_secret)}")
         logging.info(f"server hs traffic secret: {pdu.dump(s_hs_tr_secret)}")
         self.s_hs_tr_secret = s_hs_tr_secret
@@ -705,7 +691,7 @@ class TlsConnection(object):
 
         self.record_layer.update_state(
             structs.StateUpdateParams(
-                cipher=self.cipher,
+                cipher=ciph,
                 mac=None,
                 keys=structs.SymmetricKeys(enc=c_enc, mac=None, iv=c_iv),
                 compr=None,
@@ -716,7 +702,7 @@ class TlsConnection(object):
         )
         self.record_layer.update_state(
             structs.StateUpdateParams(
-                cipher=self.cipher,
+                cipher=ciph,
                 mac=None,
                 keys=structs.SymmetricKeys(enc=s_enc, mac=None, iv=s_iv),
                 compr=None,
@@ -727,28 +713,29 @@ class TlsConnection(object):
         )
 
         derived = self.kdf.hkdf_expand_label(
-            handshake_secret, "derived", empty_msg_digest, self.mac.key_len
+            handshake_secret, "derived", empty_msg_digest, mac.key_len
         )
 
         self.master_secret = self.kdf.hkdf_extract(None, derived)
 
     def key_derivation(self):
-        if self.cipher.c_type is tls.CipherType.AEAD:
+        ciph = self.cs_details.cipher_struct
+        if ciph.c_type is tls.CipherType.AEAD:
             mac_len = 0
         else:
-            mac_len = self.mac.key_len
+            mac_len = self.cs_details.mac_struct.key_len
         key_material = self.kdf.prf(
             self.master_secret,
             b"key expansion",
             self.server_random + self.client_random,
-            2 * (mac_len + self.cipher.key_len + self.cipher.iv_len),
+            2 * (mac_len + ciph.key_len + ciph.iv_len),
         )
         c_mac, offset = pdu.unpack_bytes(key_material, 0, mac_len)
         s_mac, offset = pdu.unpack_bytes(key_material, offset, mac_len)
-        c_enc, offset = pdu.unpack_bytes(key_material, offset, self.cipher.key_len)
-        s_enc, offset = pdu.unpack_bytes(key_material, offset, self.cipher.key_len)
-        c_iv, offset = pdu.unpack_bytes(key_material, offset, self.cipher.iv_len)
-        s_iv, offset = pdu.unpack_bytes(key_material, offset, self.cipher.iv_len)
+        c_enc, offset = pdu.unpack_bytes(key_material, offset, ciph.key_len)
+        s_enc, offset = pdu.unpack_bytes(key_material, offset, ciph.key_len)
+        c_iv, offset = pdu.unpack_bytes(key_material, offset, ciph.iv_len)
+        s_iv, offset = pdu.unpack_bytes(key_material, offset, ciph.iv_len)
 
         self.recorder.trace(client_write_mac_key=c_mac)
         self.recorder.trace(server_write_mac_key=s_mac)
@@ -772,8 +759,8 @@ class TlsConnection(object):
             keys = self.server_write_keys
 
         return structs.StateUpdateParams(
-            cipher=self.cipher,
-            mac=self.mac,
+            cipher=self.cs_details.cipher_struct,
+            mac=self.cs_details.mac_struct,
             keys=keys,
             compr=self.compression_method,
             enc_then_mac=self.encrypt_then_mac,

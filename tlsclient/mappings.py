@@ -1865,22 +1865,67 @@ supported_ciphers = {
         aead_expansion=16,
         cipher_supported=True,
     ),
+
     # ***************************
     # List of unsupported ciphers
     # ***************************
-    tls.SymmetricCipher.ARIA_128_CBC: structs.Cipher(),
-    tls.SymmetricCipher.ARIA_128_GCM: structs.Cipher(),
-    tls.SymmetricCipher.ARIA_256_CBC: structs.Cipher(),
-    tls.SymmetricCipher.ARIA_256_GCM: structs.Cipher(),
-    tls.SymmetricCipher.CAMELLIA_128_GCM: structs.Cipher(),
-    tls.SymmetricCipher.CAMELLIA_256_GCM: structs.Cipher(),
-    tls.SymmetricCipher.DES40_CBC: structs.Cipher(),
-    tls.SymmetricCipher.DES_CBC: structs.Cipher(),
-    tls.SymmetricCipher.DES_CBC_40: structs.Cipher(),
-    tls.SymmetricCipher.NULL: structs.Cipher(),
-    tls.SymmetricCipher.RC2_CBC_40: structs.Cipher(),
-    tls.SymmetricCipher.RC4_40: structs.Cipher(),
-    tls.SymmetricCipher.SEED_CBC: structs.Cipher(),
+
+    tls.SymmetricCipher.ARIA_128_CBC: structs.Cipher(
+        primitive=tls.CipherPrimitive.ARIA,
+        c_type=tls.CipherType.BLOCK,
+    ),
+    tls.SymmetricCipher.ARIA_128_GCM: structs.Cipher(
+        primitive=tls.CipherPrimitive.ARIA,
+        c_type=tls.CipherType.AEAD,
+    ),
+    tls.SymmetricCipher.ARIA_256_CBC: structs.Cipher(
+        primitive=tls.CipherPrimitive.ARIA,
+        c_type=tls.CipherType.BLOCK,
+    ),
+    tls.SymmetricCipher.ARIA_256_GCM: structs.Cipher(
+        primitive=tls.CipherPrimitive.ARIA,
+        c_type=tls.CipherType.AEAD,
+    ),
+    tls.SymmetricCipher.CAMELLIA_128_GCM: structs.Cipher(
+        primitive=tls.CipherPrimitive.CAMELLIA,
+        c_type=tls.CipherType.AEAD,
+    ),
+    tls.SymmetricCipher.CAMELLIA_256_GCM: structs.Cipher(
+        primitive=tls.CipherPrimitive.CAMELLIA,
+        c_type=tls.CipherType.AEAD,
+    ),
+    tls.SymmetricCipher.DES40_CBC: structs.Cipher(
+        primitive=tls.CipherPrimitive.DES,
+        c_type=tls.CipherType.BLOCK,
+    ),
+    tls.SymmetricCipher.DES_CBC: structs.Cipher(
+        primitive=tls.CipherPrimitive.DES,
+        c_type=tls.CipherType.BLOCK,
+    ),
+    tls.SymmetricCipher.DES_CBC_40: structs.Cipher(
+        primitive=tls.CipherPrimitive.DES,
+        c_type=tls.CipherType.BLOCK,
+    ),
+    tls.SymmetricCipher.NULL: structs.Cipher(
+        primitive=tls.CipherPrimitive.NULL,
+        c_type=tls.CipherType.NULL,
+    ),
+    tls.SymmetricCipher.NULL: structs.Cipher(
+        primitive=tls.CipherPrimitive.NULL,
+        c_type=tls.CipherType.NULL,
+    ),
+    tls.SymmetricCipher.RC2_CBC_40: structs.Cipher(
+        primitive=tls.CipherPrimitive.RC2,
+        c_type=tls.CipherType.BLOCK,
+    ),
+    tls.SymmetricCipher.RC4_40: structs.Cipher(
+        primitive=tls.CipherPrimitive.RC4,
+        c_type=tls.CipherType.STREAM,
+    ),
+    tls.SymmetricCipher.SEED_CBC: structs.Cipher(
+        primitive=tls.CipherPrimitive.SEED,
+        c_type=tls.CipherType.BLOCK,
+    ),
 }
 
 # map hash algorithms to mac parameters
@@ -1905,53 +1950,132 @@ key_exchange = {
         key_ex_type=tls.KeyExchangeType.DH,
         key_auth=tls.KeyAuthentication.DSS,
         key_ex_supported=True,
+        default_sig_scheme=tls.SignatureScheme.DSA_SHA1,
     ),
     tls.KeyExchangeAlgorithm.DHE_RSA: structs.KeyExchange(
         key_ex_type=tls.KeyExchangeType.DH,
         key_auth=tls.KeyAuthentication.RSA,
         key_ex_supported=True,
+        default_sig_scheme=tls.SignatureScheme.RSA_PKCS1_SHA1,
     ),
     tls.KeyExchangeAlgorithm.DH_ANON: structs.KeyExchange(
         key_ex_type=tls.KeyExchangeType.DH,
         key_auth=tls.KeyAuthentication.NONE,
         key_ex_supported=True,
+        default_sig_scheme=None,
     ),
     tls.KeyExchangeAlgorithm.RSA: structs.KeyExchange(
         key_ex_type=tls.KeyExchangeType.RSA,
         key_auth=tls.KeyAuthentication.NONE,
         key_ex_supported=True,
+        default_sig_scheme=tls.SignatureScheme.RSA_PKCS1_SHA1,
     ),
     tls.KeyExchangeAlgorithm.DH_DSS: structs.KeyExchange(
         key_ex_type=tls.KeyExchangeType.DH,
-        key_auth=tls.KeyAuthentication.NONE,
+        key_auth=tls.KeyAuthentication.DSS,
         key_ex_supported=False,
+        default_sig_scheme=tls.SignatureScheme.DSA_SHA1,
     ),
     tls.KeyExchangeAlgorithm.DH_RSA: structs.KeyExchange(
         key_ex_type=tls.KeyExchangeType.DH,
-        key_auth=tls.KeyAuthentication.NONE,
+        key_auth=tls.KeyAuthentication.RSA,
         key_ex_supported=False,
+        default_sig_scheme=tls.SignatureScheme.RSA_PKCS1_SHA1,
     ),
     tls.KeyExchangeAlgorithm.ECDH_ECDSA: structs.KeyExchange(
         key_ex_type=tls.KeyExchangeType.ECDH,
-        key_auth=tls.KeyAuthentication.NONE,
+        key_auth=tls.KeyAuthentication.ECDSA,
         key_ex_supported=True,
+        default_sig_scheme=tls.SignatureScheme.ECDSA_SHA1,
     ),
     tls.KeyExchangeAlgorithm.ECDHE_ECDSA: structs.KeyExchange(
         key_ex_type=tls.KeyExchangeType.ECDH,
         key_auth=tls.KeyAuthentication.ECDSA,
         key_ex_supported=True,
+        default_sig_scheme=tls.SignatureScheme.ECDSA_SHA1,
     ),
     tls.KeyExchangeAlgorithm.ECDH_RSA: structs.KeyExchange(
         key_ex_type=tls.KeyExchangeType.ECDH,
-        key_auth=tls.KeyAuthentication.NONE,
+        key_auth=tls.KeyAuthentication.RSA,
         key_ex_supported=True,
+        default_sig_scheme=tls.SignatureScheme.RSA_PKCS1_SHA1,
     ),
     tls.KeyExchangeAlgorithm.ECDHE_RSA: structs.KeyExchange(
         key_ex_type=tls.KeyExchangeType.ECDH,
         key_auth=tls.KeyAuthentication.RSA,
         key_ex_supported=True,
+        default_sig_scheme=tls.SignatureScheme.RSA_PKCS1_SHA1,
     ),
     tls.KeyExchangeAlgorithm.TLS13_KEY_SHARE: structs.KeyExchange(
-        key_ex_type=None, key_auth=None, key_ex_supported=True
+        key_ex_type=None, key_auth=None, key_ex_supported=True, default_sig_scheme=None
+    ),
+
+    # **********************************
+    # Algorithms currently not supported
+    # **********************************
+
+    tls.KeyExchangeAlgorithm.DHE_DSS_EXPORT: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.DH,
+        key_auth=tls.KeyAuthentication.DSS,
+    ),
+    tls.KeyExchangeAlgorithm.DHE_PSK: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.DH,
+        key_auth=tls.KeyAuthentication.NONE,
+    ),
+    tls.KeyExchangeAlgorithm.DHE_RSA_EXPORT: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.DH,
+        key_auth=tls.KeyAuthentication.RSA,
+    ),
+    tls.KeyExchangeAlgorithm.DH_ANON_EXPORT: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.DH,
+        key_auth=tls.KeyAuthentication.NONE,
+    ),
+    tls.KeyExchangeAlgorithm.DH_DSS_EXPORT: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.DH,
+        key_auth=tls.KeyAuthentication.DSS,
+    ),
+    tls.KeyExchangeAlgorithm.DH_RSA_EXPORT: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.DH,
+        key_auth=tls.KeyAuthentication.RSA,
+    ),
+    tls.KeyExchangeAlgorithm.KRB5: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.NONE,
+        key_auth=tls.KeyAuthentication.NONE,
+    ),
+    tls.KeyExchangeAlgorithm.KRB5_EXPORT: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.NONE,
+        key_auth=tls.KeyAuthentication.NONE,
+    ),
+    tls.KeyExchangeAlgorithm.NULL: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.NONE,
+        key_auth=tls.KeyAuthentication.NONE,
+    ),
+    tls.KeyExchangeAlgorithm.PSK: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.NONE,
+        key_auth=tls.KeyAuthentication.NONE,
+    ),
+    tls.KeyExchangeAlgorithm.PSK_DHE: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.DH,
+        key_auth=tls.KeyAuthentication.NONE,
+    ),
+    tls.KeyExchangeAlgorithm.RSA_EXPORT: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.RSA,
+        key_auth=tls.KeyAuthentication.NONE,
+    ),
+    tls.KeyExchangeAlgorithm.RSA_PSK: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.RSA,
+        key_auth=tls.KeyAuthentication.NONE,
+    ),
+    tls.KeyExchangeAlgorithm.SRP_SHA: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.NONE,
+        key_auth=tls.KeyAuthentication.NONE,
+    ),
+    tls.KeyExchangeAlgorithm.SRP_SHA_DSS: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.NONE,
+        key_auth=tls.KeyAuthentication.DSS,
+    ),
+    tls.KeyExchangeAlgorithm.SRP_SHA_RSA: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.NONE,
+        key_auth=tls.KeyAuthentication.RSA,
     ),
 }

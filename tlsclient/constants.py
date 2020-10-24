@@ -352,8 +352,6 @@ class CipherSuite(ExtendedEnum):
     TLS_DHE_DSS_WITH_CAMELLIA_256_CBC_SHA256 = 0x00C3
     TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA256 = 0x00C4
     TLS_DH_ANON_WITH_CAMELLIA_256_CBC_SHA256 = 0x00C5
-    TLS_SM4_GCM_SM3 = 0x00C6
-    TLS_SM4_CCM_SM3 = 0x00C7
     TLS_EMPTY_RENEGOTIATION_INFO_SCSV = 0x00FF
     TLS_AES_128_GCM_SHA256 = 0x1301
     TLS_AES_256_GCM_SHA384 = 0x1302
@@ -761,6 +759,11 @@ class SignatureScheme(ExtendedEnum):
     ECDSA_BRAINPOOLP384R1TLS13_SHA384 = 0x081B
     ECDSA_BRAINPOOLP512R1TLS13_SHA512 = 0x081C
 
+    # ***************************************
+    # legacy signature schemes needed as well
+    # ***************************************
+    DSA_SHA1 = 0x0202
+
 
 class EcPointFormat(ExtendedEnum):
     """Enum representing the Elliptic Curve Point Formats.
@@ -824,6 +827,7 @@ class KeyExchangeType(ExtendedEnum):
     """Enum representing the key exchange types.
     """
 
+    NONE = enum.auto()
     RSA = enum.auto()
     DH = enum.auto()
     ECDH = enum.auto()
@@ -847,8 +851,11 @@ class CipherPrimitive(ExtendedEnum):
     AES = enum.auto()
     CAMELLIA = enum.auto()
     IDEA = enum.auto()
+    ARIA = enum.auto()
     RC4 = enum.auto()
+    RC2 = enum.auto()
     SEED = enum.auto()
+    DES = enum.auto()
     TRIPPLE_DES = enum.auto()
     CHACHA = enum.auto()
 
@@ -891,17 +898,6 @@ class SymmetricCipher(ExtendedEnum):
     SEED_CBC = enum.auto()
     TLS13_AES_128_GCM = enum.auto()
     TLS13_AES_256_GCM = enum.auto()
-
-
-class SymmetricCipherMode(ExtendedEnum):
-    """Enum representing the mode of the symmetric cipher primitive.
-    """
-
-    NULL = enum.auto()
-    CBC = enum.auto()
-    CCM = enum.auto()
-    CCM_8 = enum.auto()
-    GCM = enum.auto()
 
 
 class CipherType(ExtendedEnum):
