@@ -180,7 +180,9 @@ class Client(object):
                 msg.extensions.append(
                     ext.ExtSupportedGroups(supported_groups=self.supported_groups)
                 )
-            if self.support_signature_algorithms:
+
+            # RFC5246, 7.4.1.4.1.: Clients prior to TLS12 MUST NOT send this extension
+            if self.support_signature_algorithms and max_version >= tls.Version.TLS12:
                 msg.extensions.append(
                     ext.ExtSignatureAlgorithms(
                         signature_algorithms=self.signature_algorithms

@@ -13,11 +13,13 @@ class ScanCipherSuites(TestSuite):
     name = "basic"
     prio = 10
 
-    def get_server_cs_and_cert(self):
+    def get_server_cs_and_cert(self, version):
         with self.client.create_connection() as conn:
             conn.send(msg.ClientHello)
             server_hello = conn.wait(msg.ServerHello)
             if server_hello is None:
+                return None
+            if server_hello.version != version:
                 return None
             certificate = conn.wait(msg.Certificate, optional=True)
             cert_chain_id = None
@@ -64,7 +66,7 @@ class ScanCipherSuites(TestSuite):
 
             while sub_set:
                 self.client.cipher_suites = sub_set
-                sp_cipher_suite = self.get_server_cs_and_cert()
+                sp_cipher_suite = self.get_server_cs_and_cert(version)
                 if sp_cipher_suite is not None:
                     cs = sp_cipher_suite.cipher_suite
                     sub_set.remove(cs)
