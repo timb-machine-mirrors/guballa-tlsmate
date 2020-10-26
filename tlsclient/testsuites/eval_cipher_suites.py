@@ -19,8 +19,15 @@ class ScanCipherSuites(TestSuite):
             server_hello = conn.wait(msg.ServerHello)
             if server_hello is None:
                 return None
-            if server_hello.version != version:
-                return None
+            if version is tls.Version.TLS13:
+                ext = server_hello.get_extension(tls.Extension.SUPPORTED_VERSIONS)
+                if ext.versions[0] != version:
+                    return None
+                conn.wait(msg.ChangeCipherSpec, optional=True)
+                conn.wait(msg.EncryptedExtensions)
+            else:
+                if server_hello.version != version:
+                    return None
             certificate = conn.wait(msg.Certificate, optional=True)
             cert_chain_id = None
             if certificate is not None:
