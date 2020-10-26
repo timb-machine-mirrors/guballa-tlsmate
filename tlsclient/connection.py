@@ -19,13 +19,9 @@ from tlsclient.messages import (
     Any,
     SSL2Message,
 )
-from tlsclient import mappings
 from tlsclient import utils
 import tlsclient.structures as structs
 import tlsclient.key_exchange as kex
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography import x509
-from cryptography.exceptions import InvalidSignature
 
 
 def get_random_value():
@@ -389,44 +385,12 @@ class TlsConnection(object):
         else:
             self.on_server_hello_tls12(msg)
 
-    def verify_ske_signature(self, params):
-        bin_cert = self.msg.server_certificate.certificates[0]
-        cert = x509.load_der_x509_certificate(bin_cert)
-        pub_key = cert.public_key()
-        data = (
-            self.msg.client_hello.random
-            + self.msg.server_hello.random
-            + params.signed_params
-        )
-        if params.sig_scheme is None:
-            sig_scheme = self.cs_details.key_algo_struct.default_sig_scheme
-        else:
-            sig_scheme = params.sig_scheme
-        hash_algo = tls.SignatureAlgorithm.val2enum(sig_scheme.value >> 8)
-        sig_algo = tls.HashPrimitive.val2enum(sig_scheme.value & 0xFF)
-        try:
-            if sig_algo is tls.SignatureAlgorithm.ECDSA:
-                hash_cls = mappings.supported_macs[hash_algo]
-                pub_key.verify(params.signature, data, ec.ECDSA(hash_cls()))
-            elif sig_algo is tls.SignatureAlgorithm.ED25519:
-                raise NotImplementedError
-            elif sig_algo is tls.SignatureAlgorithm.ED448:
-                raise NotImplementedError
-            elif sig_algo is tls.SignatureAlgorithm.RSA:
-                hash_cls = mappings.supported_macs[hash_algo]
-                pub_key.verify(params.signature, data, ec.ECDSA(hash_cls()))
-            elif sig_algo is tls.SignatureAlgorithm.DSA:
-                raise NotImplementedError
-        except InvalidSignature:
-            raise FatalAlert(
-                "Cannot verify signed key exchange parameters",
-                tls.AlertDescription.HANDSHAKE_FAILURE,
-            )
-
     def on_server_key_exchange_received(self, msg):
         if msg.ec is not None:
             if msg.ec.signed_params is not None:
-                self.verify_ske_signature(msg.ec)
+                kex.verify_signed_params(
+                    msg.ec, self.msg, self.cs_details.key_algo_struct.default_sig_scheme
+                )
 
             if msg.ec.named_curve is not None:
                 logging.info(f"named curve: {msg.ec.named_curve.name}")
@@ -437,7 +401,9 @@ class TlsConnection(object):
         elif msg.dh is not None:
             dh = msg.dh
             if dh.signed_params is not None:
-                self.verify_ske_signature(dh)
+                kex.verify_signed_params(
+                    msg.dh, self.msg, self.cs_details.key_algo_struct.default_sig_scheme
+                )
             self.key_exchange = kex.DhKeyExchange(self, self.recorder)
             self.key_exchange.set_remote_key(
                 dh.public_key, g_val=dh.g_val, p_val=dh.p_val

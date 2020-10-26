@@ -1931,14 +1931,17 @@ supported_ciphers = {
 # map hash algorithms to mac parameters
 
 supported_macs = {
-    tls.HashPrimitive.SHA256: structs.Mac(
-        hash_algo=hashes.SHA256, mac_len=32, key_len=32, hmac_algo=hashes.SHA256
-    ),
     tls.HashPrimitive.SHA1: structs.Mac(
         hash_algo=hashes.SHA1, mac_len=20, key_len=20, hmac_algo=hashes.SHA256
     ),
+    tls.HashPrimitive.SHA256: structs.Mac(
+        hash_algo=hashes.SHA256, mac_len=32, key_len=32, hmac_algo=hashes.SHA256
+    ),
     tls.HashPrimitive.SHA384: structs.Mac(
         hash_algo=hashes.SHA384, mac_len=48, key_len=48, hmac_algo=hashes.SHA384
+    ),
+    tls.HashPrimitive.SHA512: structs.Mac(
+        hash_algo=hashes.SHA512, mac_len=None, key_len=None, hmac_algo=None
     ),
     tls.HashPrimitive.MD5: structs.Mac(
         hash_algo=hashes.MD5, mac_len=16, key_len=16, hmac_algo=hashes.SHA256

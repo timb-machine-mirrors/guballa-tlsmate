@@ -818,7 +818,7 @@ class Alert(TlsMessage):
         else:
             alert.extend(pdu.pack_uint8(self.description.value))
 
-        return alert
+        return bytes(alert)
 
     @classmethod
     def deserialize(cls, fragment, conn):

@@ -751,7 +751,14 @@ class SignatureScheme(ExtendedEnum):
     # ***************************************
     # legacy signature schemes needed as well
     # ***************************************
+    RSA_PKCS1_MD5 = 0x0101
+    RSA_PKCS1_SHA224 = 0x0301
+    DSA_MD5 = 0x0102
     DSA_SHA1 = 0x0202
+    DSA_SHA224 = 0x0302
+    DSA_SHA256 = 0x0402
+    DSA_SHA384 = 0x0502
+    DSA_SHA512 = 0x0602
 
 
 class EcPointFormat(ExtendedEnum):

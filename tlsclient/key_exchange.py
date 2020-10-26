@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Module containing classes for the key exchange
 """
-
+import logging
 import abc
 from typing import NamedTuple
 import os
@@ -13,6 +13,8 @@ from tlsclient.exception import FatalAlert
 from cryptography.hazmat.primitives.asymmetric import ec, x25519, x448, dh
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives import hashes
+from cryptography.exceptions import InvalidSignature
 
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
@@ -20,6 +22,83 @@ from cryptography.hazmat.primitives.serialization import (
     PrivateFormat,
     NoEncryption,
 )
+
+
+def verify_signed_params(params, msgs, default_scheme):
+    bin_cert = msgs.server_certificate.certificates[0]
+    cert = x509.load_der_x509_certificate(bin_cert)
+    pub_key = cert.public_key()
+    data = bytes(
+        msgs.client_hello.random + msgs.server_hello.random + params.signed_params
+    )
+    if params.sig_scheme is None:
+        sig_scheme = default_scheme
+    else:
+        sig_scheme = params.sig_scheme
+    sig_params = _sig_schemes.get(sig_scheme)
+    if sig_params is None:
+        logging.info(
+            f"verifying key exchange parameters using signature scheme "
+            f"{sig_scheme.name} is not supported"
+        )
+    else:
+        try:
+            sig_params[0](pub_key, params.signature, data, sig_params[1])
+        except InvalidSignature:
+            raise FatalAlert(
+                "Cannot verify signed key exchange parameters",
+                tls.AlertDescription.HANDSHAKE_FAILURE,
+            )
+
+
+def _verify_rsa_pkcs(pub_key, signature, data, hash_algo):
+    pub_key.verify(signature, data, padding.PKCS1v15(), hash_algo())
+
+
+def _verify_dsa(pub_key, signature, data, hash_algo):
+    pub_key.verify(signature, data, hash_algo())
+
+
+def _verify_ecdsa(pub_key, signature, data, hash_algo):
+    pub_key.verify(signature, data, ec.ECDSA(hash_algo()))
+
+
+def _verify_xcurve(pub_key, signature, data, hash_algo):
+    pub_key.verify(signature, data)
+
+
+def _verify_rsae_pss(pub_key, signature, data, hash_algo):
+    pub_key.verify(
+        signature,
+        data,
+        padding.PSS(mgf=padding.MGF1(hash_algo()), salt_length=hash_algo.digest_size),
+        hash_algo(),
+    )
+
+
+_sig_schemes = {
+    tls.SignatureScheme.RSA_PKCS1_MD5: (_verify_rsa_pkcs, hashes.MD5),
+    tls.SignatureScheme.RSA_PKCS1_SHA1: (_verify_rsa_pkcs, hashes.SHA1),
+    tls.SignatureScheme.RSA_PKCS1_SHA224: (_verify_rsa_pkcs, hashes.SHA224),
+    tls.SignatureScheme.RSA_PKCS1_SHA256: (_verify_rsa_pkcs, hashes.SHA256),
+    tls.SignatureScheme.RSA_PKCS1_SHA384: (_verify_rsa_pkcs, hashes.SHA384),
+    tls.SignatureScheme.RSA_PKCS1_SHA512: (_verify_rsa_pkcs, hashes.SHA512),
+    tls.SignatureScheme.DSA_MD5: (_verify_dsa, hashes.MD5),
+    tls.SignatureScheme.DSA_SHA1: (_verify_dsa, hashes.SHA1),
+    tls.SignatureScheme.DSA_SHA224: (_verify_dsa, hashes.SHA224),
+    tls.SignatureScheme.DSA_SHA256: (_verify_dsa, hashes.SHA256),
+    tls.SignatureScheme.DSA_SHA384: (_verify_dsa, hashes.SHA384),
+    tls.SignatureScheme.DSA_SHA512: (_verify_dsa, hashes.SHA512),
+    tls.SignatureScheme.ECDSA_SHA1: (_verify_ecdsa, hashes.SHA1),
+    tls.SignatureScheme.ECDSA_SECP256R1_SHA256: (_verify_ecdsa, hashes.SHA256),
+    tls.SignatureScheme.ECDSA_SECP384R1_SHA384: (_verify_ecdsa, hashes.SHA384),
+    tls.SignatureScheme.ECDSA_SECP521R1_SHA512: (_verify_ecdsa, hashes.SHA512),
+    tls.SignatureScheme.RSA_PSS_RSAE_SHA256: (_verify_rsae_pss, hashes.SHA256),
+    tls.SignatureScheme.RSA_PSS_RSAE_SHA384: (_verify_rsae_pss, hashes.SHA384),
+    tls.SignatureScheme.RSA_PSS_RSAE_SHA512: (_verify_rsae_pss, hashes.SHA512),
+    tls.SignatureScheme.ED25519: (_verify_xcurve, None),
+    tls.SignatureScheme.ED448: (_verify_xcurve, None),
+}
 
 
 def instantiate_named_group(group_name, conn, recorder):
