@@ -12,7 +12,7 @@ def check_presence(cs_list, string_list):
             if string in cs.name:
                 match = True
                 break
-        assert match == True
+        assert match is True
 
 
 def check_absence(cs_list, string):
@@ -86,9 +86,7 @@ def test_filter_cipher_suites():
     check_absence(cs_all, "_WITH_ARIA_")
 
     cs_all = tls.CipherSuite.all()
-    sha384 = filter_cipher_suites(
-        cs_all, mac=[tls.HashPrimitive.SHA384], remove=True
-    )
+    sha384 = filter_cipher_suites(cs_all, mac=[tls.HashPrimitive.SHA384], remove=True)
     check_presence(sha384, ["_SHA384"])
     check_absence(cs_all, "_SHA384")
 
@@ -100,4 +98,3 @@ def test_filter_cipher_suites():
     assert not_full_hs != set()
     assert cs_all == not_full_hs
     assert cs_all2 == full_hs
-

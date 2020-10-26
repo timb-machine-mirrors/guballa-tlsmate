@@ -108,13 +108,21 @@ def filter_cipher_suites(
     if key_algo is not None:
         filter_funcs.append(lambda cs: cs.key_algo in key_algo)
     if key_exch is not None:
-        filter_funcs.append(lambda cs: getattr(cs.key_algo_struct, "key_ex_type", None) in key_exch)
+        filter_funcs.append(
+            lambda cs: getattr(cs.key_algo_struct, "key_ex_type", None) in key_exch
+        )
     if key_auth is not None:
-        filter_funcs.append(lambda cs: getattr(cs.key_algo_struct, "key_auth", None) in key_auth)
+        filter_funcs.append(
+            lambda cs: getattr(cs.key_algo_struct, "key_auth", None) in key_auth
+        )
     if cipher_type is not None:
-        filter_funcs.append(lambda cs: getattr(cs.cipher_struct, "c_type", None) in cipher_type)
+        filter_funcs.append(
+            lambda cs: getattr(cs.cipher_struct, "c_type", None) in cipher_type
+        )
     if cipher_prim is not None:
-        filter_funcs.append(lambda cs: getattr(cs.cipher_struct, "primitive", None) in cipher_prim)
+        filter_funcs.append(
+            lambda cs: getattr(cs.cipher_struct, "primitive", None) in cipher_prim
+        )
     if cipher is not None:
         filter_funcs.append(lambda cs: cs.cipher in cipher)
     if mac is not None:

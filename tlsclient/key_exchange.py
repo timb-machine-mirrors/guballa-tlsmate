@@ -24,10 +24,25 @@ from cryptography.hazmat.primitives.serialization import (
 )
 
 
+def verify_signature(scheme, data, signature, certificate):
+    pub_key = x509.load_der_x509_certificate(certificate).public_key()
+    sig_params = _sig_schemes.get(scheme)
+    if sig_params is None:
+        logging.info(
+            f"verifying key exchange parameters using signature scheme "
+            f"{scheme.name} is not supported"
+        )
+    else:
+        try:
+            sig_params[0](pub_key, signature, data, sig_params[1])
+        except InvalidSignature:
+            raise FatalAlert(
+                "Cannot verify signed key exchange parameters",
+                tls.AlertDescription.HANDSHAKE_FAILURE,
+            )
+
+
 def verify_signed_params(params, msgs, default_scheme):
-    bin_cert = msgs.server_certificate.certificates[0]
-    cert = x509.load_der_x509_certificate(bin_cert)
-    pub_key = cert.public_key()
     data = bytes(
         msgs.client_hello.random + msgs.server_hello.random + params.signed_params
     )
@@ -35,20 +50,22 @@ def verify_signed_params(params, msgs, default_scheme):
         sig_scheme = default_scheme
     else:
         sig_scheme = params.sig_scheme
-    sig_params = _sig_schemes.get(sig_scheme)
-    if sig_params is None:
-        logging.info(
-            f"verifying key exchange parameters using signature scheme "
-            f"{sig_scheme.name} is not supported"
-        )
-    else:
-        try:
-            sig_params[0](pub_key, params.signature, data, sig_params[1])
-        except InvalidSignature:
-            raise FatalAlert(
-                "Cannot verify signed key exchange parameters",
-                tls.AlertDescription.HANDSHAKE_FAILURE,
-            )
+
+    verify_signature(
+        sig_scheme, data, params.signature, msgs.server_certificate.certificates[0]
+    )
+
+
+def verify_certificate_verify(cert_ver, msgs, msg_digest):
+    data = (
+        (b" " * 64) + "TLS 1.3, server CertificateVerify".encode() + b"\0" + msg_digest
+    )
+    verify_signature(
+        cert_ver.signature_scheme,
+        data,
+        cert_ver.signature,
+        msgs.server_certificate.certificates[0],
+    )
 
 
 def _verify_rsa_pkcs(pub_key, signature, data, hash_algo):

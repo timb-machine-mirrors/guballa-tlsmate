@@ -387,7 +387,7 @@ class TlsConnection(object):
 
     def on_server_key_exchange_received(self, msg):
         if msg.ec is not None:
-            if msg.ec.signed_params is not None:
+            if msg.ec.signed_params is not None and self.version is tls.Version.TLS12:
                 kex.verify_signed_params(
                     msg.ec, self.msg, self.cs_details.key_algo_struct.default_sig_scheme
                 )
@@ -400,7 +400,7 @@ class TlsConnection(object):
                 self.key_exchange.set_remote_key(msg.ec.public)
         elif msg.dh is not None:
             dh = msg.dh
-            if dh.signed_params is not None:
+            if dh.signed_params is not None and self.version is tls.Version.TLS12:
                 kex.verify_signed_params(
                     msg.dh, self.msg, self.cs_details.key_algo_struct.default_sig_scheme
                 )
@@ -500,10 +500,16 @@ class TlsConnection(object):
                 for group in extension.supported_groups:
                     logging.debug(f"supported group: {group.name}")
 
+    def on_certificate_received(self, msg):
+        if self.version is tls.Version.TLS13:
+            self.certificate_digest = self.kdf.finalize_msg_digest(intermediate=True)
+
     def on_certificate_verify_received(self, msg):
         self.pre_server_finished_digest = self.kdf.finalize_msg_digest(
             intermediate=True
         )
+        if self.version is tls.Version.TLS13:
+            kex.verify_certificate_verify(msg, self.msg, self.certificate_digest)
 
     _on_msg_received = {
         tls.HandshakeType.SERVER_HELLO: on_server_hello_received,
@@ -513,6 +519,7 @@ class TlsConnection(object):
         tls.HandshakeType.NEW_SESSION_TICKET: on_new_session_ticket_received,
         tls.HandshakeType.ENCRYPTED_EXTENSIONS: on_encrypted_extensions_received,
         tls.HandshakeType.CERTIFICATE_VERIFY: on_certificate_verify_received,
+        tls.HandshakeType.CERTIFICATE: on_certificate_received,
     }
 
     def on_msg_received(self, msg):

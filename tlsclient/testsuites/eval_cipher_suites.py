@@ -9,6 +9,7 @@ from tlsclient.testmanager import TestSuite
 import tlsclient.structures as structs
 import tlsclient.utils as utils
 
+
 class ScanCipherSuites(TestSuite):
     name = "basic"
     prio = 10
@@ -58,7 +59,9 @@ class ScanCipherSuites(TestSuite):
         return server_pref
 
     def tls_enum_version(self, version):
-        cipher_suites = utils.filter_cipher_suites(tls.CipherSuite.all(), version=version)
+        cipher_suites = utils.filter_cipher_suites(
+            tls.CipherSuite.all(), version=version
+        )
         logging.info(f"starting to enumerate {version.name}")
         self.client.versions = [version]
         cs_tuples = {}
