@@ -1,6 +1,5 @@
 
     - support for renegotiation
-    - verify signatures (signed public key)
     - certificate validation and extraction to server profile
     - add a progress feedback, e.g. print a dot for each handshake
     - specify scan target via command line options
@@ -10,6 +9,6 @@
     - log description for received alerts
     - more checks on server_hello: have the stuff selected by the server
       actually been offered?
-    - use __str__ for messages and extension displaying their names
+    - use __str__ for messages and extension displaying their names, cover all enums as well
     - use :class:`XXX` iso :obj: in the *.rst files where appropriate
     - cover all key exchange algorithms in mappings.key_exchange

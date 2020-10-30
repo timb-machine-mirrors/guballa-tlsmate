@@ -68,7 +68,7 @@ class ScanScratch(TestSuite):
             tls.SupportedGroups.BRAINPOOLP256R1,
             tls.SupportedGroups.BRAINPOOLP384R1,
             tls.SupportedGroups.BRAINPOOLP512R1,
-            tls.SupportedGroups.SECP256R1,
+            # tls.SupportedGroups.SECP256R1,
             tls.SupportedGroups.SECP384R1,
             tls.SupportedGroups.SECP521R1,
             tls.SupportedGroups.FFDHE2048,

@@ -10,8 +10,17 @@ from tlsclient.version import __version__
 
 
 class _ScannerProfile(Serializable):
+    name = "scan_info"
 
-    node_name = "scan_info"
+    serialize_map = {
+        "command": lambda self: self.command,
+        "version": lambda self: self.version,
+        "start_time": lambda self: self.start_timestamp,
+        "start_date": lambda self: self.start_date,
+        "stop_timestamp": lambda self: self.stop_timestamp,
+        "stop_date": lambda self: self.stop_date,
+        "run_time": lambda self: self.run_time,
+    }
 
     def __init__(self, server_profile):
         super().__init__()
@@ -22,7 +31,7 @@ class _ScannerProfile(Serializable):
         self.stop_timestamp = None
         self.stop_date = None
         self.run_time = None
-        server_profile.register(self)
+        server_profile.register(self, as_child="scan_info")
 
     def end(self):
         self.stop_timestamp = time.time()
