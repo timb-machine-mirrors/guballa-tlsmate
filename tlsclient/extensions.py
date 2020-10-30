@@ -90,7 +90,7 @@ class ExtServerNameIndication(Extension):
         list_length, offset = pdu.unpack_uint16(fragment, 0)
         if offset + list_length != len(fragment):
             raise FatalAlert(
-                f"Extension {self.extension_id.name}: list length incorrect",
+                f"Extension {self.extension_id}: list length incorrect",
                 tls.AlertDescription.DECODE_ERROR,
             )
         while offset < len(fragment):
@@ -120,7 +120,7 @@ class ExtExtendedMasterSecret(Extension):
     def deserialize_ext_body(self, ext_body):
         if ext_body:
             raise FatalAlert(
-                f"Message length error for {self.extension_id.name}",
+                f"Message length error for {self.extension_id}",
                 tls.AlertDescription.DECODE_ERROR,
             )
         return self
@@ -140,7 +140,7 @@ class ExtEncryptThenMac(Extension):
     def deserialize_ext_body(self, ext_body):
         if ext_body:
             raise FatalAlert(
-                f"Message length error for {self.extension_id.name}",
+                f"Message length error for {self.extension_id}",
                 tls.AlertDescription.DECODE_ERROR,
             )
         return self
@@ -202,7 +202,7 @@ class ExtEcPointFormats(Extension):
         length, offset = pdu.unpack_uint8(ext_body, 0)
         if offset + length != len(ext_body):
             raise FatalAlert(
-                f"Message length error for {self.extension_id.name}",
+                f"Message length error for {self.extension_id}",
                 tls.AlertDescription.DECODE_ERROR,
             )
         for i in range(length):

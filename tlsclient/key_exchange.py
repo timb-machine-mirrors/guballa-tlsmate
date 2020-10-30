@@ -30,7 +30,7 @@ def verify_signature(scheme, data, signature, certificate):
     if sig_params is None:
         logging.info(
             f"verifying key exchange parameters using signature scheme "
-            f"{scheme.name} is not supported"
+            f"{scheme} is not supported"
         )
     else:
         try:
@@ -176,7 +176,7 @@ class RsaKeyExchange(KeyExchange):
         the ClientHello.
         """
         pms = bytearray()
-        pms.extend(pdu.pack_uint16(self._conn.client_version_sent))
+        pms.extend(pdu.pack_uint16(self._conn.client_version_sent.value))
         random = self._recorder.inject(pms_rsa=os.urandom(46))
         pms.extend(random)
         self._pms = pms

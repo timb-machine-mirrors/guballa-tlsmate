@@ -552,7 +552,7 @@ class ServerHelloDone(HandshakeMessage):
     def _deserialize_msg_body(self, fragment, offset, conn):
         if offset != len(fragment):
             raise FatalAlert(
-                f"Message length error for {self.msg_type.name}",
+                f"Message length error for {self.msg_type}",
                 tls.AlertDescription.DECODE_ERROR,
             )
         return self

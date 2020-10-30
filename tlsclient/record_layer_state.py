@@ -298,7 +298,7 @@ class RecordLayerState(object):
         mac_input = (
             pdu.pack_uint64(self._seq_nbr)
             + pdu.pack_uint8(content_type.value)
-            + pdu.pack_uint16(version)
+            + pdu.pack_uint16(version.value)
             + pdu.pack_uint16(msg_len)
             + msg
         )

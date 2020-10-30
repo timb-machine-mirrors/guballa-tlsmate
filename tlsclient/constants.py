@@ -60,43 +60,39 @@ class ExtendedEnum(enum.Enum):
 
     @classmethod
     def all(cls):
-        return list(cls.__members__.values())
-
-
-class ExtendedIntEnum(enum.IntEnum):
-    @classmethod
-    def val2enum(cls, value, alert_on_failure=False):
-        """Class method to map a value to the corresponding enum.
-
-        Args:
-            value (int): The enum value which is used to map to an enum
-            alert_on_failure (bool, optional): If set to True and the value is
-                not a valid enum value, an :obj:`FatalAlert` exception will be
-                raised. Defaults to False.
+        """Get all enum items
 
         Returns:
-            The corresponding enum or None, if the mapping fails and
-            `alert_on_failure` is set to False.
-
-        Raises:
-            FatalAlert: In case the given value is not a valid enum and
-                `alert_on_failure` is True
-        """
-        enum = cls._value2member_map_.get(value)
-        if (enum is None) and alert_on_failure:
-            message = f"Value {value} not defined for {cls}"
-            raise FatalAlert(message, AlertDescription.ILLEGAL_PARAMETER)
-        return enum
-
-    @classmethod
-    def all(cls):
-        """Class method which returns all enums defined.
-
-        Returns:
-            list of all defined enums
+            list of all enum items defined for that enum
         """
         return list(cls.__members__.values())
 
+    def __str__(self):
+        """Use the name as a string representation
+
+        Returns:
+            str: the name of the enum item
+        """
+        return self.name
+
+class ExtendedIntEnum(ExtendedEnum):
+    """Clas for comparable enums
+
+    Note, that we us our own class, as we cannot overwrite the __str__ method of the
+    enum.IntEnum call (__slots__!)
+    """
+
+    def __lt__(self, other):
+        return self.value < other.value
+
+    def __gt__(self, other):
+        return self.value > other.value
+
+    def __le__(self, other):
+        return self.value <= other.value
+
+    def __ge__(self, other):
+        return self.value >= other.value
 
 class Entity(ExtendedEnum):
     """Enum used to represent the entity of the TLS connection endpoint.

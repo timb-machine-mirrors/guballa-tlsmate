@@ -272,15 +272,15 @@ class TlsConnection(object):
             self.session_id_sent = msg.session_id
             logging.info(f"session_id: {pdu.dump(msg.session_id)}")
         logging.info(f"client_random: {pdu.dump(msg.random)}")
-        logging.info(f"client_version: {msg.client_version.name}")
+        logging.info(f"client_version: {msg.client_version}")
         for cipher_suite in msg.cipher_suites:
             logging.info(
-                f"cipher suite: 0x{cipher_suite.value:04x} {cipher_suite.name}"
+                f"cipher suite: 0x{cipher_suite.value:04x} {cipher_suite}"
             )
         if msg.extensions is not None:
             for extension in msg.extensions:
                 ext = extension.extension_id
-                logging.info(f"extension {ext.value} {ext.name}")
+                logging.info(f"extension {ext.value} {ext}")
                 if ext is tls.Extension.SESSION_TICKET:
                     self.ticket_sent = extension.ticket is not None
         self.kdf.start_msg_digest()
@@ -303,7 +303,7 @@ class TlsConnection(object):
 
     def send(self, *messages):
         for msg in messages:
-            logging.info(f"Sending {msg.msg_type.name}")
+            logging.info(f"Sending {msg.msg_type}")
             self._post_sending_hook = None
             if inspect.isclass(msg):
                 msg = self.generate_outgoing_msg(msg)
@@ -365,13 +365,13 @@ class TlsConnection(object):
 
     def on_server_hello_received(self, msg):
         logging.info(f"server random: {pdu.dump(msg.random)}")
-        logging.info(f"version: {msg.version.name}")
+        logging.info(f"version: {msg.version}")
         logging.info(
-            f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite.name}"
+            f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite}"
         )
         for extension in msg.extensions:
             extension = extension.extension_id
-            logging.info(f"extension {extension.value} {extension.name}")
+            logging.info(f"extension {extension.value} {extension}")
         supported_versions = msg.get_extension(tls.Extension.SUPPORTED_VERSIONS)
         if supported_versions is not None:
             self.version = supported_versions.versions[0]
@@ -393,7 +393,7 @@ class TlsConnection(object):
                 )
 
             if msg.ec.named_curve is not None:
-                logging.info(f"named curve: {msg.ec.named_curve.name}")
+                logging.info(f"named curve: {msg.ec.named_curve}")
                 self.key_exchange = kex.instantiate_named_group(
                     msg.ec.named_curve, self, self.recorder
                 )
@@ -495,10 +495,10 @@ class TlsConnection(object):
 
     def on_encrypted_extensions_received(self, msg):
         for extension in msg.extensions:
-            logging.debug(f"extension {extension.extension_id.name}")
+            logging.debug(f"extension {extension.extension_id}")
             if extension.extension_id is tls.Extension.SUPPORTED_GROUPS:
                 for group in extension.supported_groups:
-                    logging.debug(f"supported group: {group.name}")
+                    logging.debug(f"supported group: {group}")
 
     def on_certificate_received(self, msg):
         if self.version is tls.Version.TLS13:
@@ -551,7 +551,7 @@ class TlsConnection(object):
             else:
                 raise ValueError("Content type unknow")
 
-            logging.info(f"Receiving {msg.msg_type.name}")
+            logging.info(f"Receiving {msg.msg_type}")
             self.msg.store_msg(msg, received=True)
         if (msg_class == Any) or isinstance(msg, msg_class):
             self.on_msg_received(msg)
@@ -564,8 +564,8 @@ class TlsConnection(object):
                 logging.debug("unexpected message received")
                 raise FatalAlert(
                     (
-                        f"Unexpected message received: {msg.msg_type.name}, "
-                        f"expected: {msg_class.msg_type.name}"
+                        f"Unexpected message received: {msg.msg_type}, "
+                        f"expected: {msg_class.msg_type}"
                     ),
                     tls.AlertDescription.UNEXPECTED_MESSAGE,
                 )
@@ -592,7 +592,7 @@ class TlsConnection(object):
 
         if not self.cs_details.full_hs:
             logging.debug(
-                f"full handshake for cipher suite {cipher_suite.name} not supported"
+                f"full handshake for cipher suite {cipher_suite} not supported"
             )
             return
 
@@ -600,9 +600,9 @@ class TlsConnection(object):
             self.kdf.set_msg_digest_algo(None)
         else:
             self.kdf.set_msg_digest_algo(self.cs_details.mac_struct.hmac_algo)
-        logging.debug(f"hash_primitive: {self.cs_details.mac.name}")
+        logging.debug(f"hash_primitive: {self.cs_details.mac}")
         logging.debug(
-            f"cipher_primitive: {self.cs_details.cipher_struct.primitive.name}"
+            f"cipher_primitive: {self.cs_details.cipher_struct.primitive}"
         )
 
     def generate_master_secret(self):
