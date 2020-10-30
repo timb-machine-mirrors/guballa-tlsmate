@@ -17,6 +17,20 @@ class FatalAlert(Exception):
         self.message = message
 
 
+class CurveNotSupportedError(Exception):
+    """Exception if a curve is negotiated which we do not support
+
+    Attributes:
+        message (str): A human readable string providing the cause
+        curve (:class:`tlsclient.constants.SupportedGroups`): The curve has been
+            offered by the client, and selected by the server, but it is not
+            supported for a full key exchange.
+    """
+    def __init__(self, message, curve):
+        self.message = message
+        self.curve = curve
+
+
 class ScanError(Exception):
     """Execption which might occur during a scan.
 

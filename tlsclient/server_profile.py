@@ -103,7 +103,7 @@ class SerializableList(object):
 class SPCipherSuite(Serializable):
     serialize_map = {
         "cert_chain_id": lambda self: self.cert_chain_id,
-        "name": lambda self: self.cs,
+        "name": lambda self: self.cs.name,
         "id": lambda self: self.cs.value,
     }
 
@@ -116,7 +116,7 @@ class SPCipherSuite(Serializable):
 class SPVersions(Serializable):
 
     serialize_map = {
-        "server_preference": lambda self: self.server_preference,
+        "server_preference": lambda self: self.server_preference.name,
         "version": lambda self: {"name": self.version.name, "id": self.version.value},
         "cipher_suites": lambda self: self.cipher_suites,
     }

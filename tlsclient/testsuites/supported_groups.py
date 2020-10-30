@@ -9,6 +9,7 @@ from tlsclient.testmanager import TestSuite
 from tlsclient.exception import ScanError
 from tlsclient.server_profile import Serializable, SerializableList
 from tlsclient import utils
+from tlsclient.exception import CurveNotSupportedError
 
 
 class _GroupProfile(Serializable):
@@ -142,27 +143,21 @@ class _TLS12_Scan(_Scan):
             ],
         )
 
-    def _get_server_key_exchange_from_server(self, offered_groups):
+    def _get_group_from_server(self, offered_groups):
         self._client.support_supported_groups = True
         self._client.supported_groups = offered_groups
         with self._client.create_connection() as conn:
             conn.send(msg.ClientHello)
             conn.wait(msg.ServerHello)
             conn.wait(msg.Certificate, optional=True)
-            return conn.wait(msg.ServerKeyExchange)
+            try:
+                msg_ske = conn.wait(msg.ServerKeyExchange)
+            except CurveNotSupportedError as exc:
+                return exc.curve
+            if msg_ske is None or msg_ske.ec is None:
+                return None
+            return msg_ske.ec.named_curve
         return None
-
-    def _get_group_from_server(self, offered_groups):
-        msg_ske = self._get_server_key_exchange_from_server(offered_groups)
-        if msg_ske is None or msg_ske.ec is None:
-            return None
-        return msg_ske.ec.named_curve
-
-    def _get_remote_key_from_server(self, offered_groups):
-        msg_ske = self._get_server_key_exchange_from_server(offered_groups)
-        if msg_ske is None or msg_ske.ec is None:
-            return None
-        return msg_ske.ec.public
 
     def _determine_advertised_group(self):
         self._profile_groups.groups_advertised = tls.SPBool.C_NA

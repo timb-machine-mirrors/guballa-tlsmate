@@ -8,7 +8,7 @@ import os
 from tlsclient import dh_numbers
 import tlsclient.constants as tls
 from tlsclient import pdu
-from tlsclient.exception import FatalAlert
+from tlsclient.exception import FatalAlert, CurveNotSupportedError
 
 from cryptography.hazmat.primitives.asymmetric import ec, x25519, x448, dh
 from cryptography import x509
@@ -121,7 +121,9 @@ _sig_schemes = {
 def instantiate_named_group(group_name, conn, recorder):
     group = _supported_groups.get(group_name)
     if group is None:
-        raise ValueError(f"the group {group_name} is not supported")
+        raise CurveNotSupportedError(
+            f"the group {group_name} is not supported", group_name
+        )
     kwargs = {"group_name": group_name}
     if group.algo is not None:
         kwargs["algo"] = group.algo
