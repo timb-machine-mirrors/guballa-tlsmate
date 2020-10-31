@@ -4,6 +4,7 @@
 import sys
 import time
 import datetime
+import yaml
 from tlsclient.server_profile import Serializable
 from tlsclient.testmanager import TestSuite
 from tlsclient.version import __version__
@@ -57,3 +58,5 @@ class ScanEnd(TestSuite):
 
     def run(self):
         _scanner_profile.end()
+        print(yaml.dump(self.server_profile.serialize_obj(), indent=4))
+

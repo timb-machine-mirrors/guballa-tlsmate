@@ -4,7 +4,6 @@
 import sys
 import argparse
 import logging
-import yaml
 import importlib
 import pkgutil
 
@@ -60,8 +59,8 @@ def build_parser():
 
     parser.add_argument(
         "--version",
-        action="store_true",
-        default=False,
+        action="version",
+        version=__version__,
         help="print the version of the tool",
     )
     parser.add_argument(
@@ -69,6 +68,15 @@ def build_parser():
         choices=["critical", "error", "warning", "info", "debug"],
         help="sets the loggin level. Default id error.",
         default="error",
+    )
+
+    parser.add_argument(
+        "host",
+        help=(
+            "the host to scan. May optionally have the port number appended, "
+            "separated by a colon."
+        ),
+        type=str,
     )
 
     add_plugins_to_parser(parser)
@@ -97,9 +105,16 @@ def main():
     parser = build_parser()
 
     args = parser.parse_args()
-    if args.version:
-        print_version()
-        sys.exit(0)
+    host_arg = args.host.split(":")
+    host = host_arg.pop(0)
+    if host_arg:
+        port = int(host_arg.pop(0))
+    else:
+        port = 443
+
+    container.config.set("server", host)
+    container.config.set("port", port)
+
     set_logging(args.logging)
 
     plugin_cli_options = sorted(TestManager.test_suites.keys())
@@ -113,7 +128,6 @@ def main():
         parser.error("specify at least one of the following options: " + options)
 
     test_manager.run(container, selected_plugins)
-    print(yaml.dump(container.server_profile().serialize_obj(), indent=4))
 
 
 # always register the basic plugins provided with tlsclient

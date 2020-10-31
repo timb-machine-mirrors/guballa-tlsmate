@@ -222,13 +222,13 @@ class _TLS13_Scan(_Scan):
                 self._profile_groups.groups_advertised = tls.SPBool.C_FALSE
             else:
                 advertised_groups = supported_group_ext.supported_groups
-                if set(advertised_groups) == set(self.groups):
-                    self.groups = advertised_groups
-                    self._profile_groups.groups_advertised = tls.SPBool.C_TRUE
-                else:
-                    raise ScanError(
-                        "server's advertised groups differ from accepted groups"
-                    )
+                self.groups = advertised_groups
+                self._profile_groups.groups_advertised = tls.SPBool.C_TRUE
+                if self._profile_groups.server_preference is not tls.SPBool.C_TRUE:
+                    if set(advertised_groups) != set(self.groups):
+                        raise ScanError(
+                            "server's advertised groups differ from accepted groups"
+                        )
 
 
 class ScanSupportedGroups(TestSuite):
