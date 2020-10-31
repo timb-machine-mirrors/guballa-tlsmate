@@ -1,8 +1,6 @@
 
     - support for renegotiation
     - certificate validation and extraction to server profile
-    - add a progress feedback, e.g. print a dot for each handshake
-    - specify scan target via command line options
     - HelloRetryRequest
     - more scan results
     - improved error handling
@@ -12,3 +10,4 @@
     - use __str__ for messages and extension displaying their names, cover all enums as well
     - use :class:`XXX` iso :obj: in the *.rst files where appropriate
     - cover all key exchange algorithms in mappings.key_exchange
+    - let scanner_info_plugin dump the profile

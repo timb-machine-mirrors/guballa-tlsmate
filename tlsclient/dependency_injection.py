@@ -24,7 +24,7 @@ class Container(containers.DeclarativeContainer):
     recorder = providers.Singleton(Recorder)
 
     socket = providers.Factory(
-        Socket, server=config.server, port=config.port, recorder=recorder
+        Socket, config=config, recorder=recorder
     )
 
     kdf = providers.Factory(Kdf)
@@ -43,7 +43,7 @@ class Container(containers.DeclarativeContainer):
     )
 
     client = providers.Factory(
-        Client, connection_factory=connection.provider, server_name=config.server
+        Client, connection_factory=connection.provider, config=config
     )
 
     test_manager = providers.Singleton(TestManager)

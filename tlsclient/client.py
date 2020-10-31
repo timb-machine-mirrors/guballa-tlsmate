@@ -21,6 +21,7 @@ class Client(object):
     and not a message instance is provided in the test case.
 
     Attributes:
+        config (dict): contains the configuration
         compression_methods (list of :obj:`CompressionMethod`):
             a list of supported compression methods. This list will be used to
             populate the compression list in the ClientHello message.
@@ -60,14 +61,15 @@ class Client(object):
             supported for TLS1.3.
     """
 
-    def __init__(self, connection_factory, server_name):
+    def __init__(self, connection_factory, config):
         """Initialize the client object
 
         Args:
             connection_factory: method used to create a new connction object
-            server_name: the name of the server to connect to
+            config: the configuration object
         """
         self.connection_factory = connection_factory
+        self.config = config
         self.versions = [tls.Version.TLS12]
         self.cipher_suites = [
             tls.CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
@@ -81,7 +83,7 @@ class Client(object):
         self.session_state_ticket = None
 
         self.support_sni = True
-        self.server_name = server_name
+        self.server_name = config["server"]
 
         self.support_extended_master_secret = False
 

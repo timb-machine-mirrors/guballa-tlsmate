@@ -58,5 +58,7 @@ class ScanEnd(TestSuite):
 
     def run(self):
         _scanner_profile.end()
+        if self.client.config["progress"]:
+            sys.stderr.write("\n")
         print(yaml.dump(self.server_profile.serialize_obj(), indent=4))
 

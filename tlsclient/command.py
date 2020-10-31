@@ -69,6 +69,11 @@ def build_parser():
         help="sets the loggin level. Default id error.",
         default="error",
     )
+    parser.add_argument(
+        "--progress",
+        help="provides a kind of progress indicator",
+        action="store_true",
+    )
 
     parser.add_argument(
         "host",
@@ -97,7 +102,7 @@ def main():
     """The entry point for the command line interface
     """
 
-    config = {"server": "localhost", "port": 44330}
+    config = {"server": "localhost", "port": 44330, "progress": False}
 
     container = dependency.Container(config=config)
 
@@ -114,6 +119,7 @@ def main():
 
     container.config.set("server", host)
     container.config.set("port", port)
+    container.config.set("progress", args.progress)
 
     set_logging(args.logging)
 

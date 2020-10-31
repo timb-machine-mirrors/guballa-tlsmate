@@ -5,7 +5,7 @@
 import socket
 import select
 import logging
-
+import sys
 
 class Socket(object):
     """Class implementing the socket interface.
@@ -16,10 +16,9 @@ class Socket(object):
         recorder (:obj:`tlsclient.recorder.Recorder`): The recorder object
     """
 
-    def __init__(self, server, port, recorder):
+    def __init__(self, config, recorder):
         self._socket = None
-        self._server = server
-        self._port = port
+        self._config = config
         self._recorder = recorder
         self._fragment_max_size = 16384
 
@@ -29,9 +28,12 @@ class Socket(object):
         if self._recorder.is_injecting():
             return
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket.connect((self._server, self._port))
+        self._socket.connect((self._config["server"], self._config["port"]))
         laddr, lport = self._socket.getsockname()
         raddr, rport = self._socket.getpeername()
+        if self._config["progress"]:
+            sys.stderr.write(".")
+            sys.stderr.flush()
         logging.debug("Socket opened")
         logging.debug("local address: {}:{}".format(laddr, lport))
         logging.debug("remote address: {}:{}".format(raddr, rport))
