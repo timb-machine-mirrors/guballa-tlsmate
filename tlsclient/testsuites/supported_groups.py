@@ -7,41 +7,9 @@ import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.testmanager import TestSuite
 from tlsclient.exception import ScanError
-from tlsclient.server_profile import Serializable, SerializableList
+from tlsclient.server_profile import SPGroup
 from tlsclient import utils
 from tlsclient.exception import CurveNotSupportedError
-
-
-class _GroupProfile(Serializable):
-
-    serialize_map = {
-        "name": lambda self: self.group.name,
-        "id": lambda self: self.group.value,
-    }
-
-    def __init__(self, group):
-        super().__init__()
-        self.group = group
-
-
-class _GroupsProfile(Serializable):
-
-    name = "named_groups"
-
-    serialize_map = {
-        "groups": lambda self: self.groups,
-        "server_preference": lambda self: self.server_preference.name,
-        "groups_advertised": lambda self: self.groups_advertised.name,
-        "extension_supported": lambda self: self.extension_supported.name,
-    }
-
-    def __init__(self, vers_prof):
-        super().__init__()
-        self.extension_supported = tls.SPBool.C_UNDETERMINED
-        self.groups = SerializableList("group")
-        self.server_preference = tls.SPBool.C_UNDETERMINED
-        self.groups_advertised = tls.SPBool.C_UNDETERMINED
-        vers_prof.register(self, as_child="supported_groups")
 
 
 class _Scan(metaclass=abc.ABCMeta):
@@ -49,7 +17,9 @@ class _Scan(metaclass=abc.ABCMeta):
         self._version = version
         self._client = testsuite.client
         self._version_prof = vers_prof
-        self._profile_groups = _GroupsProfile(vers_prof)
+        self._profile_groups = testsuite.server_profile.versions.key(
+            version
+        ).supported_groups
 
     @abc.abstractmethod
     def _get_cipher_suites(self):
@@ -70,7 +40,7 @@ class _Scan(metaclass=abc.ABCMeta):
                 server_group = self._get_group_from_server(sub_set)
                 if server_group is None:
                     break
-                self._profile_groups.groups.append(_GroupProfile(server_group))
+                self._profile_groups.groups.append(SPGroup(server_group))
                 if server_group not in sub_set:
                     self._profile_groups.extension_supported = tls.SPBool.C_FALSE
                     return
