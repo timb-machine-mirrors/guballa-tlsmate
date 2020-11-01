@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Module containing the test suite
 """
+import abc
 import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.testmanager import TestSuite
@@ -8,26 +9,50 @@ from tlsclient import utils
 from tlsclient.server_profile import SPSigAlgo, SPSignatureAlgorithms
 
 
-class ScanSigAlgs(TestSuite):
-    name = "sigalgo"
-    descr = "check signature algorithms"
-    prio = 20
+class _Backend(metaclass=abc.ABCMeta):
+    @staticmethod
+    def get_sig_alg_from_server(client, cipher_suites, sig_algs):
+        raise NotImplementedError
 
-    def get_sig_alg_from_server(self, cipher_suites, sig_algs):
+
+class _BackendTls12(_Backend):
+    @staticmethod
+    def get_sig_alg_from_server(client, cipher_suites, sig_algs):
         sig_alg = None
-        with self.client.create_connection() as conn:
+        cert_chain = None
+        with client.create_connection() as conn:
             conn.send(msg.ClientHello)
             conn.wait(msg.ServerHello)
-            msg_cert = conn.wait(msg.Certificate)
-            self.server_profile.cert_chain.append_unique(msg_cert.certificates)
+            cert_chain = conn.wait(msg.Certificate).certificates
             msg_ske = conn.wait(msg.ServerKeyExchange)
             if msg_ske.ec is not None:
                 sig_alg = msg_ske.ec.sig_scheme
             elif msg_ske.dh is not None:
                 sig_alg = msg_ske.dh.sig_scheme
-        return sig_alg
+        return sig_alg, cert_chain
 
-    def scan_auth_method(self, cipher_suites, sig_algs, prof_sig_algo):
+
+class _BackendTls13(_Backend):
+    @staticmethod
+    def get_sig_alg_from_server(client, cipher_suites, sig_algs):
+        sig_alg = None
+        cert_chain = None
+        with client.create_connection() as conn:
+            conn.send(msg.ClientHello)
+            conn.wait(msg.ServerHello)
+            conn.wait(msg.ChangeCipherSpec, optional=True)
+            conn.wait(msg.EncryptedExtensions)
+            cert_chain = conn.wait(msg.Certificate).certificates
+            sig_alg = conn.wait(msg.CertificateVerify).signature_scheme
+        return sig_alg, cert_chain
+
+
+class ScanSigAlgs(TestSuite):
+    name = "sigalgo"
+    descr = "check signature algorithms"
+    prio = 20
+
+    def scan_auth_method(self, cipher_suites, sig_algs, prof_sig_algo, backend):
         sig_alg_supported = []
         if not cipher_suites:
             return sig_alg_supported
@@ -35,9 +60,12 @@ class ScanSigAlgs(TestSuite):
         self.client.support_signature_algorithms = True
         self.client.signature_algorithms = sig_algs
         while sig_algs:
-            sig_alg = self.get_sig_alg_from_server(cipher_suites, sig_algs)
+            sig_alg, cert_chain = backend.get_sig_alg_from_server(
+                self.client, cipher_suites, sig_algs
+            )
             if sig_alg is None:
                 break
+            self.server_profile.cert_chain.append_unique(cert_chain)
             if sig_alg not in sig_algs:
                 prof_sig_algo.info = (
                     f"server selects sig_alg {sig_alg} even when not offered"
@@ -51,7 +79,9 @@ class ScanSigAlgs(TestSuite):
         ):
             ref_sig_algo = sig_alg_supported[0]
             sig_alg_supported.append(sig_alg_supported.pop(0))
-            sig_alg = self.get_sig_alg_from_server(cipher_suites, sig_alg_supported)
+            sig_alg = backend.get_sig_alg_from_server(
+                self.client, cipher_suites, sig_alg_supported
+            )
             sig_alg_supported.insert(0, sig_alg_supported.pop())
             if sig_alg is ref_sig_algo:
                 prof_sig_algo.server_preference = tls.SPBool.C_TRUE
@@ -70,6 +100,7 @@ class ScanSigAlgs(TestSuite):
         sigalg_list = tls.SignatureScheme.all()
         self.client.support_supported_groups = True
         self.client.supported_groups = version.supported_groups.groups.all()
+        self.client.versions = [tls.Version.TLS12]
 
         rsa_ciphers = utils.filter_cipher_suites(
             cs_list, key_auth=[tls.KeyAuthentication.RSA]
@@ -81,7 +112,7 @@ class ScanSigAlgs(TestSuite):
                 sigalg_list,
             )
         ]
-        self.scan_auth_method(rsa_ciphers, rsa_sigalgs, prof_sig_algo)
+        self.scan_auth_method(rsa_ciphers, rsa_sigalgs, prof_sig_algo, _BackendTls12)
 
         dsa_ciphers = utils.filter_cipher_suites(
             cs_list, key_auth=[tls.KeyAuthentication.DSS]
@@ -93,7 +124,7 @@ class ScanSigAlgs(TestSuite):
                 sigalg_list,
             )
         ]
-        self.scan_auth_method(dsa_ciphers, dsa_sigalgs, prof_sig_algo)
+        self.scan_auth_method(dsa_ciphers, dsa_sigalgs, prof_sig_algo, _BackendTls12)
 
         ecdsa_ciphers = utils.filter_cipher_suites(
             cs_list, key_algo=[tls.KeyExchangeAlgorithm.ECDHE_ECDSA]
@@ -106,8 +137,24 @@ class ScanSigAlgs(TestSuite):
             )
         ]
         ecdsa_sigalgs.extend([tls.SignatureScheme.ED25519, tls.SignatureScheme.ED448])
-        self.scan_auth_method(ecdsa_ciphers, ecdsa_sigalgs, prof_sig_algo)
+        self.scan_auth_method(
+            ecdsa_ciphers, ecdsa_sigalgs, prof_sig_algo, _BackendTls12
+        )
+
+    def scan_tls13(self):
+        version = self.server_profile.versions.key(tls.Version.TLS13)
+        if version is None:
+            return
+        prof_sig_algo = SPSignatureAlgorithms()
+        version.signature_algorithms = prof_sig_algo
+        cs_list = version.cipher_suites.all()
+        sigalg_list = tls.SignatureScheme.all()
+        self.client.support_supported_groups = True
+        self.client.supported_groups = version.supported_groups.groups.all()
+        self.client.versions = [tls.Version.TLS13]
+
+        self.scan_auth_method(cs_list, sigalg_list, prof_sig_algo, _BackendTls13)
 
     def run(self):
         self.scan_tls12()
-        # scan_tls13()
+        self.scan_tls13()
