@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Module containing the CLI implementation
 """
-import sys
 import argparse
 import logging
 import importlib
@@ -70,9 +69,7 @@ def build_parser():
         default="error",
     )
     parser.add_argument(
-        "--progress",
-        help="provides a kind of progress indicator",
-        action="store_true",
+        "--progress", help="provides a kind of progress indicator", action="store_true"
     )
 
     parser.add_argument(

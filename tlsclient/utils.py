@@ -18,7 +18,7 @@ def get_cipher_suite_details(cipher_suite):
     """
     cs = mappings.supported_cipher_suites.get(cipher_suite)
     if cs is None:
-        return structs.CipherSuiteDetails(cipher_suite=cipher_suite)
+        return None
     ciph = mappings.supported_ciphers[cs.cipher]
     key = mappings.key_exchange.get(cs.key_ex)
     if key is not None:
@@ -150,9 +150,15 @@ def filter_cipher_suites(
             lambda cs: cs.key_exchange_supported is key_exchange_supported
         )
 
+    if tls.CipherSuite.TLS_FALLBACK_SCSV in cs_list:
+        cs_list.remove(tls.CipherSuite.TLS_FALLBACK_SCSV)
+    if tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV in cs_list:
+        cs_list.remove(tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV)
     filtered = []
     for cs in cs_list:
         cs_details = get_cipher_suite_details(cs)
+        if cs_details is None:
+            continue
         match = True
         for filt_func in filter_funcs:
             if not filt_func(cs_details):

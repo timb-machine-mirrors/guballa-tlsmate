@@ -75,6 +75,7 @@ class ExtendedEnum(enum.Enum):
         """
         return self.name
 
+
 class ExtendedIntEnum(ExtendedEnum):
     """Clas for comparable enums
 
@@ -93,6 +94,7 @@ class ExtendedIntEnum(ExtendedEnum):
 
     def __ge__(self, other):
         return self.value >= other.value
+
 
 class Entity(ExtendedEnum):
     """Enum used to represent the entity of the TLS connection endpoint.

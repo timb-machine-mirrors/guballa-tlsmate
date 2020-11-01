@@ -24,6 +24,8 @@ def test_filter_cipher_suites():
     """Simple tests, only one filter condition at once
     """
     cs_all = tls.CipherSuite.all()
+    cs_all.remove(tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV)
+    cs_all.remove(tls.CipherSuite.TLS_FALLBACK_SCSV)
 
     assert cs_all == filter_cipher_suites(cs_all)
 
@@ -91,8 +93,10 @@ def test_filter_cipher_suites():
     check_absence(cs_all, "_SHA384")
 
     cs_all = tls.CipherSuite.all()
+    cs_all.remove(tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV)
+    cs_all.remove(tls.CipherSuite.TLS_FALLBACK_SCSV)
+    cs_all2 = cs_all[:]
     full_hs = filter_cipher_suites(cs_all, full_hs=True, remove=True)
-    cs_all2 = tls.CipherSuite.all()
     not_full_hs = filter_cipher_suites(cs_all2, full_hs=False, remove=True)
     assert set(full_hs) != set()
     assert not_full_hs != set()

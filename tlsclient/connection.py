@@ -274,9 +274,7 @@ class TlsConnection(object):
         logging.info(f"client_random: {pdu.dump(msg.random)}")
         logging.info(f"client_version: {msg.client_version}")
         for cipher_suite in msg.cipher_suites:
-            logging.info(
-                f"cipher suite: 0x{cipher_suite.value:04x} {cipher_suite}"
-            )
+            logging.info(f"cipher suite: 0x{cipher_suite.value:04x} {cipher_suite}")
         if msg.extensions is not None:
             for extension in msg.extensions:
                 ext = extension.extension_id
@@ -366,9 +364,7 @@ class TlsConnection(object):
     def on_server_hello_received(self, msg):
         logging.info(f"server random: {pdu.dump(msg.random)}")
         logging.info(f"version: {msg.version}")
-        logging.info(
-            f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite}"
-        )
+        logging.info(f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite}")
         for extension in msg.extensions:
             extension = extension.extension_id
             logging.info(f"extension {extension.value} {extension}")
@@ -601,9 +597,7 @@ class TlsConnection(object):
         else:
             self.kdf.set_msg_digest_algo(self.cs_details.mac_struct.hmac_algo)
         logging.debug(f"hash_primitive: {self.cs_details.mac}")
-        logging.debug(
-            f"cipher_primitive: {self.cs_details.cipher_struct.primitive}"
-        )
+        logging.debug(f"cipher_primitive: {self.cs_details.cipher_struct.primitive}")
 
     def generate_master_secret(self):
         if self.extended_ms:

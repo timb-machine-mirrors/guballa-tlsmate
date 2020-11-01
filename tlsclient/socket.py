@@ -7,6 +7,7 @@ import select
 import logging
 import sys
 
+
 class Socket(object):
     """Class implementing the socket interface.
 
@@ -75,6 +76,9 @@ class Socket(object):
         if rfds:
             for fd in rfds:
                 if fd is self._socket:
-                    data = fd.recv(self._fragment_max_size)
+                    try:
+                        data = fd.recv(self._fragment_max_size)
+                    except ConnectionResetError:
+                        return None
         self._recorder.trace_socket_recv(data)
         return data

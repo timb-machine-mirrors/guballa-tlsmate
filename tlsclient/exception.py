@@ -26,6 +26,7 @@ class CurveNotSupportedError(Exception):
             offered by the client, and selected by the server, but it is not
             supported for a full key exchange.
     """
+
     def __init__(self, message, curve):
         self.message = message
         self.curve = curve

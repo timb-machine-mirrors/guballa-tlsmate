@@ -23,9 +23,7 @@ class Container(containers.DeclarativeContainer):
 
     recorder = providers.Singleton(Recorder)
 
-    socket = providers.Factory(
-        Socket, config=config, recorder=recorder
-    )
+    socket = providers.Factory(Socket, config=config, recorder=recorder)
 
     kdf = providers.Factory(Kdf)
 
