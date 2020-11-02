@@ -17,6 +17,12 @@ class FatalAlert(Exception):
         self.message = message
 
 
+class TLSConnectionClosedError(Exception):
+    """Exception raised when the TLS connection is closed.
+    """
+    pass
+
+
 class CurveNotSupportedError(Exception):
     """Exception if a curve is negotiated which we do not support
 

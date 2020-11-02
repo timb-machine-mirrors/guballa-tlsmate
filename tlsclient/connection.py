@@ -8,7 +8,7 @@ import os
 import io
 import traceback as tb
 import time
-from tlsclient.exception import FatalAlert
+from tlsclient.exception import FatalAlert, TLSConnectionClosedError
 import tlsclient.constants as tls
 from tlsclient import pdu
 from tlsclient.messages import (
@@ -146,11 +146,9 @@ class TlsConnection(object):
             self.send(
                 Alert(level=tls.AlertLevel.FATAL, description=exc_value.description)
             )
-            self.record_layer.close_socket()
-            return True
         self.record_layer.close_socket()
         logging.debug("TLS connection closed")
-        return False
+        return exc_type in [FatalAlert, TLSConnectionClosedError]
 
     def set_client(self, client):
         self.client = client

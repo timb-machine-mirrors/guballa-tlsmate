@@ -6,6 +6,7 @@ import socket
 import select
 import logging
 import sys
+from tlsclient.exception import TLSConnectionClosedError
 
 
 class Socket(object):
@@ -44,6 +45,7 @@ class Socket(object):
         """
         if self._socket is not None:
             logging.debug("Closing socket")
+            self._socket.shutdown(2)
             self._socket.close()
 
     def sendall(self, data):
@@ -74,11 +76,11 @@ class Socket(object):
             self._open_socket()
         rfds, wfds, efds = select.select([self._socket], [], [], timeout / 1000)
         if rfds:
-            for fd in rfds:
-                if fd is self._socket:
-                    try:
-                        data = fd.recv(self._fragment_max_size)
-                    except ConnectionResetError:
-                        return None
+            try:
+                data = self._socket.recv(self._fragment_max_size)
+            except ConnectionResetError:
+                raise TLSConnectionClosedError
         self._recorder.trace_socket_recv(data)
+        if data == b"":
+            raise TLSConnectionClosedError
         return data
