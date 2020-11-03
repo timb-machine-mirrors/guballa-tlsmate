@@ -109,16 +109,16 @@ class SerializableList(object):
         return self._list[key]
 
 
-class SPSigAlgo(Serializable):
+class SPEnum(Serializable):
 
     serialize_map = {
-        "name": lambda self: self.algorithm.name,
-        "id": lambda self: self.algorithm.value,
+        "name": lambda self: self.enum_item.name,
+        "id": lambda self: self.enum_item.value,
     }
 
-    def __init__(self, sig_algo):
+    def __init__(self, enum_item):
         super().__init__()
-        self.algorithm = sig_algo
+        self.enum_item = enum_item
 
 
 class SPSignatureAlgorithms(Serializable):
@@ -132,31 +132,8 @@ class SPSignatureAlgorithms(Serializable):
     def __init__(self):
         super().__init__()
         self.server_preference = tls.SPBool.C_NA
-        self.algorithms = SerializableList(key_property="algorithm")
+        self.algorithms = SerializableList(key_property="enum_item")
         self.info = None
-
-
-class SPCipherSuite(Serializable):
-    serialize_map = {
-        "name": lambda self: self.cipher_suite.name,
-        "id": lambda self: self.cipher_suite.value,
-    }
-
-    def __init__(self, struct):
-        super().__init__()
-        self.cipher_suite = struct.cipher_suite
-
-
-class SPGroup(Serializable):
-
-    serialize_map = {
-        "name": lambda self: self.group.name,
-        "id": lambda self: self.group.value,
-    }
-
-    def __init__(self, group):
-        super().__init__()
-        self.group = group
 
 
 class SPSupportedGroups(Serializable):
@@ -171,21 +148,9 @@ class SPSupportedGroups(Serializable):
     def __init__(self):
         super().__init__()
         self.extension_supported = tls.SPBool.C_UNDETERMINED
-        self.groups = SerializableList(key_property="group")
+        self.groups = SerializableList(key_property="enum_item")
         self.server_preference = tls.SPBool.C_UNDETERMINED
         self.groups_advertised = tls.SPBool.C_UNDETERMINED
-
-
-class SPVersion(Serializable):
-
-    serialize_map = {
-        "name": lambda self: self.version.name,
-        "id": lambda self: self.version.value,
-    }
-
-    def __init__(self, version):
-        super().__init__()
-        self.version = version
 
 
 class SPVersions(Serializable):
@@ -200,9 +165,9 @@ class SPVersions(Serializable):
 
     def __init__(self, version, server_pref):
         super().__init__()
-        self.version = SPVersion(version)
+        self.version = SPEnum(version)
         self.server_preference = server_pref
-        self.cipher_suites = SerializableList(key_property="cipher_suite")
+        self.cipher_suites = SerializableList(key_property="enum_item")
         self.supported_groups = SPSupportedGroups()
         self.signature_algorithms = None
 
@@ -263,15 +228,27 @@ class SPScanner(Serializable):
         self.run_time = float(f"{self.stop_timestamp - self.start_timestamp:.3f}")
 
 
+class SPFeatures(Serializable):
+    name = "features"
+
+    serialize_map = {"compression": lambda self: self.compression}
+
+    def __init__(self):
+        super().__init__()
+        self.compression = SerializableList(key_property="enum_item")
+
+
 class ServerProfile(Serializable):
     serialize_map = {
         "versions": lambda self: self.versions,
         "cert_chain": lambda self: self.cert_chain,
         "scan_info": lambda self: self.scan_info,
+        "features": lambda self: self.features,
     }
 
     def __init__(self):
         super().__init__()
-        self.versions = SerializableList(key_func=lambda obj: obj.version.version)
+        self.versions = SerializableList(key_func=lambda obj: obj.version.enum_item)
         self.cert_chain = SPCertificateChainList(key_property="id")
         self.scan_info = None
+        self.features = SPFeatures()

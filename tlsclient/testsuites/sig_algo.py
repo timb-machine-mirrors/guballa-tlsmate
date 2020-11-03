@@ -6,7 +6,7 @@ import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.testmanager import TestSuite
 from tlsclient import utils
-from tlsclient.server_profile import SPSigAlgo, SPSignatureAlgorithms
+from tlsclient.server_profile import SPSignatureAlgorithms, SPEnum
 
 
 class _Backend(metaclass=abc.ABCMeta):
@@ -88,7 +88,7 @@ class ScanSigAlgs(TestSuite):
             else:
                 prof_sig_algo.server_preference = tls.SPBool.C_FALSE
         for sig_algo in sig_alg_supported:
-            prof_sig_algo.algorithms.append(SPSigAlgo(sig_algo))
+            prof_sig_algo.algorithms.append(SPEnum(sig_algo))
 
     def scan_tls12(self):
         version = self.server_profile.versions.key(tls.Version.TLS12)

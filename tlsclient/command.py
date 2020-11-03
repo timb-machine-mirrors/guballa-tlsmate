@@ -13,6 +13,7 @@ from tlsclient.testsuites.scanner_info import ScanStart, ScanEnd
 from tlsclient.testsuites.supported_groups import ScanSupportedGroups
 from tlsclient.testsuites.testsuite import ScanScratch
 from tlsclient.testsuites.sig_algo import ScanSigAlgs
+from tlsclient.testsuites.features import ScanFeatures
 
 from tlsclient.version import __version__
 
@@ -138,7 +139,14 @@ def main():
 TestManager.register_cli(
     "--scan",
     cli_help="performs a basic scan",
-    classes=[ScanCipherSuites, ScanStart, ScanEnd, ScanSupportedGroups, ScanSigAlgs],
+    classes=[
+        ScanCipherSuites,
+        ScanStart,
+        ScanEnd,
+        ScanSupportedGroups,
+        ScanSigAlgs,
+        ScanFeatures,
+    ],
 )
 TestManager.register_cli(
     "--scratch", cli_help="this is just a scratch scenario", classes=[ScanScratch]

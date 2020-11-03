@@ -6,9 +6,8 @@ import logging
 import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.testmanager import TestSuite
-import tlsclient.structures as structs
 import tlsclient.utils as utils
-from tlsclient.server_profile import SPVersions, SPCipherSuite
+from tlsclient.server_profile import SPEnum, SPVersions
 
 
 class ScanCipherSuites(TestSuite):
@@ -31,14 +30,9 @@ class ScanCipherSuites(TestSuite):
                 if server_hello.version != version:
                     return None
             certificate = conn.wait(msg.Certificate, optional=True)
-            cert_chain_id = None
             if certificate is not None:
-                cert_chain_id = self.server_profile.cert_chain.append_unique(
-                    certificate.certificates
-                )
-            return structs.SPCipherSuite(
-                cipher_suite=server_hello.cipher_suite, cert_chain_id=cert_chain_id
-            )
+                self.server_profile.cert_chain.append_unique(certificate.certificates)
+            return server_hello.cipher_suite
         return None
 
     def get_server_cs(self):
@@ -65,7 +59,6 @@ class ScanCipherSuites(TestSuite):
         )
         logging.info(f"starting to enumerate {version.name}")
         self.client.versions = [version]
-        cs_tuples = {}
         supported_cs = []
 
         # get a list of all supported cipher suites, don't send more than
@@ -77,12 +70,10 @@ class ScanCipherSuites(TestSuite):
 
             while sub_set:
                 self.client.cipher_suites = sub_set
-                sp_cipher_suite = self.get_server_cs_and_cert(version)
-                if sp_cipher_suite is not None:
-                    cs = sp_cipher_suite.cipher_suite
-                    sub_set.remove(cs)
-                    cs_tuples[cs] = sp_cipher_suite
-                    supported_cs.append(cs)
+                cipher_suite = self.get_server_cs_and_cert(version)
+                if cipher_suite is not None:
+                    sub_set.remove(cipher_suite)
+                    supported_cs.append(cipher_suite)
                 else:
                     sub_set = []
 
@@ -113,7 +104,7 @@ class ScanCipherSuites(TestSuite):
 
             profile_version.server_preference = server_prio
             for cs in supported_cs:
-                profile_version.cipher_suites.append(SPCipherSuite(cs_tuples[cs]))
+                profile_version.cipher_suites.append(SPEnum(cs))
 
         logging.info(f"enumeration for {version} finished")
 
@@ -127,9 +118,9 @@ class ScanCipherSuites(TestSuite):
                     cert_chain_id = self.server_profile.cert_chain.append_unique(
                         [server_hello.certificate]
                     )
-                prof_version = SPVersions(tls.Version.SSL20, tls.SPBool.C_UNDETERMINED)
+                prof_version = SPEnum(tls.Version.SSL20, tls.SPBool.C_UNDETERMINED)
                 for cs in server_hello.cipher_specs:
-                    prof_version.cipher_suites.append(SPCipherSuite(cs, cert_chain_id))
+                    prof_version.cipher_suites.append(SPEnum(cs, cert_chain_id))
                 self.server_profile.versions.append(prof_version)
 
     def enum_version(self, version):

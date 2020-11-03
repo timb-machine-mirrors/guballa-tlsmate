@@ -93,14 +93,6 @@ class RecordLayerMsg(NamedTuple):
     fragment: bytes
 
 
-class SPCipherSuite(NamedTuple):
-    """Properties describing a cipher suite in the server profile.
-    """
-
-    cipher_suite: tls.CipherSuite
-    cert_chain_id: int
-
-
 class KeyExchange(NamedTuple):
     """Set of properties describing a key exchange method.
     """

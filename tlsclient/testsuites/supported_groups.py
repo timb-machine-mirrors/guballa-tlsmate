@@ -7,7 +7,7 @@ import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.testmanager import TestSuite
 from tlsclient.exception import ScanError
-from tlsclient.server_profile import SPGroup
+from tlsclient.server_profile import SPEnum
 from tlsclient import utils
 from tlsclient.exception import CurveNotSupportedError
 
@@ -40,7 +40,7 @@ class _Scan(metaclass=abc.ABCMeta):
                 server_group = self._get_group_from_server(sub_set)
                 if server_group is None:
                     break
-                self._profile_groups.groups.append(SPGroup(server_group))
+                self._profile_groups.groups.append(SPEnum(server_group))
                 if server_group not in sub_set:
                     self._profile_groups.extension_supported = tls.SPBool.C_FALSE
                     return

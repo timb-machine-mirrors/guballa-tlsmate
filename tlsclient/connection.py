@@ -299,21 +299,21 @@ class TlsConnection(object):
             method(self, msg)
 
     def send(self, *messages):
-        for msg in messages:
-            logging.info(f"Sending {msg.msg_type}")
+        for message in messages:
+            logging.info(f"Sending {message.msg_type}")
             self._post_sending_hook = None
-            if inspect.isclass(msg):
-                msg = self.generate_outgoing_msg(msg)
+            if inspect.isclass(message):
+                message = self.generate_outgoing_msg(message)
             else:
-                self.on_sending_message(msg)
-            msg_data = msg.serialize(self)
-            self.msg.store_msg(msg, received=False)
-            if msg.content_type == tls.ContentType.HANDSHAKE:
+                self.on_sending_message(message)
+            msg_data = message.serialize(self)
+            self.msg.store_msg(message, received=False)
+            if message.content_type == tls.ContentType.HANDSHAKE:
                 self.kdf.update_msg_digest(msg_data)
 
             self.record_layer.send_message(
                 structs.RecordLayerMsg(
-                    content_type=msg.content_type,
+                    content_type=message.content_type,
                     version=self.record_layer_version,
                     fragment=msg_data,
                 )
@@ -736,11 +736,10 @@ class TlsConnection(object):
 
     def handshake(self):
         self.send(msg.ClientHello)
-        server_hello = self.wait(msg.ServerHello)
-        version = self.version
+        self.wait(msg.ServerHello)
         if self.version is tls.Version.TLS13:
             self.wait(msg.ChangeCipherSpec, optional=True)
-            self.wait(EncryptedExtensions)
+            self.wait(msg.EncryptedExtensions)
             if not self.abbreviated_hs:
                 self.wait(msg.Certificate)
             self.wait(msg.Finished)
