@@ -729,7 +729,7 @@ class ChangeCipherSpecMessage(TlsMessage):
     def deserialize(cls, fragment, conn):
         if len(fragment) != 1:
             FatalAlert(
-                "Received ChangedCipherSpec has unexpected length",
+                "Received ChangeCipherSpec has unexpected length",
                 tls.AlertDescription.DECODE_ERROR,
             )
         msg_type, offset = pdu.unpack_uint8(fragment, 0)

@@ -49,7 +49,6 @@ class ScanScratch(TestSuite):
             # tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_CBC_SHA256,
             # tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA256
             # tls.CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA
-
             tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
             tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
             tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
@@ -57,8 +56,6 @@ class ScanScratch(TestSuite):
             tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
             tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
             tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
-
-
         ]
         client.supported_groups = [
             tls.SupportedGroups.SECP256R1,
@@ -105,7 +102,7 @@ class ScanScratch(TestSuite):
             tls.SignatureScheme.RSA_PKCS1_SHA1,
             tls.SignatureScheme.RSA_PKCS1_MD5,
             # tls.SignatureScheme.ECDSA_SHA1,
-            # tls.SignatureScheme.RSA_PKCS1_SHA256,
+            tls.SignatureScheme.RSA_PKCS1_SHA256,
             # tls.SignatureScheme.RSA_PKCS1_SHA256_LEGACY,
             # tls.SignatureScheme.RSA_PKCS1_SHA384,
             # tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
@@ -132,24 +129,25 @@ class ScanScratch(TestSuite):
         #     tls.SupportedGroups.FFDHE8192,
         # ]
         with client.create_connection() as conn:
-            conn.send(msg.ClientHello)
-            conn.wait(msg.ServerHello)
+            # conn.send(msg.ClientHello)
+            # conn.wait(msg.ServerHello)
 
-            # conn.wait(msg.ChangeCipherSpec, optional=True)
-            # conn.wait(msg.EncryptedExtensions)
+            # # conn.wait(msg.ChangeCipherSpec, optional=True)
+            # # conn.wait(msg.EncryptedExtensions)
+            # # conn.wait(msg.Certificate)
+            # # conn.wait(msg.CertificateVerify)
+            # # conn.wait(msg.Finished)
+            # # conn.send(msg.Finished)
+            # # conn.wait(msg.NewSessionTicket)
+            # # conn.wait(msg.NewSessionTicket)
+
             # conn.wait(msg.Certificate)
-            # conn.wait(msg.CertificateVerify)
+            # conn.wait(msg.ServerKeyExchange, optional=True)
+            # conn.wait(msg.ServerHelloDone)
+            # conn.send(msg.ClientKeyExchange, msg.ChangeCipherSpec, msg.Finished)
+            # conn.wait(msg.ChangeCipherSpec)
             # conn.wait(msg.Finished)
-            # conn.send(msg.Finished)
-            # conn.wait(msg.NewSessionTicket)
-            # conn.wait(msg.NewSessionTicket)
-
-            conn.wait(msg.Certificate)
-            conn.wait(msg.ServerKeyExchange, optional=True)
-            conn.wait(msg.ServerHelloDone)
-            conn.send(msg.ClientKeyExchange, msg.ChangeCipherSpec, msg.Finished)
-            conn.wait(msg.ChangeCipherSpec)
-            conn.wait(msg.Finished)
+            conn.handshake()
             conn.send(msg.AppData(b"GET / HTTP/1.1\r\nHost: localhost:44330\r\n\r\n"))
             while True:
                 app_data = conn.wait(msg.AppData)

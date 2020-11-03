@@ -20,6 +20,7 @@ class FatalAlert(Exception):
 class TLSConnectionClosedError(Exception):
     """Exception raised when the TLS connection is closed.
     """
+
     pass
 
 

@@ -9,6 +9,7 @@ import io
 import traceback as tb
 import time
 from tlsclient.exception import FatalAlert, TLSConnectionClosedError
+from tlsclient import messages as msg
 import tlsclient.constants as tls
 from tlsclient import pdu
 from tlsclient.messages import (
@@ -732,3 +733,41 @@ class TlsConnection(object):
             version=self.version,
             is_write_state=(entity is tls.Entity.CLIENT),
         )
+
+    def handshake(self):
+        self.send(msg.ClientHello)
+        server_hello = self.wait(msg.ServerHello)
+        version = self.version
+        if self.version is tls.Version.TLS13:
+            self.wait(msg.ChangeCipherSpec, optional=True)
+            self.wait(EncryptedExtensions)
+            if not self.abbreviated_hs:
+                self.wait(msg.Certificate)
+            self.wait(msg.Finished)
+            self.send(msg.Finished)
+        else:
+            if self.abbreviated_hs:
+                self.wait(msg.ChangeCipherSpec)
+                self.wait(msg.Finished)
+                self.send(msg.ChangeCipherSpec, msg.Finished)
+            else:
+                if (
+                    self.cs_details.key_algo_struct.key_auth
+                    is not tls.KeyAuthentication.NONE
+                ):
+                    self.wait(msg.Certificate)
+                if self.cs_details.key_algo in [
+                    tls.KeyExchangeAlgorithm.DHE_DSS,
+                    tls.KeyExchangeAlgorithm.DHE_RSA,
+                    tls.KeyExchangeAlgorithm.ECDHE_ECDSA,
+                    tls.KeyExchangeAlgorithm.ECDHE_RSA,
+                    tls.KeyExchangeAlgorithm.DH_ANON,
+                ]:
+                    self.wait(msg.ServerKeyExchange)
+                self.wait(msg.ServerHelloDone)
+                self.send(msg.ClientKeyExchange)
+                self.send(msg.ChangeCipherSpec)
+                self.send(msg.Finished)
+                self.wait(msg.ChangeCipherSpec)
+                self.wait(msg.Finished)
+                # TODO: check for NewSessionTicket
