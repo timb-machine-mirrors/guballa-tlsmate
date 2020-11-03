@@ -47,14 +47,12 @@ class Client(object):
         ec_point_formats (list of :obj:`EcPointFormat`): the list of supported
             ec-point formats supported by the client. Default:
             EcPointFormat.UNCOMPRESSED
-        support_supported_groups (bool): an indication if the client supports the
-            supported-group extension.
         supported_groups (list of :obj:`SupportedGroups`): the list of supported
-            groups supported by the client
-        support_signature_algorithms (bool): an indication if the client supports the
-            signature_algorithms extensions.
+            groups supported by the client. If set to [] or None, the extension
+            will not be present in the ClientHello message.
         signature_algorithms (list of :obj:`SignatureScheme`): the list of
-            signature algorithms supported by the client
+            signature algorithms supported by the client. If set to [] or None, the
+            extension will not be present in the ClientHello message.
         support_encrypt_then_mac (bool): an indication if the client supports the
             encrypt-then-mac extension
         key_shares (list of :obj:`SupportedGroups`): this list of key share ob
@@ -70,11 +68,20 @@ class Client(object):
         """
         self.connection_factory = connection_factory
         self.config = config
-        self.versions = [tls.Version.TLS12]
-        self.cipher_suites = [
-            tls.CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
-            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
-        ]
+        self.reset_profile()
+
+    def reset_profile(self):
+        """Resets the client profile to a very basic state
+
+        :note:
+            At least the versions and the cipher_suite list must be provided before
+            this profile can be used.
+
+        Compression methods is set to [tls.CompressionMethod.NULL], and by default
+        the sni extention is enabled. Everything else is empty or disabled.
+        """
+        self.versions = []
+        self.cipher_suites = []
         self.compression_methods = [tls.CompressionMethod.NULL]
         self.support_session_id = False
         self.session_state_id = None
@@ -83,21 +90,19 @@ class Client(object):
         self.session_state_ticket = None
 
         self.support_sni = True
-        self.server_name = config["server"]
+        self.server_name = self.config["server"]
 
         self.support_extended_master_secret = False
 
         self.support_ec_point_formats = False
-        self.ec_point_formats = [tls.EcPointFormat.UNCOMPRESSED]
+        self.ec_point_formats = []
 
-        self.support_supported_groups = True
-        self.supported_groups = [tls.SupportedGroups.SECP256R1]
+        self.supported_groups = None
 
-        self.support_signature_algorithms = True
-        self.signature_algorithms = [tls.SignatureScheme.RSA_PSS_RSAE_SHA256]
+        self.signature_algorithms = None
 
         # TLS13
-        self.key_shares = [tls.SupportedGroups.SECP256R1]
+        self.key_shares = []
 
         self.support_encrypt_then_mac = False
 
@@ -178,13 +183,13 @@ class Client(object):
                 msg.extensions.append(
                     ext.ExtEcPointFormats(ec_point_formats=self.ec_point_formats)
                 )
-            if self.support_supported_groups:
+            if self.supported_groups:
                 msg.extensions.append(
                     ext.ExtSupportedGroups(supported_groups=self.supported_groups)
                 )
 
             # RFC5246, 7.4.1.4.1.: Clients prior to TLS12 MUST NOT send this extension
-            if self.support_signature_algorithms and max_version >= tls.Version.TLS12:
+            if self.signature_algorithms and max_version >= tls.Version.TLS12:
                 msg.extensions.append(
                     ext.ExtSignatureAlgorithms(
                         signature_algorithms=self.signature_algorithms

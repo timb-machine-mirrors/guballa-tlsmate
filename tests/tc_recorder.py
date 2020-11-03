@@ -118,7 +118,7 @@ class TcRecorder(metaclass=abc.ABCMeta):
         """
         logging.basicConfig(level="DEBUG")
         pickle_file = self.get_pickle_file()
-        config = {"server": self.server, "port": self.port}
+        config = {"server": self.server, "port": self.port, "progress": False}
         container = Container(config=config)
         recorder = container.recorder()
         recorder.openssl_s_server = self.openssl_s_server
@@ -143,6 +143,6 @@ class TcRecorder(metaclass=abc.ABCMeta):
         with open(self.get_pickle_file(), "rb") as fd:
             recorder = pickle.load(fd)
         recorder.replay()
-        config = {"server": self.server, "port": self.port}
+        config = {"server": self.server, "port": self.port, "progress": False}
         container = Container(config=config, recorder=providers.Object(recorder))
         self.scenario(container)

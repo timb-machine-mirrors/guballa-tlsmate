@@ -28,6 +28,9 @@ class TestCase(TcRecorder):
         client.versions = [tls.Version.TLS13]
         client.cipher_suites = [tls.CipherSuite.TLS_AES_128_GCM_SHA256]
         client.supported_groups = [tls.SupportedGroups.SECP256R1]
+        client.key_shares = [tls.SupportedGroups.SECP256R1]
+        client.support_supported_groups = True
+        client.support_signature_algorithms = True
         client.signature_algorithms = [
             tls.SignatureScheme.RSA_PKCS1_SHA1,
             tls.SignatureScheme.ECDSA_SHA1,
