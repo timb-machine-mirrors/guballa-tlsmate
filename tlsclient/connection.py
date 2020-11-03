@@ -107,6 +107,7 @@ class TlsConnection(object):
         self.ticket_sent = False
         self.abbreviated_hs = False
         self.session_id_sent = None
+        self.handshake_completed = False
 
         # general
         self.entity = entity
@@ -232,6 +233,7 @@ class TlsConnection(object):
         msg = cls()
         msg.verify_data = val
         if self._finished_treated:
+            self.handshake_completed = True
             logging.info("Handshake finished, secure connection established")
         self._finished_treated = True
         return msg
@@ -473,6 +475,7 @@ class TlsConnection(object):
                 )
         logging.info("Received Finished sucessfully verified")
         if self._finished_treated:
+            self.handshake_completed = True
             logging.info("Handshake finished, secure connection established")
         self._finished_treated = True
         return self

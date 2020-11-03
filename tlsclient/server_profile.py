@@ -231,11 +231,15 @@ class SPScanner(Serializable):
 class SPFeatures(Serializable):
     name = "features"
 
-    serialize_map = {"compression": lambda self: self.compression}
+    serialize_map = {
+        "compression": lambda self: self.compression,
+        "encrypt_then_mac": lambda self: self.encrypt_then_mac.name,
+    }
 
     def __init__(self):
         super().__init__()
         self.compression = SerializableList(key_property="enum_item")
+        self.encrypt_then_mac = None
 
 
 class ServerProfile(Serializable):
