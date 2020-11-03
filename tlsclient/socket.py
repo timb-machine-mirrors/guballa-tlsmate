@@ -45,8 +45,8 @@ class Socket(object):
         """
         if self._socket is not None:
             logging.debug("Closing socket")
-            self._socket.shutdown(2)
             self._socket.close()
+            self._socket = None
 
     def sendall(self, data):
         """Sends data to the network.
