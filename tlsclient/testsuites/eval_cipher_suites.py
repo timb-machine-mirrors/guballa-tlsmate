@@ -7,7 +7,7 @@ import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.testmanager import TestSuite
 import tlsclient.utils as utils
-from tlsclient.server_profile import SPEnum, SPVersions
+from tlsclient.server_profile import SPVersions, ProfileEnum
 
 
 class ScanCipherSuites(TestSuite):
@@ -31,7 +31,7 @@ class ScanCipherSuites(TestSuite):
                     return None
             certificate = conn.wait(msg.Certificate, optional=True)
             if certificate is not None:
-                self.server_profile.cert_chain.append_unique(certificate.certificates)
+                self.server_profile.get("cert_chain").append_unique(certificate.certificates)
             return server_hello.cipher_suite
         return None
 
@@ -78,9 +78,8 @@ class ScanCipherSuites(TestSuite):
                     sub_set = []
 
         if supported_cs:
-            profile_version = self.server_profile.versions.append(
-                SPVersions(version, tls.SPBool.C_UNDETERMINED)
-            )
+            profile_version = SPVersions(version, tls.SPBool.C_UNDETERMINED)
+            self.server_profile.get("versions").append(profile_version)
             if len(supported_cs) == 1:
                 server_prio = tls.SPBool.C_NA
             else:
@@ -102,9 +101,9 @@ class ScanCipherSuites(TestSuite):
                     # are ordered according to the binary representation
                     supported_cs.insert(0, supported_cs.pop())
 
-            profile_version.server_preference = server_prio
+            profile_version.get("server_preference").set(server_prio)
             for cs in supported_cs:
-                profile_version.cipher_suites.append(SPEnum(cs))
+                profile_version.get("cipher_suites").append(ProfileEnum(cs))
 
         logging.info(f"enumeration for {version} finished")
 
@@ -115,13 +114,13 @@ class ScanCipherSuites(TestSuite):
             if server_hello is not None:
                 cert_chain_id = 0
                 if server_hello.certificate is not None:
-                    cert_chain_id = self.server_profile.cert_chain.append_unique(
+                    cert_chain_id = self.server_profile.get("cert_chain").append_unique(
                         [server_hello.certificate]
                     )
                 prof_version = SPEnum(tls.Version.SSL20, tls.SPBool.C_UNDETERMINED)
                 for cs in server_hello.cipher_specs:
-                    prof_version.cipher_suites.append(SPEnum(cs, cert_chain_id))
-                self.server_profile.versions.append(prof_version)
+                    prof_version.get("cipher_suites").append(SPEnum(cs, cert_chain_id))
+                self.server_profile.get("versions").append(prof_version)
 
     def enum_version(self, version):
         if version is tls.Version.SSL20:

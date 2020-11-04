@@ -207,6 +207,8 @@ class Client(object):
                 msg.extensions.append(ext.ExtSupportedVersions(versions=self.versions))
                 # TLS13 key shares: enforce the same sequence as in supported groups
                 key_shares = []
+                if not self.key_shares:
+                    self.key_shares = self.supported_groups
                 for group in self.supported_groups:
                     if group in self.key_shares:
                         key_shares.append(group)

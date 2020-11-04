@@ -2,189 +2,146 @@
 """Module containing the server profile class
 """
 import abc
-import sys
-import time
-import datetime
 from collections import OrderedDict
-from typing import NamedTuple
 from tlsclient import constants as tls
-from tlsclient.version import __version__
 
 
-class _Plugin(NamedTuple):
-    obj: type
-    as_child: str
+class ProfileObject(metaclass=abc.ABCMeta):
+    def serialize(self):
+        raise NotImplementedError
 
 
-class Serializable(metaclass=abc.ABCMeta):
+class ProfileBasic(ProfileObject):
+    def __init__(self, value):
+        self._value = value
 
-    serialize_map = {}
+    def serialize(self):
+        return self._value
 
+    def get(self):
+        return self._value
+
+    def set(self, value):
+        self._value = value
+
+
+class ProfileBasicEnum(ProfileBasic):
+    def serialize(self):
+        return self._value.name
+
+
+class ProfileDict(ProfileObject):
     def __init__(self):
-        self._plugins = {}
+        self._dict = {}
 
-    def register(self, obj, as_child=None):
-        if obj.name in self._plugins:
-            raise ValueError(
-                f"Serializable {self}: cannot register Serializable {obj.name}: "
-                f"name already in use"
-            )
-        self._plugins[obj.name] = _Plugin(obj=obj, as_child=as_child)
+    def add(self, name, obj, keep_existing=False):
+        if obj is None:
+            # it is more a documentational feature than a functional one
+            return
+        if not isinstance(obj, ProfileObject):
+            raise TypeError("only ProfileObject can be added to a profile object")
+        if name in self._dict:
+            if keep_existing:
+                return
+            raise ValueError(f"cannot use the same name {name} twice in the profile")
+        self._dict[name] = obj
 
-    def plugin(self, name):
-        plugin_struct = self._plugins.get(name)
-        if plugin_struct is None:
-            return None
-        return plugin_struct.obj
-
-    @staticmethod
-    def serialize(item):
-        try:
-            return item.serialize_obj()
-        except AttributeError:
-            if isinstance(item, (list, tuple)):
-                return [Serializable.serialize(elem) for elem in item]
-            elif isinstance(item, dict):
-                return {key: Serializable.serialize(val) for key, val in item.items()}
-            else:
-                return item
-
-    def serialize_obj(self):
-        status = getattr(self, "_status", None)
-        if status is not None:
-            return {"status": status}
+    def serialize(self):
         obj = {}
-        for attr, func in self.serialize_map.items():
-            try:
-                val = func(self)
-            except AttributeError:
-                pass
-            else:
-                res = Serializable.serialize(val)
-                if res is not None:
-                    obj[attr] = res
-        for name, plugin_struct in self._plugins.items():
-            obj2 = plugin_struct.obj.serialize_obj()
-            if plugin_struct.as_child is not None:
-                if plugin_struct.as_child in obj:
-                    raise ValueError(f"Serializable {name}: conflicting attribute name")
-                obj[plugin_struct.as_child] = obj2
-            else:
-                if set(obj).intersection(set(obj2)):
-                    raise ValueError(f"Serializable {name}: conflicting attribute name")
-                obj.update(obj2)
+        for key, prof_obj in self._dict.items():
+            val = prof_obj.serialize()
+            if val is not None:
+                obj[key] = val
         return obj
 
-    def set_status(self, message):
-        self._status = message
+    def get(self, name):
+        return self._dict.get(name)
 
 
-class SerializableList(object):
-    def __init__(self, key_property=None, key_func=None):
-        self._key_property = key_property
+class ProfileEnum(ProfileDict):
+    def __init__(self, enum):
+        super().__init__()
+        self.add("name", ProfileBasic(enum.name))
+        self.add("id", ProfileBasic(enum.value))
+        self._enum = enum
+
+    def get_enum(self):
+        return self._enum
+
+    def set(self, value):
+        self._value = value
+
+
+class ProfileList(ProfileObject):
+    def __init__(self, key_func):
+        self._dict = OrderedDict()
         self._key_func = key_func
-        self._list = OrderedDict()
+
+    def serialize(self):
+        return [item.serialize() for item in self._dict.values()]
+
+    def append(self, obj, keep_existing=False):
+        if not isinstance(obj, ProfileObject):
+            raise TypeError("only ProfileObject can be added to a profile list")
+        key = self._key_func(obj)
+        if key in self._dict:
+            if keep_existing:
+                return
+            raise ValueError(f"element {key} already present in profile list")
+        self._dict[key] = obj
 
     def key(self, key):
-        return self._list.get(key)
-
-    def serialize_obj(self):
-        return [Serializable.serialize(obj) for obj in self._list.values()]
+        return self._dict.get(key)
 
     def all(self):
-        return list(self._list.keys())
-
-    def append(self, data, keep_existing=False):
-        if self._key_func is not None:
-            key = self._key_func(data)
-        else:
-            key = getattr(data, self._key_property)
-        if key in self._list:
-            if not keep_existing:
-                raise ValueError(
-                    f"conflict for appending list: element {key} already existing"
-                )
-        else:
-            self._list[key] = data
-        return self._list[key]
+        return list(self._dict.keys())
 
 
-class SPEnum(Serializable):
-
-    serialize_map = {
-        "name": lambda self: self.enum_item.name,
-        "id": lambda self: self.enum_item.value,
-    }
-
-    def __init__(self, enum_item):
-        super().__init__()
-        self.enum_item = enum_item
-
-
-class SPSignatureAlgorithms(Serializable):
-
-    serialize_map = {
-        "server_preference": lambda self: self.server_preference.name,
-        "algorithms": lambda self: self.algorithms,
-        "info": lambda self: self.info,
-    }
-
+class SPSignatureAlgorithms(ProfileDict):
     def __init__(self):
         super().__init__()
-        self.server_preference = tls.SPBool.C_NA
-        self.algorithms = SerializableList(key_property="enum_item")
-        self.info = None
+        self.add("server_preference", ProfileBasicEnum(tls.SPBool.C_NA))
+        self.add("algorithms", ProfileList(key_func=lambda x: x.get_enum()))
+        self.add("info", None)
 
 
-class SPSupportedGroups(Serializable):
-
-    serialize_map = {
-        "groups": lambda self: self.groups,
-        "server_preference": lambda self: self.server_preference.name,
-        "groups_advertised": lambda self: self.groups_advertised.name,
-        "extension_supported": lambda self: self.extension_supported.name,
-    }
-
+class SPSupportedGroups(ProfileDict):
     def __init__(self):
         super().__init__()
-        self.extension_supported = tls.SPBool.C_UNDETERMINED
-        self.groups = SerializableList(key_property="enum_item")
-        self.server_preference = tls.SPBool.C_UNDETERMINED
-        self.groups_advertised = tls.SPBool.C_UNDETERMINED
+        self.add("extension_supported", ProfileBasicEnum(tls.SPBool.C_UNDETERMINED))
+        self.add("groups", ProfileList(key_func=lambda x: x.get_enum()))
+        self.add("groups_advertised", None)
+        self.add("extension_supported", None)
 
 
-class SPVersions(Serializable):
+class SPFeatures(ProfileDict):
+    def __init__(self):
+        super().__init__()
+        self.add("compression", None)
+        self.add("encrypt_then_mac", None)
 
-    serialize_map = {
-        "server_preference": lambda self: self.server_preference.name,
-        "version": lambda self: self.version,
-        "cipher_suites": lambda self: self.cipher_suites,
-        "supported_groups": lambda self: self.supported_groups,
-        "signature_algorithms": lambda self: self.signature_algorithms,
-    }
 
+class SPVersions(ProfileDict):
     def __init__(self, version, server_pref):
         super().__init__()
-        self.version = SPEnum(version)
-        self.server_preference = server_pref
-        self.cipher_suites = SerializableList(key_property="enum_item")
-        self.supported_groups = SPSupportedGroups()
-        self.signature_algorithms = None
+        self.add("version", ProfileEnum(version))
+        self.add("server_preference", ProfileBasicEnum(server_pref))
+        self.add("cipher_suites", ProfileList(key_func=lambda x: x.get_enum()))
+        self.add("supported_groups", SPSupportedGroups())
+        self.add("signature_algorithms", None)
 
 
-class SPCertificateChain(Serializable):
-    serialize_map = {
-        "id": lambda self: self.id,
-        "cert_chain": lambda self: [cert.hex() for cert in self.cert_chain],
-    }
-
+class SPCertificateChain(ProfileDict):
     def __init__(self, chain, idx):
         super().__init__()
-        self.id = idx
-        self.cert_chain = chain
+        self.add("id", ProfileBasic(idx))
+        cert_list = ProfileList(key_func=lambda x: x.get())
+        self.add("cert_chain", cert_list)
+        for cert in chain:
+            cert_list.append(ProfileBasic(cert.hex()))
 
 
-class SPCertificateChainList(SerializableList):
+class SPCertificateChainList(ProfileList):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._hash = {}
@@ -199,60 +156,11 @@ class SPCertificateChainList(SerializableList):
         return idx
 
 
-class SPScanner(Serializable):
-    name = "scan_info"
-
-    serialize_map = {
-        "command": lambda self: self.command,
-        "version": lambda self: self.version,
-        "start_time": lambda self: self.start_timestamp,
-        "start_date": lambda self: self.start_date,
-        "stop_timestamp": lambda self: self.stop_timestamp,
-        "stop_date": lambda self: self.stop_date,
-        "run_time": lambda self: self.run_time,
-    }
-
+class ServerProfile(ProfileDict):
     def __init__(self):
         super().__init__()
-        self.command = " ".join(sys.argv)
-        self.version = __version__
-        self.start_timestamp = time.time()
-        self.start_date = datetime.datetime.fromtimestamp(int(self.start_timestamp))
-        self.stop_timestamp = None
-        self.stop_date = None
-        self.run_time = None
-
-    def end(self):
-        self.stop_timestamp = time.time()
-        self.stop_date = datetime.datetime.fromtimestamp(int(self.stop_timestamp))
-        self.run_time = float(f"{self.stop_timestamp - self.start_timestamp:.3f}")
-
-
-class SPFeatures(Serializable):
-    name = "features"
-
-    serialize_map = {
-        "compression": lambda self: self.compression,
-        "encrypt_then_mac": lambda self: self.encrypt_then_mac.name,
-    }
-
-    def __init__(self):
-        super().__init__()
-        self.compression = SerializableList(key_property="enum_item")
-        self.encrypt_then_mac = None
-
-
-class ServerProfile(Serializable):
-    serialize_map = {
-        "versions": lambda self: self.versions,
-        "cert_chain": lambda self: self.cert_chain,
-        "scan_info": lambda self: self.scan_info,
-        "features": lambda self: self.features,
-    }
-
-    def __init__(self):
-        super().__init__()
-        self.versions = SerializableList(key_func=lambda obj: obj.version.enum_item)
-        self.cert_chain = SPCertificateChainList(key_property="id")
-        self.scan_info = None
-        self.features = SPFeatures()
+        self.add(
+            "versions", ProfileList(key_func=lambda x: x.get("version").get_enum())
+        )
+        self.add("cert_chain", SPCertificateChainList(key_func=lambda x: x.get("id")))
+        self.add("features", SPFeatures())

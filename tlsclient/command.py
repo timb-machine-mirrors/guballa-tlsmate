@@ -140,12 +140,12 @@ TestManager.register_cli(
     "--scan",
     cli_help="performs a basic scan",
     classes=[
-        ScanCipherSuites,
         ScanStart,
-        ScanEnd,
+        ScanCipherSuites,
         ScanSupportedGroups,
         ScanSigAlgs,
         ScanFeatures,
+        ScanEnd,
     ],
 )
 TestManager.register_cli(

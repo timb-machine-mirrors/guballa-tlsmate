@@ -7,7 +7,7 @@ import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.testmanager import TestSuite
 from tlsclient.exception import ScanError
-from tlsclient.server_profile import SPEnum
+from tlsclient.server_profile import ProfileEnum, ProfileBasicEnum
 from tlsclient import utils
 from tlsclient.exception import CurveNotSupportedError
 
@@ -17,9 +17,11 @@ class _Scan(metaclass=abc.ABCMeta):
         self._version = version
         self._client = testsuite.client
         self._version_prof = vers_prof
-        self._profile_groups = testsuite.server_profile.versions.key(
-            version
-        ).supported_groups
+        self._profile_groups = (
+            testsuite.server_profile.get("versions")
+            .key(version)
+            .get("supported_groups")
+        )
 
     @abc.abstractmethod
     def _get_cipher_suites(self):
@@ -40,18 +42,21 @@ class _Scan(metaclass=abc.ABCMeta):
                 server_group = self._get_group_from_server(sub_set)
                 if server_group is None:
                     break
-                self._profile_groups.groups.append(SPEnum(server_group))
+                self._profile_groups.get("groups").append(ProfileEnum(server_group))
                 if server_group not in sub_set:
-                    self._profile_groups.extension_supported = tls.SPBool.C_FALSE
+                    self._profile_groups.get("extension_supported").set(
+                        tls.SPBool.C_FALSE
+                    )
                     return
                 supported_groups.append(server_group)
                 sub_set.remove(server_group)
         if not supported_groups:
             raise ScanError("ECDHE cipher suites negotiated, but no groups supported")
-        self._profile_groups.extension_supported = tls.SPBool.C_TRUE
+        self._profile_groups.get("extension_supported").set(tls.SPBool.C_TRUE)
         self.groups = supported_groups
 
     def _determine_server_preference(self):
+        status = None
         if len(self.groups) > 1:
             ref_group = self.groups[0]
             self.groups.append(self.groups.pop(0))
@@ -59,11 +64,13 @@ class _Scan(metaclass=abc.ABCMeta):
             self.groups.insert(0, self.groups.pop())
             if server_group is not None:
                 if server_group is ref_group:
-                    self._profile_groups.server_preference = tls.SPBool.C_TRUE
+                    status = tls.SPBool.C_TRUE
                 else:
-                    self._profile_groups.server_preference = tls.SPBool.C_FALSE
+                    status = tls.SPBool.C_FALSE
         else:
-            self._profile_groups.server_preference = tls.SPBool.C_NA
+            status = tls.SPBool.C_NA
+        if status is not None:
+            self._profile_groups.add("server_preference", ProfileBasicEnum(status))
 
     @abc.abstractmethod
     def _determine_advertised_group(self):
@@ -91,11 +98,15 @@ class _Scan(metaclass=abc.ABCMeta):
                 tls.SignatureScheme.RSA_PKCS1_SHA1,
             ]
             self._determine_supported_groups()
-            if self._profile_groups.extension_supported is tls.SPBool.C_TRUE:
+            if (
+                self._profile_groups.get("extension_supported").get()
+                is tls.SPBool.C_TRUE
+            ):
                 self._determine_server_preference()
                 self._determine_advertised_group()
         except ScanError as exc:
             logging.info(f'scan error in "{testsuite_name}": {exc.message}')
+            # TODO: strategy for handling status messages
             self._profile_groups.set_status(exc.message)
 
 
@@ -104,7 +115,7 @@ class _TLS12_Scan(_Scan):
     _offered_groups = tls.SupportedGroups.all()
 
     def _get_cipher_suites(self):
-        cipher_suites = self._version_prof.cipher_suites.all()
+        cipher_suites = self._version_prof.get("cipher_suites").all()
         return utils.filter_cipher_suites(
             cipher_suites,
             key_algo=[
@@ -130,7 +141,8 @@ class _TLS12_Scan(_Scan):
         return None
 
     def _determine_advertised_group(self):
-        self._profile_groups.groups_advertised = tls.SPBool.C_NA
+        pass
+        # self._profile_groups.get("groups_advertised").set(tls.SPBool.C_NA)
 
 
 class _TLS13_Scan(_Scan):
@@ -149,7 +161,7 @@ class _TLS13_Scan(_Scan):
     ]
 
     def _get_cipher_suites(self):
-        return self._version_prof.cipher_suites.all()
+        return self._version_prof.get("cipher_suites").all()
 
     def _get_share_from_server(self, offered_groups):
         self._client.support_supported_groups = True
@@ -176,6 +188,7 @@ class _TLS13_Scan(_Scan):
         return None
 
     def _determine_advertised_group(self):
+        status = None
         self._client.supported_groups = self.groups[:1]
         self._client.key_shares = self.groups[:1]
         encrypted_extensions = None
@@ -189,17 +202,21 @@ class _TLS13_Scan(_Scan):
                 tls.Extension.SUPPORTED_GROUPS
             )
             if supported_group_ext is None:
-                self._profile_groups.groups_advertised = tls.SPBool.C_FALSE
+                status = tls.SPBool.C_FALSE
             else:
                 advertised_groups = supported_group_ext.supported_groups
                 self.groups = advertised_groups
-                self._profile_groups.groups_advertised = tls.SPBool.C_TRUE
-                if self._profile_groups.server_preference is not tls.SPBool.C_TRUE:
+                status = tls.SPBool.C_TRUE
+                if (
+                    self._profile_groups.get("server_preference")
+                    is not tls.SPBool.C_TRUE
+                ):
                     if set(advertised_groups) != set(self.groups):
                         raise ScanError(
                             "server's advertised groups differ from accepted groups"
                         )
-
+        if status is not None:
+            self._profile_groups.add("groups_advertised", ProfileBasicEnum(status))
 
 class ScanSupportedGroups(TestSuite):
     name = "groups"
@@ -208,11 +225,11 @@ class ScanSupportedGroups(TestSuite):
 
     def run(self):
 
-        versions = self.server_profile.versions.all()
+        versions = self.server_profile.get("versions").all()
         if tls.Version.SSL20 in versions:
             versions.remove(tls.Version.SSL20)
         for version in versions:
-            vers_prof = self.server_profile.versions.key(version)
+            vers_prof = self.server_profile.get("versions").key(version)
             if vers_prof is not None:
                 if version is tls.Version.TLS13:
                     cls = _TLS13_Scan

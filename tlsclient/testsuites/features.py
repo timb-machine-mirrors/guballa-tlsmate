@@ -4,7 +4,7 @@
 import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.testmanager import TestSuite
-from tlsclient.server_profile import SPEnum
+from tlsclient.server_profile import ProfileList, ProfileEnum, ProfileBasicEnum
 from tlsclient import utils
 
 
@@ -14,16 +14,22 @@ class ScanFeatures(TestSuite):
     prio = 30
 
     def compression(self, version, prof_version):
+        prof_features = self.server_profile.get("features")
+        prof_compression = prof_features.get("compression")
+        if prof_compression is None:
+            prof_compression = ProfileList(key_func=lambda x: x.get_enum())
+            prof_features.add("compression", prof_compression)
         self.client.reset_profile()
         self.client.versions = [version]
-        self.client.cipher_suites = prof_version.cipher_suites.all()
-        groups = prof_version.supported_groups.groups.all()
+        self.client.cipher_suites = prof_version.get("cipher_suites").all()
+        groups = prof_version.get("supported_groups").get("groups").all()
         if groups:
             self.client.supported_groups = groups
             self.client.key_share = groups
-        if prof_version.signature_algorithms is not None:
+        if prof_version.get("signature_algorithms") is not None:
+            # TODO: optimize
             self.client.signature_algorithms = (
-                prof_version.signature_algorithms.algorithms.all()
+                prof_version.get("signature_algorithms").get("algorithms").all()
             )
         comp_methods = tls.CompressionMethod.all()
         while comp_methods:
@@ -39,8 +45,8 @@ class ScanFeatures(TestSuite):
             if server_hello.compression_method not in comp_methods:
                 break
             comp_methods.remove(server_hello.compression_method)
-            self.server_profile.features.compression.append(
-                SPEnum(server_hello.compression_method), keep_existing=True
+            prof_compression.append(
+                ProfileEnum(server_hello.compression_method), keep_existing=True
             )
 
     def encrypt_then_mac(self):
@@ -49,17 +55,17 @@ class ScanFeatures(TestSuite):
         groups = []
         sig_algs = []
         versions = []
-        for version in self.server_profile.versions.all():
+        for version in self.server_profile.get("versions").all():
             if version not in [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]:
                 continue
             versions.append(version)
-            prof_version = self.server_profile.versions.key(version)
-            cs = prof_version.cipher_suites.all()
+            prof_version = self.server_profile.get("versions").key(version)
+            cs = prof_version.get("cipher_suites").all()
             filt_cs = utils.filter_cipher_suites(cs, cipher_type=[tls.CipherType.BLOCK])
             cipher_suites.extend(filt_cs)
-            if prof_version.signature_algorithms is not None:
-                sig_algs.extend(prof_version.signature_algorithms.algorithms.all())
-            groups.extend(prof_version.supported_groups.groups.all())
+            if prof_version.get("signature_algorithms") is not None:
+                sig_algs.extend(prof_version.get("signature_algorithms").get("algorithms").all())
+            groups.extend(prof_version.get("supported_groups").get("groups").all())
         if not cipher_suites:
             # no CBC cipher suite supported
             state = tls.SPBool.NA
@@ -77,10 +83,11 @@ class ScanFeatures(TestSuite):
                     state = tls.SPBool.C_TRUE
                 else:
                     state = tls.SPBool.C_FALSE
-        self.server_profile.features.encrypt_then_mac = state
+        prof_features = self.server_profile.get("features")
+        prof_features.add("encrypt_then_mac", ProfileBasicEnum(state))
 
     def run(self):
-        for version in self.server_profile.versions.all():
-            prof_version = self.server_profile.versions.key(version)
+        for version in self.server_profile.get("versions").all():
+            prof_version = self.server_profile.get("versions").key(version)
             self.compression(version, prof_version)
         self.encrypt_then_mac()
