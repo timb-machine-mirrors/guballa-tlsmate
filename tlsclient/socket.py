@@ -6,7 +6,7 @@ import socket
 import select
 import logging
 import sys
-from tlsclient.exception import TLSConnectionClosedError
+from tlsclient.exception import TlsConnectionClosedError, TlsMsgTimeoutError
 
 
 class Socket(object):
@@ -60,27 +60,34 @@ class Socket(object):
                 self._open_socket()
             self._socket.sendall(data)
 
-    def recv_data(self, timeout=5000):
+    def recv_data(self, timeout=5):
         """Wait for data from the network.
 
         Arguments:
-            timeout (int): The maximum time to wait.
+            timeout (int): The maximum time to wait in seconds.
 
         Returns:
             bytes: The bytes received or None if the timeout expired.
+
+        Raises:
+            TlsMsgTimeoutError: If no data is received within the given timeout
+            TlsConnectionClosedError: If the connection was closed.
         """
         data = self._recorder.inject_socket_recv()
         if data is not None:
             return data
         if self._socket is None:
             self._open_socket()
-        rfds, wfds, efds = select.select([self._socket], [], [], timeout / 1000)
-        if rfds:
-            try:
-                data = self._socket.recv(self._fragment_max_size)
-            except ConnectionResetError:
-                raise TLSConnectionClosedError
+        rfds, wfds, efds = select.select([self._socket], [], [], timeout)
+        if not rfds:
+            raise TlsMsgTimeoutError
+        try:
+            data = self._socket.recv(self._fragment_max_size)
+        except ConnectionResetError:
+            self.close_socket()
+            raise TlsConnectionClosedError
         self._recorder.trace_socket_recv(data)
         if data == b"":
-            raise TLSConnectionClosedError
+            self.close_socket()
+            raise TlsConnectionClosedError
         return data

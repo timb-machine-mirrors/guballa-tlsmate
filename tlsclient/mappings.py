@@ -1691,12 +1691,12 @@ supported_cipher_suites = {
     ),
     tls.CipherSuite.TLS_AES_128_CCM_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.TLS13_KEY_SHARE,
-        cipher=tls.SymmetricCipher.AES_128_CCM,
+        cipher=tls.SymmetricCipher.TLS13_AES_128_CCM,
         mac=tls.HashPrimitive.SHA256,
     ),
     tls.CipherSuite.TLS_AES_128_CCM_8_SHA256: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.TLS13_KEY_SHARE,
-        cipher=tls.SymmetricCipher.AES_128_CCM_8,
+        cipher=tls.SymmetricCipher.TLS13_AES_128_CCM_8,
         mac=tls.HashPrimitive.SHA256,
     ),
 }
@@ -1863,6 +1863,26 @@ supported_ciphers = {
         block_size=16,
         iv_len=12,
         aead_expansion=16,
+        cipher_supported=True,
+    ),
+    tls.SymmetricCipher.TLS13_AES_128_CCM: structs.Cipher(
+        primitive=tls.CipherPrimitive.AES,
+        algo=aead.AESCCM,
+        c_type=tls.CipherType.AEAD,
+        key_len=16,
+        block_size=16,
+        iv_len=12,
+        aead_expansion=16,
+        cipher_supported=True,
+    ),
+    tls.SymmetricCipher.TLS13_AES_128_CCM_8: structs.Cipher(
+        primitive=tls.CipherPrimitive.AES,
+        algo=aead.AESCCM,
+        c_type=tls.CipherType.AEAD,
+        key_len=16,
+        block_size=16,
+        iv_len=12,
+        aead_expansion=8,
         cipher_supported=True,
     ),
     # ***************************

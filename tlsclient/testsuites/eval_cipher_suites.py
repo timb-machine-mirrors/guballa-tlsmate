@@ -31,7 +31,9 @@ class ScanCipherSuites(TestSuite):
                     return None
             certificate = conn.wait(msg.Certificate, optional=True)
             if certificate is not None:
-                self.server_profile.get("cert_chain").append_unique(certificate.certificates)
+                self.server_profile.get("cert_chain").append_unique(
+                    certificate.certificates
+                )
             return server_hello.cipher_suite
         return None
 
@@ -112,14 +114,13 @@ class ScanCipherSuites(TestSuite):
             conn.send(msg.SSL2ClientHello)
             server_hello = conn.wait(msg.SSL2ServerHello)
             if server_hello is not None:
-                cert_chain_id = 0
                 if server_hello.certificate is not None:
-                    cert_chain_id = self.server_profile.get("cert_chain").append_unique(
+                    self.server_profile.get("cert_chain").append_unique(
                         [server_hello.certificate]
                     )
-                prof_version = SPEnum(tls.Version.SSL20, tls.SPBool.C_UNDETERMINED)
+                prof_version = SPVersions(tls.Version.SSL20, tls.SPBool.C_UNDETERMINED)
                 for cs in server_hello.cipher_specs:
-                    prof_version.get("cipher_suites").append(SPEnum(cs, cert_chain_id))
+                    prof_version.get("cipher_suites").append(ProfileEnum(cs))
                 self.server_profile.get("versions").append(prof_version)
 
     def enum_version(self, version):

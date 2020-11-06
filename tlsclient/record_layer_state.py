@@ -32,10 +32,11 @@ class RecordLayerState(object):
             else:
                 self._cipher_object = cipher.decryptor()
         if self._version is tls.Version.TLS13:
-            if self._cipher.primitive is tls.CipherPrimitive.AES:
-                self._cipher_object = aead.AESGCM
-            else:
-                self._cipher_object = aead.ChaCha20Poly1305
+            self._cipher_object = param.cipher.algo
+            # if self._cipher.primitive is tls.CipherPrimitive.AES:
+            #     self._cipher_object = aead.AESGCM
+            # else:
+            #     self._cipher_object = aead.ChaCha20Poly1305
 
     def _encrypt_cbc(self, fragment):
         """Encrypt a fragment using a block cipher in CBC mode.
@@ -244,11 +245,14 @@ class RecordLayerState(object):
         aad = (
             pdu.pack_uint8(tls.ContentType.APPLICATION_DATA.value)
             + pdu.pack_uint16(rl_msg.version.value)
-            + pdu.pack_uint16(len(fragment) + 16)
+            + pdu.pack_uint16(len(fragment) + self._cipher.aead_expansion)
         )
         nonce_val = int.from_bytes(self._keys.iv, "big", signed=False) ^ self._seq_nbr
         nonce = nonce_val.to_bytes(self._cipher.iv_len, "big", signed=False)
-        cipher = self._cipher_object(self._keys.enc)
+        kwargs = {}
+        if self._cipher.aead_expansion == 8:
+            kwargs["tag_length"] = 8
+        cipher = self._cipher_object(self._keys.enc, **kwargs)
         self._seq_nbr += 1
         return structs.RecordLayerMsg(
             content_type=tls.ContentType.APPLICATION_DATA,
@@ -506,7 +510,10 @@ class RecordLayerState(object):
         )
         nonce_val = int.from_bytes(self._keys.iv, "big", signed=False) ^ self._seq_nbr
         nonce = nonce_val.to_bytes(self._cipher.iv_len, "big", signed=False)
-        cipher = self._cipher_object(self._keys.enc)
+        kwargs = {}
+        if self._cipher.aead_expansion == 8:
+            kwargs["tag_length"] = 8
+        cipher = self._cipher_object(self._keys.enc, **kwargs)
         decoded = cipher.decrypt(nonce, rl_msg.fragment, aad)
         # find idx of last non-zero octet
         idx = len(decoded) - 1

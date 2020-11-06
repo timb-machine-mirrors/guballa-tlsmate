@@ -218,6 +218,7 @@ class _TLS13_Scan(_Scan):
         if status is not None:
             self._profile_groups.add("groups_advertised", ProfileBasicEnum(status))
 
+
 class ScanSupportedGroups(TestSuite):
     name = "groups"
     descr = "check for FF-DH and EC groups"

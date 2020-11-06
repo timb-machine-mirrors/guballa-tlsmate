@@ -17,8 +17,15 @@ class FatalAlert(Exception):
         self.message = message
 
 
-class TLSConnectionClosedError(Exception):
+class TlsConnectionClosedError(Exception):
     """Exception raised when the TLS connection is closed.
+    """
+
+    pass
+
+
+class TlsMsgTimeoutError(Exception):
+    """Exception raised when message is not received within timeout
     """
 
     pass

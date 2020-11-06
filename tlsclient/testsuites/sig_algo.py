@@ -6,7 +6,7 @@ import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.testmanager import TestSuite
 from tlsclient import utils
-from tlsclient.server_profile import SPSignatureAlgorithms, ProfileEnum
+from tlsclient.server_profile import SPSignatureAlgorithms, ProfileEnum, ProfileBasic
 
 
 class _Backend(metaclass=abc.ABCMeta):
@@ -67,9 +67,13 @@ class ScanSigAlgs(TestSuite):
                 break
             self.server_profile.get("cert_chain").append_unique(cert_chain)
             if sig_alg not in sig_algs:
-                prof_sig_algo.add("info", ProfileBasic(
-                    f"server selects sig_alg {sig_alg} even when not offered"
-                ), keep_existing=True)
+                prof_sig_algo.add(
+                    "info",
+                    ProfileBasic(
+                        f"server selects sig_alg {sig_alg} even when not offered"
+                    ),
+                    keep_existing=True,
+                )
                 break
             sig_alg_supported.append(sig_alg)
             sig_algs.remove(sig_alg)
@@ -99,7 +103,9 @@ class ScanSigAlgs(TestSuite):
         cs_list = version.get("cipher_suites").all()
         sigalg_list = tls.SignatureScheme.all()
         self.client.support_supported_groups = True
-        self.client.supported_groups = version.get("supported_groups").get("groups").all()
+        self.client.supported_groups = (
+            version.get("supported_groups").get("groups").all()
+        )
         self.client.versions = [tls.Version.TLS12]
 
         rsa_ciphers = utils.filter_cipher_suites(
@@ -150,7 +156,9 @@ class ScanSigAlgs(TestSuite):
         cs_list = prof_version.get("cipher_suites").all()
         sigalg_list = tls.SignatureScheme.all()
         self.client.support_supported_groups = True
-        self.client.supported_groups = prof_version.get("supported_groups").get("groups").all()
+        self.client.supported_groups = (
+            prof_version.get("supported_groups").get("groups").all()
+        )
         self.client.versions = [tls.Version.TLS13]
 
         self.scan_auth_method(cs_list, sigalg_list, prof_sig_algo, _BackendTls13)

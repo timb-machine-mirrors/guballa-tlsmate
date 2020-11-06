@@ -15,3 +15,4 @@
     - don't send an alert if one was received
     - more command line options, e.g. to scan only specific versions,
       or to enable/disable specific parts of the trace. 
+    - rename aead_expansion to tag_length

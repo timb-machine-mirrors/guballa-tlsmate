@@ -100,17 +100,17 @@ class RecordLayer(object):
         """Send all fragments in the send queue.
 
         This function is useful if e.g. multiple handshake messages shall be sent
-        in one TCP packet.
+        in one record layer message.
         """
         self._socket.sendall(self._send_buffer)
         self._send_buffer = bytearray()
 
-    def wait_fragment(self, timeout=5000):
-        """Wait for a fragment to be received from the network.
+    def wait_rl_msg(self, timeout=5):
+        """Wait for a record layer message to be received from the network.
 
         Arguments:
-            timeout (int): The timeout in milli seconds to wait for the message. This
-                parameter is optional and defaults to 5000 (5 seconds).
+            timeout (int): The timeout in seconds to wait for the message. This
+                parameter is optional and defaults to 5 seconds.
 
         Returns:
             :obj:`tlsclient.structures.RecordLayerMsg`:

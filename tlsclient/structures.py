@@ -93,6 +93,17 @@ class RecordLayerMsg(NamedTuple):
     fragment: bytes
 
 
+class UpperLayerMsg(NamedTuple):
+    """Set of properties describing an upper layer message.
+
+    "Upper Layer" comprises handshake, ccs and alert protocols.
+    """
+
+    content_type: tls.ContentType
+    msg_type: tls.HandshakeType  # can be CCSType as well
+    msg: bytes
+
+
 class KeyExchange(NamedTuple):
     """Set of properties describing a key exchange method.
     """

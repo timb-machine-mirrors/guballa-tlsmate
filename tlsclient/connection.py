@@ -8,7 +8,7 @@ import os
 import io
 import traceback as tb
 import time
-from tlsclient.exception import FatalAlert, TLSConnectionClosedError
+from tlsclient.exception import FatalAlert, TlsConnectionClosedError, TlsMsgTimeoutError
 from tlsclient import messages as msg
 import tlsclient.constants as tls
 from tlsclient import pdu
@@ -30,6 +30,72 @@ def get_random_value():
     random.extend(pdu.pack_uint32(int(time.time())))
     random.extend(os.urandom(28))
     return random
+
+
+class TlsDefragmenter(object):
+    def __init__(self, record_layer):
+        self._record_bytes = bytearray()
+        self._msg = bytearray()
+        self._content_type = None
+        self._version = None
+        self._ultimo = None
+        self._record_layer = record_layer
+
+    def _get_bytes(self, nbr):
+        while len(self._record_bytes) < nbr:
+            timeout = self._ultimo - time.time()
+            if timeout <= 0:
+                raise TlsMsgTimeoutError
+            rl_msg = self._record_layer.wait_rl_msg(timeout)
+            self._content_type = rl_msg.content_type
+            self._version = rl_msg.version
+            self._record_bytes.extend(rl_msg.fragment)
+        ret = self._record_bytes[:nbr]
+        self._record_bytes = self._record_bytes[nbr:]
+        return ret
+
+    def _get_all_bytes(self):
+        ret = self._record_bytes
+        self._record_bytes = bytearray()
+        return ret
+
+    def get_message(self, timeout):
+        self._ultimo = time.time() + (timeout / 1000)
+        message = self._get_bytes(1)
+        if self._content_type is tls.ContentType.ALERT:
+            message.extend(self._get_bytes(1))
+            return structs.UpperLayerMsg(
+                content_type=self._content_type, msg_type=None, msg=message
+            )
+        elif self._content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
+            msg_type, offset = pdu.unpack_uint8(message, 0)
+            msg_type = tls.CCSType.val2enum(msg_type, alert_on_failure=True)
+            return structs.UpperLayerMsg(
+                content_type=self._content_type, msg_type=msg_type, msg=bytes(message)
+            )
+        elif self._content_type is tls.ContentType.HANDSHAKE:
+            message.extend(self._get_bytes(3))
+            msg_type, offset = pdu.unpack_uint8(message, 0)
+            msg_type = tls.HandshakeType.val2enum(msg_type, alert_on_failure=True)
+            length, offset = pdu.unpack_uint24(message, offset)
+            message.extend(self._get_bytes(length))
+            return structs.UpperLayerMsg(
+                content_type=self._content_type, msg_type=msg_type, msg=bytes(message)
+            )
+        elif self._content_type is tls.ContentType.APPLICATION_DATA:
+            return structs.UpperLayerMsg(
+                content_type=self._content_type,
+                msg_type=None,
+                msg=bytes(message + self._get_all_bytes()),
+            )
+        elif self._content_type is tls.ContentType.SSL2:
+            return structs.UpperLayerMsg(
+                content_type=self._content_type,
+                msg_type=None,
+                msg=bytes(message + self._get_all_bytes()),
+            )
+        else:
+            raise ValueError(f"content type {self._content_type} unknown")
 
 
 class TlsConnectionMsgs(object):
@@ -93,7 +159,9 @@ class TlsConnectionMsgs(object):
 class TlsConnection(object):
     def __init__(self, connection_msgs, entity, record_layer, recorder, kdf):
         self.msg = connection_msgs
+        self.defragmenter = TlsDefragmenter(record_layer)
         self.received_data = bytearray()
+        self.awaited_msg = None
         self.queued_msg = None
         self.record_layer = record_layer
         self.record_layer_version = tls.Version.TLS10
@@ -142,15 +210,20 @@ class TlsConnection(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is FatalAlert:
+            logging.debug("FatalAlter exception received")
             str_io = io.StringIO()
             tb.print_exception(exc_type, exc_value, traceback, file=str_io)
             logging.debug(str_io.getvalue())
             self.send(
                 Alert(level=tls.AlertLevel.FATAL, description=exc_value.description)
             )
+        elif exc_type is TlsConnectionClosedError:
+            logging.debug("connected closed, probably by peer")
+        elif exc_type is TlsMsgTimeoutError:
+            logging.debug(f"timeout occured while waiting for {self.awaited_msg}")
         self.record_layer.close_socket()
         logging.debug("TLS connection closed")
-        return exc_type in [FatalAlert, TLSConnectionClosedError]
+        return exc_type in [FatalAlert, TlsConnectionClosedError, TlsMsgTimeoutError]
 
     def set_client(self, client):
         self.client = client
@@ -531,21 +604,21 @@ class TlsConnection(object):
             msg = self.queued_msg
             self.queued_msg = None
         else:
-            # content_type, version, fragment = self.record_layer.wait_fragment(timeout)
-            mb = self.record_layer.wait_fragment(timeout)
+            self.awaited_msg = msg_class
+            mb = self.defragmenter.get_message(timeout)
             if mb is None:
                 return None
             if mb.content_type is tls.ContentType.HANDSHAKE:
-                msg = HandshakeMessage.deserialize(mb.fragment, self)
-                self.kdf.update_msg_digest(mb.fragment)
+                msg = HandshakeMessage.deserialize(mb.msg, self)
+                self.kdf.update_msg_digest(mb.msg)
             elif mb.content_type is tls.ContentType.ALERT:
-                msg = Alert.deserialize(mb.fragment, self)
+                msg = Alert.deserialize(mb.msg, self)
             elif mb.content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
-                msg = ChangeCipherSpecMessage.deserialize(mb.fragment, self)
+                msg = ChangeCipherSpecMessage.deserialize(mb.msg, self)
             elif mb.content_type is tls.ContentType.APPLICATION_DATA:
-                msg = AppDataMessage.deserialize(mb.fragment, self)
+                msg = AppDataMessage.deserialize(mb.msg, self)
             elif mb.content_type is tls.ContentType.SSL2:
-                msg = SSL2Message.deserialize(mb.fragment, self)
+                msg = SSL2Message.deserialize(mb.msg, self)
             else:
                 raise ValueError("Content type unknow")
 
@@ -745,6 +818,7 @@ class TlsConnection(object):
             self.wait(msg.EncryptedExtensions)
             if not self.abbreviated_hs:
                 self.wait(msg.Certificate)
+                self.wait(msg.CertificateVerify)
             self.wait(msg.Finished)
             self.send(msg.Finished)
         else:
@@ -753,10 +827,17 @@ class TlsConnection(object):
                 self.wait(msg.Finished)
                 self.send(msg.ChangeCipherSpec, msg.Finished)
             else:
+                cert = True
                 if (
                     self.cs_details.key_algo_struct.key_auth
-                    is not tls.KeyAuthentication.NONE
+                    is tls.KeyAuthentication.NONE
                 ):
+                    if (
+                        self.cs_details.key_algo_struct.key_ex_type
+                        is not tls.KeyExchangeType.RSA
+                    ):
+                        cert = False
+                if cert:
                     self.wait(msg.Certificate)
                 if self.cs_details.key_algo in [
                     tls.KeyExchangeAlgorithm.DHE_DSS,

@@ -892,6 +892,8 @@ class SymmetricCipher(ExtendedEnum):
     SEED_CBC = enum.auto()
     TLS13_AES_128_GCM = enum.auto()
     TLS13_AES_256_GCM = enum.auto()
+    TLS13_AES_128_CCM = enum.auto()
+    TLS13_AES_128_CCM_8 = enum.auto()
 
 
 class CipherType(ExtendedEnum):

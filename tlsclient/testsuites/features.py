@@ -64,11 +64,13 @@ class ScanFeatures(TestSuite):
             filt_cs = utils.filter_cipher_suites(cs, cipher_type=[tls.CipherType.BLOCK])
             cipher_suites.extend(filt_cs)
             if prof_version.get("signature_algorithms") is not None:
-                sig_algs.extend(prof_version.get("signature_algorithms").get("algorithms").all())
+                sig_algs.extend(
+                    prof_version.get("signature_algorithms").get("algorithms").all()
+                )
             groups.extend(prof_version.get("supported_groups").get("groups").all())
         if not cipher_suites:
             # no CBC cipher suite supported
-            state = tls.SPBool.NA
+            state = tls.SPBool.C_NA
         else:
             self.client.reset_profile()
             self.client.versions = versions
