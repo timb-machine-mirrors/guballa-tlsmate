@@ -10,4 +10,8 @@
     - use __str__ for messages and extension displaying their names, cover all enums as well
     - use :class:`XXX` iso :obj: in the *.rst files where appropriate
     - cover all key exchange algorithms in mappings.key_exchange
-    - let scanner_info_plugin dump the profile
+    - refactoring: Alert and CCS(?): do they need a msg_type?
+    - implement get_version() for ServerHello message
+    - don't send an alert if one was received
+    - more command line options, e.g. to scan only specific versions,
+      or to enable/disable specific parts of the trace. 

@@ -61,7 +61,7 @@ tags: ## generate ctags
 	ctags -R --languages=python  -f ./tags tlsclient/ tests/
 
 test-cov: ## generate coverage statistics
-	py.test --cov tlsclient/
+	py.test --cov tlsclient/ --cov tlsclient/testsuites
 
 test-cov-report: ## generate coverage report for each file
 	py.test --cov-report annotate:cov_annotate --cov=tlsclient/
