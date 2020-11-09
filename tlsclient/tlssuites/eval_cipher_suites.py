@@ -5,12 +5,12 @@
 import logging
 import tlsclient.messages as msg
 import tlsclient.constants as tls
-from tlsclient.testmanager import TestSuite
+from tlsclient.tlssuite import TlsSuite
 import tlsclient.utils as utils
 from tlsclient.server_profile import SPVersions, ProfileEnum
 
 
-class ScanCipherSuites(TestSuite):
+class ScanCipherSuites(TlsSuite):
     name = "basic"
     prio = 10
 

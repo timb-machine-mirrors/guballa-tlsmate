@@ -4,11 +4,11 @@
 # import logging
 import tlsclient.messages as msg
 import tlsclient.constants as tls
-from tlsclient.testmanager import TestManager, TestSuite
+from tlsclient.tlssuite import TestManager, TlsSuite
 import tlsclient.mappings as mappings
 
 
-class MyTestSuite(TestSuite):
+class MyTestSuite(TlsSuite):
     name = "testme"
     descr = "Scratch test suite"
     prio = 100

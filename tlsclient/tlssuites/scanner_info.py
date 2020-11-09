@@ -5,7 +5,7 @@ import sys
 import time
 import datetime
 import yaml
-from tlsclient.testmanager import TestSuite
+from tlsclient.tlssuite import TlsSuite
 from tlsclient.server_profile import ProfileDict, ProfileBasic
 from tlsclient.version import __version__
 
@@ -31,7 +31,7 @@ class ProfileScanInfo(ProfileDict):
         self.add("run_time", ProfileBasic(float(f"{stop_time - self._start_time:.3f}")))
 
 
-class ScanStart(TestSuite):
+class ScanStart(TlsSuite):
     name = "scanstart"
     prio = 0
 
@@ -39,7 +39,7 @@ class ScanStart(TestSuite):
         self.server_profile.add("scan_info", ProfileScanInfo())
 
 
-class ScanEnd(TestSuite):
+class ScanEnd(TlsSuite):
     name = "scanend"
     prio = 1000
 

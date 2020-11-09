@@ -5,7 +5,7 @@ import logging
 import abc
 import tlsclient.messages as msg
 import tlsclient.constants as tls
-from tlsclient.testmanager import TestSuite
+from tlsclient.tlssuite import TlsSuite
 from tlsclient.exception import ScanError
 from tlsclient.server_profile import ProfileEnum, ProfileBasicEnum
 from tlsclient import utils
@@ -219,7 +219,7 @@ class _TLS13_Scan(_Scan):
             self._profile_groups.add("groups_advertised", ProfileBasicEnum(status))
 
 
-class ScanSupportedGroups(TestSuite):
+class ScanSupportedGroups(TlsSuite):
     name = "groups"
     descr = "check for FF-DH and EC groups"
     prio = 20

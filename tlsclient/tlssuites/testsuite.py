@@ -4,10 +4,10 @@
 import logging
 import tlsclient.messages as msg
 import tlsclient.constants as tls
-from tlsclient.testmanager import TestSuite
+from tlsclient.tlssuite import TlsSuite
 
 
-class ScanScratch(TestSuite):
+class ScanScratch(TlsSuite):
     name = "test"
     prio = 90
 

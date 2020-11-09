@@ -3,12 +3,12 @@
 """
 import tlsclient.messages as msg
 import tlsclient.constants as tls
-from tlsclient.testmanager import TestSuite
+from tlsclient.tlssuite import TlsSuite
 from tlsclient.server_profile import ProfileList, ProfileEnum, ProfileBasicEnum
 from tlsclient import utils
 
 
-class ScanFeatures(TestSuite):
+class ScanFeatures(TlsSuite):
     name = "features"
     descr = "check for basic features"
     prio = 30

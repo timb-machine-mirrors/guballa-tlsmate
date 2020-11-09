@@ -4,7 +4,7 @@
 import abc
 import tlsclient.messages as msg
 import tlsclient.constants as tls
-from tlsclient.testmanager import TestSuite
+from tlsclient.tlssuite import TlsSuite
 from tlsclient import utils
 from tlsclient.server_profile import SPSignatureAlgorithms, ProfileEnum, ProfileBasic
 
@@ -47,7 +47,7 @@ class _BackendTls13(_Backend):
         return sig_alg, cert_chain
 
 
-class ScanSigAlgs(TestSuite):
+class ScanSigAlgs(TlsSuite):
     name = "sigalgo"
     descr = "check signature algorithms"
     prio = 20

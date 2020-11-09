@@ -8,12 +8,12 @@ import pkgutil
 
 import tlsclient.dependency_injection as dependency
 from tlsclient.testmanager import TestManager
-from tlsclient.testsuites.eval_cipher_suites import ScanCipherSuites
-from tlsclient.testsuites.scanner_info import ScanStart, ScanEnd
-from tlsclient.testsuites.supported_groups import ScanSupportedGroups
-from tlsclient.testsuites.testsuite import ScanScratch
-from tlsclient.testsuites.sig_algo import ScanSigAlgs
-from tlsclient.testsuites.features import ScanFeatures
+from tlsclient.tlssuites.eval_cipher_suites import ScanCipherSuites
+from tlsclient.tlssuites.scanner_info import ScanStart, ScanEnd
+from tlsclient.tlssuites.supported_groups import ScanSupportedGroups
+from tlsclient.tlssuites.testsuite import ScanScratch
+from tlsclient.tlssuites.sig_algo import ScanSigAlgs
+from tlsclient.tlssuites.features import ScanFeatures
 
 from tlsclient.version import __version__
 

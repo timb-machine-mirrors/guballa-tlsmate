@@ -74,19 +74,18 @@ class Socket(object):
             TlsConnectionClosedError: If the connection was closed.
         """
         data = self._recorder.inject_socket_recv()
-        if data is not None:
-            return data
-        if self._socket is None:
-            self._open_socket()
-        rfds, wfds, efds = select.select([self._socket], [], [], timeout)
-        if not rfds:
-            raise TlsMsgTimeoutError
-        try:
-            data = self._socket.recv(self._fragment_max_size)
-        except ConnectionResetError:
-            self.close_socket()
-            raise TlsConnectionClosedError
-        self._recorder.trace_socket_recv(data)
+        if data is None:
+            if self._socket is None:
+                self._open_socket()
+            rfds, wfds, efds = select.select([self._socket], [], [], timeout)
+            if not rfds:
+                raise TlsMsgTimeoutError
+            try:
+                data = self._socket.recv(self._fragment_max_size)
+            except ConnectionResetError:
+                self.close_socket()
+                raise TlsConnectionClosedError
+            self._recorder.trace_socket_recv(data)
         if data == b"":
             self.close_socket()
             raise TlsConnectionClosedError

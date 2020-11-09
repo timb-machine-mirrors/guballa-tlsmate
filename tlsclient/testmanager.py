@@ -3,34 +3,6 @@
 """
 
 import logging
-import abc
-
-
-class TestSuite(metaclass=abc.ABCMeta):
-    """Provides a base class for the implementation of test suites.
-
-    Attributes:
-        server_profile (:obj:`tlsclient.server_profile.ServerProfile`): The server
-            profile instance. Can be used to get data from it (e.g. which cipher
-            suites are supported for which TLS versions), or to extend it.
-        client (:obj:`tlsclient.client.Client`): The client object.
-    """
-
-    prio = 100
-
-    def _inject_dependencies(self, server_profile, client):
-        """Method to inject the server profile and the client into the object
-        """
-        self.server_profile = server_profile
-        self.client = client
-
-    @abc.abstractmethod
-    def run(self):
-        """Entry point for the test suite.
-
-        The test manager will call this method which will implement the test suite.
-        """
-        raise NotImplementedError
 
 
 class TestManager(object):

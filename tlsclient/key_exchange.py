@@ -230,9 +230,12 @@ class DhKeyExchange(KeyExchange):
             pub_numbers = dh.DHPublicNumbers(y_val, self._dh_group)
             priv_numbers = dh.DHPrivateNumbers(x_val, pub_numbers)
             self._priv_key = priv_numbers.private_key()
+            self._pub_key = self._priv_key.public_key()
         else:
             self._priv_key = self._dh_group.parameters().generate_private_key()
-        self._pub_key = self._priv_key.public_key()
+            self._pub_key = self._priv_key.public_key()
+            self._recorder.trace(x_val=self._priv_key.private_numbers().x)
+            self._recorder.trace(y_val=self._pub_key.public_numbers().y)
 
     def get_shared_secret(self):
         if self._priv_key is None:
