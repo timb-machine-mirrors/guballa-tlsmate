@@ -146,15 +146,6 @@ class TlsConnectionMsgs(object):
                 attr = prefix + attr
             setattr(self, attr, msg)
 
-        # if msg.content_type == tls.ContentType.HANDSHAKE:
-        #     attr = self.map_msg2attr.get(msg.msg_type, None)
-        #     if attr is not None:
-        #         setattr(self, attr, msg)
-        # elif msg.content_type == tls.ContentType.CHANGE_CIPHER_SPEC:
-        #     self.server_change_cipher_spec = msg
-        # elif msg.content_type == tls.ContentType.ALERT:
-        #     self.server_alert = msg
-
 
 class TlsConnection(object):
     def __init__(self, connection_msgs, entity, record_layer, recorder, kdf):
@@ -176,6 +167,7 @@ class TlsConnection(object):
         self.abbreviated_hs = False
         self.session_id_sent = None
         self.handshake_completed = False
+        self.alert_received = False
 
         # general
         self.entity = entity
@@ -214,9 +206,10 @@ class TlsConnection(object):
             str_io = io.StringIO()
             tb.print_exception(exc_type, exc_value, traceback, file=str_io)
             logging.debug(str_io.getvalue())
-            self.send(
-                Alert(level=tls.AlertLevel.FATAL, description=exc_value.description)
-            )
+            if not self.alert_received:
+                self.send(
+                    Alert(level=tls.AlertLevel.FATAL, description=exc_value.description)
+                )
         elif exc_type is TlsConnectionClosedError:
             logging.debug("connected closed, probably by peer")
         elif exc_type is TlsMsgTimeoutError:
@@ -612,6 +605,7 @@ class TlsConnection(object):
                 msg = HandshakeMessage.deserialize(mb.msg, self)
                 self.kdf.update_msg_digest(mb.msg)
             elif mb.content_type is tls.ContentType.ALERT:
+                self.alert_received = True
                 msg = Alert.deserialize(mb.msg, self)
             elif mb.content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
                 msg = ChangeCipherSpecMessage.deserialize(mb.msg, self)
