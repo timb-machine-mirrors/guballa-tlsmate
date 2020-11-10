@@ -4,7 +4,6 @@
 import pathlib
 from tlsclient.tlssuites.supported_groups import ScanSupportedGroups
 from tlsclient.tlssuite import TlsSuiteTester
-from dependency_injector import providers
 
 
 class TestCase(TlsSuiteTester):
@@ -20,25 +19,6 @@ class TestCase(TlsSuiteTester):
 
     server = "localhost"
     port = 44330
-
-    def check_versions(self, versions):
-        assert len(versions) == 4
-        assert versions[0]["version"]["name"] == "SSL30"
-        assert versions[0]["server_preference"] == "C_FALSE"
-        assert versions[1]["version"]["name"] == "TLS10"
-        assert versions[1]["server_preference"] == "C_FALSE"
-        assert versions[2]["version"]["name"] == "TLS11"
-        assert versions[2]["server_preference"] == "C_FALSE"
-        assert versions[3]["version"]["name"] == "TLS12"
-        assert versions[3]["server_preference"] == "C_FALSE"
-        for a, b in zip(tls10_cs, versions[0]["cipher_suites"]):
-            assert a == b["name"]
-        for a, b in zip(tls10_cs, versions[1]["cipher_suites"]):
-            assert a == b["name"]
-        for a, b in zip(tls10_cs, versions[2]["cipher_suites"]):
-            assert a == b["name"]
-        for a, b in zip(tls12_cs, versions[3]["cipher_suites"]):
-            assert a == b["name"]
 
     def check_ssl30(self, profile):
         assert profile["extension_supported"] == "C_FALSE"

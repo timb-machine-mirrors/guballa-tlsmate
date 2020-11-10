@@ -68,18 +68,22 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
     def entry(self, is_replaying=False):
         """Bla bla
         """
-
-        config = {"server": self.server, "port": self.port, "progress": False}
-        container = Container(config=config)
+        container_args = {
+            "config": {"server": self.server, "port": self.port, "progress": False}
+        }
 
         if is_replaying and self.recorder_pickle is not None:
             recorder = self.unpickle_obj(self.recorder_pickle)
             recorder.replay()
-            container.recorder = providers.Object(recorder)
-
+            container_args["recorder"] = providers.Object(recorder)
         if self.sp_in_pickle is not None:
             server_profile = self.unpickle_obj(self.sp_in_pickle)
-            container.server_profile = providers.Object(server_profile)
+            container_args["server_profile"] = providers.Object(server_profile)
+
+        container = Container(**container_args)
+
+        if not is_replaying:
+            container.recorder().record()
 
         self.run(container, is_replaying)
 

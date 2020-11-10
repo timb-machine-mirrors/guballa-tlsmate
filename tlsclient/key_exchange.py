@@ -21,6 +21,7 @@ from cryptography.hazmat.primitives.serialization import (
     PublicFormat,
     PrivateFormat,
     NoEncryption,
+    load_der_private_key,
 )
 
 
@@ -225,27 +226,22 @@ class DhKeyExchange(KeyExchange):
     def _create_key_pair(self):
         self._dh_group = dh.DHParameterNumbers(self._pval, self._gval)
         if self._recorder.is_injecting():
-            x_val = self._recorder.inject(x_val=None)
-            y_val = self._recorder.inject(y_val=None)
-            pub_numbers = dh.DHPublicNumbers(y_val, self._dh_group)
-            priv_numbers = dh.DHPrivateNumbers(x_val, pub_numbers)
-            self._priv_key = priv_numbers.private_key()
+            x = self._recorder.inject(x_val=None)
+            self._priv_key = load_der_private_key(x, None)
             self._pub_key = self._priv_key.public_key()
         else:
             self._priv_key = self._dh_group.parameters().generate_private_key()
             self._pub_key = self._priv_key.public_key()
-            self._recorder.trace(x_val=self._priv_key.private_numbers().x)
-            self._recorder.trace(y_val=self._pub_key.public_numbers().y)
+            x = self._priv_key.private_bytes(
+                Encoding.DER, PrivateFormat.PKCS8, NoEncryption()
+            )
+            self._recorder.trace(x_val=x)
 
     def get_shared_secret(self):
         if self._priv_key is None:
             self._create_key_pair()
         rem_pub_numbers = dh.DHPublicNumbers(self._rem_pub_key, self._dh_group)
         rem_pub_key = rem_pub_numbers.public_key()
-        y_val = self._pub_key.public_numbers().y
-        if self._recorder.is_recording():
-            self._recorder.trace(x_val=self._priv_key.private_numbers().x)
-            self._recorder.trace(y_val=y_val)
         return self._priv_key.exchange(rem_pub_key).lstrip(b"\0")
 
     def set_remote_key(self, rem_pub_key, g_val=None, p_val=None, group=None):

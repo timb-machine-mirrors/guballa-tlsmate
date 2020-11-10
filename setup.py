@@ -158,6 +158,7 @@ setup(
         'wheel',
         'cryptography',
         'dependency_injector',
+        'dill',
     ],
 
     # List additional groups of dependencies here (e.g. development

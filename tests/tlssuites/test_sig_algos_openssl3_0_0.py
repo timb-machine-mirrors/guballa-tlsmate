@@ -22,6 +22,7 @@ sig_algs_tls13 = [
     "RSA_PSS_RSAE_SHA512",
 ]
 
+
 class TestCase(TlsSuiteTester):
     """Class used for tests with pytest.
 

@@ -4,16 +4,9 @@
 import pathlib
 from tlsclient.tlssuites.supported_groups import ScanSupportedGroups
 from tlsclient.tlssuite import TlsSuiteTester
-from dependency_injector import providers
 
 
-groups_tls12 = [
-    "SECP256R1",
-    "SECP384R1",
-    "SECP521R1",
-    "X25519",
-    "X448",
-]
+groups_tls12 = ["SECP256R1", "SECP384R1", "SECP521R1", "X25519", "X448"]
 
 groups_tls13 = [
     "SECP256R1",
@@ -28,6 +21,7 @@ groups_tls13 = [
     "FFDHE8192",
 ]
 
+
 class TestCase(TlsSuiteTester):
     """Class used for tests with pytest.
 
@@ -41,7 +35,6 @@ class TestCase(TlsSuiteTester):
 
     server = "localhost"
     port = 44332
-
 
     def check_tls12(self, profile):
         assert profile["extension_supported"] == "C_TRUE"
@@ -58,7 +51,6 @@ class TestCase(TlsSuiteTester):
         assert len(profile["groups"]) == len(groups_tls13)
         for a, b in zip(groups_tls13, profile["groups"]):
             assert a == b["name"]
-
 
     def check_profile(self, profile):
         self.check_tls12(profile["versions"][0]["supported_groups"])

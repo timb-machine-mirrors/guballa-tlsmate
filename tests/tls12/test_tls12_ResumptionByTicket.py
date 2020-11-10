@@ -3,15 +3,15 @@
 """
 import pathlib
 import logging
-from tests.tc_recorder import TcRecorder
+from tests.cipher_suite_tester import CipherSuiteTester
 import tlsclient.constants as tls
 import tlsclient.messages as msg
 
 
-class TestCase(TcRecorder):
+class TestCase(CipherSuiteTester):
     """Class used for tests with pytest.
 
-    For more information refer to the documentation of the TcRecorder class.
+    For more information refer to the documentation of the CipherSuiteTester class.
     """
 
     name = "ResumptionByTicket"
@@ -21,7 +21,7 @@ class TestCase(TcRecorder):
     # adapt it to your needs.
     # version = tls.Version.TLS12
 
-    def scenario(self, container):
+    def run(self, container, is_replaying=False):
         client = container.client()
 
         client.versions = [tls.Version.TLS12]
@@ -76,4 +76,4 @@ class TestCase(TcRecorder):
 
 
 if __name__ == "__main__":
-    TestCase().record_testcase()
+    TestCase().entry(is_replaying=False)

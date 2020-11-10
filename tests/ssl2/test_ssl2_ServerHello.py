@@ -2,12 +2,12 @@
 """Implements a class to be used for unit testing.
 """
 import pathlib
-from tests.tc_recorder import TcRecorder
+from tests.cipher_suite_tester import CipherSuiteTester
 import tlsclient.constants as tls
 import tlsclient.messages as msg
 
 
-class TestCase(TcRecorder):
+class TestCase(CipherSuiteTester):
     """Class used for tests with pytest.
 
     For more information refer to the documentation of the TcRecorder class.
@@ -21,7 +21,7 @@ class TestCase(TcRecorder):
     # adapt it to your needs.
     # version = tls.Version.TLS10
 
-    def scenario(self, container):
+    def run(self, container, is_replaying=False):
 
         client = container.client()
         end_of_tc_reached = False
@@ -45,7 +45,4 @@ class TestCase(TcRecorder):
 
 
 if __name__ == "__main__":
-    import logging
-
-    logging.basicConfig(level="DEBUG")
-    TestCase().record_testcase()
+    TestCase().entry(is_replaying=False)
