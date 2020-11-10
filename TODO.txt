@@ -3,7 +3,7 @@
     - certificate validation and extraction to server profile
     - HelloRetryRequest
     - more scan results
-    - improved error handling
+    - improved error handling, e.g. if host name cannot be resolved
     - log description for received alerts
     - more checks on server_hello: have the stuff selected by the server
       actually been offered?
@@ -11,7 +11,5 @@
     - use :class:`XXX` iso :obj: in the *.rst files where appropriate
     - cover all key exchange algorithms in mappings.key_exchange
     - refactoring: Alert and CCS(?): do they need a msg_type?
-    - implement get_version() for ServerHello message
     - more command line options, e.g. to scan only specific versions,
-      or to enable/disable specific parts of the trace. 
-    - rename aead_expansion to tag_length
+      or to enable/disable specific parts of the trace.

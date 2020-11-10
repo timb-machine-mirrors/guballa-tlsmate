@@ -182,8 +182,8 @@ class RecordLayerState(object):
             The protected record layer message.
         """
         kwargs = {}
-        if self._cipher.aead_expansion != 16:
-            kwargs["tag_length"] = self._cipher.aead_expansion
+        if self._cipher.tag_length != 16:
+            kwargs["tag_length"] = self._cipher.tag_length
         aes_aead = self._cipher.algo(self._keys.enc, **kwargs)
         nonce_explicit = pdu.pack_uint64(self._seq_nbr)
         nonce = self._keys.iv + nonce_explicit
@@ -245,12 +245,12 @@ class RecordLayerState(object):
         aad = (
             pdu.pack_uint8(tls.ContentType.APPLICATION_DATA.value)
             + pdu.pack_uint16(rl_msg.version.value)
-            + pdu.pack_uint16(len(fragment) + self._cipher.aead_expansion)
+            + pdu.pack_uint16(len(fragment) + self._cipher.tag_length)
         )
         nonce_val = int.from_bytes(self._keys.iv, "big", signed=False) ^ self._seq_nbr
         nonce = nonce_val.to_bytes(self._cipher.iv_len, "big", signed=False)
         kwargs = {}
-        if self._cipher.aead_expansion == 8:
+        if self._cipher.tag_length == 8:
             kwargs["tag_length"] = 8
         cipher = self._cipher_object(self._keys.enc, **kwargs)
         self._seq_nbr += 1
@@ -422,7 +422,7 @@ class RecordLayerState(object):
             pdu.pack_uint64(self._seq_nbr)
             + pdu.pack_uint8(rl_msg.content_type.value)
             + pdu.pack_uint16(rl_msg.version.value)
-            + pdu.pack_uint16(len(rl_msg.fragment) - self._cipher.aead_expansion)
+            + pdu.pack_uint16(len(rl_msg.fragment) - self._cipher.tag_length)
         )
         chachapoly = aead.ChaCha20Poly1305(self._keys.enc)
         self._seq_nbr += 1
@@ -451,12 +451,12 @@ class RecordLayerState(object):
             pdu.pack_uint64(self._seq_nbr)
             + pdu.pack_uint8(rl_msg.content_type.value)
             + pdu.pack_uint16(rl_msg.version.value)
-            + pdu.pack_uint16(len(cipher_text) - self._cipher.aead_expansion)
+            + pdu.pack_uint16(len(cipher_text) - self._cipher.tag_length)
         )
         nonce = bytes(self._keys.iv + nonce_explicit)
         kwargs = {}
-        if self._cipher.aead_expansion != 16:
-            kwargs["tag_length"] = self._cipher.aead_expansion
+        if self._cipher.tag_length != 16:
+            kwargs["tag_length"] = self._cipher.tag_length
         aes_aead = self._cipher.algo(self._keys.enc, **kwargs)
         self._seq_nbr += 1
         return structs.RecordLayerMsg(
@@ -511,7 +511,7 @@ class RecordLayerState(object):
         nonce_val = int.from_bytes(self._keys.iv, "big", signed=False) ^ self._seq_nbr
         nonce = nonce_val.to_bytes(self._cipher.iv_len, "big", signed=False)
         kwargs = {}
-        if self._cipher.aead_expansion == 8:
+        if self._cipher.tag_length == 8:
             kwargs["tag_length"] = 8
         cipher = self._cipher_object(self._keys.enc, **kwargs)
         decoded = cipher.decrypt(nonce, rl_msg.fragment, aad)

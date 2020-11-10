@@ -39,7 +39,7 @@ class Cipher(NamedTuple):
     key_len: int = None
     block_size: int = None
     iv_len: int = None
-    aead_expansion: int = None
+    tag_length: int = None
     cipher_supported: bool = False
 
 

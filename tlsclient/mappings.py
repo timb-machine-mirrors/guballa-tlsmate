@@ -1712,7 +1712,7 @@ supported_ciphers = {
         key_len=16,
         block_size=16,
         iv_len=16,
-        aead_expansion=None,
+        tag_length=None,
         cipher_supported=True,
     ),
     tls.SymmetricCipher.AES_256_CBC: structs.Cipher(
@@ -1722,7 +1722,7 @@ supported_ciphers = {
         key_len=32,
         block_size=16,
         iv_len=16,
-        aead_expansion=None,
+        tag_length=None,
         cipher_supported=True,
     ),
     tls.SymmetricCipher.AES_128_GCM: structs.Cipher(
@@ -1732,7 +1732,7 @@ supported_ciphers = {
         key_len=16,
         block_size=16,
         iv_len=4,
-        aead_expansion=16,
+        tag_length=16,
         cipher_supported=True,
     ),
     tls.SymmetricCipher.AES_256_GCM: structs.Cipher(
@@ -1742,7 +1742,7 @@ supported_ciphers = {
         key_len=32,
         block_size=16,
         iv_len=4,
-        aead_expansion=16,
+        tag_length=16,
         cipher_supported=True,
     ),
     tls.SymmetricCipher.AES_128_CCM: structs.Cipher(
@@ -1752,7 +1752,7 @@ supported_ciphers = {
         key_len=16,
         block_size=16,
         iv_len=4,
-        aead_expansion=16,
+        tag_length=16,
         cipher_supported=True,
     ),
     tls.SymmetricCipher.AES_128_CCM_8: structs.Cipher(
@@ -1762,7 +1762,7 @@ supported_ciphers = {
         key_len=16,
         block_size=16,
         iv_len=4,
-        aead_expansion=8,
+        tag_length=8,
         cipher_supported=True,
     ),
     tls.SymmetricCipher.AES_256_CCM: structs.Cipher(
@@ -1772,7 +1772,7 @@ supported_ciphers = {
         key_len=32,
         block_size=16,
         iv_len=4,
-        aead_expansion=16,
+        tag_length=16,
         cipher_supported=True,
     ),
     tls.SymmetricCipher.AES_256_CCM_8: structs.Cipher(
@@ -1782,7 +1782,7 @@ supported_ciphers = {
         key_len=32,
         block_size=16,
         iv_len=4,
-        aead_expansion=8,
+        tag_length=8,
         cipher_supported=True,
     ),
     tls.SymmetricCipher.CHACHA20_POLY1305: structs.Cipher(
@@ -1792,7 +1792,7 @@ supported_ciphers = {
         key_len=32,
         block_size=16,
         iv_len=12,
-        aead_expansion=16,
+        tag_length=16,
         cipher_supported=True,
     ),
     tls.SymmetricCipher.TRIPPLE_DES_EDE_CBC: structs.Cipher(
@@ -1802,7 +1802,7 @@ supported_ciphers = {
         key_len=24,
         block_size=8,
         iv_len=8,
-        aead_expansion=None,
+        tag_length=None,
         cipher_supported=True,
     ),
     tls.SymmetricCipher.CAMELLIA_128_CBC: structs.Cipher(
@@ -1812,7 +1812,7 @@ supported_ciphers = {
         key_len=16,
         block_size=16,
         iv_len=16,
-        aead_expansion=None,
+        tag_length=None,
         cipher_supported=True,
     ),
     tls.SymmetricCipher.CAMELLIA_256_CBC: structs.Cipher(
@@ -1822,7 +1822,7 @@ supported_ciphers = {
         key_len=32,
         block_size=16,
         iv_len=16,
-        aead_expansion=None,
+        tag_length=None,
         cipher_supported=True,
     ),
     tls.SymmetricCipher.IDEA_CBC: structs.Cipher(
@@ -1832,7 +1832,7 @@ supported_ciphers = {
         key_len=16,
         block_size=8,
         iv_len=8,
-        aead_expansion=None,
+        tag_length=None,
         cipher_supported=True,
     ),
     tls.SymmetricCipher.RC4_128: structs.Cipher(
@@ -1842,7 +1842,7 @@ supported_ciphers = {
         key_len=16,
         block_size=None,
         iv_len=0,
-        aead_expansion=None,
+        tag_length=None,
         cipher_supported=True,
     ),
     tls.SymmetricCipher.TLS13_AES_128_GCM: structs.Cipher(
@@ -1852,7 +1852,7 @@ supported_ciphers = {
         key_len=16,
         block_size=16,
         iv_len=12,
-        aead_expansion=16,
+        tag_length=16,
         cipher_supported=True,
     ),
     tls.SymmetricCipher.TLS13_AES_256_GCM: structs.Cipher(
@@ -1862,7 +1862,7 @@ supported_ciphers = {
         key_len=32,
         block_size=16,
         iv_len=12,
-        aead_expansion=16,
+        tag_length=16,
         cipher_supported=True,
     ),
     tls.SymmetricCipher.TLS13_AES_128_CCM: structs.Cipher(
@@ -1872,7 +1872,7 @@ supported_ciphers = {
         key_len=16,
         block_size=16,
         iv_len=12,
-        aead_expansion=16,
+        tag_length=16,
         cipher_supported=True,
     ),
     tls.SymmetricCipher.TLS13_AES_128_CCM_8: structs.Cipher(
@@ -1882,7 +1882,7 @@ supported_ciphers = {
         key_len=16,
         block_size=16,
         iv_len=12,
-        aead_expansion=8,
+        tag_length=8,
         cipher_supported=True,
     ),
     # ***************************

@@ -435,11 +435,7 @@ class TlsConnection(object):
         for extension in msg.extensions:
             extension = extension.extension_id
             logging.info(f"extension {extension.value} {extension}")
-        supported_versions = msg.get_extension(tls.Extension.SUPPORTED_VERSIONS)
-        if supported_versions is not None:
-            self.version = supported_versions.versions[0]
-        else:
-            self.version = msg.version
+        self.version = msg.get_version()
         self.update_cipher_suite(msg.cipher_suite)
         self.record_layer_version = min(self.version, tls.Version.TLS12)
         self.server_random = msg.random

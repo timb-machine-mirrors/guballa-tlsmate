@@ -274,8 +274,26 @@ class ServerHello(HandshakeMessage):
         return self
 
     def get_extension(self, ext_id):
+        """Get an extension from the message
+
+        Arguments:
+            ext_id: (:class:`tlsclient.constants`): The extensions to look for
+
+        Returns:
+            :obj:`tlsclient.extensions.Extension`: The extension or None if not present.
+        """
         return _get_extension(self.extensions, ext_id)
 
+    def get_version(self):
+        """Get the negotiated TLS version from the message.
+
+        Returns:
+            :class:`tlsclient.constants.Version`: The negotitated TLS version.
+        """
+        supported_versions = self.get_extension(tls.Extension.SUPPORTED_VERSIONS)
+        if supported_versions is not None:
+            return supported_versions.versions[0]
+        return self.version
 
 ServerHello.get_extension.__doc__ = ClientHello.get_extension.__doc__
 
