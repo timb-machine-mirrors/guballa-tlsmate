@@ -1845,6 +1845,16 @@ supported_ciphers = {
         tag_length=None,
         cipher_supported=True,
     ),
+    tls.SymmetricCipher.SEED_CBC: structs.Cipher(
+        primitive=tls.CipherPrimitive.SEED,
+        algo=algorithms.SEED,
+        c_type=tls.CipherType.BLOCK,
+        key_len=16,
+        block_size=16,
+        iv_len=16,
+        tag_length=None,
+        cipher_supported=True,
+    ),
     tls.SymmetricCipher.TLS13_AES_128_GCM: structs.Cipher(
         primitive=tls.CipherPrimitive.AES,
         algo=aead.AESGCM,
@@ -1926,9 +1936,6 @@ supported_ciphers = {
     ),
     tls.SymmetricCipher.RC4_40: structs.Cipher(
         primitive=tls.CipherPrimitive.RC4, c_type=tls.CipherType.STREAM
-    ),
-    tls.SymmetricCipher.SEED_CBC: structs.Cipher(
-        primitive=tls.CipherPrimitive.SEED, c_type=tls.CipherType.BLOCK
     ),
 }
 

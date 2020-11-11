@@ -632,6 +632,11 @@ class TlsConnection(object):
                 )
 
     def update_keys(self):
+        if not self.cs_details.full_hs:
+            raise FatalAlert(
+                f"full handshake not supported for {self.cipher_suite}",
+                tls.AlertDescription.HANDSHAKE_FAILURE,
+            )
         self.generate_master_secret()
         self.key_derivation()
 
