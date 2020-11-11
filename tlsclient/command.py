@@ -13,7 +13,8 @@ from tlsclient.tlssuites.scanner_info import ScanStart, ScanEnd
 from tlsclient.tlssuites.supported_groups import ScanSupportedGroups
 from tlsclient.tlssuites.testsuite import ScanScratch
 from tlsclient.tlssuites.sig_algo import ScanSigAlgs
-from tlsclient.tlssuites.features import ScanFeatures
+from tlsclient.tlssuites.compression import ScanCompression
+from tlsclient.tlssuites.encrypt_then_mac import ScanEncryptThenMac
 
 from tlsclient.version import __version__
 
@@ -144,7 +145,8 @@ SuiteManager.register_cli(
         ScanCipherSuites,
         ScanSupportedGroups,
         ScanSigAlgs,
-        ScanFeatures,
+        ScanCompression,
+        ScanEncryptThenMac,
         ScanEnd,
     ],
 )
