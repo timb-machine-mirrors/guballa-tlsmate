@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Module implementing a test manager class
+"""Module implementing a suite manager class
 """
 
 import logging
 
 
-class TestManager(object):
-    """Manages the plugins (test suites) and runs them.
+class SuiteManager(object):
+    """Manages the plugins (suites) and runs them.
 
-    The test manager provides an interface to register test suites.
+    The suite manager provides an interface to register suites.
 
     The registered plugins are triggered (via their run-method) based on their
     priority.

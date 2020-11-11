@@ -7,7 +7,7 @@ import importlib
 import pkgutil
 
 import tlsclient.dependency_injection as dependency
-from tlsclient.testmanager import TestManager
+from tlsclient.suitemanager import SuiteManager
 from tlsclient.tlssuites.eval_cipher_suites import ScanCipherSuites
 from tlsclient.tlssuites.scanner_info import ScanStart, ScanEnd
 from tlsclient.tlssuites.supported_groups import ScanSupportedGroups
@@ -43,10 +43,10 @@ def add_plugins_to_parser(parser):
     :type parser: object
     """
 
-    plugin_cli_options = TestManager.test_suites.keys()
+    plugin_cli_options = SuiteManager.test_suites.keys()
     for arg in plugin_cli_options:
         parser.add_argument(
-            arg, help=TestManager.cli_help[arg], action="store_true", default=False
+            arg, help=SuiteManager.cli_help[arg], action="store_true", default=False
         )
 
 
@@ -122,7 +122,7 @@ def main():
 
     set_logging(args.logging)
 
-    plugin_cli_options = sorted(TestManager.test_suites.keys())
+    plugin_cli_options = sorted(SuiteManager.test_suites.keys())
     selected_plugins = []
     for arg in plugin_cli_options:
         if getattr(args, arg[2:]):
@@ -136,7 +136,7 @@ def main():
 
 
 # always register the basic plugins provided with tlsclient
-TestManager.register_cli(
+SuiteManager.register_cli(
     "--scan",
     cli_help="performs a basic scan",
     classes=[
@@ -148,7 +148,7 @@ TestManager.register_cli(
         ScanEnd,
     ],
 )
-TestManager.register_cli(
+SuiteManager.register_cli(
     "--scratch", cli_help="this is just a scratch scenario", classes=[ScanScratch]
 )
 

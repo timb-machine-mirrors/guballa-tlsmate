@@ -11,7 +11,7 @@ from tlsclient.recorder import Recorder
 from tlsclient.socket import Socket
 from tlsclient.kdf import Kdf
 
-from tlsclient.testmanager import TestManager
+from tlsclient.suitemanager import SuiteManager
 
 
 class Container(containers.DeclarativeContainer):
@@ -44,4 +44,4 @@ class Container(containers.DeclarativeContainer):
         Client, connection_factory=connection.provider, config=config
     )
 
-    test_manager = providers.Singleton(TestManager)
+    test_manager = providers.Singleton(SuiteManager)
