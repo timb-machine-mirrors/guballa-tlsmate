@@ -13,7 +13,7 @@ class ScanCompression(TlsSuite):
     descr = "check for compression support"
     prio = 30
 
-    def compression(self, version, prof_version):
+    def compression(self, version):
         prof_features = self.server_profile.get("features")
         prof_compression = prof_features.get("compression")
         if prof_compression is None:
@@ -21,16 +21,12 @@ class ScanCompression(TlsSuite):
             prof_features.add("compression", prof_compression)
         self.client.reset_profile()
         self.client.versions = [version]
-        self.client.cipher_suites = prof_version.get("cipher_suites").all()
-        groups = prof_version.get("supported_groups").get("groups").all()
+        self.client.cipher_suites = self.server_profile.get_cipher_suites(version)
+        groups = self.server_profile.get_supported_groups(version)
         if groups:
             self.client.supported_groups = groups
             self.client.key_share = groups
-        if prof_version.get("signature_algorithms") is not None:
-            # TODO: optimize
-            self.client.signature_algorithms = (
-                prof_version.get("signature_algorithms").get("algorithms").all()
-            )
+        self.client.signature_algorithms = self.server_profile.get_signature_algorithms(version)
         comp_methods = tls.CompressionMethod.all()
         while comp_methods:
             self.client.compression_methods = comp_methods
@@ -50,6 +46,5 @@ class ScanCompression(TlsSuite):
             )
 
     def run(self):
-        for version in self.server_profile.get("versions").all():
-            prof_version = self.server_profile.get("versions").key(version)
-            self.compression(version, prof_version)
+        for version in self.server_profile.get_versions():
+            self.compression(version)

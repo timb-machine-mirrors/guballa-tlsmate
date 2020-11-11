@@ -164,3 +164,21 @@ class ServerProfile(ProfileDict):
         )
         self.add("cert_chain", SPCertificateChainList(key_func=lambda x: x.get("id")))
         self.add("features", SPFeatures())
+
+    def get_supported_groups(self, version):
+        prof_version = self.get("versions").key(version)
+        return prof_version.get("supported_groups").get("groups").all()
+
+    def get_signature_algorithms(self, version):
+        prof_version = self.get("versions").key(version)
+        sig_algs = prof_version.get("signature_algorithms")
+        if sig_algs is None:
+            return []
+        return sig_algs.get("algorithms").all()
+
+    def get_versions(self):
+        return self.get("versions").all()
+
+    def get_cipher_suites(self, version):
+        prof_version = self.get("versions").key(version)
+        return prof_version.get("cipher_suites").all()

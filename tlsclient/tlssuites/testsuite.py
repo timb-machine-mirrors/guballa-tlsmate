@@ -13,13 +13,13 @@ class ScanScratch(TlsSuite):
 
     def run(self):
         client = self.client
-        client.versions = [tls.Version.TLS13]
+        client.versions = [tls.Version.TLS12]
         client.cipher_suites = [
             # tls.CipherSuite.TLS_DHE_DSS_WITH_AES_256_CBC_SHA,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8,
-            tls.CipherSuite.TLS_AES_128_GCM_SHA256,
-            tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
-            tls.CipherSuite.TLS_AES_256_GCM_SHA384,
+            #tls.CipherSuite.TLS_AES_128_GCM_SHA256,
+            #tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
+            #tls.CipherSuite.TLS_AES_256_GCM_SHA384,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
@@ -56,6 +56,8 @@ class ScanScratch(TlsSuite):
             # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
             # tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+            # tls.CipherSuite.TLS_DHE_RSA_WITH_SEED_CBC_SHA,
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_CAMELLIA_128_GCM_SHA256,
         ]
         client.supported_groups = [
             tls.SupportedGroups.SECP256R1,
@@ -115,18 +117,18 @@ class ScanScratch(TlsSuite):
 
         # client.support_session_ticket = True
         client.support_supported_groups = True
-        self.client.key_shares = [
-            tls.SupportedGroups.SECP256R1,
-            tls.SupportedGroups.SECP384R1,
-            tls.SupportedGroups.SECP521R1,
-            tls.SupportedGroups.X25519,
-            tls.SupportedGroups.X448,
-            # tls.SupportedGroups.FFDHE2048,
-            # tls.SupportedGroups.FFDHE3072,
-            # tls.SupportedGroups.FFDHE4096,
-            # tls.SupportedGroups.FFDHE6144,
-            # tls.SupportedGroups.FFDHE8192,
-        ]
+        # self.client.key_shares = [
+        #     tls.SupportedGroups.SECP256R1,
+        #     tls.SupportedGroups.SECP384R1,
+        #     tls.SupportedGroups.SECP521R1,
+        #     tls.SupportedGroups.X25519,
+        #     tls.SupportedGroups.X448,
+        #     # tls.SupportedGroups.FFDHE2048,
+        #     # tls.SupportedGroups.FFDHE3072,
+        #     # tls.SupportedGroups.FFDHE4096,
+        #     # tls.SupportedGroups.FFDHE6144,
+        #     # tls.SupportedGroups.FFDHE8192,
+        # ]
         with client.create_connection() as conn:
             # conn.send(msg.ClientHello)
             # conn.wait(msg.ServerHello)

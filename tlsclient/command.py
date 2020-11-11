@@ -15,6 +15,7 @@ from tlsclient.tlssuites.testsuite import ScanScratch
 from tlsclient.tlssuites.sig_algo import ScanSigAlgs
 from tlsclient.tlssuites.compression import ScanCompression
 from tlsclient.tlssuites.encrypt_then_mac import ScanEncryptThenMac
+from tlsclient.tlssuites.master_secret import ScanExtendedMasterSecret
 
 from tlsclient.version import __version__
 
@@ -147,6 +148,7 @@ SuiteManager.register_cli(
         ScanSigAlgs,
         ScanCompression,
         ScanEncryptThenMac,
+        ScanExtendedMasterSecret,
         ScanEnd,
     ],
 )
