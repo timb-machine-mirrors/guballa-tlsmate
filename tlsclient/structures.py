@@ -135,3 +135,13 @@ class CipherSuiteDetails(NamedTuple):
     cipher_struct: Cipher = None
     mac: tls.HashPrimitive = None
     mac_struct: Mac = None
+
+
+class ProfileValues(NamedTuple):
+    """Structure for the most relevant parameters for client hello
+    """
+
+    versions: list = []
+    cipher_suites: list = []
+    supported_groups: list = []
+    signature_algorithms: list = []

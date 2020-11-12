@@ -4,6 +4,8 @@
 import abc
 from collections import OrderedDict
 from tlsclient import constants as tls
+from tlsclient import structures as structs
+from tlsclient import utils
 
 
 class ProfileObject(metaclass=abc.ABCMeta):
@@ -182,3 +184,24 @@ class ServerProfile(ProfileDict):
     def get_cipher_suites(self, version):
         prof_version = self.get("versions").key(version)
         return prof_version.get("cipher_suites").all()
+
+    def get_profile_values(self, filter_versions, full_hs=False):
+        versions = []
+        cipher_suites = set()
+        sig_algos = set()
+        groups = set()
+        for version in self.get_versions():
+            if version not in filter_versions:
+                continue
+            versions.append(version)
+            cipher_suites = cipher_suites.union(set(self.get_cipher_suites(version)))
+            sig_algos = sig_algos.union(set(self.get_signature_algorithms(version)))
+            groups = groups.union(set(self.get_supported_groups(version)))
+        if full_hs:
+            cipher_suites = utils.filter_cipher_suites(cipher_suites, full_hs=True)
+        return structs.ProfileValues(
+            versions=versions,
+            cipher_suites=cipher_suites,
+            supported_groups=list(groups),
+            signature_algorithms=list(sig_algos),
+        )

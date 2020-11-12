@@ -168,6 +168,7 @@ class TlsConnection(object):
         self.session_id_sent = None
         self.handshake_completed = False
         self.alert_received = False
+        self.alert_sent = False
 
         # general
         self.entity = entity
@@ -200,20 +201,24 @@ class TlsConnection(object):
         logging.debug("New TLS connection created")
         return self
 
+    def send_alert(self, level, desc):
+        if not self.alert_received and not self.alert_sent:
+            self.send(Alert(level=level, description=desc))
+
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is FatalAlert:
-            logging.debug("FatalAlter exception received")
+            logging.debug("FatalAlert exception received")
             str_io = io.StringIO()
             tb.print_exception(exc_type, exc_value, traceback, file=str_io)
             logging.debug(str_io.getvalue())
-            if not self.alert_received:
-                self.send(
-                    Alert(level=tls.AlertLevel.FATAL, description=exc_value.description)
-                )
+            self.send_alert(tls.AlertLevel.FATAL, exc_value.description)
         elif exc_type is TlsConnectionClosedError:
             logging.debug("connected closed, probably by peer")
         elif exc_type is TlsMsgTimeoutError:
             logging.debug(f"timeout occured while waiting for {self.awaited_msg}")
+            self.send_alert(tls.AlertLevel.WARNING, tls.AlertDescription.CLOSE_NOTIFY)
+        else:
+            self.send_alert(tls.AlertLevel.WARNING, tls.AlertDescription.CLOSE_NOTIFY)
         self.record_layer.close_socket()
         logging.debug("TLS connection closed")
         return exc_type in [FatalAlert, TlsConnectionClosedError, TlsMsgTimeoutError]
@@ -378,6 +383,8 @@ class TlsConnection(object):
             self.msg.store_msg(message, received=False)
             if message.content_type == tls.ContentType.HANDSHAKE:
                 self.kdf.update_msg_digest(msg_data)
+            elif message.content_type == tls.ContentType.ALERT:
+                self.alert_sent = True
 
             self.record_layer.send_message(
                 structs.RecordLayerMsg(

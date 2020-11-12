@@ -1999,8 +1999,8 @@ key_exchange = {
     tls.KeyExchangeAlgorithm.ECDH_ECDSA: structs.KeyExchange(
         key_ex_type=tls.KeyExchangeType.ECDH,
         key_auth=tls.KeyAuthentication.ECDSA,
-        key_ex_supported=True,
-        default_sig_scheme=tls.SignatureScheme.ECDSA_SHA1,
+        #key_ex_supported=True,
+        #default_sig_scheme=tls.SignatureScheme.ECDSA_SHA1,
     ),
     tls.KeyExchangeAlgorithm.ECDHE_ECDSA: structs.KeyExchange(
         key_ex_type=tls.KeyExchangeType.ECDH,
@@ -2011,8 +2011,8 @@ key_exchange = {
     tls.KeyExchangeAlgorithm.ECDH_RSA: structs.KeyExchange(
         key_ex_type=tls.KeyExchangeType.ECDH,
         key_auth=tls.KeyAuthentication.RSA,
-        key_ex_supported=True,
-        default_sig_scheme=tls.SignatureScheme.RSA_PKCS1_SHA1,
+        #key_ex_supported=True,
+        #default_sig_scheme=tls.SignatureScheme.RSA_PKCS1_SHA1,
     ),
     tls.KeyExchangeAlgorithm.ECDHE_RSA: structs.KeyExchange(
         key_ex_type=tls.KeyExchangeType.ECDH,
