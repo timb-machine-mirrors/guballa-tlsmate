@@ -6,9 +6,9 @@ from tlsclient.tlssuite import TlsSuite
 from tlsclient.server_profile import ProfileBasic, ProfileBasicEnum
 
 
-class ScanSessionId(TlsSuite):
-    name = "session_id"
-    descr = "check if the server supports the session_id"
+class ScanResumption(TlsSuite):
+    name = "resumption"
+    descr = "check if the server supports resumption via (session_id and ticket)"
     prio = 30
 
     def resumption_tls12(self, prof_vals, session_ticket=False):
@@ -31,8 +31,12 @@ class ScanSessionId(TlsSuite):
             with self.client.create_connection() as conn:
                 conn.handshake()
             if conn.handshake_completed:
-                if len(conn.msg.server_hello.session_id):
-                    #self.client.cipher_suites = [conn.msg.server_hello.cipher_suite]
+                if session_ticket:
+                    resumption_possible = ...
+                else:
+                    resumption_possible = bool(len(conn.msg.server_hello.session_id))
+                if resumption_possible:
+                    self.client.cipher_suites = [conn.msg.server_hello.cipher_suite]
                     with self.client.create_connection() as conn2:
                         conn2.handshake()
                     if conn2.handshake_completed and conn2.abbreviated_hs:
@@ -48,7 +52,7 @@ class ScanSessionId(TlsSuite):
         prof_features.add("session_id", ProfileBasicEnum(session_id_support))
 
         session_ticket_support = self.resumption_tls12(prof_vals, session_ticket=True)
-        prof_features.add("session_ticket", ProfileBasicEnum(session_id_support))
+        prof_features.add("session_ticket", ProfileBasicEnum(session_ticket_support))
         if session_ticket_support is tls.SPBool.C_TRUE:
             prof_features.add(
                 "session_ticket_lifetime",

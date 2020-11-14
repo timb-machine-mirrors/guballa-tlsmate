@@ -16,7 +16,7 @@ from tlsclient.tlssuites.sig_algo import ScanSigAlgs
 from tlsclient.tlssuites.compression import ScanCompression
 from tlsclient.tlssuites.encrypt_then_mac import ScanEncryptThenMac
 from tlsclient.tlssuites.master_secret import ScanExtendedMasterSecret
-from tlsclient.tlssuites.session_id import ScanSessionId
+from tlsclient.tlssuites.resumption import ScanResumption
 
 from tlsclient.version import __version__
 

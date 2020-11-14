@@ -60,12 +60,13 @@ class TlsDefragmenter(object):
         return ret
 
     def get_message(self, timeout):
-        self._ultimo = time.time() + (timeout / 1000)
+        self._ultimo = time.time() + (timeout)
         message = self._get_bytes(1)
         if self._content_type is tls.ContentType.ALERT:
             message.extend(self._get_bytes(1))
+            msg_type = tls.ContentType.ALERT
             return structs.UpperLayerMsg(
-                content_type=self._content_type, msg_type=None, msg=message
+                content_type=self._content_type, msg_type=msg_type, msg=message
             )
         elif self._content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
             msg_type, offset = pdu.unpack_uint8(message, 0)
@@ -595,48 +596,67 @@ class TlsConnection(object):
         if method is not None:
             method(self, msg)
 
-    def wait(self, msg_class, optional=False, timeout=5000):
-        if self.queued_msg:
-            msg = self.queued_msg
-            self.queued_msg = None
+    def _wait_message(self, timeout=5000):
+        mb = self.defragmenter.get_message(timeout)
+        if mb is None:
+            return None
+        if mb.content_type is tls.ContentType.HANDSHAKE:
+            msg = HandshakeMessage.deserialize(mb.msg, self)
+            self.kdf.update_msg_digest(mb.msg)
+        elif mb.content_type is tls.ContentType.ALERT:
+            self.alert_received = True
+            msg = Alert.deserialize(mb.msg, self)
+        elif mb.content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
+            msg = ChangeCipherSpecMessage.deserialize(mb.msg, self)
+        elif mb.content_type is tls.ContentType.APPLICATION_DATA:
+            msg = AppDataMessage.deserialize(mb.msg, self)
+        elif mb.content_type is tls.ContentType.SSL2:
+            msg = SSL2Message.deserialize(mb.msg, self)
         else:
-            self.awaited_msg = msg_class
-            mb = self.defragmenter.get_message(timeout)
-            if mb is None:
-                return None
-            if mb.content_type is tls.ContentType.HANDSHAKE:
-                msg = HandshakeMessage.deserialize(mb.msg, self)
-                self.kdf.update_msg_digest(mb.msg)
-            elif mb.content_type is tls.ContentType.ALERT:
-                self.alert_received = True
-                msg = Alert.deserialize(mb.msg, self)
-            elif mb.content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
-                msg = ChangeCipherSpecMessage.deserialize(mb.msg, self)
-            elif mb.content_type is tls.ContentType.APPLICATION_DATA:
-                msg = AppDataMessage.deserialize(mb.msg, self)
-            elif mb.content_type is tls.ContentType.SSL2:
-                msg = SSL2Message.deserialize(mb.msg, self)
-            else:
-                raise ValueError("Content type unknow")
+            raise ValueError("Content type unknown")
 
-            logging.info(f"Receiving {msg.msg_type}")
-            self.msg.store_msg(msg, received=True)
-        if (msg_class == Any) or isinstance(msg, msg_class):
-            self.on_msg_received(msg)
-            return msg
-        else:
-            if optional:
-                self.queued_msg = msg
-                return None
+        logging.info(f"Receiving {msg.msg_type}")
+        self.msg.store_msg(msg, received=True)
+        return msg
+
+    def wait(self, msg_class, optional=False, max_nbr=1, timeout=5000):
+        ultimo = time.time() + (timeout / 1000)
+        min_nbr = 0 if optional else 1
+        cnt = 0
+        self.awaited_msg = msg_class
+        expected_msg = None
+        while True:
+            if self.queued_msg:
+                msg = self.queued_msg
+                self.queued_msg = None
             else:
-                logging.debug("unexpected message received")
-                raise FatalAlert(
-                    (
-                        f"Unexpected message received: {msg.msg_type}, "
-                        f"expected: {msg_class.msg_type}"
-                    ),
-                    tls.AlertDescription.UNEXPECTED_MESSAGE,
-                )
+                try:
+                    msg = self._wait_message(ultimo - time.time())
+                except TlsMsgTimeoutError as exc:
+                    if cnt >= min_nbr:
+                        return expected_msg
+                    else:
+                        raise exc
+            if (msg_class == Any) or isinstance(msg, msg_class):
+                self.on_msg_received(msg)
+                cnt += 1
+                if cnt == max_nbr:
+                    return msg
+                else:
+                    expected_msg = msg
+            else:
+                if cnt >= min_nbr:
+                    self.queued_msg = msg
+                    return expected_msg
+                else:
+                    logging.debug("unexpected message received")
+                    raise FatalAlert(
+                        (
+                            f"Unexpected message received: {msg.msg_type}, "
+                            f"expected: {msg_class.msg_type}"
+                        ),
+                        tls.AlertDescription.UNEXPECTED_MESSAGE,
+                    )
 
     def update_keys(self):
         if not self.cs_details.full_hs:
@@ -825,6 +845,7 @@ class TlsConnection(object):
             self.send(msg.Finished)
         else:
             if self.abbreviated_hs:
+                self.wait(msg.NewSessionTicket, optional=True, max_nbr=10)
                 self.wait(msg.ChangeCipherSpec)
                 self.wait(msg.Finished)
                 self.send(msg.ChangeCipherSpec, msg.Finished)
@@ -853,6 +874,6 @@ class TlsConnection(object):
                 self.send(msg.ClientKeyExchange)
                 self.send(msg.ChangeCipherSpec)
                 self.send(msg.Finished)
+                self.wait(msg.NewSessionTicket, optional=True, max_nbr=10)
                 self.wait(msg.ChangeCipherSpec)
                 self.wait(msg.Finished)
-                # TODO: check for NewSessionTicket
