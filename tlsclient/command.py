@@ -150,7 +150,7 @@ SuiteManager.register_cli(
         ScanCompression,
         ScanEncryptThenMac,
         ScanExtendedMasterSecret,
-        ScanSessionId,
+        ScanResumption,
         ScanEnd,
     ],
 )
