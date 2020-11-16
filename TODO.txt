@@ -4,7 +4,6 @@
     - HelloRetryRequest
     - more scan results
     - improved error handling, e.g. if host name cannot be resolved
-    - log description for received alerts
     - more checks on server_hello: have the stuff selected by the server
       actually been offered?
     - use __str__ for messages and extension displaying their names, cover all enums as well
@@ -15,6 +14,5 @@
       or to enable/disable specific parts of the trace.
     - implement ECDH_* cipher suites
     - implement proper handling of the scenario for session_tickets:
-      - Allow any numbers of NewSessionTicket to be received
       - adapt check if new session ticket was received to decide if the second
         handshake must be performed

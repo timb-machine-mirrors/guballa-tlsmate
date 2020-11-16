@@ -613,6 +613,10 @@ class TlsConnection(object):
         if self.version is tls.Version.TLS13:
             kex.verify_certificate_verify(msg, self.msg, self.certificate_digest)
 
+    def on_alert_received(self, msg):
+        logging.debug(f"alert level: {msg.level}")
+        logging.debug(f"alter description: {msg.description}")
+
     _on_msg_received = {
         tls.HandshakeType.SERVER_HELLO: on_server_hello_received,
         tls.HandshakeType.SERVER_KEY_EXCHANGE: on_server_key_exchange_received,
@@ -622,6 +626,7 @@ class TlsConnection(object):
         tls.HandshakeType.ENCRYPTED_EXTENSIONS: on_encrypted_extensions_received,
         tls.HandshakeType.CERTIFICATE_VERIFY: on_certificate_verify_received,
         tls.HandshakeType.CERTIFICATE: on_certificate_received,
+        tls.ContentType.ALERT: on_alert_received,
     }
 
     def on_msg_received(self, msg):
