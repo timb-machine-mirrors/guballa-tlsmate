@@ -426,17 +426,20 @@ class TlsConnection(object):
                 self.abbreviated_hs = True
         key_share_ext = msg.get_extension(tls.Extension.KEY_SHARE)
         if key_share_ext is None:
-            raise FatalAlert(
-                "ServerHello-TLS13: extension KEY_SHARE not present",
-                tls.AlertDescription.HANDSHAKE_FAILURE,
+            if not self.abbreviated_hs:
+                raise FatalAlert(
+                    "ServerHello-TLS13: extension KEY_SHARE not present",
+                    tls.AlertDescription.HANDSHAKE_FAILURE,
+                )
+            self.premaster_secret = None
+        else:
+            share_entry = key_share_ext.key_shares[0]
+            self.key_exchange = self.key_shares[share_entry.group]
+            self.key_exchange.set_remote_key(
+                share_entry.key_exchange, group=share_entry.group
             )
-        share_entry = key_share_ext.key_shares[0]
-        self.key_exchange = self.key_shares[share_entry.group]
-        self.key_exchange.set_remote_key(
-            share_entry.key_exchange, group=share_entry.group
-        )
-        self.premaster_secret = self.key_exchange.get_shared_secret()
-        logging.info(f"premaster_secret: {pdu.dump(self.premaster_secret)}")
+            self.premaster_secret = self.key_exchange.get_shared_secret()
+            logging.info(f"premaster_secret: {pdu.dump(self.premaster_secret)}")
         self.tls13_key_schedule(psk)
 
     def on_server_hello_tls12(self, msg):
