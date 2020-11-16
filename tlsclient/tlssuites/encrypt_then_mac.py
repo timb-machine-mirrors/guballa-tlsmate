@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """Module containing the test suite
 """
-import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.tlssuite import TlsSuite
-from tlsclient.server_profile import ProfileList, ProfileEnum, ProfileBasicEnum
+from tlsclient.server_profile import ProfileBasicEnum
 from tlsclient import utils
 
 

@@ -57,6 +57,12 @@ class Client(object):
             encrypt-then-mac extension
         key_shares (list of :obj:`SupportedGroups`): this list of key share ob
             supported for TLS1.3.
+        support_psk (bool): and indication whether the client offers a PSK with
+            the ClientHello (i.e. NewSessionTicket message have been received before).
+        psks (list of :obj:`Psk`): The TLS1.3 PSKs
+        psk_key_exchange_modes (list of :obj:`tlsclient.constants.PskKeyExchangeMode`):
+            the list of PSK key exchange modes used in the extension
+            psk_key_exchange_modes.
     """
 
     def __init__(self, connection_factory, config):
@@ -103,6 +109,9 @@ class Client(object):
 
         # TLS13
         self.key_shares = []
+        self.support_psk = False
+        self.psks = []
+        self.psk_key_exchange_modes = []
 
         self.support_encrypt_then_mac = False
 
@@ -147,6 +156,15 @@ class Client(object):
             :obj:`SessionStateTicket`: the session state to resume a session from
         """
         return self.session_state_ticket
+
+    def save_psk(self, psk):
+        """Save a TLS1.3 PSK
+
+        Args:
+            psk (:obj:`Psk`): A pre-shared key be stored on the client level, usable
+            to resume connections using the pre-shared key extension.
+        """
+        self.psks.append(psk)
 
     def client_hello(self):
         """Populate a ClientHello message according to the current client profile
@@ -213,5 +231,10 @@ class Client(object):
                     if group in self.key_shares:
                         key_shares.append(group)
                 msg.extensions.append(ext.ExtKeyShare(key_shares=key_shares))
+                if self.support_psk and self.psks:
+                    msg.extensions.append(
+                        ext.ExtPskKeyExchangeMode(modes=self.psk_key_exchange_modes)
+                    )
+                    msg.extensions.append(ext.ExtPreSharedKey(psks=self.psks[:1]))
 
         return msg

@@ -906,6 +906,14 @@ class CipherType(ExtendedEnum):
     AEAD = enum.auto()
 
 
+class PskKeyExchangeMode(ExtendedEnum):
+    """Values used in the extension psk_key_exchange_mode.
+    """
+
+    PSK_KE = 0
+    PSK_DHE_KE = 1
+
+
 class SPBool(enum.Enum):
     """Enum representing a pseudo-boolean value in the server profile.
 

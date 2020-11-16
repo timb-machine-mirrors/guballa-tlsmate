@@ -53,6 +53,20 @@ class Mac(NamedTuple):
     hmac_algo: cryptography.hazmat.primitives.hashes.SHA1  # just an example
 
 
+class Psk(NamedTuple):
+    """Set of items to store a TLS1.3 pre-shared key in the client.
+    """
+
+    psk: bytearray
+    lifetime: int
+    age_add: int
+    ticket: bytes
+    timestamp: float
+    cipher_suite: tls.CipherSuite
+    version: tls.Version
+    hmac: Mac
+
+
 class SymmetricKeys(NamedTuple):
     """Set of keys
     """

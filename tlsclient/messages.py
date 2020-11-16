@@ -195,11 +195,23 @@ class ClientHello(HandshakeMessage):
 
         # extensions
         if self.extensions is not None:
+            ext_offset = len(msg) + 2
+            psk_end_offset = 0
+            psk_ext = None
             ext_bytes = bytearray()
             for extension in self.extensions:
                 ext_bytes.extend(extension.serialize(conn))
+                if extension.extension_id is tls.Extension.PRE_SHARED_KEY:
+                    psk_ext = extension
+                    psk_end_offset = ext_offset + len(ext_bytes)
             msg.extend(pdu.pack_uint16(len(ext_bytes)))
             msg.extend(ext_bytes)
+
+            # Special treatment for PSK extension: update the dummy binders
+            # Note: We don't rely on that this extension is the last one as we want to
+            # be able to test abnormal conditions as well.
+            if psk_ext:
+                psk_ext.update_binders(msg, psk_end_offset)
 
         return msg
 
@@ -294,6 +306,7 @@ class ServerHello(HandshakeMessage):
         if supported_versions is not None:
             return supported_versions.versions[0]
         return self.version
+
 
 ServerHello.get_extension.__doc__ = ClientHello.get_extension.__doc__
 

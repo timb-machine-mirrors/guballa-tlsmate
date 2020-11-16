@@ -4,8 +4,7 @@
 import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.tlssuite import TlsSuite
-from tlsclient.server_profile import ProfileList, ProfileEnum, ProfileBasicEnum
-from tlsclient import utils
+from tlsclient.server_profile import ProfileList, ProfileEnum
 
 
 class ScanCompression(TlsSuite):
@@ -26,7 +25,9 @@ class ScanCompression(TlsSuite):
         if groups:
             self.client.supported_groups = groups
             self.client.key_share = groups
-        self.client.signature_algorithms = self.server_profile.get_signature_algorithms(version)
+        self.client.signature_algorithms = self.server_profile.get_signature_algorithms(
+            version
+        )
         comp_methods = tls.CompressionMethod.all()
         while comp_methods:
             self.client.compression_methods = comp_methods

@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """Module containing the test suite
 """
-import tlsclient.messages as msg
 import tlsclient.constants as tls
 from tlsclient.tlssuite import TlsSuite
-from tlsclient.server_profile import ProfileList, ProfileEnum, ProfileBasicEnum
+from tlsclient.server_profile import ProfileBasicEnum
 from tlsclient import utils
 
 
@@ -40,7 +39,9 @@ class ScanExtendedMasterSecret(TlsSuite):
             with self.client.create_connection() as conn:
                 conn.handshake()
             if conn.handshake_completed:
-                if conn.msg.server_hello.get_extension(tls.Extension.EXTENDED_MASTER_SECRET):
+                if conn.msg.server_hello.get_extension(
+                    tls.Extension.EXTENDED_MASTER_SECRET
+                ):
                     state = tls.SPBool.C_TRUE
                 else:
                     state = tls.SPBool.C_FALSE

@@ -14,14 +14,14 @@ class ScanScratch(TlsSuite):
 
     def run(self):
         client = self.client
-        client.versions = [tls.Version.TLS12]
+        client.versions = [tls.Version.TLS13]
         client.cipher_suites = [
             # tls.CipherSuite.TLS_DHE_DSS_WITH_AES_256_CBC_SHA,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8,
-            #tls.CipherSuite.TLS_AES_128_GCM_SHA256,
-            #tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
-            #tls.CipherSuite.TLS_AES_256_GCM_SHA384,
-            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+            tls.CipherSuite.TLS_AES_128_GCM_SHA256,
+            # tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
+            # tls.CipherSuite.TLS_AES_256_GCM_SHA384,
+            # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
             # tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
@@ -130,7 +130,9 @@ class ScanScratch(TlsSuite):
         #     # tls.SupportedGroups.FFDHE6144,
         #     # tls.SupportedGroups.FFDHE8192,
         # ]
-        client.support_session_id = True
+        # client.support_session_id = True
+        client.support_psk = True
+        client.psk_key_exchange_modes = [tls.PskKeyExchangeMode.PSK_DHE_KE]
         with client.create_connection() as conn:
             # conn.send(msg.ClientHello)
             # conn.wait(msg.ServerHello)
@@ -160,8 +162,13 @@ class ScanScratch(TlsSuite):
                 if line.startswith("s_server"):
                     logging.debug("openssl_command: " + line)
 
-        for _ in range(10):
-            with client.create_connection() as conn:
-                conn.handshake()
-            print(f"resumption_hs: {conn.abbreviated_hs}")
-
+        with client.create_connection() as conn:
+            conn.handshake()
+            conn.send(msg.AppData(b"GET / HTTP/1.1\r\nHost: localhost:44330\r\n\r\n"))
+            while True:
+                app_data = conn.wait(msg.AppData)
+                if len(app_data.data):
+                    break
+            for line in app_data.data.decode("utf-8").split("\n"):
+                if line.startswith("s_server"):
+                    logging.debug("openssl_command: " + line)

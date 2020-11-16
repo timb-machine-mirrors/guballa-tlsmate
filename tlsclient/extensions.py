@@ -3,10 +3,13 @@
 """
 
 import abc
+import time
+import logging
 from tlsclient.exception import FatalAlert
 import tlsclient.constants as tls
 import tlsclient.structures as structs
 from tlsclient import pdu
+from tlsclient.kdf import Kdf
 
 
 class Extension(metaclass=abc.ABCMeta):
@@ -343,7 +346,7 @@ class ExtKeyShare(Extension):
     """Represents the KeyShare extension.
 
     Given the list of supported groups, during serialization the shares are actually
-    generated and the resultign public keys are included into the extension. The user
+    generated and the resulting public keys are included into the extension. The user
     must ensure that the key share uses the same sequence for the groups than
     provided in the SupportedGroup extension.
 
@@ -383,6 +386,115 @@ class ExtKeyShare(Extension):
                 structs.KeyShareEntry(group=group, key_exchange=share)
             )
         return self
+
+
+class ExtPreSharedKey(Extension):
+    """Represents the PreSharedKey extension for TLS1.3
+
+    Builds this extension based on the list of the given pre shared keys.
+
+    Attributes:
+        psks (list of :obj:`tlsclient.structs.Psk`): The list of
+            pre shared keys to offer to the server.
+    """
+
+    extension_id = tls.Extension.PRE_SHARED_KEY
+    """:obj:`tlsclient.constants.Extension.PRE_SHARED_KEY`
+    """
+
+    def __init__(self, **kwargs):
+        self.psks = kwargs.get("psks")
+
+    def serialize_ext_body(self, conn):
+        identities = bytearray()
+        binders = bytearray()
+        for psk in self.psks:
+            identities.extend(pdu.pack_uint16(len(psk.ticket)))
+            identities.extend(psk.ticket)
+            ticket_age = (
+                int((time.time() - psk.timestamp) * 1000 + psk.age_add) % 2 ** 32
+            )
+            identities.extend(pdu.pack_uint32(ticket_age))
+
+            binders.extend(pdu.pack_uint8(psk.hmac.mac_len))
+            binders.extend(b"\0" * psk.hmac.mac_len)
+        self.binders_len = len(binders)
+
+        ext_body = bytearray()
+        ext_body.extend(pdu.pack_uint16(len(identities)))
+        ext_body.extend(identities)
+        ext_body.extend(pdu.pack_uint16(self.binders_len))
+        ext_body.extend(binders)
+        return ext_body
+
+    def update_binders(self, msg_body, psk_end_offset):
+        """Replace dummy binders with real ones.
+
+        This is required as we need to calc the session hash from the serialized
+        message (but without the binders included.)
+
+        Arguments:
+            msg (bytearray): the serialized message body, i.e. without the message
+                type and length
+            psk_end_offset (int): the offset within the message body to the end of
+                the psk extensions.
+        """
+        binders_offset = psk_end_offset - self.binders_len + 1
+        msg = (
+            pdu.pack_uint8(tls.HandshakeType.CLIENT_HELLO.value)
+            + pdu.pack_uint24(len(msg_body))
+            + msg_body[: binders_offset - 3]
+        )
+        for psk in self.psks:
+            kdf = Kdf()
+            kdf.start_msg_digest()
+            kdf.set_msg_digest_algo(psk.hmac.hmac_algo)
+            kdf.update_msg_digest(msg)
+            hash_val = kdf.finalize_msg_digest()
+            early_secret = kdf.hkdf_extract(psk.psk, b"")
+            binder_key = kdf.hkdf_expand_label(
+                early_secret, "res binder", kdf.empty_msg_digest(), psk.hmac.mac_len
+            )
+            finished_key = kdf.hkdf_expand_label(
+                binder_key, "finished", b"", psk.hmac.mac_len
+            )
+            binder = kdf.hkdf_extract(hash_val, finished_key)
+            logging.debug(f"early secret: {pdu.dump(early_secret)}")
+            logging.debug(f"binder key: {pdu.dump(binder_key)}")
+            logging.debug(f"finished_key: {pdu.dump(finished_key)}")
+            logging.debug(f"binder: {pdu.dump(binder)}")
+            for idx, val in enumerate(binder):
+                msg_body[binders_offset + idx] = val
+            binders_offset += 1 + len(binder)
+
+    def deserialize_ext_body(self, ext_body):
+        self.selected_id, offset = pdu.unpack_uint16(ext_body, 0)
+        return self
+
+
+class ExtPskKeyExchangeMode(Extension):
+    """Represents the psk_key_exchange_mode extension.
+
+    Attributes:
+        modes (list of :obj:`tlsclient.constants.PskKeyExchangeMode`): The list of
+            the PSK key exchange modes to offer to the server.
+    """
+
+    extension_id = tls.Extension.PSK_KEY_EXCHANGE_MODES
+    """:obj:`tlsclient.constants.Extension.PSK_KEY_EXCHANGE_MODES`
+    """
+
+    def __init__(self, **kwargs):
+        self.modes = kwargs.get("modes")
+
+    def serialize_ext_body(self, conn):
+        ext_body = bytearray(pdu.pack_uint8(len(self.modes)))
+        for mode in self.modes:
+            ext_body.extend(pdu.pack_uint8(mode.value))
+        return ext_body
+
+    def deserialize_ext_body(self, ext_body):
+        raise NotImplementedError
 
 
 """Map the extensions id to the corresponding class.
@@ -425,7 +537,7 @@ deserialization_map = {
     # tls.Extension.DELEGATED_CREDENTIALS = 34
     tls.Extension.SESSION_TICKET: ExtSessionTicket,
     # tls.Extension.SUPPORTED_EKT_CIPHERS = 39
-    # tls.Extension.PRE_SHARED_KEY = 41
+    tls.Extension.PRE_SHARED_KEY: ExtPreSharedKey,
     # tls.Extension.EARLY_DATA = 42
     tls.Extension.SUPPORTED_VERSIONS: ExtSupportedVersions,
     # tls.Extension.COOKIE = 44
