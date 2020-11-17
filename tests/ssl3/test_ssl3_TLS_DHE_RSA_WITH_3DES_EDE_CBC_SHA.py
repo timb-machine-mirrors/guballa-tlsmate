@@ -3,8 +3,8 @@
 """
 import pathlib
 from tests.cipher_suite_tester import CipherSuiteTester
-import tlsclient.constants as tls
-import tlsclient.messages as msg
+import tlsmate.constants as tls
+import tlsmate.messages as msg
 
 
 class TestCase(CipherSuiteTester):

@@ -1,7 +1,7 @@
 Module pdu
 ----------
 
-.. automodule:: tlsclient.pdu
+.. automodule:: tlsmate.pdu
    :members:
    :undoc-members:
    :show-inheritance:

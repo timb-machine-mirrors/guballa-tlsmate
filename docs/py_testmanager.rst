@@ -1,7 +1,7 @@
 Module testmanager
 ------------------
 
-.. automodule:: tlsclient.testmanager
+.. automodule:: tlsmate.testmanager
    :members:
    :undoc-members:
    :show-inheritance:

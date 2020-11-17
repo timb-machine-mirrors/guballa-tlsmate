@@ -43,28 +43,28 @@ clean-docs: ## remove generated html files
 	$(MAKE) -C docs clean
 
 lint: ## check style with flake8
-	flake8 tlsclient tests
+	flake8 tlsmate tests
 
 black: ## check if black would reformat the python code
-	black --check tlsclient tests
+	black --check tlsmate tests
 
 black-diff: ## provide the changes black would do as a diff
-	black --check --diff tlsclient tests
+	black --check --diff tlsmate tests
 
 black-reformat: ## let black reformat the python code
-	black tlsclient tests
+	black tlsmate tests
 
 test: ## run tests quickly with the default Python
 	py.test
 
 tags: ## generate ctags
-	ctags -R --languages=python  -f ./tags tlsclient/ tests/
+	ctags -R --languages=python  -f ./tags tlsmate/ tests/
 
 test-cov: ## generate coverage statistics
-	py.test --cov=tlsclient
+	py.test --cov=tlsmate
 
 test-cov-report: ## generate coverage report for each file
-	py.test --cov-report annotate:cov_annotate --cov=tlsclient/
+	py.test --cov-report annotate:cov_annotate --cov=tlsmate/
 
 test-all: ## run tests on every Python version with tox
 	tox
@@ -85,4 +85,4 @@ install-dev: ## install the package using the development environment
 	pip install -e .
 
 uninstall: ## uninstall the package using pip
-	pip uninstall tlsclient
+	pip uninstall tlsmate

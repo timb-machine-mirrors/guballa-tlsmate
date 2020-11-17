@@ -2,8 +2,8 @@
 """Implements a class to be used for unit testing.
 """
 import pathlib
-from tlsclient.tlssuites.supported_groups import ScanSupportedGroups
-from tlsclient.tlssuite import TlsSuiteTester
+from tlsmate.tlssuites.supported_groups import ScanSupportedGroups
+from tlsmate.tlssuite import TlsSuiteTester
 
 
 groups_tls12 = ["SECP256R1", "SECP384R1", "SECP521R1", "X25519", "X448"]

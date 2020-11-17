@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath('../'))
 
 # -- Project information -----------------------------------------------------
 
-project = 'tlsclient'
+project = 'tlsmate'
 copyright = '2020, Jens Guballa'
 author = 'Jens Guballa'
 

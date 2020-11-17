@@ -2,8 +2,8 @@
 """Implements a class to be used for unit testing.
 """
 import pathlib
-from tlsclient.tlssuites.eval_cipher_suites import ScanCipherSuites
-from tlsclient.tlssuite import TlsSuiteTester
+from tlsmate.tlssuites.eval_cipher_suites import ScanCipherSuites
+from tlsmate.tlssuite import TlsSuiteTester
 
 
 tls12_cs = [

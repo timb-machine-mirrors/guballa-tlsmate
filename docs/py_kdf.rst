@@ -1,7 +1,7 @@
 Module kdf
 ----------
 
-.. automodule:: tlsclient.kdf
+.. automodule:: tlsmate.kdf
    :members:
    :undoc-members:
    :show-inheritance:

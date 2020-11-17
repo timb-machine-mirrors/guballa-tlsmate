@@ -2,8 +2,8 @@
 """Implements a class to be used for unit testing.
 """
 import pathlib
-from tlsclient.tlssuites.sig_algo import ScanSigAlgs
-from tlsclient.tlssuite import TlsSuiteTester
+from tlsmate.tlssuites.sig_algo import ScanSigAlgs
+from tlsmate.tlssuite import TlsSuiteTester
 
 sig_algs_tls12 = [
     "RSA_PKCS1_SHA256",

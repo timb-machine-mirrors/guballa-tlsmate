@@ -3,7 +3,7 @@
 """
 import pathlib
 from tests.tc_recorder import TcRecorder
-import tlsclient.constants as tls
+import tlsmate.constants as tls
 
 
 class TestCase(TcRecorder):

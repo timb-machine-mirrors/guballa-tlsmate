@@ -1,7 +1,7 @@
 Module constants
 ----------------
 
-.. automodule:: tlsclient.constants
+.. automodule:: tlsmate.constants
    :members:
    :undoc-members:
    :show-inheritance:

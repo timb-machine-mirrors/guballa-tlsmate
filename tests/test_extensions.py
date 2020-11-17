@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import tlsclient.extensions as ext
+import tlsmate.extensions as ext
 
 
 def test_ServerNameIndication():

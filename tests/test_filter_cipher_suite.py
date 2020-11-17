@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Test the cipher suite filter
 """
-import tlsclient.constants as tls
-from tlsclient.utils import filter_cipher_suites
+import tlsmate.constants as tls
+from tlsmate.utils import filter_cipher_suites
 
 
 def check_presence(cs_list, string_list):

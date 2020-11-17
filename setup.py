@@ -22,7 +22,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 # Get the version of the package from the version.py file acting
 # as a single source
 version = {}
-with open("tlsclient/version.py") as fp:
+with open("tlsmate/version.py") as fp:
     exec(fp.read(), version)
 # later on we use: version['__version__']
 
@@ -41,7 +41,7 @@ setup(
     # There are some restrictions on what makes a valid project name
     # specification here:
     # https://packaging.python.org/specifications/core-metadata/#name
-    name='tlsclient',  # Required
+    name='tlsmate',  # Required
 
     # Versions should comply with PEP 440:
     # https://www.python.org/dev/peps/pep-0440/
@@ -82,7 +82,7 @@ setup(
     #
     # This field corresponds to the "Home-Page" metadata field:
     # https://packaging.python.org/specifications/core-metadata/#home-page-optional
-    url='https://gitlab.com/guballa/tlsclient',  # Optional
+    url='https://gitlab.com/guballa/tlsmate',  # Optional
 
     # This should be your name or the name of the organization which owns the
     # project.
@@ -159,6 +159,8 @@ setup(
         'cryptography',
         'dependency_injector',
         'dill',
+        'pyyaml',
+        'pathlib',
     ],
 
     # List additional groups of dependencies here (e.g. development
@@ -180,7 +182,7 @@ setup(
     # If using Python 2.6 or earlier, then these have to be included in
     # MANIFEST.in as well.
     package_data={  # Optional
-        'tlsclient': ['path to file which needs to go into the package'],
+        'tlsmate': ['path to file which needs to go into the package'],
     },
 
     # Although 'package_data' is the preferred approach, in some case you may
@@ -199,7 +201,7 @@ setup(
     # executes the function `main` from this package when invoked:
     entry_points={  # Optional
         'console_scripts': [
-            'tlsclient=tlsclient.command:main',
+            'tlsmate=tlsmate.command:main',
         ],
     },
 
@@ -213,7 +215,7 @@ setup(
     # maintainers, and where to support the project financially. The key is
     # what's used to render the link text on PyPI.
     project_urls={  # Optional
-        'Bug Reports': 'https://gitlab.com/guballa/tlsclient/issues',
-        'Source': 'https://gitlab.com/guballa/tlsclient',
+        'Bug Reports': 'https://gitlab.com/guballa/tlsmate/issues',
+        'Source': 'https://gitlab.com/guballa/tlsmate',
     },
 )

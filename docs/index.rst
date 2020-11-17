@@ -1,7 +1,7 @@
-.. tlsclient documentation master file
+.. tlsmate documentation master file
 
-Welcome to tlsclients's documentation!
-======================================
+Welcome to tlsmate's documentation!
+===================================
 
 This project provides a Python implementation for bla bla bla.
 The project is hosted on `GitLab <https://gitlab.com/guballa/boilerplate>`_.

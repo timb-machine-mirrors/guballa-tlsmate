@@ -1,7 +1,7 @@
 Module client
 -------------
 
-.. automodule:: tlsclient.client
+.. automodule:: tlsmate.client
    :members:
    :undoc-members:
    :show-inheritance:

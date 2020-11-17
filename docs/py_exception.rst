@@ -1,7 +1,7 @@
 Module exception
 ----------------
 
-.. automodule:: tlsclient.exception
+.. automodule:: tlsmate.exception
    :members:
    :undoc-members:
    :show-inheritance:

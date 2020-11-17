@@ -3,9 +3,9 @@
 """
 
 import logging
-import tlsclient.constants as tls
-import tlsclient.messages as msg
-from tlsclient.tlssuite import TlsSuiteTester
+import tlsmate.constants as tls
+import tlsmate.messages as msg
+from tlsmate.tlssuite import TlsSuiteTester
 
 
 class CipherSuiteTester(TlsSuiteTester):

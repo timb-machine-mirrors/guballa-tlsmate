@@ -4,6 +4,6 @@ CLI Reference Documentation
 ===========================
 
 .. argparse::
-   :prog: tlsclient
+   :prog: tlsmate
    :func: build_parser
-   :module: tlsclient.command
+   :module: tlsmate.command
