@@ -431,16 +431,16 @@ class TlsConnection(object):
                     "ServerHello-TLS13: extension KEY_SHARE not present",
                     tls.AlertDescription.HANDSHAKE_FAILURE,
                 )
-            self.premaster_secret = None
+            shared_secret = None
         else:
             share_entry = key_share_ext.key_shares[0]
             self.key_exchange = self.key_shares[share_entry.group]
             self.key_exchange.set_remote_key(
                 share_entry.key_exchange, group=share_entry.group
             )
-            self.premaster_secret = self.key_exchange.get_shared_secret()
-            logging.info(f"premaster_secret: {pdu.dump(self.premaster_secret)}")
-        self.tls13_key_schedule(psk)
+            shared_secret = self.key_exchange.get_shared_secret()
+            logging.info(f"shared_secret: {pdu.dump(shared_secret)}")
+        self.tls13_key_schedule(psk, shared_secret)
 
     def on_server_hello_tls12(self, msg):
         if len(msg.session_id):
@@ -784,7 +784,7 @@ class TlsConnection(object):
             )
         return
 
-    def tls13_key_schedule(self, psk):
+    def tls13_key_schedule(self, psk, shared_secret):
         ciph = self.cs_details.cipher_struct
         mac = self.cs_details.mac_struct
         early_secret = self.kdf.hkdf_extract(psk, b"")
@@ -795,7 +795,7 @@ class TlsConnection(object):
             early_secret, "derived", empty_msg_digest, mac.key_len
         )
 
-        handshake_secret = self.kdf.hkdf_extract(self.premaster_secret, derived)
+        handshake_secret = self.kdf.hkdf_extract(shared_secret, derived)
         logging.debug(f"handshake secret: {pdu.dump(handshake_secret)}")
         hello_digest = self.kdf.finalize_msg_digest(intermediate=True)
         logging.debug(f"hello_digest: {pdu.dump(hello_digest)}")
