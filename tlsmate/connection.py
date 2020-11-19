@@ -32,6 +32,12 @@ def get_random_value():
     return random
 
 
+def log_extensions(extensions):
+    for extension in extensions:
+        extension = extension.extension_id
+        logging.info(f"extension {extension.value} {extension}")
+
+
 class TlsDefragmenter(object):
     def __init__(self, record_layer):
         self._record_bytes = bytearray()
@@ -105,7 +111,7 @@ class TlsConnectionMsgs(object):
         tls.HandshakeType.HELLO_REQUEST: None,
         tls.HandshakeType.CLIENT_HELLO: "client_hello",
         tls.HandshakeType.SERVER_HELLO: "server_hello",
-        tls.HandshakeType.NEW_SESSION_TICKET: None,
+        tls.HandshakeType.NEW_SESSION_TICKET: "new_session_ticket",
         tls.HandshakeType.END_OF_EARLY_DATA: None,
         tls.HandshakeType.ENCRYPTED_EXTENSIONS: "encrypted_extensions",
         tls.HandshakeType.CERTIFICATE: "_certificate",
@@ -171,6 +177,7 @@ class TlsConnection(object):
         self.alert_received = False
         self.alert_sent = False
         self.auto_handler = [tls.HandshakeType.NEW_SESSION_TICKET]
+        self.send_early_data = False
 
         # general
         self.entity = entity
@@ -234,12 +241,54 @@ class TlsConnection(object):
         self.key_shares[group] = key_share
         return key_share.get_key_share()
 
-    def generate_client_hello(self, msg_cls):
-        msg = self.client.client_hello()
-        self.on_sending_client_hello(msg)
-        return msg
+    # ###########################
+    # sending ClientHello methods
+    # ###########################
 
-    def generate_client_key_exchange(self, cls):
+    def generate_ch(self, cls):
+        return self.client.client_hello()
+
+    def pre_serialization_ch(self, msg):
+        if isinstance(msg.client_version, tls.Version):
+            self.client_version_sent = msg.client_version.value
+        else:
+            self.client_version_sent = msg.client_version
+        self.client_version_sent = msg.client_version
+        if self.recorder.is_injecting():
+            msg.random = self.recorder.inject(client_random=None)
+        else:
+            if msg.random is None:
+                msg.random = get_random_value()
+            self.recorder.trace(client_random=msg.random)
+        self.client_random = msg.random
+        if len(msg.session_id):
+            self.session_id_sent = msg.session_id
+            logging.info(f"session_id: {pdu.dump(msg.session_id)}")
+        logging.info(f"client_random: {pdu.dump(msg.random)}")
+        logging.info(f"client_version: {msg.client_version}")
+        for cipher_suite in msg.cipher_suites:
+            logging.info(f"cipher suite: 0x{cipher_suite.value:04x} {cipher_suite}")
+        if msg.extensions is not None:
+            for extension in msg.extensions:
+                ext = extension.extension_id
+                logging.info(f"extension {ext.value} {ext}")
+                if ext is tls.Extension.SESSION_TICKET:
+                    self.ticket_sent = extension.ticket is not None
+                elif ext is tls.Extension.EARLY_DATA:
+                    self.send_early_data = True
+                elif ext is tls.Extension.PRE_SHARED_KEY:
+                    self.early_data_psk = extension.psks[0]
+        self.kdf.start_msg_digest()
+
+    def post_serialization_ch(self, msg, msg_data):
+        if self.version is tls.Version.TLS13 and self.send_early_data:
+            pass
+
+    # #################################
+    # sending ClientKeyExchange methods
+    # #################################
+
+    def generate_cke(self, cls):
         key_ex_type = self.cs_details.key_algo_struct.key_ex_type
         if self.key_exchange is None and key_ex_type is tls.KeyExchangeType.RSA:
             self.key_exchange = kex.RsaKeyExchange(self, self.recorder)
@@ -254,10 +303,55 @@ class TlsConnection(object):
             msg.ecdh_public = transferable_key
         elif key_ex_type is tls.KeyExchangeType.DH:
             msg.dh_public = transferable_key
-        self._post_sending_hook = self.update_keys
         return msg
 
-    def post_generate_finished(self):
+    def post_sending_cke(self):
+        if not self.cs_details.full_hs:
+            raise FatalAlert(
+                f"full handshake not supported for {self.cipher_suite}",
+                tls.AlertDescription.HANDSHAKE_FAILURE,
+            )
+        self.generate_master_secret()
+        self.key_derivation()
+
+    # ########################
+    # sending Finished methods
+    # ########################
+
+    def generate_finished(self, cls):
+        intermediate = not self._finished_treated
+        if self.version is tls.Version.TLS13:
+            intermediate = True
+        hash_val = self.kdf.finalize_msg_digest(intermediate=intermediate)
+        if self.version is tls.Version.TLS13:
+            # TODO: server side implementation
+            finished_key = self.kdf.hkdf_expand_label(
+                self.c_hs_tr_secret, "finished", b"", self.cs_details.mac_struct.key_len
+            )
+            logging.debug(f"finished_key: {pdu.dump(finished_key)}")
+            val = self.kdf.hkdf_extract(hash_val, finished_key)
+
+        else:
+            if self.entity == tls.Entity.CLIENT:
+                label = b"client finished"
+            else:
+                label = b"server finished"
+            val = self.kdf.prf(self.master_secret, label, hash_val, 12)
+            self.update_write_state()
+        self.recorder.trace(msg_digest_finished_sent=hash_val)
+        self.recorder.trace(verify_data_finished_sent=val)
+        logging.debug(f"Finished.verify_data(out): {pdu.dump(val)}")
+        msg = cls()
+        msg.verify_data = val
+        if self._finished_treated:
+            self.handshake_completed = True
+            logging.info("Handshake finished, secure connection established")
+        self._finished_treated = True
+        return msg
+
+    def post_sending_finished(self):
+        if self.version is not tls.Version.TLS13:
+            return
         ciph = self.cs_details.cipher_struct
         c_app_tr_secret = self.kdf.hkdf_expand_label(
             self.master_secret,
@@ -288,42 +382,19 @@ class TlsConnection(object):
             self.cs_details.mac_struct.key_len,
         )
 
-    def generate_finished(self, cls):
-        intermediate = not self._finished_treated
-        if self.version is tls.Version.TLS13:
-            intermediate = True
-        hash_val = self.kdf.finalize_msg_digest(intermediate=intermediate)
-        if self.version is tls.Version.TLS13:
-            # TODO: server side implementation
-            finished_key = self.kdf.hkdf_expand_label(
-                self.c_hs_tr_secret, "finished", b"", self.cs_details.mac_struct.key_len
-            )
-            logging.debug(f"finished_key: {pdu.dump(finished_key)}")
-            val = self.kdf.hkdf_extract(hash_val, finished_key)
-            self._post_sending_hook = self.post_generate_finished
-
-        else:
-            if self.entity == tls.Entity.CLIENT:
-                label = b"client finished"
-            else:
-                label = b"server finished"
-            val = self.kdf.prf(self.master_secret, label, hash_val, 12)
-            self.update_write_state()
-        self.recorder.trace(msg_digest_finished_sent=hash_val)
-        self.recorder.trace(verify_data_finished_sent=val)
-        logging.debug(f"Finished.verify_data(out): {pdu.dump(val)}")
-        msg = cls()
-        msg.verify_data = val
-        if self._finished_treated:
-            self.handshake_completed = True
-            logging.info("Handshake finished, secure connection established")
-        self._finished_treated = True
-        return msg
-
     _generate_out_msg = {
-        tls.HandshakeType.CLIENT_HELLO: generate_client_hello,
-        tls.HandshakeType.CLIENT_KEY_EXCHANGE: generate_client_key_exchange,
+        tls.HandshakeType.CLIENT_HELLO: generate_ch,
+        tls.HandshakeType.CLIENT_KEY_EXCHANGE: generate_cke,
         tls.HandshakeType.FINISHED: generate_finished,
+    }
+
+    _pre_serialization_method = {tls.HandshakeType.CLIENT_HELLO: pre_serialization_ch}
+
+    _post_serialization_method = {tls.HandshakeType.CLIENT_HELLO: post_serialization_ch}
+
+    _post_sending_method = {
+        tls.HandshakeType.CLIENT_KEY_EXCHANGE: post_sending_cke,
+        tls.HandshakeType.FINISHED: post_sending_finished,
     }
 
     def generate_outgoing_msg(self, msg_cls):
@@ -338,65 +409,34 @@ class TlsConnection(object):
             return method(self, msg_cls)
         return msg_cls()
 
-    def on_sending_client_hello(self, msg):
-        if isinstance(msg.client_version, tls.Version):
-            self.client_version_sent = msg.client_version.value
-        else:
-            self.client_version_sent = msg.client_version
-        self.client_version_sent = msg.client_version
-        if self.recorder.is_injecting():
-            msg.random = self.recorder.inject(client_random=None)
-        else:
-            if msg.random is None:
-                msg.random = get_random_value()
-            self.recorder.trace(client_random=msg.random)
-        self.client_random = msg.random
-        if len(msg.session_id):
-            self.session_id_sent = msg.session_id
-            logging.info(f"session_id: {pdu.dump(msg.session_id)}")
-        logging.info(f"client_random: {pdu.dump(msg.random)}")
-        logging.info(f"client_version: {msg.client_version}")
-        for cipher_suite in msg.cipher_suites:
-            logging.info(f"cipher suite: 0x{cipher_suite.value:04x} {cipher_suite}")
-        if msg.extensions is not None:
-            for extension in msg.extensions:
-                ext = extension.extension_id
-                logging.info(f"extension {ext.value} {ext}")
-                if ext is tls.Extension.SESSION_TICKET:
-                    self.ticket_sent = extension.ticket is not None
-        self.kdf.start_msg_digest()
-
-    _on_sending_message = {tls.HandshakeType.CLIENT_HELLO: on_sending_client_hello}
-
-    def on_sending_message(self, msg):
-        """Extract relevant data from a provided message instance
-
-        This method is called if a completely setup message (i.e. an instance)
-        has been provided by the test case. Here we will extract relevant
-        data that are needed for the handshake.
-
-        A user provided ClientHello() is the most relevant use case for this
-        method.
-        """
-        method = self._on_sending_message.get(msg.msg_type)
+    def pre_serialization_hook(self, msg):
+        method = self._pre_serialization_method.get(msg.msg_type)
         if method is not None:
             method(self, msg)
+
+    def post_serialization_hook(self, msg, msg_data):
+        method = self._post_serialization_method.get(msg.msg_type)
+        if method is not None:
+            method(self, msg, msg_data)
+
+    def post_sending_hook(self, msg):
+        method = self._post_sending_method.get(msg.msg_type)
+        if method is not None:
+            method(self)
 
     def send(self, *messages):
         for message in messages:
             logging.info(f"Sending {message.msg_type}")
-            self._post_sending_hook = None
             if inspect.isclass(message):
                 message = self.generate_outgoing_msg(message)
-            else:
-                self.on_sending_message(message)
+            self.pre_serialization_hook(message)
             msg_data = message.serialize(self)
+            self.post_serialization_hook(message, msg_data)
             self.msg.store_msg(message, received=False)
             if message.content_type == tls.ContentType.HANDSHAKE:
                 self.kdf.update_msg_digest(msg_data)
             elif message.content_type == tls.ContentType.ALERT:
                 self.alert_sent = True
-
             self.record_layer.send_message(
                 structs.RecordLayerMsg(
                     content_type=message.content_type,
@@ -404,10 +444,7 @@ class TlsConnection(object):
                     fragment=msg_data,
                 )
             )
-            # Some actions must be delayed after the message is actually sent
-            if self._post_sending_hook is not None:
-                self._post_sending_hook()
-
+            self.post_sending_hook(message)
         self.record_layer.flush()
 
     def on_server_hello_tls13(self, msg):
@@ -467,9 +504,7 @@ class TlsConnection(object):
         logging.info(f"server random: {pdu.dump(msg.random)}")
         logging.info(f"version: {self.version}")
         logging.info(f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite}")
-        for extension in msg.extensions:
-            extension = extension.extension_id
-            logging.info(f"extension {extension.value} {extension}")
+        log_extensions(msg.extensions)
         self.update_cipher_suite(msg.cipher_suite)
         self.record_layer_version = min(self.version, tls.Version.TLS12)
         self.server_random = msg.random
@@ -578,6 +613,7 @@ class TlsConnection(object):
                 self.res_ms, "resumption", msg.nonce, self.cs_details.mac_struct.mac_len
             )
             logging.debug(f"PSK: {pdu.dump(psk)}")
+            log_extensions(msg.extensions)
             self.client.save_psk(
                 structs.Psk(
                     psk=psk,
@@ -718,15 +754,6 @@ class TlsConnection(object):
                         ),
                         tls.AlertDescription.UNEXPECTED_MESSAGE,
                     )
-
-    def update_keys(self):
-        if not self.cs_details.full_hs:
-            raise FatalAlert(
-                f"full handshake not supported for {self.cipher_suite}",
-                tls.AlertDescription.HANDSHAKE_FAILURE,
-            )
-        self.generate_master_secret()
-        self.key_derivation()
 
     def update_write_state(self):
         state = self.get_pending_write_state(self.entity)
@@ -895,13 +922,17 @@ class TlsConnection(object):
 
     def handshake(self):
         self.send(msg.ClientHello)
-        self.wait(msg.ServerHello)
+        if self.version is tls.Version.TLS13 and self.client.early_data is not None:
+            self.send(msg.AppData(self.client.early_data))
+        server_hello = self.wait(msg.ServerHello)
         if self.version is tls.Version.TLS13:
             self.wait(msg.ChangeCipherSpec, optional=True)
             self.wait(msg.EncryptedExtensions)
             if not self.abbreviated_hs:
                 self.wait(msg.Certificate)
                 self.wait(msg.CertificateVerify)
+            elif server_hello.get_extension(tls.Extension.EARLY_DATA) is not None:
+                self.send(msg.EndOfEarlyData)
             self.wait(msg.Finished)
             self.send(msg.Finished)
         else:
