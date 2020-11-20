@@ -291,6 +291,7 @@ class TlsConnection(object):
             )
             msg_without_binders = msg_data[:binders_offset]
             offset = binders_offset + 3  # skip length of list + length of 1st binder
+            self.recorder.trace(msg_without_binders=msg_without_binders)
 
             for idx, psk in enumerate(self.ext_psk.psks):
                 kdf = Kdf()
@@ -316,6 +317,14 @@ class TlsConnection(object):
                 logging.debug(f"binder: {pdu.dump(binder)}")
                 for idx, val in enumerate(binder):
                     msg_data[offset + idx] = val
+
+                self.recorder.trace(hmac_algo=psk.hmac.hmac_algo)
+                self.recorder.trace(msg_digest_tls13=hash_val)
+                self.recorder.trace(early_secret=early_secret)
+                self.recorder.trace(binder_key=binder_key)
+                self.recorder.trace(finished_key=finished_key)
+                self.recorder.trace(binder=binder)
+
             self.binders_bytes = msg_data[binders_offset:]
 
     def post_sending_ch(self):
@@ -342,6 +351,13 @@ class TlsConnection(object):
             )
             logging.debug(f"early tr enc: {pdu.dump(enc)}")
             logging.debug(f"early tr iv: {pdu.dump(iv)}")
+
+            self.recorder.trace(early_secret=self.early_data.early_secret)
+            self.recorder.trace(msg_digest_tls13=hash_val)
+            self.recorder.trace(early_tr_secret=early_tr_secret)
+            self.recorder.trace(client_write_key=enc)
+            self.recorder.trace(client_write_iv=iv)
+
             self.record_layer.update_state(
                 structs.StateUpdateParams(
                     cipher=cs_details.cipher_struct,
@@ -439,6 +455,9 @@ class TlsConnection(object):
         logging.debug(f"c_app_tr_secret: {pdu.dump(c_app_tr_secret)}")
         c_enc = self.kdf.hkdf_expand_label(c_app_tr_secret, "key", b"", ciph.key_len)
         c_iv = self.kdf.hkdf_expand_label(c_app_tr_secret, "iv", b"", ciph.iv_len)
+
+        self.recorder.trace(client_write_key=c_enc)
+        self.recorder.trace(client_write_iv=c_iv)
 
         self.record_layer.update_state(
             structs.StateUpdateParams(
@@ -653,16 +672,18 @@ class TlsConnection(object):
                 self.cs_details.mac_struct.key_len,
             )
             logging.debug(f"s_app_tr_secret: {pdu.dump(s_app_tr_secret)}")
-            c_enc = self.kdf.hkdf_expand_label(
+            s_enc = self.kdf.hkdf_expand_label(
                 s_app_tr_secret, "key", b"", ciph.key_len
             )
-            c_iv = self.kdf.hkdf_expand_label(s_app_tr_secret, "iv", b"", ciph.iv_len)
+            s_iv = self.kdf.hkdf_expand_label(s_app_tr_secret, "iv", b"", ciph.iv_len)
 
+            self.recorder.trace(server_write_key=s_enc)
+            self.recorder.trace(server_write_iv=s_iv)
             self.record_layer.update_state(
                 structs.StateUpdateParams(
                     cipher=ciph,
                     mac=None,
-                    keys=structs.SymmetricKeys(enc=c_enc, mac=None, iv=c_iv),
+                    keys=structs.SymmetricKeys(enc=s_enc, mac=None, iv=s_iv),
                     compr=None,
                     enc_then_mac=False,
                     version=self.version,
@@ -704,7 +725,7 @@ class TlsConnection(object):
                     lifetime=msg.lifetime,
                     age_add=msg.age_add,
                     ticket=msg.ticket,
-                    timestamp=time.time(),
+                    timestamp=self.recorder.inject(timestamp=time.time()),
                     cipher_suite=self.cipher_suite,
                     version=self.version,
                     hmac=self.cs_details.mac_struct,
@@ -928,6 +949,11 @@ class TlsConnection(object):
         logging.info(f"server hs traffic secret: {pdu.dump(s_hs_tr_secret)}")
         self.s_hs_tr_secret = s_hs_tr_secret
         self.c_hs_tr_secret = c_hs_tr_secret
+
+        self.recorder.trace(client_write_key=c_enc)
+        self.recorder.trace(server_write_key=s_enc)
+        self.recorder.trace(client_write_iv=c_iv)
+        self.recorder.trace(server_write_iv=s_iv)
 
         self.hs_write_state = structs.StateUpdateParams(
             cipher=ciph,

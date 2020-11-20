@@ -37,6 +37,15 @@ class Recorder(object):
         "x_val",
         "y_val",
         "openssl_command",
+        "early_secret",
+        "early_tr_secret",
+        "msg_digest_tls13",
+        "binder",
+        "binder_key",
+        "finished_key",
+        "msg_without_binders",
+        "hmac_algo",
+        "timestamp",
     ]
 
     def __init__(self):

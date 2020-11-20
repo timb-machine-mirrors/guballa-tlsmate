@@ -410,7 +410,8 @@ class ExtPreSharedKey(Extension):
         for psk in self.psks:
             identities.extend(pdu.pack_uint16(len(psk.ticket)))
             identities.extend(psk.ticket)
-            ticket_age = int((time.time() - psk.timestamp) * 1000 + psk.age_add) % (
+            timestamp = conn.recorder.inject(timestamp=time.time())
+            ticket_age = int((timestamp - psk.timestamp) * 1000 + psk.age_add) % (
                 2 ** 32
             )
             identities.extend(pdu.pack_uint32(ticket_age))
