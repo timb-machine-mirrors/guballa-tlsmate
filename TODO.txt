@@ -16,3 +16,4 @@
     - implement proper handling of the scenario for session_tickets:
       - adapt check if new session ticket was received to decide if the second
         handshake must be performed
+    - for received messages provide a separate logging hook

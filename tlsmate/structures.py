@@ -3,6 +3,7 @@
 """
 from typing import NamedTuple
 import tlsmate.constants as tls
+from tlsmate.kdf import Kdf
 
 import cryptography.hazmat.primitives.ciphers.algorithms
 import cryptography.hazmat.primitives.hashes
@@ -27,6 +28,16 @@ class SessionStateTicket(NamedTuple):
     cipher_suite: tls.CipherSuite
     version: tls.Version
     master_secret: bytes
+
+
+class EarlyData(NamedTuple):
+    """Set of items required to determine the early data traffic keys
+    """
+
+    kdf: Kdf
+    early_secret: bytes
+    mac_len: int
+    binders_bytes: bytes = None
 
 
 class Cipher(NamedTuple):

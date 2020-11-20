@@ -4,12 +4,10 @@
 
 import abc
 import time
-import logging
 from tlsmate.exception import FatalAlert
 import tlsmate.constants as tls
 import tlsmate.structures as structs
 from tlsmate import pdu
-from tlsmate.kdf import Kdf
 
 
 class Extension(metaclass=abc.ABCMeta):
@@ -404,6 +402,7 @@ class ExtPreSharedKey(Extension):
 
     def __init__(self, **kwargs):
         self.psks = kwargs.get("psks")
+        self._bytes_after_ids = 0
 
     def serialize_ext_body(self, conn):
         identities = bytearray()
@@ -411,61 +410,22 @@ class ExtPreSharedKey(Extension):
         for psk in self.psks:
             identities.extend(pdu.pack_uint16(len(psk.ticket)))
             identities.extend(psk.ticket)
-            ticket_age = (
-                int((time.time() - psk.timestamp) * 1000 + psk.age_add) % 2 ** 32
+            ticket_age = int((time.time() - psk.timestamp) * 1000 + psk.age_add) % (
+                2 ** 32
             )
             identities.extend(pdu.pack_uint32(ticket_age))
-
             binders.extend(pdu.pack_uint8(psk.hmac.mac_len))
             binders.extend(b"\0" * psk.hmac.mac_len)
-        self.binders_len = len(binders)
 
         ext_body = bytearray()
         ext_body.extend(pdu.pack_uint16(len(identities)))
         ext_body.extend(identities)
-        ext_body.extend(pdu.pack_uint16(self.binders_len))
+        binders_len = len(binders)
+        self._bytes_after_ids = binders_len + 2  # 2 bytes for length indicator
+        ext_body.extend(pdu.pack_uint16(binders_len))
         ext_body.extend(binders)
+
         return ext_body
-
-    def update_binders(self, msg_body, psk_end_offset):
-        """Replace dummy binders with real ones.
-
-        This is required as we need to calc the session hash from the serialized
-        message (but without the binders included.)
-
-        Arguments:
-            msg (bytearray): the serialized message body, i.e. without the message
-                type and length
-            psk_end_offset (int): the offset within the message body to the end of
-                the psk extensions.
-        """
-        binders_offset = psk_end_offset - self.binders_len + 1
-        msg = (
-            pdu.pack_uint8(tls.HandshakeType.CLIENT_HELLO.value)
-            + pdu.pack_uint24(len(msg_body))
-            + msg_body[: binders_offset - 3]
-        )
-        for psk in self.psks:
-            kdf = Kdf()
-            kdf.start_msg_digest()
-            kdf.set_msg_digest_algo(psk.hmac.hmac_algo)
-            kdf.update_msg_digest(msg)
-            hash_val = kdf.finalize_msg_digest()
-            early_secret = kdf.hkdf_extract(psk.psk, b"")
-            binder_key = kdf.hkdf_expand_label(
-                early_secret, "res binder", kdf.empty_msg_digest(), psk.hmac.mac_len
-            )
-            finished_key = kdf.hkdf_expand_label(
-                binder_key, "finished", b"", psk.hmac.mac_len
-            )
-            binder = kdf.hkdf_extract(hash_val, finished_key)
-            logging.debug(f"early secret: {pdu.dump(early_secret)}")
-            logging.debug(f"binder key: {pdu.dump(binder_key)}")
-            logging.debug(f"finished_key: {pdu.dump(finished_key)}")
-            logging.debug(f"binder: {pdu.dump(binder)}")
-            for idx, val in enumerate(binder):
-                msg_body[binders_offset + idx] = val
-            binders_offset += 1 + len(binder)
 
     def deserialize_ext_body(self, ext_body):
         self.selected_id, offset = pdu.unpack_uint16(ext_body, 0)
@@ -495,6 +455,29 @@ class ExtPskKeyExchangeMode(Extension):
 
     def deserialize_ext_body(self, ext_body):
         raise NotImplementedError
+
+
+class ExtEarlyData(Extension):
+    """Represents the EarlyData extension.
+    """
+
+    extension_id = tls.Extension.EARLY_DATA
+    """:obj:`tlsmate.constants.Extension.EARLY_DATA`
+    """
+
+    def __init__(self, **kwargs):
+        self.max_early_data_size = kwargs.get("max_early_data_size")
+
+    def serialize_ext_body(self, conn):
+        if self.max_early_data_size is None:
+            return b""
+        else:
+            return bytes(pdu.pack_uint32(self.max_early_data_size))
+
+    def deserialize_ext_body(self, ext_body):
+        if ext_body:
+            self.max_early_data_size, _ = pdu.unpack_uint32(ext_body, 0)
+        return self
 
 
 """Map the extensions id to the corresponding class.
@@ -538,7 +521,7 @@ deserialization_map = {
     tls.Extension.SESSION_TICKET: ExtSessionTicket,
     # tls.Extension.SUPPORTED_EKT_CIPHERS = 39
     tls.Extension.PRE_SHARED_KEY: ExtPreSharedKey,
-    # tls.Extension.EARLY_DATA = 42
+    tls.Extension.EARLY_DATA: ExtEarlyData,
     tls.Extension.SUPPORTED_VERSIONS: ExtSupportedVersions,
     # tls.Extension.COOKIE = 44
     # tls.Extension.PSK_KEY_EXCHANGE_MODES = 45

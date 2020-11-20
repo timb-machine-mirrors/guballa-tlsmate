@@ -63,6 +63,8 @@ class Client(object):
         psk_key_exchange_modes (list of :obj:`tlsmate.constants.PskKeyExchangeMode`):
             the list of PSK key exchange modes used in the extension
             psk_key_exchange_modes.
+        early_data (bytes): The application data to be sent with 0-RTT. TLS1.3 only.
+            If None, then no early data will be sent.
     """
 
     def __init__(self, connection_factory, config):
@@ -112,6 +114,7 @@ class Client(object):
         self.support_psk = False
         self.psks = []
         self.psk_key_exchange_modes = []
+        self.early_data = None
 
         self.support_encrypt_then_mac = False
 
@@ -231,6 +234,8 @@ class Client(object):
                     if group in self.key_shares:
                         key_shares.append(group)
                 msg.extensions.append(ext.ExtKeyShare(key_shares=key_shares))
+                if self.early_data is not None:
+                    msg.extensions.append(ext.ExtEarlyData())
                 if self.support_psk and self.psks:
                     msg.extensions.append(
                         ext.ExtPskKeyExchangeMode(modes=self.psk_key_exchange_modes)

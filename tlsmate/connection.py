@@ -23,6 +23,7 @@ from tlsmate.messages import (
 from tlsmate import utils
 import tlsmate.structures as structs
 import tlsmate.key_exchange as kex
+from tlsmate.kdf import Kdf
 
 
 def get_random_value():
@@ -178,6 +179,8 @@ class TlsConnection(object):
         self.alert_sent = False
         self.auto_handler = [tls.HandshakeType.NEW_SESSION_TICKET]
         self.send_early_data = False
+        self.early_data_accepted = False
+        self.ext_psk = None
 
         # general
         self.entity = entity
@@ -277,12 +280,79 @@ class TlsConnection(object):
                 elif ext is tls.Extension.EARLY_DATA:
                     self.send_early_data = True
                 elif ext is tls.Extension.PRE_SHARED_KEY:
-                    self.early_data_psk = extension.psks[0]
+                    self.ext_psk = extension
         self.kdf.start_msg_digest()
 
     def post_serialization_ch(self, msg, msg_data):
-        if self.version is tls.Version.TLS13 and self.send_early_data:
-            pass
+        if self.ext_psk is not None:
+            # Update the binders for the pre_shared_key extension
+            binders_offset = (
+                len(msg_data) - msg._bytes_after_psk_ext - self.ext_psk._bytes_after_ids
+            )
+            msg_without_binders = msg_data[:binders_offset]
+            offset = binders_offset + 3  # skip length of list + length of 1st binder
+
+            for idx, psk in enumerate(self.ext_psk.psks):
+                kdf = Kdf()
+                kdf.start_msg_digest()
+                kdf.set_msg_digest_algo(psk.hmac.hmac_algo)
+                kdf.update_msg_digest(msg_without_binders)
+                hash_val = kdf.finalize_msg_digest(intermediate=(idx == 0))
+                early_secret = kdf.hkdf_extract(psk.psk, b"")
+                if idx == 0:
+                    self.early_data = structs.EarlyData(
+                        kdf=kdf, early_secret=early_secret, mac_len=psk.hmac.mac_len
+                    )
+                binder_key = kdf.hkdf_expand_label(
+                    early_secret, "res binder", kdf.empty_msg_digest(), psk.hmac.mac_len
+                )
+                finished_key = kdf.hkdf_expand_label(
+                    binder_key, "finished", b"", psk.hmac.mac_len
+                )
+                binder = kdf.hkdf_extract(hash_val, finished_key)
+                logging.debug(f"early secret: {pdu.dump(early_secret)}")
+                logging.debug(f"binder key: {pdu.dump(binder_key)}")
+                logging.debug(f"finished_key: {pdu.dump(finished_key)}")
+                logging.debug(f"binder: {pdu.dump(binder)}")
+                for idx, val in enumerate(binder):
+                    msg_data[offset + idx] = val
+            self.binders_bytes = msg_data[binders_offset:]
+
+    def post_sending_ch(self):
+        if self.send_early_data:
+            self.record_layer_version = tls.Version.TLS12
+            self.early_data.kdf.update_msg_digest(self.binders_bytes)
+            hash_val = self.early_data.kdf.finalize_msg_digest()
+            early_tr_secret = self.early_data.kdf.hkdf_expand_label(
+                self.early_data.early_secret,
+                "c e traffic",
+                hash_val,
+                self.early_data.mac_len,
+            )
+            logging.debug(f"early traffic secret: {pdu.dump(early_tr_secret)}")
+            cs_details = utils.get_cipher_suite_details(
+                self.ext_psk.psks[0].cipher_suite
+            )
+
+            enc = self.early_data.kdf.hkdf_expand_label(
+                early_tr_secret, "key", b"", cs_details.cipher_struct.key_len
+            )
+            iv = self.early_data.kdf.hkdf_expand_label(
+                early_tr_secret, "iv", b"", cs_details.cipher_struct.iv_len
+            )
+            logging.debug(f"early tr enc: {pdu.dump(enc)}")
+            logging.debug(f"early tr iv: {pdu.dump(iv)}")
+            self.record_layer.update_state(
+                structs.StateUpdateParams(
+                    cipher=cs_details.cipher_struct,
+                    mac=None,
+                    keys=structs.SymmetricKeys(enc=enc, mac=None, iv=iv),
+                    compr=None,
+                    enc_then_mac=False,
+                    version=tls.Version.TLS13,
+                    is_write_state=True,
+                )
+            )
 
     # #################################
     # sending ClientKeyExchange methods
@@ -313,6 +383,13 @@ class TlsConnection(object):
             )
         self.generate_master_secret()
         self.key_derivation()
+
+    # ##############################
+    # sending EndOfEarlyData methods
+    # ##############################
+
+    def post_sending_eoed(self):
+        self.record_layer.update_state(self.hs_write_state)
 
     # ########################
     # sending Finished methods
@@ -393,7 +470,9 @@ class TlsConnection(object):
     _post_serialization_method = {tls.HandshakeType.CLIENT_HELLO: post_serialization_ch}
 
     _post_sending_method = {
+        tls.HandshakeType.CLIENT_HELLO: post_sending_ch,
         tls.HandshakeType.CLIENT_KEY_EXCHANGE: post_sending_cke,
+        tls.HandshakeType.END_OF_EARLY_DATA: post_sending_eoed,
         tls.HandshakeType.FINISHED: post_sending_finished,
     }
 
@@ -418,6 +497,7 @@ class TlsConnection(object):
         method = self._post_serialization_method.get(msg.msg_type)
         if method is not None:
             method(self, msg, msg_data)
+        return bytes(msg_data)
 
     def post_sending_hook(self, msg):
         method = self._post_sending_method.get(msg.msg_type)
@@ -431,7 +511,7 @@ class TlsConnection(object):
                 message = self.generate_outgoing_msg(message)
             self.pre_serialization_hook(message)
             msg_data = message.serialize(self)
-            self.post_serialization_hook(message, msg_data)
+            msg_data = self.post_serialization_hook(message, msg_data)
             self.msg.store_msg(message, received=False)
             if message.content_type == tls.ContentType.HANDSHAKE:
                 self.kdf.update_msg_digest(msg_data)
@@ -546,6 +626,10 @@ class TlsConnection(object):
         logging.debug(f"Finished.verify_data(in): {pdu.dump(msg.verify_data)}")
 
         if self.version is tls.Version.TLS13:
+
+            if not self.early_data_accepted:
+                self.record_layer.update_state(self.hs_write_state)
+
             finished_key = self.kdf.hkdf_expand_label(
                 self.s_hs_tr_secret, "finished", b"", self.cs_details.mac_struct.key_len
             )
@@ -643,6 +727,10 @@ class TlsConnection(object):
             if extension.extension_id is tls.Extension.SUPPORTED_GROUPS:
                 for group in extension.supported_groups:
                     logging.debug(f"supported group: {group}")
+            elif extension.extension_id is tls.Extension.EARLY_DATA:
+                self.early_data_accepted = True
+        if not self.early_data_accepted:
+            self.record_layer.update_state(self.hs_write_state)
 
     def on_certificate_received(self, msg):
         if self.version is tls.Version.TLS13:
@@ -841,17 +929,16 @@ class TlsConnection(object):
         self.s_hs_tr_secret = s_hs_tr_secret
         self.c_hs_tr_secret = c_hs_tr_secret
 
-        self.record_layer.update_state(
-            structs.StateUpdateParams(
-                cipher=ciph,
-                mac=None,
-                keys=structs.SymmetricKeys(enc=c_enc, mac=None, iv=c_iv),
-                compr=None,
-                enc_then_mac=False,
-                version=self.version,
-                is_write_state=True,
-            )
+        self.hs_write_state = structs.StateUpdateParams(
+            cipher=ciph,
+            mac=None,
+            keys=structs.SymmetricKeys(enc=c_enc, mac=None, iv=c_iv),
+            compr=None,
+            enc_then_mac=False,
+            version=self.version,
+            is_write_state=True,
         )
+
         self.record_layer.update_state(
             structs.StateUpdateParams(
                 cipher=ciph,
@@ -922,18 +1009,18 @@ class TlsConnection(object):
 
     def handshake(self):
         self.send(msg.ClientHello)
-        if self.version is tls.Version.TLS13 and self.client.early_data is not None:
+        if self.client.early_data is not None:
             self.send(msg.AppData(self.client.early_data))
-        server_hello = self.wait(msg.ServerHello)
+        self.wait(msg.ServerHello)
         if self.version is tls.Version.TLS13:
             self.wait(msg.ChangeCipherSpec, optional=True)
             self.wait(msg.EncryptedExtensions)
             if not self.abbreviated_hs:
                 self.wait(msg.Certificate)
                 self.wait(msg.CertificateVerify)
-            elif server_hello.get_extension(tls.Extension.EARLY_DATA) is not None:
-                self.send(msg.EndOfEarlyData)
             self.wait(msg.Finished)
+            if self.early_data_accepted:
+                self.send(msg.EndOfEarlyData)
             self.send(msg.Finished)
         else:
             if self.abbreviated_hs:

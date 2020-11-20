@@ -125,7 +125,7 @@ class HandshakeMessage(TlsMessage):
     def serialize(self, conn):
         msg_body = self._serialize_msg_body(conn)
 
-        return (
+        return bytearray(
             pdu.pack_uint8(self.msg_type.value)
             + pdu.pack_uint24(len(msg_body))
             + msg_body
@@ -161,6 +161,7 @@ class ClientHello(HandshakeMessage):
         self.cipher_suites = [tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256]
         self.compression_methods = [tls.CompressionMethod.NULL]
         self.extensions = []
+        self._bytes_after_psk_ext = 0
 
     def _serialize_msg_body(self, conn):
         msg = bytearray()
@@ -195,23 +196,15 @@ class ClientHello(HandshakeMessage):
 
         # extensions
         if self.extensions is not None:
-            ext_offset = len(msg) + 2
             psk_end_offset = 0
-            psk_ext = None
             ext_bytes = bytearray()
             for extension in self.extensions:
                 ext_bytes.extend(extension.serialize(conn))
                 if extension.extension_id is tls.Extension.PRE_SHARED_KEY:
-                    psk_ext = extension
-                    psk_end_offset = ext_offset + len(ext_bytes)
+                    psk_end_offset = len(ext_bytes)
             msg.extend(pdu.pack_uint16(len(ext_bytes)))
             msg.extend(ext_bytes)
-
-            # Special treatment for PSK extension: update the dummy binders
-            # Note: We don't rely on that this extension is the last one as we want to
-            # be able to test abnormal conditions as well.
-            if psk_ext:
-                psk_ext.update_binders(msg, psk_end_offset)
+            self._bytes_after_psk_ext = len(ext_bytes) - psk_end_offset
 
         return msg
 
@@ -652,6 +645,29 @@ class Finished(HandshakeMessage):
         return self
 
 
+class EndOfEarlyData(HandshakeMessage):
+    """This class respresents an EndOfEarlyData message.
+    """
+
+    msg_type = tls.HandshakeType.END_OF_EARLY_DATA
+    """:obj:`tlsmate.constants.HandshakeType.END_OF_EARLY_DATA`
+    """
+
+    def __init__(self):
+        pass
+
+    def _serialize_msg_body(self, conn):
+        return b""
+
+    def _deserialize_msg_body(self, fragment, offset, conn):
+        if offset != len(fragment):
+            raise FatalAlert(
+                f"Message length error for {self.msg_type}",
+                tls.AlertDescription.DECODE_ERROR,
+            )
+        return self
+
+
 class NewSessionTicket(HandshakeMessage):
     """This class respresents a NewSessionTicket message.
 
@@ -1036,7 +1052,7 @@ _hs_deserialization_map = {
     tls.HandshakeType.CLIENT_HELLO: ClientHello,
     tls.HandshakeType.SERVER_HELLO: ServerHello,
     tls.HandshakeType.NEW_SESSION_TICKET: NewSessionTicket,
-    # tls.HandshakeType.END_OF_EARLY_DATA = 5
+    tls.HandshakeType.END_OF_EARLY_DATA: EndOfEarlyData,
     tls.HandshakeType.ENCRYPTED_EXTENSIONS: EncryptedExtensions,
     tls.HandshakeType.CERTIFICATE: Certificate,
     tls.HandshakeType.SERVER_KEY_EXCHANGE: ServerKeyExchange,
