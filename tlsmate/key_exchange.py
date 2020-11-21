@@ -310,6 +310,29 @@ class EcdhKeyExchange(KeyExchange):
         return self._pub_key
 
 
+class EcdhKeyExchangeCertificate(object):
+    def __init__(self, conn, recorder):
+        bin_cert = conn.msg.server_certificate.certificates[0]
+        cert = x509.load_der_x509_certificate(bin_cert)
+        rem_pub_key = cert.public_key()
+        seed = recorder.inject(ec_seed=int.from_bytes(os.urandom(10), "big"))
+        priv_key = ec.derive_private_key(seed, rem_pub_key.curve)
+        pub_key = priv_key.public_key()
+        self._pub_key = pub_key.public_bytes(
+            Encoding.X962, PublicFormat.UncompressedPoint
+        )
+        self._shared_secret = priv_key.exchange(ec.ECDH(), rem_pub_key)
+
+    def set_remote_key(self, rem_pub_key, **kwargs):
+        pass
+
+    def get_transferable_key(self):
+        return self._pub_key
+
+    def get_shared_secret(self):
+        return self._shared_secret
+
+
 class XKeyExchange(KeyExchange):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

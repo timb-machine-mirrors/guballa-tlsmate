@@ -376,8 +376,11 @@ class TlsConnection(object):
 
     def generate_cke(self, cls):
         key_ex_type = self.cs_details.key_algo_struct.key_ex_type
-        if self.key_exchange is None and key_ex_type is tls.KeyExchangeType.RSA:
-            self.key_exchange = kex.RsaKeyExchange(self, self.recorder)
+        if self.key_exchange is None:
+            if key_ex_type is tls.KeyExchangeType.RSA:
+                self.key_exchange = kex.RsaKeyExchange(self, self.recorder)
+            elif key_ex_type is tls.KeyExchangeType.ECDH:
+                self.key_exchange = kex.EcdhKeyExchangeCertificate(self, self.recorder)
         self.premaster_secret = self.key_exchange.get_shared_secret()
         self.recorder.trace(pre_master_secret=self.premaster_secret)
         logging.info(f"premaster_secret: {pdu.dump(self.premaster_secret)}")

@@ -12,7 +12,6 @@
     - refactoring: Alert and CCS(?): do they need a msg_type?
     - more command line options, e.g. to scan only specific versions,
       or to enable/disable specific parts of the trace.
-    - implement ECDH_* cipher suites
     - implement proper handling of the scenario for session_tickets:
       - adapt check if new session ticket was received to decide if the second
         handshake must be performed
