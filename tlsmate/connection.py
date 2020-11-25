@@ -36,7 +36,7 @@ def get_random_value():
 def log_extensions(extensions):
     for extension in extensions:
         extension = extension.extension_id
-        logging.info(f"extension {extension.value} {extension}")
+        logging.debug(f"extension {extension.value} {extension}")
 
 
 class TlsDefragmenter(object):
@@ -210,7 +210,7 @@ class TlsConnection(object):
         self.cipher = None
 
     def __enter__(self):
-        logging.debug("New TLS connection created")
+        self.record_layer.open_socket()
         return self
 
     def send_alert(self, level, desc):
@@ -219,20 +219,19 @@ class TlsConnection(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type is FatalAlert:
-            logging.debug("FatalAlert exception received")
+            logging.warning(f"FatalAlert exception: {exc_value.args[0]}")
             str_io = io.StringIO()
             tb.print_exception(exc_type, exc_value, traceback, file=str_io)
             logging.debug(str_io.getvalue())
             self.send_alert(tls.AlertLevel.FATAL, exc_value.description)
         elif exc_type is TlsConnectionClosedError:
-            logging.debug("connected closed, probably by peer")
+            logging.warning("connected closed, probably by peer")
         elif exc_type is TlsMsgTimeoutError:
-            logging.debug(f"timeout occured while waiting for {self.awaited_msg}")
+            logging.warning(f"timeout occured while waiting for {self.awaited_msg}")
             self.send_alert(tls.AlertLevel.WARNING, tls.AlertDescription.CLOSE_NOTIFY)
         else:
             self.send_alert(tls.AlertLevel.WARNING, tls.AlertDescription.CLOSE_NOTIFY)
         self.record_layer.close_socket()
-        logging.debug("TLS connection closed")
         return exc_type in [FatalAlert, TlsConnectionClosedError, TlsMsgTimeoutError]
 
     def set_client(self, client):
@@ -252,10 +251,7 @@ class TlsConnection(object):
         return self.client.client_hello()
 
     def pre_serialization_ch(self, msg):
-        if isinstance(msg.client_version, tls.Version):
-            self.client_version_sent = msg.client_version.value
-        else:
-            self.client_version_sent = msg.client_version
+        logging.info(f"version: {msg.get_version()}")
         self.client_version_sent = msg.client_version
         if self.recorder.is_injecting():
             msg.random = self.recorder.inject(client_random=None)
@@ -264,17 +260,18 @@ class TlsConnection(object):
                 msg.random = get_random_value()
             self.recorder.trace(client_random=msg.random)
         self.client_random = msg.random
+        logging.debug(f"client_random: {pdu.dump(msg.random)}")
         if len(msg.session_id):
             self.session_id_sent = msg.session_id
-            logging.info(f"session_id: {pdu.dump(msg.session_id)}")
-        logging.info(f"client_random: {pdu.dump(msg.random)}")
-        logging.info(f"client_version: {msg.client_version}")
-        for cipher_suite in msg.cipher_suites:
-            logging.info(f"cipher suite: 0x{cipher_suite.value:04x} {cipher_suite}")
+            logging.debug(f"session_id: {pdu.dump(msg.session_id)}")
+        for cs in msg.cipher_suites:
+            logging.debug(f"cipher suite: 0x{cs.value:04x} {cs}")
+        for comp in msg.compression_methods:
+            logging.debug(f"compression method: 0x{comp.value:01x} {comp}")
         if msg.extensions is not None:
             for extension in msg.extensions:
                 ext = extension.extension_id
-                logging.info(f"extension {ext.value} {ext}")
+                logging.debug(f"extension {ext.value} {ext}")
                 if ext is tls.Extension.SESSION_TICKET:
                     self.ticket_sent = extension.ticket is not None
                 elif ext is tls.Extension.EARLY_DATA:
@@ -349,8 +346,6 @@ class TlsConnection(object):
             iv = self.early_data.kdf.hkdf_expand_label(
                 early_tr_secret, "iv", b"", cs_details.cipher_struct.iv_len
             )
-            logging.debug(f"early tr enc: {pdu.dump(enc)}")
-            logging.debug(f"early tr iv: {pdu.dump(iv)}")
 
             self.recorder.trace(early_secret=self.early_data.early_secret)
             self.recorder.trace(msg_digest_tls13=hash_val)
@@ -383,7 +378,7 @@ class TlsConnection(object):
                 self.key_exchange = kex.EcdhKeyExchangeCertificate(self, self.recorder)
         self.premaster_secret = self.key_exchange.get_shared_secret()
         self.recorder.trace(pre_master_secret=self.premaster_secret)
-        logging.info(f"premaster_secret: {pdu.dump(self.premaster_secret)}")
+        logging.debug(f"premaster_secret: {pdu.dump(self.premaster_secret)}")
         msg = cls()
         transferable_key = self.key_exchange.get_transferable_key()
         if key_ex_type is tls.KeyExchangeType.RSA:
@@ -441,7 +436,7 @@ class TlsConnection(object):
         msg.verify_data = val
         if self._finished_treated:
             self.handshake_completed = True
-            logging.info("Handshake finished, secure connection established")
+            logging.debug("Handshake finished, secure connection established")
         self._finished_treated = True
         return msg
 
@@ -528,10 +523,11 @@ class TlsConnection(object):
 
     def send(self, *messages):
         for message in messages:
-            logging.info(f"Sending {message.msg_type}")
+            logging.info(f"{utils.Log.time()}: ==> {message.msg_type}")
             if inspect.isclass(message):
                 message = self.generate_outgoing_msg(message)
             self.pre_serialization_hook(message)
+            self.msg_logging(message)
             msg_data = message.serialize(self)
             msg_data = self.post_serialization_hook(message, msg_data)
             self.msg.store_msg(message, received=False)
@@ -578,7 +574,7 @@ class TlsConnection(object):
                 share_entry.key_exchange, group=share_entry.group
             )
             shared_secret = self.key_exchange.get_shared_secret()
-            logging.info(f"shared_secret: {pdu.dump(shared_secret)}")
+            logging.debug(f"shared_secret: {pdu.dump(shared_secret)}")
         self.tls13_key_schedule(psk, shared_secret)
 
     def on_server_hello_tls12(self, msg):
@@ -590,7 +586,7 @@ class TlsConnection(object):
                     self.master_secret = self.client.session_state_ticket.master_secret
                 else:
                     self.master_secret = self.client.session_state_id.master_secret
-                logging.info(f"master_secret: {pdu.dump(self.master_secret)}")
+                logging.debug(f"master_secret: {pdu.dump(self.master_secret)}")
                 self.key_derivation()
             else:
                 self._new_session_id = msg.session_id
@@ -602,14 +598,13 @@ class TlsConnection(object):
         )
 
     def on_server_hello_received(self, msg):
+        self.server_random = msg.random
+        logging.debug(f"server random: {pdu.dump(msg.random)}")
         self.version = msg.get_version()
-        logging.info(f"server random: {pdu.dump(msg.random)}")
         logging.info(f"version: {self.version}")
         logging.info(f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite}")
-        log_extensions(msg.extensions)
         self.update_cipher_suite(msg.cipher_suite)
         self.record_layer_version = min(self.version, tls.Version.TLS12)
-        self.server_random = msg.random
         if self.version is tls.Version.TLS13:
             self.on_server_hello_tls13(msg)
         else:
@@ -621,9 +616,10 @@ class TlsConnection(object):
                 kex.verify_signed_params(
                     msg.ec, self.msg, self.cs_details.key_algo_struct.default_sig_scheme
                 )
+                logging.debug("signed ec parameters successfully verified")
 
             if msg.ec.named_curve is not None:
-                logging.info(f"named curve: {msg.ec.named_curve}")
+                logging.debug(f"named curve: {msg.ec.named_curve}")
                 self.key_exchange = kex.instantiate_named_group(
                     msg.ec.named_curve, self, self.recorder
                 )
@@ -634,6 +630,7 @@ class TlsConnection(object):
                 kex.verify_signed_params(
                     msg.dh, self.msg, self.cs_details.key_algo_struct.default_sig_scheme
                 )
+                logging.debug("signed dh parameters successfully verified")
             self.key_exchange = kex.DhKeyExchange(self, self.recorder)
             self.key_exchange.set_remote_key(
                 dh.public_key, g_val=dh.g_val, p_val=dh.p_val
@@ -708,10 +705,10 @@ class TlsConnection(object):
                     "Received Finidhed: verify_data does not match",
                     tls.AlertDescription.BAD_RECORD_MAC,
                 )
-        logging.info("Received Finished sucessfully verified")
+        logging.debug("Received Finished sucessfully verified")
         if self._finished_treated:
             self.handshake_completed = True
-            logging.info("Handshake finished, secure connection established")
+            logging.debug("Handshake finished, secure connection established")
         self._finished_treated = True
         return self
 
@@ -764,10 +761,6 @@ class TlsConnection(object):
         if self.version is tls.Version.TLS13:
             kex.verify_certificate_verify(msg, self.msg, self.certificate_digest)
 
-    def on_alert_received(self, msg):
-        logging.debug(f"alert level: {msg.level}")
-        logging.debug(f"alter description: {msg.description}")
-
     _on_msg_received = {
         tls.HandshakeType.SERVER_HELLO: on_server_hello_received,
         tls.HandshakeType.SERVER_KEY_EXCHANGE: on_server_key_exchange_received,
@@ -777,7 +770,6 @@ class TlsConnection(object):
         tls.HandshakeType.ENCRYPTED_EXTENSIONS: on_encrypted_extensions_received,
         tls.HandshakeType.CERTIFICATE_VERIFY: on_certificate_verify_received,
         tls.HandshakeType.CERTIFICATE: on_certificate_received,
-        tls.ContentType.ALERT: on_alert_received,
     }
 
     def on_msg_received(self, msg):
@@ -795,6 +787,17 @@ class TlsConnection(object):
         HeartBeatRequest.
         """
         method = self._auto_responder.get(msg.msg_type)
+        if method is not None:
+            method(self, msg)
+
+    def msg_logging_alert(self, msg):
+        logging.info(f"alert level: {msg.level}")
+        logging.info(f"alert description: {msg.description}")
+
+    _msg_logging = {tls.ContentType.ALERT: msg_logging_alert}
+
+    def msg_logging(self, msg):
+        method = self._msg_logging.get(msg.msg_type)
         if method is not None:
             method(self, msg)
 
@@ -821,7 +824,8 @@ class TlsConnection(object):
         else:
             raise ValueError("Content type unknown")
 
-        logging.info(f"Receiving {msg.msg_type}")
+        logging.info(f"{utils.Log.time()}: <== {msg.msg_type}")
+        self.msg_logging(msg)
         self.msg.store_msg(msg, received=True)
         return msg
 
@@ -858,7 +862,7 @@ class TlsConnection(object):
                     self.queued_msg = msg
                     return expected_msg
                 else:
-                    logging.debug("unexpected message received")
+                    logging.warning("unexpected message received")
                     raise FatalAlert(
                         (
                             f"Unexpected message received: {msg.msg_type}, "
@@ -910,7 +914,7 @@ class TlsConnection(object):
                 48,
             )
 
-        logging.info(f"master_secret: {pdu.dump(self.master_secret)}")
+        logging.debug(f"master_secret: {pdu.dump(self.master_secret)}")
         self.recorder.trace(master_secret=self.master_secret)
         if self._new_session_id is not None:
             self.client.save_session_state_id(
@@ -948,8 +952,8 @@ class TlsConnection(object):
         )
         s_enc = self.kdf.hkdf_expand_label(s_hs_tr_secret, "key", b"", ciph.key_len)
         s_iv = self.kdf.hkdf_expand_label(s_hs_tr_secret, "iv", b"", ciph.iv_len)
-        logging.info(f"client hs traffic secret: {pdu.dump(c_hs_tr_secret)}")
-        logging.info(f"server hs traffic secret: {pdu.dump(s_hs_tr_secret)}")
+        logging.debug(f"client hs traffic secret: {pdu.dump(c_hs_tr_secret)}")
+        logging.debug(f"server hs traffic secret: {pdu.dump(s_hs_tr_secret)}")
         self.s_hs_tr_secret = s_hs_tr_secret
         self.c_hs_tr_secret = c_hs_tr_secret
 
@@ -1011,12 +1015,6 @@ class TlsConnection(object):
         self.recorder.trace(server_write_key=s_enc)
         self.recorder.trace(client_write_iv=c_iv)
         self.recorder.trace(server_write_iv=s_iv)
-        logging.info(f"client_write_mac_key: {pdu.dump(c_mac)}")
-        logging.info(f"server_write_mac_key: {pdu.dump(s_mac)}")
-        logging.info(f"client_write_key: {pdu.dump(c_enc)}")
-        logging.info(f"server_write_key: {pdu.dump(s_enc)}")
-        logging.info(f"client_write_iv: {pdu.dump(c_iv)}")
-        logging.info(f"server_write_iv: {pdu.dump(s_iv)}")
         self.client_write_keys = structs.SymmetricKeys(mac=c_mac, enc=c_enc, iv=c_iv)
         self.server_write_keys = structs.SymmetricKeys(mac=s_mac, enc=s_enc, iv=s_iv)
 

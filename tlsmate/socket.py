@@ -6,6 +6,7 @@ import socket
 import select
 import logging
 import sys
+from tlsmate import utils
 from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
 
 
@@ -24,7 +25,7 @@ class Socket(object):
         self._recorder = recorder
         self._fragment_max_size = 16384
 
-    def _open_socket(self):
+    def open_socket(self):
         """Opens a socket.
         """
         if self._recorder.is_injecting():
@@ -36,15 +37,15 @@ class Socket(object):
         if self._config["progress"]:
             sys.stderr.write(".")
             sys.stderr.flush()
-        logging.debug("Socket opened")
-        logging.debug("local address: {}:{}".format(laddr, lport))
-        logging.debug("remote address: {}:{}".format(raddr, rport))
+        logging.info(f"{utils.Log.time()}: Socket opened")
+        logging.info(f"local address: {laddr}:{lport}")
+        logging.info(f"remote address: {raddr}:{rport}")
 
     def close_socket(self):
         """Closes a socket.
         """
         if self._socket is not None:
-            logging.debug("Closing socket")
+            logging.info(f"{utils.Log.time()}: closing socket")
             self._socket.close()
             self._socket = None
 
@@ -57,7 +58,7 @@ class Socket(object):
         cont = self._recorder.trace_socket_sendall(data)
         if cont:
             if self._socket is None:
-                self._open_socket()
+                self.open_socket()
             self._socket.sendall(data)
 
     def recv_data(self, timeout=5):
@@ -76,7 +77,7 @@ class Socket(object):
         data = self._recorder.inject_socket_recv()
         if data is None:
             if self._socket is None:
-                self._open_socket()
+                self.open_socket()
             rfds, wfds, efds = select.select([self._socket], [], [], timeout)
             if not rfds:
                 raise TlsMsgTimeoutError

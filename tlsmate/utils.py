@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Module defining some utilities
 """
+import time
+import logging
 import tlsmate.constants as tls
 from tlsmate import mappings
 import tlsmate.structures as structs
@@ -172,3 +174,32 @@ def filter_cipher_suites(
             cs_list.remove(cs)
 
     return filtered
+
+
+def set_logging(level):
+    """Sets the logging level
+
+    Arguments:
+        level (str): The logging level to use.
+    """
+    logging.basicConfig(level=level.upper(), format="%(levelname)s: %(message)s")
+
+
+class Log(object):
+    """A class which implements relative timestamps.
+    """
+
+    start_time = None
+
+    @classmethod
+    def time(cls):
+        """returns a timestamp relative to the time of the first call to this method.
+
+        Returns:
+            str: the time in seconds with 3 positions after the decimal point.
+        """
+        timestamp = time.time()
+        if cls.start_time is None:
+            cls.start_time = timestamp
+        diff = timestamp - cls.start_time
+        return f"Timestamp {diff:.3f}"

@@ -17,6 +17,7 @@ from tlsmate.tlssuites.compression import ScanCompression
 from tlsmate.tlssuites.encrypt_then_mac import ScanEncryptThenMac
 from tlsmate.tlssuites.master_secret import ScanExtendedMasterSecret
 from tlsmate.tlssuites.resumption import ScanResumption
+from tlsmate import utils
 
 from tlsmate.version import __version__
 
@@ -91,15 +92,6 @@ def build_parser():
     return parser
 
 
-def set_logging(level):
-    """Sets the logging level
-
-    :param args: args object as created by arg_parser
-    :type args: :class:`Namespace`
-    """
-    logging.basicConfig(level=level.upper())
-
-
 def main():
     """The entry point for the command line interface
     """
@@ -123,7 +115,7 @@ def main():
     container.config.set("port", port)
     container.config.set("progress", args.progress)
 
-    set_logging(args.logging)
+    utils.set_logging(args.logging)
 
     plugin_cli_options = sorted(SuiteManager.test_suites.keys())
     selected_plugins = []

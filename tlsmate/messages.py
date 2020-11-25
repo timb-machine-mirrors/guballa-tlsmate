@@ -21,10 +21,26 @@ def _get_extension(extensions, ext_id):
         :obj:`tlsmate.constants.Extensions`: The extension if present, or None
             otherwise.
     """
-    for extension in extensions:
-        if extension.extension_id == ext_id:
-            return extension
+    if extensions is not None:
+        for extension in extensions:
+            if extension.extension_id == ext_id:
+                return extension
     return None
+
+
+def _get_version(msg):
+    """Get the highest version from a hello message.
+
+    Arguments:
+        msg (:obj:`HandshakeMessage`): the message
+
+    Returns:
+        :class:`tls.Version`: The higest version
+    """
+    supported_versions = msg.get_extension(tls.Extension.SUPPORTED_VERSIONS)
+    if supported_versions is not None:
+        return supported_versions.versions[0]
+    return msg.version
 
 
 class TlsMessage(metaclass=abc.ABCMeta):
@@ -155,7 +171,7 @@ class ClientHello(HandshakeMessage):
     """
 
     def __init__(self):
-        self.client_version = tls.Version.TLS12
+        self.version = tls.Version.TLS12
         self.random = None
         self.session_id = bytes()
         self.cipher_suites = [tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256]
@@ -223,6 +239,14 @@ class ClientHello(HandshakeMessage):
                 The extension object or None if not present.
         """
         return _get_extension(self.extensions, ext_id)
+
+    def get_version(self):
+        """Get the highest TLS version from the message.
+
+        Returns:
+            :class:`tlsmate.constants.Version`: The highest TLS version offered.
+        """
+        return _get_version(self)
 
 
 class ServerHello(HandshakeMessage):
@@ -295,10 +319,7 @@ class ServerHello(HandshakeMessage):
         Returns:
             :class:`tlsmate.constants.Version`: The negotitated TLS version.
         """
-        supported_versions = self.get_extension(tls.Extension.SUPPORTED_VERSIONS)
-        if supported_versions is not None:
-            return supported_versions.versions[0]
-        return self.version
+        return _get_version(self)
 
 
 ServerHello.get_extension.__doc__ = ClientHello.get_extension.__doc__

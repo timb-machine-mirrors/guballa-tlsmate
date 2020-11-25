@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Module containing the class implementing the record layer
 """
+import logging
 import tlsmate.constants as tls
 import tlsmate.structures as structs
 from tlsmate import pdu
@@ -90,6 +91,11 @@ class RecordLayer(object):
             self._send_buffer.extend(message.fragment)
         else:
             self._fragment(message)
+
+    def open_socket(self):
+        """Opens the socket
+        """
+        self._socket.open_socket()
 
     def close_socket(self):
         """Closes the socket. Obviously.
@@ -182,5 +188,14 @@ class RecordLayer(object):
         state = RecordLayerState(new_state)
         if new_state.is_write_state:
             self._write_state = state
+            state_type = "WRITE"
         else:
             self._read_state = state
+            state_type = "READ"
+
+        logging.debug(f"switching record layer state: {state_type}")
+        logging.debug(f"{state_type} enc key: {pdu.dump(state._keys.enc)}")
+        if state._iv:
+            logging.debug(f"{state_type} iv: {pdu.dump(state._iv)}")
+        if state._keys.mac:
+            logging.debug(f"{state_type} hmac key: {pdu.dump(state._keys.mac)}")
