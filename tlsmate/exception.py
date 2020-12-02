@@ -58,3 +58,24 @@ class ScanError(Exception):
 
     def __init__(self, message):
         self.message = message
+
+
+class CertValidationError(Exception):
+    """Exception for certificate validation errors
+
+    Attributes:
+        message (str): A human readable string describing the cause.
+    """
+
+    def __init__(self, message):
+        self.message = message
+
+class CertChainValidationError(Exception):
+    """Exception for certificate chain validation errors
+
+    Attributes:
+        message (str): A human readable string describing the cause.
+    """
+
+    def __init__(self, message):
+        self.message = message

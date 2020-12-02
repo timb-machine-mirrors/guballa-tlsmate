@@ -6,6 +6,7 @@ import os
 import tlsmate.constants as tls
 import tlsmate.extensions as ext
 from tlsmate.exception import FatalAlert
+from tlsmate import cert
 from tlsmate import pdu
 
 
@@ -345,14 +346,13 @@ class Certificate(HandshakeMessage):
 
     def __init__(self):
         self.request_context = None
-        self.certificates = []
+        self.certificates = cert.CertChain()
 
     def _serialize_msg_body(self, conn):
         # TODO
         pass
 
     def _deserialize_msg_body(self, fragment, offset, conn):
-        self.certificates = []
         if conn.version is tls.Version.TLS13:
             length, offset = pdu.unpack_uint8(fragment, offset)
             if length:

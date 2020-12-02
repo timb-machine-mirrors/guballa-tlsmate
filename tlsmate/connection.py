@@ -8,6 +8,7 @@ import os
 import io
 import traceback as tb
 import time
+import datetime
 from tlsmate.exception import FatalAlert, TlsConnectionClosedError, TlsMsgTimeoutError
 from tlsmate import messages as msg
 import tlsmate.constants as tls
@@ -756,6 +757,8 @@ class TlsConnection(object):
     def on_certificate_received(self, msg):
         if self.version is tls.Version.TLS13:
             self.certificate_digest = self.kdf.finalize_msg_digest(intermediate=True)
+        timestamp = datetime.datetime.now()
+        msg.certificates.validate(timestamp, self.client.config["server"])
 
     def on_certificate_verify_received(self, msg):
         if self.version is tls.Version.TLS13:
@@ -763,13 +766,13 @@ class TlsConnection(object):
 
     _on_msg_received = {
         tls.HandshakeType.SERVER_HELLO: on_server_hello_received,
+        tls.HandshakeType.ENCRYPTED_EXTENSIONS: on_encrypted_extensions_received,
         tls.HandshakeType.SERVER_KEY_EXCHANGE: on_server_key_exchange_received,
+        tls.HandshakeType.CERTIFICATE: on_certificate_received,
+        tls.HandshakeType.CERTIFICATE_VERIFY: on_certificate_verify_received,
         tls.CCSType.CHANGE_CIPHER_SPEC: on_change_cipher_spec_received,
         tls.HandshakeType.FINISHED: on_finished_received,
         tls.HandshakeType.NEW_SESSION_TICKET: on_new_session_ticket_received,
-        tls.HandshakeType.ENCRYPTED_EXTENSIONS: on_encrypted_extensions_received,
-        tls.HandshakeType.CERTIFICATE_VERIFY: on_certificate_verify_received,
-        tls.HandshakeType.CERTIFICATE: on_certificate_received,
     }
 
     def on_msg_received(self, msg):

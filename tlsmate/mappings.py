@@ -5,6 +5,7 @@ import tlsmate.constants as tls
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers import algorithms, aead
+from cryptography.x509.oid import SignatureAlgorithmOID as sigalg
 import tlsmate.structures as structs
 
 # this map contains all cipher suites for which a full handshake is supported,

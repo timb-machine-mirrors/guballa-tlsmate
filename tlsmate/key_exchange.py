@@ -52,20 +52,20 @@ def verify_signed_params(params, msgs, default_scheme):
     else:
         sig_scheme = params.sig_scheme
 
-    verify_signature(
-        sig_scheme, data, params.signature, msgs.server_certificate.certificates[0]
-    )
+    cert = msgs.server_certificate.certificates.get(0)
+    cert.validate_signature(sig_scheme, data, params.signature)
 
 
 def verify_certificate_verify(cert_ver, msgs, msg_digest):
     data = (
         (b" " * 64) + "TLS 1.3, server CertificateVerify".encode() + b"\0" + msg_digest
     )
-    verify_signature(
+
+    cert = msgs.server_certificate.certificates.get(0)
+    cert.validate_signature(
         cert_ver.signature_scheme,
         data,
         cert_ver.signature,
-        msgs.server_certificate.certificates[0],
     )
 
 
@@ -187,10 +187,9 @@ class RsaKeyExchange(KeyExchange):
     def get_transferable_key(self):
         if self._pms is None:
             self._create_pms()
-        bin_cert = self._conn.msg.server_certificate.certificates[0]
-        cert = x509.load_der_x509_certificate(bin_cert)
-        pub_key = cert.public_key()
-        ciphered_key = pub_key.encrypt(bytes(self._pms), padding.PKCS1v15())
+        cert = self._conn.msg.server_certificate.certificates.get(0)
+        rem_pub_key = cert.parsed.public_key()
+        ciphered_key = rem_pub_key.encrypt(bytes(self._pms), padding.PKCS1v15())
         # injecting the encrypted key to the recorder is required, as the
         # padding scheme PKCS1v15 produces non-deterministic cipher text.
         return self._recorder.inject(rsa_enciphered=ciphered_key)
@@ -312,9 +311,8 @@ class EcdhKeyExchange(KeyExchange):
 
 class EcdhKeyExchangeCertificate(object):
     def __init__(self, conn, recorder):
-        bin_cert = conn.msg.server_certificate.certificates[0]
-        cert = x509.load_der_x509_certificate(bin_cert)
-        rem_pub_key = cert.public_key()
+        cert = conn.msg.server_certificate.certificates.get(0)
+        rem_pub_key = cert.parsed.public_key()
         seed = recorder.inject(ec_seed=int.from_bytes(os.urandom(10), "big"))
         priv_key = ec.derive_private_key(seed, rem_pub_key.curve)
         pub_key = priv_key.public_key()

@@ -6,6 +6,11 @@ from collections import OrderedDict
 from tlsmate import constants as tls
 from tlsmate import structures as structs
 from tlsmate import utils
+from cryptography.hazmat.primitives.serialization import Encoding
+
+
+class YamlBlockStyle(str):
+    pass
 
 
 class ProfileObject(metaclass=abc.ABCMeta):
@@ -140,7 +145,8 @@ class SPCertificateChain(ProfileDict):
         cert_list = ProfileList(key_func=lambda x: x.get())
         self.add("cert_chain", cert_list)
         for cert in chain:
-            cert_list.append(ProfileBasic(cert.hex()))
+            string = cert.public_bytes(Encoding.PEM).decode()
+            cert_list.append(ProfileBasic(YamlBlockStyle(string)))
 
 
 class SPCertificateChainList(ProfileList):

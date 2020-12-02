@@ -6,8 +6,13 @@ import time
 import datetime
 import yaml
 from tlsmate.tlssuite import TlsSuite
-from tlsmate.server_profile import ProfileDict, ProfileBasic
+from tlsmate.server_profile import ProfileDict, ProfileBasic, YamlBlockStyle
 from tlsmate.version import __version__
+
+
+def literal_presenter(dumper, data):
+    return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
+yaml.add_representer(YamlBlockStyle, literal_presenter)
 
 
 class ProfileScanInfo(ProfileDict):

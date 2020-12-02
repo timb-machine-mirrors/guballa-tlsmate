@@ -757,6 +757,7 @@ class SignatureScheme(ExtendedEnum):
     DSA_SHA256 = 0x0402
     DSA_SHA384 = 0x0502
     DSA_SHA512 = 0x0602
+    ECDSA_SECP224R1_SHA224 = 0x0303
 
 
 class EcPointFormat(ExtendedEnum):

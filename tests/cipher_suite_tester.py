@@ -6,6 +6,7 @@ import logging
 import tlsmate.constants as tls
 import tlsmate.messages as msg
 from tlsmate.tlssuite import TlsSuiteTester
+from tlsmate import utils
 
 
 class CipherSuiteTester(TlsSuiteTester):
@@ -102,7 +103,7 @@ class CipherSuiteTester(TlsSuiteTester):
             is_replaying (bool): an indication if the test case is recorded or replayed.
         """
         if not is_replaying:
-            logging.basicConfig(level="DEBUG")
+            utils.set_logging("debug")
         name = getattr(self, "name")
         if name is not None:
             self.recorder_pickle = self.name

@@ -5,8 +5,9 @@ from typing import NamedTuple
 import tlsmate.constants as tls
 from tlsmate.kdf import Kdf
 
-import cryptography.hazmat.primitives.ciphers.algorithms
-import cryptography.hazmat.primitives.hashes
+from cryptography.hazmat.primitives.ciphers import algorithms
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
 
 
 class SessionStateId(NamedTuple):
@@ -45,7 +46,7 @@ class Cipher(NamedTuple):
     """
 
     primitive: tls.CipherPrimitive = None
-    algo: cryptography.hazmat.primitives.ciphers.algorithms.AES = None
+    algo: algorithms.AES = None
     c_type: tls.CipherType = None
     key_len: int = None
     block_size: int = None
@@ -58,10 +59,10 @@ class Mac(NamedTuple):
     """Set of properties describing a MAC.
     """
 
-    hash_algo: cryptography.hazmat.primitives.hashes.SHA1  # just an example
+    hash_algo: hashes.SHA1  # just an example
     mac_len: int
     key_len: int
-    hmac_algo: cryptography.hazmat.primitives.hashes.SHA1  # just an example
+    hmac_algo: hashes.SHA1  # just an example
 
 
 class Psk(NamedTuple):
@@ -170,3 +171,11 @@ class ProfileValues(NamedTuple):
     cipher_suites: list = []
     supported_groups: list = []
     signature_algorithms: list = []
+
+
+class CertSigAlgo(NamedTuple):
+    """Structure for certificate signature algorithms
+    """
+
+    algo: hashes.SHA1 = None
+    padd: padding.PKCS1v15 = None
