@@ -79,6 +79,16 @@ def build_parser():
     )
 
     parser.add_argument(
+        "--ca-cert",
+        nargs="+",
+        type=str,
+        help=(
+            "list of root-ca cert files. Each file may contain multiple root-CA "
+            "certificates in PEM format."
+        ),
+    )
+
+    parser.add_argument(
         "host",
         help=(
             "the host to scan. May optionally have the port number appended, "
@@ -114,6 +124,7 @@ def main():
     container.config.set("server", host)
     container.config.set("port", port)
     container.config.set("progress", args.progress)
+    container.config.set("ca_certs", args.ca_cert)
 
     utils.set_logging(args.logging)
 

@@ -3,6 +3,7 @@
 """
 import stringprep
 import unicodedata
+import pem
 from cryptography import x509
 from cryptography.x509.oid import NameOID, ExtensionOID
 from cryptography.x509.oid import SignatureAlgorithmOID as sigalg_oid
@@ -137,6 +138,64 @@ _pss_sig_alg = {
 }
 
 
+def _verify_rsa_pkcs(cert, signature, data, hash_algo):
+    cert.public_key().verify(signature, data, padding.PKCS1v15(), hash_algo())
+
+
+def _verify_dsa(cert, signature, data, hash_algo):
+    cert.public_key().verify(signature, data, hash_algo())
+
+
+def _verify_ecdsa(cert, signature, data, hash_algo):
+    cert.public_key().verify(signature, data, ec.ECDSA(hash_algo()))
+
+
+def _verify_xcurve(cert, signature, data, hash_algo):
+    cert.public_key().verify(signature, data)
+
+
+def _verify_rsae_pss(cert, signature, data, hash_algo):
+    cert.public_key().verify(
+        signature,
+        data,
+        padding.PSS(mgf=padding.MGF1(hash_algo()), salt_length=hash_algo.digest_size),
+        hash_algo(),
+    )
+
+
+_sig_schemes = {
+    tls.SignatureScheme.RSA_PKCS1_MD5: (_verify_rsa_pkcs, hashes.MD5),
+    tls.SignatureScheme.RSA_PKCS1_SHA1: (_verify_rsa_pkcs, hashes.SHA1),
+    tls.SignatureScheme.RSA_PKCS1_SHA224: (_verify_rsa_pkcs, hashes.SHA224),
+    tls.SignatureScheme.RSA_PKCS1_SHA256: (_verify_rsa_pkcs, hashes.SHA256),
+    tls.SignatureScheme.RSA_PKCS1_SHA384: (_verify_rsa_pkcs, hashes.SHA384),
+    tls.SignatureScheme.RSA_PKCS1_SHA512: (_verify_rsa_pkcs, hashes.SHA512),
+    tls.SignatureScheme.DSA_MD5: (_verify_dsa, hashes.MD5),
+    tls.SignatureScheme.DSA_SHA1: (_verify_dsa, hashes.SHA1),
+    tls.SignatureScheme.DSA_SHA224: (_verify_dsa, hashes.SHA224),
+    tls.SignatureScheme.DSA_SHA256: (_verify_dsa, hashes.SHA256),
+    tls.SignatureScheme.DSA_SHA384: (_verify_dsa, hashes.SHA384),
+    tls.SignatureScheme.DSA_SHA512: (_verify_dsa, hashes.SHA512),
+    tls.SignatureScheme.ECDSA_SHA1: (_verify_ecdsa, hashes.SHA1),
+    tls.SignatureScheme.ECDSA_SECP224R1_SHA224: (_verify_ecdsa, hashes.SHA224),
+    tls.SignatureScheme.ECDSA_SECP256R1_SHA256: (_verify_ecdsa, hashes.SHA256),
+    tls.SignatureScheme.ECDSA_SECP384R1_SHA384: (_verify_ecdsa, hashes.SHA384),
+    tls.SignatureScheme.ECDSA_SECP521R1_SHA512: (_verify_ecdsa, hashes.SHA512),
+    tls.SignatureScheme.RSA_PSS_RSAE_SHA256: (_verify_rsae_pss, hashes.SHA256),
+    tls.SignatureScheme.RSA_PSS_RSAE_SHA384: (_verify_rsae_pss, hashes.SHA384),
+    tls.SignatureScheme.RSA_PSS_RSAE_SHA512: (_verify_rsae_pss, hashes.SHA512),
+    tls.SignatureScheme.ED25519: (_verify_xcurve, None),
+    tls.SignatureScheme.ED448: (_verify_xcurve, None),
+}
+
+
+def validate_signature(cert, sig_scheme, data, signature):
+    sig_params = _sig_schemes.get(sig_scheme)
+    if sig_params is None:
+        raise ValueError(f"signature scheme {sig_scheme} not supported")
+    sig_params[0](cert, signature, data, sig_params[1])
+
+
 def map_x509_sig_scheme(x509_hash, x509_oid):
     if x509_oid is sigalg_oid.RSASSA_PSS:
         sig_scheme = _pss_sig_alg(x509_hash.name)
@@ -148,6 +207,46 @@ def map_x509_sig_scheme(x509_hash, x509_oid):
         if sig_scheme is None:
             raise ValueError(f"signature algorithm {x509_oid} not supported")
         return sig_scheme
+
+
+class TrustStore(object):
+    def __init__(self, ca_files=None):
+        self._ca_files = ca_files
+        self._cert_cache = []
+
+    def __iter__(self):
+
+        for cert in self._cert_cache:
+            yield cert
+
+        for file_name in self._ca_files:
+            pem_list = pem.parse_file(file_name)
+            for pem_item in pem_list:
+                if not isinstance(pem_item, pem.Certificate):
+                    continue
+                yield x509.load_pem_x509_certificate(pem_item.as_bytes())
+
+    def cert_in_trust_store(self, cert):
+        if self._ca_files is None:
+            return False
+
+        for cert2 in self:
+            if cert2 == cert:
+                self._cert_cache.append(cert2)
+                return True
+
+        return False
+
+    def issuer_in_trust_store(self, issuer_name):
+
+        for cert in self:
+            # TODO: Optimize this, as the issuer_name is string_prepped with
+            # always the same result in the loop
+            if equal_names(cert.subject, issuer_name):
+                self._cert_cache.append(cert)
+                return cert
+
+        return None
 
 
 class Certificate(object):
@@ -211,78 +310,34 @@ class Certificate(object):
 
         raise CertValidationError(f'subject name does not match for "{self}"')
 
-    def _verify_rsa_pkcs(self, signature, data, hash_algo):
-        self.parsed.public_key().verify(
-            signature, data, padding.PKCS1v15(), hash_algo()
-        )
-
-    def _verify_dsa(self, signature, data, hash_algo):
-        self.parsed.public_key().verify(signature, data, hash_algo())
-
-    def _verify_ecdsa(self, signature, data, hash_algo):
-        self.parsed.public_key().verify(signature, data, ec.ECDSA(hash_algo()))
-
-    def _verify_xcurve(self, signature, data, hash_algo):
-        self.parsed.public_key().verify(signature, data)
-
-    def _verify_rsae_pss(self, signature, data, hash_algo):
-        self.parsed.public_key().verify(
-            signature,
-            data,
-            padding.PSS(
-                mgf=padding.MGF1(hash_algo()), salt_length=hash_algo.digest_size
-            ),
-            hash_algo(),
-        )
-
-    _sig_schemes = {
-        tls.SignatureScheme.RSA_PKCS1_MD5: (_verify_rsa_pkcs, hashes.MD5),
-        tls.SignatureScheme.RSA_PKCS1_SHA1: (_verify_rsa_pkcs, hashes.SHA1),
-        tls.SignatureScheme.RSA_PKCS1_SHA224: (_verify_rsa_pkcs, hashes.SHA224),
-        tls.SignatureScheme.RSA_PKCS1_SHA256: (_verify_rsa_pkcs, hashes.SHA256),
-        tls.SignatureScheme.RSA_PKCS1_SHA384: (_verify_rsa_pkcs, hashes.SHA384),
-        tls.SignatureScheme.RSA_PKCS1_SHA512: (_verify_rsa_pkcs, hashes.SHA512),
-        tls.SignatureScheme.DSA_MD5: (_verify_dsa, hashes.MD5),
-        tls.SignatureScheme.DSA_SHA1: (_verify_dsa, hashes.SHA1),
-        tls.SignatureScheme.DSA_SHA224: (_verify_dsa, hashes.SHA224),
-        tls.SignatureScheme.DSA_SHA256: (_verify_dsa, hashes.SHA256),
-        tls.SignatureScheme.DSA_SHA384: (_verify_dsa, hashes.SHA384),
-        tls.SignatureScheme.DSA_SHA512: (_verify_dsa, hashes.SHA512),
-        tls.SignatureScheme.ECDSA_SHA1: (_verify_ecdsa, hashes.SHA1),
-        tls.SignatureScheme.ECDSA_SECP224R1_SHA224: (_verify_ecdsa, hashes.SHA224),
-        tls.SignatureScheme.ECDSA_SECP256R1_SHA256: (_verify_ecdsa, hashes.SHA256),
-        tls.SignatureScheme.ECDSA_SECP384R1_SHA384: (_verify_ecdsa, hashes.SHA384),
-        tls.SignatureScheme.ECDSA_SECP521R1_SHA512: (_verify_ecdsa, hashes.SHA512),
-        tls.SignatureScheme.RSA_PSS_RSAE_SHA256: (_verify_rsae_pss, hashes.SHA256),
-        tls.SignatureScheme.RSA_PSS_RSAE_SHA384: (_verify_rsae_pss, hashes.SHA384),
-        tls.SignatureScheme.RSA_PSS_RSAE_SHA512: (_verify_rsae_pss, hashes.SHA512),
-        tls.SignatureScheme.ED25519: (_verify_xcurve, None),
-        tls.SignatureScheme.ED448: (_verify_xcurve, None),
-    }
-
     def validate_signature(self, sig_scheme, data, signature):
-        sig_params = self._sig_schemes.get(sig_scheme)
-        if sig_params is None:
-            raise ValueError(f"signature scheme {sig_scheme} not supported")
-        sig_params[0](self, signature, data, sig_params[1])
+        validate_signature(self.parsed, sig_scheme, data, signature)
 
 
 class CertChain(object):
     def __init__(self):
         self._chain = []
+        self._digest = hashes.Hash(hashes.SHA256())
+        self._digest_value = None
 
     def append(self, bin_cert):
         self._chain.append(Certificate(bin_cert))
+        self._digest.update(bin_cert)
 
     def __iter__(self):
         for cert in self._chain:
             yield cert.parsed
 
+    @property
+    def digest(self):
+        if self._digest_value is None:
+            self._digest_value = self._digest.finalize()
+        return self._digest_value
+
     def get(self, idx):
         return self._chain[idx]
 
-
-    def validate(self, timestamp, domain_name):
+    def validate(self, timestamp, domain_name, trust_store):
         """Only the minimal checks are supported.
         """
         root_cert = None
@@ -291,6 +346,7 @@ class CertChain(object):
         for idx, cert in enumerate(self._chain):
 
             if idx == 0:
+                # Server certificate
                 cert.validate_subject(domain_name)
             cert.validate_period(timestamp)
 
@@ -315,6 +371,18 @@ class CertChain(object):
                         sig_scheme, prev_cert.tbs_certificate_bytes, prev_cert.signature
                     )
             prev_cert = cert.parsed
+
         if root_cert is None:
-            # TODO: get root certificate from trust store
-            pass
+            cert = trust_store.issuer_in_trust_store(prev_cert.issuer)
+            if cert is None:
+                raise CertValidationError(
+                    f'anchor for certificate "{prev_cert}" not found in trust store'
+                )
+            validate_signature(
+                cert, sig_scheme, prev_cert.tbs_certificate_bytes, prev_cert.signature
+            )
+        else:
+            if not trust_store.cert_in_trust_store(prev_cert):
+                raise CertValidationError(
+                    f'root certificate "{root_cert}" not found in trust store'
+                )

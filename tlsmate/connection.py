@@ -9,6 +9,7 @@ import io
 import traceback as tb
 import time
 import datetime
+from cryptography.hazmat.primitives import hashes
 from tlsmate.exception import FatalAlert, TlsConnectionClosedError, TlsMsgTimeoutError
 from tlsmate import messages as msg
 import tlsmate.constants as tls
@@ -157,6 +158,9 @@ class TlsConnectionMsgs(object):
 
 
 class TlsConnection(object):
+
+    _cert_chain_digests = []
+
     def __init__(self, connection_msgs, entity, record_layer, recorder, kdf):
         self.msg = connection_msgs
         self.defragmenter = TlsDefragmenter(record_layer)
@@ -755,10 +759,14 @@ class TlsConnection(object):
             self.record_layer.update_state(self.hs_write_state)
 
     def on_certificate_received(self, msg):
+
         if self.version is tls.Version.TLS13:
             self.certificate_digest = self.kdf.finalize_msg_digest(intermediate=True)
-        timestamp = datetime.datetime.now()
-        msg.certificates.validate(timestamp, self.client.config["server"])
+
+        if msg.certificates.digest not in self._cert_chain_digests:
+            self._cert_chain_digests.append(msg.certificates.digest)
+            timestamp = datetime.datetime.now()
+            msg.certificates.validate(timestamp, self.client.config["server"], self.client.trust_store)
 
     def on_certificate_verify_received(self, msg):
         if self.version is tls.Version.TLS13:

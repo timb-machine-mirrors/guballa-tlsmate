@@ -4,7 +4,7 @@
 import tlsmate.constants as tls
 import tlsmate.extensions as ext
 from tlsmate.messages import ClientHello
-
+from tlsmate.cert import TrustStore
 
 class Client(object):
     """The class representing a TLS client
@@ -77,6 +77,8 @@ class Client(object):
         self.connection_factory = connection_factory
         self.config = config
         self.reset_profile()
+        ca_files = None if config["ca_certs"] is None else config["ca_certs"]
+        self.trust_store = TrustStore(ca_files=ca_files)
 
     def reset_profile(self):
         """Resets the client profile to a very basic state
