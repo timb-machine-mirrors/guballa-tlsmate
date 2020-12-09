@@ -73,11 +73,14 @@ def build_parser():
         help="sets the loggin level. Default id error.",
     )
     parser.add_argument(
-        "--progress", help="provides a kind of progress indicator", action="store_true"
+        "--progress",
+        help="provides a kind of progress indicator",
+        action="store_const",
+        const=True,
     )
 
     parser.add_argument(
-        "--ca-cert",
+        "--ca-certs",
         nargs="+",
         type=str,
         help=(
@@ -122,7 +125,7 @@ def main():
     config.merge_config("server", host)
     config.merge_config("port", port)
     config.merge_config("progress", args.progress)
-    config.merge_config("ca_certs", args.ca_cert)
+    config.merge_config("ca_certs", args.ca_certs)
     config.merge_config("logging", args.logging)
 
     utils.set_logging(config["logging"])
