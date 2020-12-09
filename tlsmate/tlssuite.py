@@ -1,6 +1,7 @@
 import abc
 import dill as pickle
 from tlsmate.dependency_injection import Container, providers
+from tlsmate import utils
 
 
 class TlsSuite(metaclass=abc.ABCMeta):
@@ -68,9 +69,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
     def entry(self, is_replaying=False):
         """Bla bla
         """
-        container_args = {
-            "config": {"server": self.server, "port": self.port, "progress": False}
-        }
+        container_args = {}
 
         if is_replaying and self.recorder_pickle is not None:
             recorder = self.unpickle_obj(self.recorder_pickle)
@@ -81,6 +80,13 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             container_args["server_profile"] = providers.Object(server_profile)
 
         container = Container(**container_args)
+
+        config = container.config()
+        config.merge_config("server", self.server)
+        config.merge_config("port", self.port)
+        config.merge_config("progress", False)
+
+        utils.set_logging(config["logging"])
 
         if not is_replaying:
             container.recorder().record()

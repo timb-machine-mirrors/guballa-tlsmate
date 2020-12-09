@@ -10,6 +10,7 @@ from tlsmate.record_layer import RecordLayer
 from tlsmate.recorder import Recorder
 from tlsmate.socket import Socket
 from tlsmate.kdf import Kdf
+from tlsmate.config import Configuration
 
 from tlsmate.suitemanager import SuiteManager
 
@@ -17,7 +18,8 @@ from tlsmate.suitemanager import SuiteManager
 class Container(containers.DeclarativeContainer):
     """Class defining all the dependencies"""
 
-    config = providers.Configuration("config")
+    # config = providers.Configuration("config")
+    config = providers.Singleton(Configuration)
 
     server_profile = providers.Singleton(ServerProfile)
 

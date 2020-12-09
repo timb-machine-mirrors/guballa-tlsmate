@@ -62,11 +62,7 @@ def verify_certificate_verify(cert_ver, msgs, msg_digest):
     )
 
     cert = msgs.server_certificate.certificates.get(0)
-    cert.validate_signature(
-        cert_ver.signature_scheme,
-        data,
-        cert_ver.signature,
-    )
+    cert.validate_signature(cert_ver.signature_scheme, data, cert_ver.signature)
 
 
 def _verify_rsa_pkcs(pub_key, signature, data, hash_algo):

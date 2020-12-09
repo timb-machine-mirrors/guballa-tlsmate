@@ -2,7 +2,6 @@
 """Module containing the CLI implementation
 """
 import argparse
-import logging
 import importlib
 import pkgutil
 
@@ -72,7 +71,6 @@ def build_parser():
         "--logging",
         choices=["critical", "error", "warning", "info", "debug"],
         help="sets the loggin level. Default id error.",
-        default="error",
     )
     parser.add_argument(
         "--progress", help="provides a kind of progress indicator", action="store_true"
@@ -106,9 +104,7 @@ def main():
     """The entry point for the command line interface
     """
 
-    config = {"server": "localhost", "port": 44330, "progress": False}
-
-    container = dependency.Container(config=config)
+    container = dependency.Container()
 
     test_manager = container.test_manager()
     parser = build_parser()
@@ -121,12 +117,15 @@ def main():
     else:
         port = 443
 
-    container.config.set("server", host)
-    container.config.set("port", port)
-    container.config.set("progress", args.progress)
-    container.config.set("ca_certs", args.ca_cert)
+    config = container.config()
 
-    utils.set_logging(args.logging)
+    config.merge_config("server", host)
+    config.merge_config("port", port)
+    config.merge_config("progress", args.progress)
+    config.merge_config("ca_certs", args.ca_cert)
+    config.merge_config("logging", args.logging)
+
+    utils.set_logging(config["logging"])
 
     plugin_cli_options = sorted(SuiteManager.test_suites.keys())
     selected_plugins = []

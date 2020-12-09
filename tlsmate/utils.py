@@ -157,6 +157,7 @@ def filter_cipher_suites(
     if tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV in cs_list:
         cs_list.remove(tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV)
     filtered = []
+
     for cs in cs_list:
         cs_details = get_cipher_suite_details(cs)
         if cs_details is None:
@@ -182,7 +183,8 @@ def set_logging(level):
     Arguments:
         level (str): The logging level to use.
     """
-    logging.basicConfig(level=level.upper(), format="%(levelname)s: %(message)s")
+    if level is not None:
+        logging.basicConfig(level=level.upper(), format="%(levelname)s: %(message)s")
 
 
 class Log(object):

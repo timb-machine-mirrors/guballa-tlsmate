@@ -9,7 +9,6 @@ import io
 import traceback as tb
 import time
 import datetime
-from cryptography.hazmat.primitives import hashes
 from tlsmate.exception import FatalAlert, TlsConnectionClosedError, TlsMsgTimeoutError
 from tlsmate import messages as msg
 import tlsmate.constants as tls
@@ -766,7 +765,9 @@ class TlsConnection(object):
         if msg.certificates.digest not in self._cert_chain_digests:
             self._cert_chain_digests.append(msg.certificates.digest)
             timestamp = datetime.datetime.now()
-            msg.certificates.validate(timestamp, self.client.config["server"], self.client.trust_store)
+            msg.certificates.validate(
+                timestamp, self.client.config["server"], self.client.trust_store
+            )
 
     def on_certificate_verify_received(self, msg):
         if self.version is tls.Version.TLS13:

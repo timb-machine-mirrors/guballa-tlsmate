@@ -13,6 +13,7 @@ sig_algs_tls12 = [
     "ECDSA_SECP256R1_SHA256",
     "ECDSA_SECP384R1_SHA384",
     "ECDSA_SECP521R1_SHA512",
+    "ECDSA_SECP224R1_SHA224",
 ]
 
 sig_algs_tls13 = [

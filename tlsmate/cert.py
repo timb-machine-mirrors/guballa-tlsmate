@@ -342,6 +342,7 @@ class CertChain(object):
         """
         root_cert = None
         prev_cert = None
+        sig_scheme = None
         last_idx = len(self._chain) - 1
         for idx, cert in enumerate(self._chain):
 
@@ -363,14 +364,13 @@ class CertChain(object):
                             f'subject of "{cert}" not equal to issuer of {prev_cert}'
                         )
 
-                    sig_scheme = map_x509_sig_scheme(
-                        prev_cert.signature_hash_algorithm,
-                        prev_cert.signature_algorithm_oid,
-                    )
                     cert.validate_signature(
                         sig_scheme, prev_cert.tbs_certificate_bytes, prev_cert.signature
                     )
             prev_cert = cert.parsed
+            sig_scheme = map_x509_sig_scheme(
+                prev_cert.signature_hash_algorithm, prev_cert.signature_algorithm_oid
+            )
 
         if root_cert is None:
             cert = trust_store.issuer_in_trust_store(prev_cert.issuer)
