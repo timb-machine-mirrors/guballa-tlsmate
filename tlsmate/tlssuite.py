@@ -1,4 +1,5 @@
 import abc
+from pathlib import Path
 import dill as pickle
 from tlsmate.dependency_injection import Container, providers
 from tlsmate import utils
@@ -81,7 +82,11 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
 
         container = Container(**container_args)
 
-        config = container.config()
+        ini_file = Path.home() / ".tlsmate.ini"
+        if not ini_file.is_file():
+            ini_file = Path.cwd() / ".tlsmate.ini"
+
+        config = container.config(ini_file=ini_file)
         config.merge_config("server", self.server)
         config.merge_config("port", self.port)
         config.merge_config("progress", False)

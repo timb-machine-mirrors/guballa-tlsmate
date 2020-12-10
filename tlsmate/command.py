@@ -67,6 +67,13 @@ def build_parser():
         version=__version__,
         help="print the version of the tool",
     )
+
+    parser.add_argument(
+        "--config",
+        dest="config_file",
+        default=None,
+        help="ini-file to read the configuration from.",
+    )
     parser.add_argument(
         "--logging",
         choices=["critical", "error", "warning", "info", "debug"],
@@ -120,7 +127,7 @@ def main():
     else:
         port = 443
 
-    config = container.config()
+    config = container.config(ini_file=args.config_file)
 
     config.merge_config("server", host)
     config.merge_config("port", port)
@@ -137,7 +144,7 @@ def main():
             selected_plugins.append(arg)
 
     if not selected_plugins:
-        options = " ".join(selected_plugins)
+        options = " ".join(plugin_cli_options)
         parser.error("specify at least one of the following options: " + options)
 
     test_manager.run(container, selected_plugins)

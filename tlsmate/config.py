@@ -19,7 +19,7 @@ class Configuration(object):
 
     _format_option = {"progress": _str_to_bool, "ca_certs": _str_to_strlist}
 
-    def __init__(self):
+    def __init__(self, ini_file=None):
         self.config = {
             "server": "localhost",
             "port": 443,
@@ -28,8 +28,20 @@ class Configuration(object):
             "ca_certs": None,
         }
         parser = configparser.ConfigParser(os.environ)
-        parser.read(str(Path.home() / ".tlsmate.ini"))
-        config = parser["tlsmate"]
+        if ini_file is not None:
+            abs_path = Path(ini_file)
+            if not abs_path.is_absolute():
+                abs_path = Path.cwd() / abs_path
+            if not abs_path.is_file():
+                raise FileNotFoundError(abs_path)
+        else:
+            abs_path = Path.home() / ".tlsmate.ini"
+
+        parser.read(str(abs_path))
+        if parser.has_section("tlsmate"):
+            config = parser["tlsmate"]
+        else:
+            config = {}
         for option in self.config.keys():
             val = os.environ.get("TLSMATE_" + option.upper())
             if val is None:

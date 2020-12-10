@@ -161,6 +161,8 @@ setup(
         'dill',
         'pyyaml',
         'pathlib',
+        'pem',
+        'configparser',
     ],
 
     # List additional groups of dependencies here (e.g. development
