@@ -50,12 +50,23 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
     def get_pickle_file(self, name):
         """Determine the file where an object is serialized to.
 
-        :return: a Path object for the pickle file
-        :rtype: :class:`pathlib.Path`
+        Arguments:
+            name (str): the basic name of the file, without directory and without
+                the suffix
+
+        Returns:
+            :class:`pathlib.Path`: a Path object for the pickle file
         """
         return self.path.resolve().parent / "recordings" / (name + ".pickle")
 
     def pickle_obj(self, obj, name):
+        """Dump the pickled object to a file.
+
+        Arguments:
+            obj (object): the object to pickle
+            name (str): the file name (without directory and suffix) to write the
+                pickled object to
+        """
         file_name = self.get_pickle_file(name)
         if file_name.exists():
             print(f"File {file_name} existing. Pickle file not generated")
@@ -64,11 +75,23 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             pickle.dump(obj, fd)
 
     def unpickle_obj(self, name):
+        """Deserialize a pickled object from a file.
+
+        Arguments:
+            name (str): the full file name
+
+        Returns:
+            object: the unpickled object
+        """
         with open(self.get_pickle_file(name), "rb") as fd:
             return pickle.load(fd)
 
     def entry(self, is_replaying=False):
-        """Bla bla
+        """Entry point for a test case.
+
+        Arguments:
+            is_replaying (bool): an indication if the test case is replayed or recorded.
+                Defaults to False.
         """
         container_args = {}
 
@@ -107,4 +130,6 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
                 self.pickle_obj(server_profile, self.sp_out_pickle)
 
     def test_entry(self):
+        """Entry point for pytest.
+        """
         self.entry(is_replaying=True)

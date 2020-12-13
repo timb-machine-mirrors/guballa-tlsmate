@@ -21,7 +21,9 @@ Python API Reference Documentation
     py_recorder
     py_record_layer
     py_record_layer_state
+    py_server_profile
     py_socket
     py_structures
     py_suitemanager
+    py_tlssuite
     py_utils
