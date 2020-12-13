@@ -9,6 +9,7 @@ Python API Reference Documentation
     py_client
     py_command
     py_config
+    py_connection
     py_constants
     py_dependency_injection
     py_dh_numbers
