@@ -1,7 +1,7 @@
-Module testmanager
-------------------
+Module suitemanager
+-------------------
 
-.. automodule:: tlsmate.testmanager
+.. automodule:: tlsmate.suitemanager
    :members:
    :undoc-members:
    :show-inheritance:

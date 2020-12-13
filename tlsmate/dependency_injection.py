@@ -16,9 +16,9 @@ from tlsmate.suitemanager import SuiteManager
 
 
 class Container(containers.DeclarativeContainer):
-    """Class defining all the dependencies"""
+    """Class defining all the dependencies
+    """
 
-    # config = providers.Configuration("config")
     config = providers.Singleton(Configuration)
 
     server_profile = providers.Singleton(ServerProfile)

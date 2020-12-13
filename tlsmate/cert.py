@@ -10,13 +10,20 @@ from cryptography.x509.oid import SignatureAlgorithmOID as sigalg_oid
 from cryptography.hazmat.primitives.asymmetric import padding, ec
 from cryptography.hazmat.primitives import hashes
 from tlsmate import constants as tls
-
-
-class CertValidationError(Exception):
-    pass
+from tlsmate.exception import CertValidationError
 
 
 def string_prep(label):
+    """Prepares a string for comparison according to RFC 3435.
+
+    Copy&Pasted code. Let's hope the best.
+
+    Arguments:
+        label (str): The string to prepare
+
+    Returns:
+        str: the prepared string
+    """
     # Map
     newlabel = []
     for c in label:
@@ -68,6 +75,21 @@ def string_prep(label):
 
 
 def remove_subdomain(name):
+    """Removes the subdomain from a given URL.
+
+    Example:
+        >>> remove_subdomain("www.example.com")
+        '.example.com'
+
+    Arguments:
+        name (str): the domain
+
+    Returns:
+        str: the string with the subdomain removed. The string starts with the dot.
+
+    Raises:
+        ValueError: If the URL does not contain a subdomain.
+    """
     try:
         pos = name.index(".")
     except ValueError:
@@ -76,6 +98,20 @@ def remove_subdomain(name):
 
 
 def subject_matches(subject, full_domain, name_no_subdomain):
+    """Checks, if a given subject matches either a full domain or a wildcard domain.
+
+    The subject is prepared for string comparison first.
+
+    Arguments:
+        subject (str): the subject to be checked
+        full_domain (str): the full domain, e.g. "www.example.com". This argument
+            should be string-prepped.
+        name_no_domain (str): the domain without the leading subdomain, e.g.
+            ".example.com". This argument should be string_prepped.
+
+    Returns:
+        bool: True, if the subject matches either the full domain or the name_no_domain
+    """
     subject = string_prep(subject)
     if subject.startswith("*"):
         return subject[1:] == name_no_subdomain
@@ -83,6 +119,17 @@ def subject_matches(subject, full_domain, name_no_subdomain):
 
 
 def equal_oid(name_attrs1, name_attrs2):
+    """Check two attributes for equality
+
+    Arguments:
+        name_attrs1 (:obj:`cryptography.x509.NameAttribute`): an attribute name
+            object as defined by the library crypthography.
+        name_attrs2 (:obj:`cryptography.x509.NameAttribute`): an attribute name
+            object as defined by the library crypthography.
+
+    Returns:
+        bool: True, if both attributes are equal as defined in RFC 5280.
+    """
     values1 = []
     for name_attr in name_attrs1:
         values1.append(string_prep(name_attr.value))
@@ -95,7 +142,17 @@ def equal_oid(name_attrs1, name_attrs2):
 
 
 def equal_rdn(rdn1, rdn2):
+    """Check two rdns (Relative Distinguished Name) for equality
 
+    Arguments:
+        rdn1 (:obj:`cryptography.x509.RelativeDistinguishedName`): an rdn
+            object as defined by the library crypthography.
+        rdn2 (:obj:`cryptography.x509.RelativeDistinguishedName`): an rdn
+            object as defined by the library crypthography.
+
+    Returns:
+        bool: True, if both rdns are equal as defined in RFC 5280.
+    """
     return all(
         equal_oid(
             rdn1.get_attributes_for_oid(name_attr.oid),
@@ -106,6 +163,17 @@ def equal_rdn(rdn1, rdn2):
 
 
 def equal_names(name1, name2):
+    """Check two x509 names for equality
+
+    Arguments:
+        name1 (:obj:` cryptography.x509.Name`): a name object as defined by the
+            library crypthography.
+        name2 (:obj:`cryptography.x509.Name`): an name object as defined by the
+        library crypthography.
+
+    Returns:
+        bool: True, if both names are equal as defined in RFC 5280.
+    """
     if len(name1.rdns) != len(name2.rdns):
         return False
 
@@ -190,6 +258,18 @@ _sig_schemes = {
 
 
 def validate_signature(cert, sig_scheme, data, signature):
+    """Validate a signature with a public key from a given certificate.
+
+    Arguments:
+        cert (:obj:`cryptography.x509.Certificate`): The certificate to use
+        sig_scheme (:class:`tlsmate.constansts.SignatureScheme`): The signature
+            scheme to use
+        data (bytes): the bytes for which the signature is to be validated
+        signature (bytes): the signature
+
+    Raises:
+        cryptography.exceptions.InvalidSignature: If the signature does not validate.
+    """
     sig_params = _sig_schemes.get(sig_scheme)
     if sig_params is None:
         raise ValueError(f"signature scheme {sig_scheme} not supported")
@@ -197,6 +277,16 @@ def validate_signature(cert, sig_scheme, data, signature):
 
 
 def map_x509_sig_scheme(x509_hash, x509_oid):
+    """Maps a given x509 hash and oid to the internal signature scheme.
+
+    Arguments:
+        x509_hash (:obj:`cryptography.hazmat.primitives.hashes.Hash`): the hash object
+        x509_oid (:obj:`cryptography.x509.ObjectIdentifier`): the oid for the signature
+            algorithm
+
+    Returns:
+        :class:`tlsmate.constants.SignatureScheme`: the signature scheme
+    """
     if x509_oid is sigalg_oid.RSASSA_PSS:
         sig_scheme = _pss_sig_alg(x509_hash.name)
         if sig_scheme is None:
@@ -210,6 +300,15 @@ def map_x509_sig_scheme(x509_hash, x509_oid):
 
 
 class TrustStore(object):
+    """Represents a trust store containing trusted root certificates
+
+    Objects of this class are iterable, yielding the certificates one by one.
+
+    Arguments:
+        ca_files (list of file names): A list of files which contain certificates in
+            PEM-format.
+    """
+
     def __init__(self, ca_files=None):
         self._ca_files = ca_files
         self._cert_cache = []
@@ -227,6 +326,14 @@ class TrustStore(object):
                 yield x509.load_pem_x509_certificate(pem_item.as_bytes())
 
     def cert_in_trust_store(self, cert):
+        """Checks if a given certificate is present in the trust store.
+
+        Arguments:
+            cert (:obj:`cryptography.x509.Certificate`): the certificate to check
+
+        Returns:
+            bool: True, if the given certificate is present in the trust store
+        """
         if self._ca_files is None:
             return False
 
@@ -238,6 +345,15 @@ class TrustStore(object):
         return False
 
     def issuer_in_trust_store(self, issuer_name):
+        """Returns the certificate for a given issuer name from the trust store.
+
+        Arguments:
+            issuer_name (:obj:`cryptography.x509.Name`): the name of the issuer
+
+        Returns:
+            :obj:`cryptography.x509.Certificate` or None if the certificate is not
+                found.
+        """
 
         for cert in self:
             # TODO: Optimize this, as the issuer_name is string_prepped with
@@ -250,6 +366,12 @@ class TrustStore(object):
 
 
 class Certificate(object):
+    """Represents a certificate.
+
+    Arguments:
+        bin_cert (bytes): the certificate in DER-format (raw bytes)
+    """
+
     def __init__(self, bin_cert):
         self._bytes = bin_cert
         self._parsed = None
@@ -260,6 +382,8 @@ class Certificate(object):
 
     @property
     def subject(self):
+        """str: The subject name formatted according to RFC 4514.
+        """
 
         if self._subject is None:
             self._parse_cert()
@@ -267,6 +391,8 @@ class Certificate(object):
 
     @property
     def parsed(self):
+        """:obj:`cryptography.x509.Certificate`: the x509 certificate object
+        """
 
         if self._parsed is None:
             self._parse_cert()
@@ -283,9 +409,22 @@ class Certificate(object):
         return cns[0].value
 
     def is_self_signed(self):
+        """Provide an indication if the certificate is self-signed.
+
+        Returns:
+            bool: True, if the certificate is self-signed
+        """
         return equal_names(self.parsed.subject, self.parsed.issuer)
 
     def validate_period(self, datetime):
+        """Validate the period of the certificate agains a given timestamp.
+
+        Arguments:
+            datetime (:obj:`datetime.datetime`): the timestamp
+
+        Raises:
+            CertValidationError: if the timestamp is outside the validity period
+        """
 
         if datetime < self.parsed.not_valid_before:
             raise CertValidationError(f'validity period for "{self}" not yet reached')
@@ -294,6 +433,18 @@ class Certificate(object):
             raise CertValidationError(f'validity period for "{self}" exceeded')
 
     def validate_subject(self, domain):
+        """Validate if the certificate matches the given domain
+
+        It takes the subject and the subject alternatetive name into account, and
+        supports wildcards as well.
+
+        Arguments:
+            domain (str): the domain to check against (normally used in the SNI)
+
+        Raises:
+            CertValidationError: if the certificarte is not issued for the given
+            domain
+        """
         domain = string_prep(domain)
         no_subdomain = remove_subdomain(domain)
 
@@ -311,16 +462,39 @@ class Certificate(object):
         raise CertValidationError(f'subject name does not match for "{self}"')
 
     def validate_signature(self, sig_scheme, data, signature):
+        """Validate a signature using the public key from the certificate.
+
+        Arguments:
+            sig_scheme (:class:`tlsmate.constansts.SignatureScheme`): The signature
+                scheme to use
+            data (bytes): the bytes for which the signature is to be validated
+            signature (bytes): the signature
+
+        Raises:
+            cryptography.exceptions.InvalidSignature: If the signature does not
+                validate.
+
+        """
         validate_signature(self.parsed, sig_scheme, data, signature)
 
 
 class CertChain(object):
+    """Class representing a certificate chain.
+
+    This object is iterable, yielding the x509 representation of the certificates.
+    """
+
     def __init__(self):
         self._chain = []
         self._digest = hashes.Hash(hashes.SHA256())
         self._digest_value = None
 
     def append(self, bin_cert):
+        """Append the chain by a certificate given in raw format.
+
+        Arguments:
+            bin_cert (bytes): the certificate to append in raw format
+        """
         self._chain.append(Certificate(bin_cert))
         self._digest.update(bin_cert)
 
@@ -330,15 +504,36 @@ class CertChain(object):
 
     @property
     def digest(self):
+        """bytes: a SHA256 digest of the complete chain, usable for comparation
+        """
         if self._digest_value is None:
             self._digest_value = self._digest.finalize()
         return self._digest_value
 
     def get(self, idx):
+        """Gets a specific certificate from the chain
+
+        Arguments:
+            idx (int): the index of the certificate to return
+
+        Returns:
+            :obj:`Certificate`: the certificate object
+        """
         return self._chain[idx]
 
     def validate(self, timestamp, domain_name, trust_store):
         """Only the minimal checks are supported.
+
+        If a discrepancy is found, an exception is raised.
+
+        Arguments:
+            timestamp (datetime.datetime): the timestamp to check against
+            domain_name (str): the domain name to validate the host certificate against
+            trust_store (:obj:`TrustStore`): the trust store to validate the chain
+                against
+
+        Raises:
+            CertValidationError: in case the certificate chain cannot be validated.
         """
         root_cert = None
         prev_cert = None

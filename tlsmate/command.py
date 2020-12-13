@@ -30,8 +30,8 @@ def print_version():
 def args_version(subparsers):
     """Defines the arguments for the subcommand "version"
 
-    :param subparsers: subparsers object to extend with the subcommand
-    :type subparsers: object returned by add_subparsers
+    Arguments:
+        subparsers: subparsers object to extend with the subcommand
     """
     parser_version = subparsers.add_parser(
         "version", help="print the version of the tool"
@@ -42,8 +42,8 @@ def args_version(subparsers):
 def add_plugins_to_parser(parser):
     """Generate the CLI options for the plugins
 
-    :param parsers: parsers object
-    :type parser: object
+    Arguments:
+        parsers: parsers object
     """
 
     plugin_cli_options = SuiteManager.test_suites.keys()
@@ -56,8 +56,8 @@ def add_plugins_to_parser(parser):
 def build_parser():
     """Creates the parser object
 
-    :return: the parser object as created with argparse
-    :rtype: :class:`argparse.ArgumentParser`
+    Returns:
+        :obj:`argparse.ArgumentParser`: the parser object as created with argparse
     """
     parser = argparse.ArgumentParser(description="tlsmate")
 

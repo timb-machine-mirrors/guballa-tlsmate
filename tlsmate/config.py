@@ -16,6 +16,37 @@ def _str_to_strlist(string):
 
 
 class Configuration(object):
+    """Class representing the configuration for tlsmate.
+
+    The configuration is taken from the following sources (the list is ordered
+    according to the priority, first item has the least priority):
+
+    * The hard coded default values
+    * The file .tlsmate.ini in the user's home directory
+    * Environment variables
+    * From the ini file as specified on the command line interface
+    * From the command line interface parameters
+
+    Example:
+        Specifying the logging option:
+
+        Via command line:
+            tlsmate --logging=debug ...
+
+        Via Enviroment variable:
+            export TLSMATE_LOGGING=debug
+
+        Via ini-file:
+
+        [tlsmate]
+        logging = debug
+
+    The configuration options can be retrieved by using the object like a dict:
+
+    >>> config = Configuration()
+    >>> config["server"]
+    'localhost'
+    """
 
     _format_option = {"progress": _str_to_bool, "ca_certs": _str_to_strlist}
 
@@ -56,5 +87,14 @@ class Configuration(object):
         return self.config.get(key)
 
     def merge_config(self, key, val):
+        """Add a configuration option.
+
+        If the given configuration is already defined, it will be overwritten by
+        the given input.
+
+        Arguments:
+            key (str): the name of the option
+            val: the value of the option
+        """
         if val is not None:
             self.config[key] = val

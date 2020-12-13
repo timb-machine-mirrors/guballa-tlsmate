@@ -919,9 +919,9 @@ class SPBool(enum.Enum):
     """Enum representing a pseudo-boolean value in the server profile.
 
     In addition to True and false the two values are defined:
-        * C_UNDETERMINED: Used when tlsmate has not even tried to determine the
+        - C_UNDETERMINED: Used when tlsmate has not even tried to determine the
             value or if the value could not determined at all (for whatever reason).
-        * C_NA: Used as an indication this the boolean value is not applicable, e.g.
+        - C_NA: Used as an indication this the boolean value is not applicable, e.g.
             when the server does not support any CBC-cipher suite, support for the
             extension ENCRYPT_THEN_MAC is not applicable.
     """

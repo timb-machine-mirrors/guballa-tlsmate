@@ -174,7 +174,14 @@ setup(
     # Similar to `install_requires` above, these must be valid existing
     # projects.
     extras_require={  # Optional
-        'dev': ['black', 'flake8', 'sphinx', 'sphinx-argparse', 'tox'],
+        'dev': [
+            'black',
+            'flake8',
+            'sphinx',
+            'sphinx-argparse',
+            'tox',
+            'sphinx_rtd_theme',
+        ],
     #    'test': ['coverage'],
     },
 

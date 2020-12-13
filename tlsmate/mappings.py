@@ -1701,7 +1701,6 @@ supported_cipher_suites = {
     ),
 }
 
-
 # map cipher to various parameters relevant for the record layer
 
 supported_ciphers = {
