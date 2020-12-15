@@ -220,14 +220,19 @@ def unpack_bytes(data, offset, length):
     return data[offset : offset + length], offset + length
 
 
-def dump(data):
+def dump(data, separator=" ", with_length=True):
     """Provide a human readable representation of a bytes object.
 
     Arguments:
         data (bytes): The data to represent
+        separator (str): the separator character(s) between the bytes. Defaults to " ".
+        with_length (bool): indication, if the length shall be appended in brackets.
 
     Returns:
         str: A human readable string, with a blank between each byte, and the
         length of the string appended in brackets.
     """
-    return " ".join(f"{y:02x}" for y in data) + f" ({len(data)})"
+    ret = separator.join(f"{y:02x}" for y in data)
+    if with_length:
+        ret = ret + f" ({len(data)})"
+    return ret

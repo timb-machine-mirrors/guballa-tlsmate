@@ -851,11 +851,14 @@ class TlsConnection(object):
         if self.version is tls.Version.TLS13:
             self.certificate_digest = self.kdf.finalize_msg_digest(intermediate=True)
 
-        if msg.certificates.digest not in self._cert_chain_digests:
-            self._cert_chain_digests.append(msg.certificates.digest)
+        if msg.chain.digest not in self._cert_chain_digests:
+            self._cert_chain_digests.append(msg.chain.digest)
             timestamp = datetime.datetime.now()
-            msg.certificates.validate(
-                timestamp, self.client.config["server"], self.client.trust_store
+            msg.chain.validate(
+                timestamp,
+                self.client.config["server"],
+                self.client.trust_store,
+                self.client.alert_on_invalid_cert,
             )
 
     def _on_certificate_verify_received(self, msg):
@@ -879,7 +882,7 @@ class TlsConnection(object):
         if method is not None:
             method(self, msg)
 
-    _auto_responder = {}
+    _auto_responder_map = {}
 
     def _auto_responder(self, msg):
         """Automatically process messages which are not passed back to the test case.
@@ -887,7 +890,7 @@ class TlsConnection(object):
         Currently not used, but can be used e.g. for automatically respond to a
         HeartBeatRequest.
         """
-        method = self._auto_responder.get(msg.msg_type)
+        method = self._auto_responder_map.get(msg.msg_type)
         if method is not None:
             method(self, msg)
 

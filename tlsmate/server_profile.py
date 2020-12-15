@@ -6,7 +6,7 @@ from collections import OrderedDict
 from tlsmate import constants as tls
 from tlsmate import structures as structs
 from tlsmate import utils
-from cryptography.hazmat.primitives.serialization import Encoding
+from tlsmate import pdu
 
 
 class YamlBlockStyle(str):
@@ -263,6 +263,43 @@ class SPVersions(ProfileDict):
         self.add("signature_algorithms", None)
 
 
+class SPCertificate(ProfileDict):
+    """Class to represent a certificate
+
+    Arguments:
+        cert (:obj:`tlsmate.cert.Certificate): the certificate object
+    """
+
+    def __init__(self, cert):
+        super().__init__()
+        self.add("pem", ProfileBasic(YamlBlockStyle(cert.pem.decode())))
+        self.add("subject", ProfileBasic(cert.subject_str))
+        self.add("issuer", ProfileBasic(cert.parsed.issuer.rfc4514_string()))
+        self.add("version", ProfileBasicEnum(cert.parsed.version))
+        self.add("serial_number_int", ProfileBasic(cert.parsed.serial_number))
+        ser_bytes = utils.int_to_bytes(cert.parsed.serial_number)
+        self.add(
+            "serial_number_bytes",
+            ProfileBasic(pdu.dump(ser_bytes, separator=":", with_length=False)),
+        )
+        # self.add(
+        #     "signature",
+        #     ProfileBasic(
+        #         pdu.dump(cert.parsed.signature, separator=":", with_length=False)
+        #     ),
+        # )
+
+        self.add(
+            "not_valid_before", ProfileBasic(cert.parsed.not_valid_before.isoformat())
+        )
+        self.add(
+            "not_valid_after", ProfileBasic(cert.parsed.not_valid_after.isoformat())
+        )
+
+        self_signed = tls.SPBool.C_TRUE if cert.self_signed else tls.SPBool.C_FALSE
+        self.add("self_signed", ProfileBasicEnum(self_signed))
+
+
 class SPCertificateChain(ProfileDict):
     """Class to represent a certificate chain in the server profile.
     """
@@ -270,11 +307,21 @@ class SPCertificateChain(ProfileDict):
     def __init__(self, chain, idx):
         super().__init__()
         self.add("id", ProfileBasic(idx))
-        cert_list = ProfileList(key_func=lambda x: x.get())
+        vali = tls.SPBool.C_TRUE if chain.successful_validation else tls.SPBool.C_FALSE
+        self.add("successful_validation", ProfileBasicEnum(vali))
+        cert_list = ProfileList(key_func=lambda x: x.get("subject"))
         self.add("cert_chain", cert_list)
-        for cert in chain:
-            string = cert.public_bytes(Encoding.PEM).decode()
-            cert_list.append(ProfileBasic(YamlBlockStyle(string)))
+        for cert in chain.certificates:
+            cert_list.append(SPCertificate(cert))
+        if chain.issues:
+            issue_list = ProfileList(key_func=lambda x: x.get())
+            self.add("issues", issue_list)
+            for issue in chain.issues:
+                issue_list.append(ProfileBasic(issue))
+        trans = tls.SPBool.C_TRUE if chain.root_cert_transmitted else tls.SPBool.C_FALSE
+        self.add("root_certificate_transmitted", ProfileBasicEnum(trans))
+        if chain.root_cert is not None:
+            self.add("root_certificate", SPCertificate(chain.root_cert))
 
 
 class SPCertificateChainList(ProfileList):
@@ -295,11 +342,10 @@ class SPCertificateChainList(ProfileList):
             int: the index of the chain, which may be created newly, or it might have
                 been present already.
         """
-        hash_val = hash(tuple(chain))
-        if hash_val in self._hash:
-            return self._hash[hash_val]
+        if chain.digest in self._hash:
+            return self._hash[chain.digest]
         idx = len(self._hash) + 1
-        self._hash[hash_val] = idx
+        self._hash[chain.digest] = idx
         self.append(SPCertificateChain(chain, idx))
         return idx
 

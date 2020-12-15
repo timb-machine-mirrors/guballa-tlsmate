@@ -177,6 +177,18 @@ def filter_cipher_suites(
     return filtered
 
 
+def int_to_bytes(number):
+    """Convert an integer to a byte string
+
+    Arguments:
+        number (int): the integer to convert
+
+    Returns:
+        bytes: just as many bytes as needed to represent the integer as an octet string
+    """
+    return number.to_bytes((number.bit_length() + 7) // 8, "big")
+
+
 def set_logging(level):
     """Sets the logging level
 

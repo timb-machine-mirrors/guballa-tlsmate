@@ -66,6 +66,11 @@ class Client(object):
             psk_key_exchange_modes.
         early_data (bytes): The application data to be sent with 0-RTT. TLS1.3 only.
             If None, then no early data will be sent.
+        alert_on_invalid_cert (bool): Controls the behavior in case a certificate or
+            the complete certificate chain cannot successfully be validated.
+            If True, the connected will be closed with a fatal alert. If False,
+            the connection continues. The latter is useful for scanning a server, as
+            the scan would be aborted otherwise.
     """
 
     def __init__(self, connection_factory, config):
@@ -120,6 +125,7 @@ class Client(object):
         self.early_data = None
 
         self.support_encrypt_then_mac = False
+        self.alert_on_invalid_cert = True
 
     def create_connection(self):
         """Create a new connection object

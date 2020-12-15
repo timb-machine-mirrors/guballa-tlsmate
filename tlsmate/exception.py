@@ -64,19 +64,19 @@ class CertValidationError(Exception):
     """Exception for certificate validation errors
 
     Attributes:
-        message (str): A human readable string describing the cause.
+        issue (str): A human readable string describing the cause.
     """
 
-    def __init__(self, message):
-        self.message = message
+    def __init__(self, issue):
+        self.issue = issue
 
 
 class CertChainValidationError(Exception):
     """Exception for certificate chain validation errors
 
     Attributes:
-        message (str): A human readable string describing the cause.
+        issue (str): A human readable string describing the cause.
     """
 
-    def __init__(self, message):
-        self.message = message
+    def __init__(self, issue):
+        self.issue = issue

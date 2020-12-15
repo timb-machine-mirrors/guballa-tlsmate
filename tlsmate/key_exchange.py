@@ -44,7 +44,7 @@ def verify_signed_params(params, msgs, default_scheme):
     else:
         sig_scheme = params.sig_scheme
 
-    cert = msgs.server_certificate.certificates.get(0)
+    cert = msgs.server_certificate.chain.certificates[0]
     cert.validate_signature(sig_scheme, data, params.signature)
 
 
@@ -66,7 +66,7 @@ def verify_certificate_verify(cert_ver, msgs, msg_digest):
         (b" " * 64) + "TLS 1.3, server CertificateVerify".encode() + b"\0" + msg_digest
     )
 
-    cert = msgs.server_certificate.certificates.get(0)
+    cert = msgs.server_certificate.chain.certificates[0]
     cert.validate_signature(cert_ver.signature_scheme, data, cert_ver.signature)
 
 
@@ -203,7 +203,7 @@ class RsaKeyExchange(KeyExchange):
         """
         if self._pms is None:
             self._create_pms()
-        cert = self._conn.msg.server_certificate.certificates.get(0)
+        cert = self._conn.msg.server_certificate.chain.certificates[0]
         rem_pub_key = cert.parsed.public_key()
         ciphered_key = rem_pub_key.encrypt(bytes(self._pms), padding.PKCS1v15())
         # injecting the encrypted key to the recorder is required, as the
@@ -370,7 +370,7 @@ class EcdhKeyExchange(KeyExchange):
 
 class EcdhKeyExchangeCertificate(object):
     def __init__(self, conn, recorder):
-        cert = conn.msg.server_certificate.certificates.get(0)
+        cert = conn.msg.server_certificate.chain.certificates[0]
         rem_pub_key = cert.parsed.public_key()
         seed = recorder.inject(ec_seed=int.from_bytes(os.urandom(10), "big"))
         priv_key = ec.derive_private_key(seed, rem_pub_key.curve)

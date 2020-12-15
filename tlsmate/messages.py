@@ -346,7 +346,7 @@ class Certificate(HandshakeMessage):
 
     def __init__(self):
         self.request_context = None
-        self.certificates = cert.CertChain()
+        self.chain = cert.CertChain()
 
     def _serialize_msg_body(self, conn):
         # TODO
@@ -363,7 +363,7 @@ class Certificate(HandshakeMessage):
         while offset < len(fragment):
             cert_len, offset = pdu.unpack_uint24(fragment, offset)
             cert, offset = pdu.unpack_bytes(fragment, offset, cert_len)
-            self.certificates.append(cert)
+            self.chain.append_bin_cert(cert)
             # TODO: save the extensions
             if conn.version is tls.Version.TLS13:
                 ext_len, offset = pdu.unpack_uint16(fragment, offset)

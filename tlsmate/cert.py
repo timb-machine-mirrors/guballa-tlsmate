@@ -9,8 +9,10 @@ from cryptography.x509.oid import NameOID, ExtensionOID
 from cryptography.x509.oid import SignatureAlgorithmOID as sigalg_oid
 from cryptography.hazmat.primitives.asymmetric import padding, ec
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.serialization import Encoding
+from cryptography.exceptions import InvalidSignature
 from tlsmate import constants as tls
-from tlsmate.exception import CertValidationError
+from tlsmate.exception import CertValidationError, CertChainValidationError
 
 
 def string_prep(label):
@@ -207,23 +209,23 @@ _pss_sig_alg = {
 
 
 def _verify_rsa_pkcs(cert, signature, data, hash_algo):
-    cert.public_key().verify(signature, data, padding.PKCS1v15(), hash_algo())
+    cert.parsed.public_key().verify(signature, data, padding.PKCS1v15(), hash_algo())
 
 
 def _verify_dsa(cert, signature, data, hash_algo):
-    cert.public_key().verify(signature, data, hash_algo())
+    cert.parsed.public_key().verify(signature, data, hash_algo())
 
 
 def _verify_ecdsa(cert, signature, data, hash_algo):
-    cert.public_key().verify(signature, data, ec.ECDSA(hash_algo()))
+    cert.parsed.public_key().verify(signature, data, ec.ECDSA(hash_algo()))
 
 
 def _verify_xcurve(cert, signature, data, hash_algo):
-    cert.public_key().verify(signature, data)
+    cert.parsed.public_key().verify(signature, data)
 
 
 def _verify_rsae_pss(cert, signature, data, hash_algo):
-    cert.public_key().verify(
+    cert.parsed.public_key().verify(
         signature,
         data,
         padding.PSS(mgf=padding.MGF1(hash_algo()), salt_length=hash_algo.digest_size),
@@ -261,7 +263,7 @@ def validate_signature(cert, sig_scheme, data, signature):
     """Validate a signature with a public key from a given certificate.
 
     Arguments:
-        cert (:obj:`cryptography.x509.Certificate`): The certificate to use
+        cert (:obj:`Certificate`): The certificate to use
         sig_scheme (:class:`tlsmate.constansts.SignatureScheme`): The signature
             scheme to use
         data (bytes): the bytes for which the signature is to be validated
@@ -323,7 +325,7 @@ class TrustStore(object):
             for pem_item in pem_list:
                 if not isinstance(pem_item, pem.Certificate):
                     continue
-                yield x509.load_pem_x509_certificate(pem_item.as_bytes())
+                yield Certificate(pem=pem_item.as_bytes())
 
     def cert_in_trust_store(self, cert):
         """Checks if a given certificate is present in the trust store.
@@ -358,7 +360,7 @@ class TrustStore(object):
         for cert in self:
             # TODO: Optimize this, as the issuer_name is string_prepped with
             # always the same result in the loop
-            if equal_names(cert.subject, issuer_name):
+            if equal_names(cert.parsed.subject, issuer_name):
                 self._cert_cache.append(cert)
                 return cert
 
@@ -372,35 +374,62 @@ class Certificate(object):
         bin_cert (bytes): the certificate in DER-format (raw bytes)
     """
 
-    def __init__(self, bin_cert):
-        self._bytes = bin_cert
+    def __init__(self, der=None, pem=None):
+
+        if der is None and pem is None:
+            raise ValueError("der or pem must be given")
+        if der is not None and pem is not None:
+            raise ValueError("der and pem are exclusive")
+
+        self._bytes = None
+        self._pem = None
         self._parsed = None
-        self._subject = None
+        self._subject_str = None
+        self._self_signed = None
+
+        if der is not None:
+            self._bytes = der
+        elif pem is not None:
+            if isinstance(pem, str):
+                pem = pem.encode()
+            self._pem = pem
+            self._parsed = x509.load_pem_x509_certificate(pem)
 
     def __str__(self):
-        return self._subject
+        return self.subject_str
+
+    def __eq__(self, other):
+        return self.bytes == other.bytes
 
     @property
-    def subject(self):
+    def subject_str(self):
         """str: The subject name formatted according to RFC 4514.
         """
-
-        if self._subject is None:
-            self._parse_cert()
-        return self._subject
+        if self._subject_str is None:
+            self._subject_str = self._parsed.subject.rfc4514_string()
+        return self._subject_str
 
     @property
     def parsed(self):
         """:obj:`cryptography.x509.Certificate`: the x509 certificate object
         """
-
         if self._parsed is None:
-            self._parse_cert()
+            self._parsed = x509.load_der_x509_certificate(self._bytes)
         return self._parsed
 
-    def _parse_cert(self):
-        self._parsed = x509.load_der_x509_certificate(self._bytes)
-        self._subject = self._parsed.subject.rfc4514_string()
+    @property
+    def bytes(self):
+        """bytes: the certificate in raw format"""
+        if self._bytes is None:
+            self._bytes = self.parsed.public_bytes(Encoding.DER)
+        return self._bytes
+
+    @property
+    def pem(self):
+        """bytes: the certificate in pem format (it is a binary string!)"""
+        if self._pem is None:
+            self._pem = self.parsed.public_bytes(Encoding.PEM)
+        return self._pem
 
     def _common_name(self, name):
         cns = name.get_attributes_for_oid(NameOID.COMMON_NAME)
@@ -408,13 +437,13 @@ class Certificate(object):
             raise CertValidationError(f'no common name for "{self}"')
         return cns[0].value
 
-    def is_self_signed(self):
+    @property
+    def self_signed(self):
         """Provide an indication if the certificate is self-signed.
-
-        Returns:
-            bool: True, if the certificate is self-signed
         """
-        return equal_names(self.parsed.subject, self.parsed.issuer)
+        if self._self_signed is None:
+            self._self_signed = equal_names(self.parsed.subject, self.parsed.issuer)
+        return self._self_signed
 
     def validate_period(self, datetime):
         """Validate the period of the certificate agains a given timestamp.
@@ -475,7 +504,7 @@ class Certificate(object):
                 validate.
 
         """
-        validate_signature(self.parsed, sig_scheme, data, signature)
+        validate_signature(self, sig_scheme, data, signature)
 
 
 class CertChain(object):
@@ -485,22 +514,23 @@ class CertChain(object):
     """
 
     def __init__(self):
-        self._chain = []
+        self.certificates = []
         self._digest = hashes.Hash(hashes.SHA256())
         self._digest_value = None
+        self._raise_on_failure = True
+        self.issues = []
+        self.successful_validation = False
+        self.root_cert = None
+        self.root_cert_transmitted = False
 
-    def append(self, bin_cert):
+    def append_bin_cert(self, bin_cert):
         """Append the chain by a certificate given in raw format.
 
         Arguments:
             bin_cert (bytes): the certificate to append in raw format
         """
-        self._chain.append(Certificate(bin_cert))
+        self.certificates.append(Certificate(der=bin_cert))
         self._digest.update(bin_cert)
-
-    def __iter__(self):
-        for cert in self._chain:
-            yield cert.parsed
 
     @property
     def digest(self):
@@ -510,18 +540,35 @@ class CertChain(object):
             self._digest_value = self._digest.finalize()
         return self._digest_value
 
-    def get(self, idx):
-        """Gets a specific certificate from the chain
+    def validate_cert_domain_name(self, cert, domain_name):
+        """Validate the certificate against the given domain name.
 
         Arguments:
-            idx (int): the index of the certificate to return
-
-        Returns:
-            :obj:`Certificate`: the certificate object
+            cert (:obj:`Certificate`): the certificate to validate
+            domain_name (str): the domain name to validate the host certificate against
         """
-        return self._chain[idx]
+        try:
+            cert.validate_subject(domain_name)
+        except CertValidationError as exc:
+            self.issues.append(exc.issue)
+            if self._raise_on_failure:
+                raise
 
-    def validate(self, timestamp, domain_name, trust_store):
+    def validate_cert(self, cert, timestamp):
+        """Basic validation which does not involve other certificates
+
+        Arguments:
+            cert (:obj:`Certificate`): the certificate to validate
+            timestamp (datetime.datetime): the timestamp to check against
+        """
+        try:
+            cert.validate_period(timestamp)
+        except CertValidationError as exc:
+            self.issues.append(exc.issue)
+            if self._raise_on_failure:
+                raise
+
+    def validate(self, timestamp, domain_name, trust_store, raise_on_failure):
         """Only the minimal checks are supported.
 
         If a discrepancy is found, an exception is raised.
@@ -531,53 +578,100 @@ class CertChain(object):
             domain_name (str): the domain name to validate the host certificate against
             trust_store (:obj:`TrustStore`): the trust store to validate the chain
                 against
+            raise_on_failure (bool): An indication if an exception shall be raised or
+                if the validation shall continue silently.
 
         Raises:
-            CertValidationError: in case the certificate chain cannot be validated.
+            CertValidationError: in case a certificate within the chain cannot be
+                validated and raise_on_failure is True.
+            CertChainValidationError: in case the chain cannot be validated and
+                raise_on_failure is True.
         """
+        self._raise_on_failure = raise_on_failure
         root_cert = None
         prev_cert = None
         sig_scheme = None
-        last_idx = len(self._chain) - 1
-        for idx, cert in enumerate(self._chain):
+        last_idx = len(self.certificates) - 1
+        for idx, cert in enumerate(self.certificates):
 
             if idx == 0:
                 # Server certificate
-                cert.validate_subject(domain_name)
-            cert.validate_period(timestamp)
+                self.validate_cert_domain_name(cert, domain_name)
 
-            if cert.is_self_signed():
+            self.validate_cert(cert, timestamp)
+
+            if cert.self_signed:
                 root_cert = cert
                 if idx != last_idx:
-                    raise CertValidationError(
-                        f'root certificate "{cert}" not last one in chain'
-                    )
+                    issue = f'root certificate "{cert}" not the last one in the chain'
+                    self.issues.append(issue)
+                    if raise_on_failure:
+                        raise CertChainValidationError(issue)
             else:
                 if prev_cert is not None:
-                    if not equal_names(prev_cert.issuer, cert.parsed.subject):
-                        raise CertValidationError(
-                            f'subject of "{cert}" not equal to issuer of {prev_cert}'
+                    if not equal_names(prev_cert.parsed.issuer, cert.parsed.subject):
+                        issue = (
+                            f'certificate "{cert}" is not issuer of certificate '
+                            f'"{prev_cert}"'
                         )
+                        self.issues.append(issue)
+                        if raise_on_failure:
+                            raise CertChainValidationError(issue)
 
-                    cert.validate_signature(
-                        sig_scheme, prev_cert.tbs_certificate_bytes, prev_cert.signature
-                    )
-            prev_cert = cert.parsed
+                    try:
+                        cert.validate_signature(
+                            sig_scheme,
+                            prev_cert.parsed.tbs_certificate_bytes,
+                            prev_cert.parsed.signature,
+                        )
+                    except InvalidSignature:
+                        issue = (
+                            f'signature of certificate "{prev_cert}" cannot be '
+                            f'validated by issuer certificate "{cert}"'
+                        )
+                        self.issues.append(issue)
+                        if raise_on_failure:
+                            raise CertChainValidationError(issue)
+
+            prev_cert = cert
             sig_scheme = map_x509_sig_scheme(
-                prev_cert.signature_hash_algorithm, prev_cert.signature_algorithm_oid
+                prev_cert.parsed.signature_hash_algorithm,
+                prev_cert.parsed.signature_algorithm_oid,
             )
 
+        self.root_cert_transmitted = root_cert is not None
         if root_cert is None:
-            cert = trust_store.issuer_in_trust_store(prev_cert.issuer)
+            cert = trust_store.issuer_in_trust_store(prev_cert.parsed.issuer)
             if cert is None:
-                raise CertValidationError(
-                    f'anchor for certificate "{prev_cert}" not found in trust store'
+                issue = (
+                    f'issuer certificate "{prev_cert.parsed.issuer.rfc4514_string()}" '
+                    f'for certificate "{prev_cert}" not found in trust store'
                 )
-            validate_signature(
-                cert, sig_scheme, prev_cert.tbs_certificate_bytes, prev_cert.signature
-            )
+                self.issues.append(issue)
+                if raise_on_failure:
+                    raise CertChainValidationError(issue)
+            else:
+                self.root_cert = cert
+                self.validate_cert(self.root_cert, timestamp)
+                try:
+                    validate_signature(
+                        cert,
+                        sig_scheme,
+                        prev_cert.parsed.tbs_certificate_bytes,
+                        prev_cert.parsed.signature,
+                    )
+                except InvalidSignature:
+                    issue = (
+                        f'signature of certificate "{prev_cert}" cannot be '
+                        f'validated by issuer certificate "{cert}"'
+                    )
+                    self.issues.append(issue)
+                    if raise_on_failure:
+                        raise CertChainValidationError(issue)
         else:
             if not trust_store.cert_in_trust_store(prev_cert):
-                raise CertValidationError(
-                    f'root certificate "{root_cert}" not found in trust store'
-                )
+                issue = f'root certificate "{root_cert}" not found in trust store'
+                self.issues.append(issue)
+                if raise_on_failure:
+                    raise CertChainValidationError(issue)
+        self.successful_validation = True

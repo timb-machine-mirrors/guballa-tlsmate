@@ -31,9 +31,7 @@ class ScanCipherSuites(TlsSuite):
                     return None
             certificate = conn.wait(msg.Certificate, optional=True)
             if certificate is not None:
-                self.server_profile.get("cert_chain").append_unique(
-                    certificate.certificates
-                )
+                self.server_profile.get("cert_chain").append_unique(certificate.chain)
             return server_hello.cipher_suite
         return None
 
@@ -131,6 +129,7 @@ class ScanCipherSuites(TlsSuite):
 
     def run(self):
 
+        self.client.alert_on_invalid_cert = False
         self.client.versions = [tls.Version.TLS12]
         self.client.supported_groups = [
             tls.SupportedGroups.X25519,

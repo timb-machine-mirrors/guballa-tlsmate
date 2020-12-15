@@ -23,7 +23,7 @@ class _BackendTls12(_Backend):
         with client.create_connection() as conn:
             conn.send(msg.ClientHello)
             conn.wait(msg.ServerHello)
-            cert_chain = conn.wait(msg.Certificate).certificates
+            cert_chain = conn.wait(msg.Certificate).chain
             msg_ske = conn.wait(msg.ServerKeyExchange)
             if msg_ske.ec is not None:
                 sig_alg = msg_ske.ec.sig_scheme
@@ -42,7 +42,7 @@ class _BackendTls13(_Backend):
             conn.wait(msg.ServerHello)
             conn.wait(msg.ChangeCipherSpec, optional=True)
             conn.wait(msg.EncryptedExtensions)
-            cert_chain = conn.wait(msg.Certificate).certificates
+            cert_chain = conn.wait(msg.Certificate).chain
             sig_alg = conn.wait(msg.CertificateVerify).signature_scheme
         return sig_alg, cert_chain
 
