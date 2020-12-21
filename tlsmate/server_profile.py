@@ -2,11 +2,16 @@
 """Module containing the server profile class
 """
 import abc
+import logging
 from collections import OrderedDict
 from tlsmate import constants as tls
 from tlsmate import structures as structs
 from tlsmate import utils
 from tlsmate import pdu
+from tlsmate import mappings
+from cryptography.hazmat.primitives.asymmetric import rsa, ed25519, ed448, dsa, ec
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from cryptography import x509
 
 
 class YamlBlockStyle(str):
@@ -32,7 +37,7 @@ class ProfileBasic(ProfileObject):
     """
 
     def __init__(self, value):
-        self._value = value
+        self.set(value)
 
     def serialize(self):
         """Serializes the object.
@@ -54,6 +59,32 @@ class ProfileBasic(ProfileObject):
             value: The new value of the object
         """
         self._value = value
+
+
+class ProfileBytes(ProfileBasic):
+    """Profile class for bytes object
+    """
+
+    def serialize(self):
+        """Serializes the object.
+
+        Returns:
+            str: the value of the object
+        """
+        return pdu.string(self._value)
+
+
+class ProfileDateTime(ProfileBasic):
+    """Profile class for a datetime object
+    """
+
+    def serialize(self):
+        """Serializes the object.
+
+        Returns:
+            str: the value of the object
+        """
+        return self._value.isoformat()
 
 
 class ProfileBasicEnum(ProfileBasic):
@@ -217,6 +248,20 @@ class ProfileList(ProfileObject):
         return list(self._dict.keys())
 
 
+class ProfileSimpleList(ProfileObject):
+    """Class for a list.
+    """
+
+    def __init__(self):
+        self._list = []
+
+    def append(self, item):
+        self._list.append(item)
+
+    def serialize(self):
+        return [item.serialize() for item in self._list]
+
+
 class SPSignatureAlgorithms(ProfileDict):
     """Class to represent the SignatureAlgorithms in the server profile.
     """
@@ -263,6 +308,390 @@ class SPVersions(ProfileDict):
         self.add("signature_algorithms", None)
 
 
+class SPCertificateKey(ProfileDict):
+    """Class for the certificate's public key.
+
+    Arguments:
+        public_key (type): One of RSAPublicKey, DSAPublicKey, EllipticCurvePublicKey,
+            Ed25519PublicKey or Ed448PublicKey
+    """
+
+    def __init__(self, public_key):
+        super().__init__()
+        if isinstance(public_key, rsa.RSAPublicKey):
+            self._add_rsa_public_key(public_key)
+            algo = tls.SignatureAlgorithm.RSA
+        elif isinstance(public_key, dsa.DSAPublicKey):
+            self._add_dsa_public_key(public_key)
+            algo = tls.SignatureAlgorithm.DSA
+        elif isinstance(public_key, ec.EllipticCurvePublicKey):
+            self._add_ec_public_key(public_key)
+            algo = tls.SignatureAlgorithm.ECDSA
+        elif isinstance(public_key, ed25519.Ed25519PublicKey):
+            self._add_ed_public_key(public_key)
+            algo = tls.SignatureAlgorithm.ED25519
+        elif isinstance(public_key, ed448.Ed448PublicKey):
+            self._add_ed_public_key(public_key)
+            algo = tls.SignatureAlgorithm.ED448
+        else:
+            raise ValueError("public key not supported")
+        self.add("key_type", ProfileBasicEnum(algo))
+
+    def _add_rsa_public_key(self, public_key):
+        self.add("key_size", ProfileBasic(public_key.key_size))
+        pub_numbers = public_key.public_numbers()
+        self.add("key_exponent", ProfileBasic(pub_numbers.e))
+        modulus = pub_numbers.n.to_bytes(int(public_key.key_size / 8), "big")
+        self.add("key", ProfileBytes(modulus))
+
+    def _add_dsa_public_key(self, public_key):
+        self.add("key_size", ProfileBasic(public_key.key_size))
+        pub_numbers = public_key.public_numbers()
+        modulus = pub_numbers.y.to_bytes(int(public_key.key_size / 8), "big")
+        self.add("key", ProfileBytes(modulus))
+
+        p_bytes = utils.int_to_bytes(pub_numbers.parameter_numbers.p)
+        self.add("key_p", ProfileBytes(p_bytes))
+
+        q_bytes = utils.int_to_bytes(pub_numbers.parameter_numbers.q)
+        self.add("key_q", ProfileBytes(q_bytes))
+
+        g_bytes = utils.int_to_bytes(pub_numbers.parameter_numbers.g)
+        self.add("key_g", ProfileBytes(g_bytes))
+
+    def _add_ec_public_key(self, public_key):
+        self.add("key_size", ProfileBasic(public_key.key_size))
+        group = mappings.curve_to_group.get(public_key.curve.name)
+        if group is None:
+            raise ValueError("curve {public_key.curve.name} unknown")
+        self.add("curve", ProfileBasicEnum(group))
+
+        key = public_key.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
+        self.add("key", ProfileBytes(key))
+
+    def _add_ed_public_key(self, public_key):
+        key = public_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
+        self.add("key", ProfileBytes(key))
+
+    def _add_public_key(self, public_key):
+        if isinstance(public_key, rsa.RSAPublicKey):
+            self._add_rsa_public_key(public_key)
+            algo = tls.SignatureAlgorithm.RSA
+        elif isinstance(public_key, dsa.DSAPublicKey):
+            self._add_dsa_public_key(public_key)
+            algo = tls.SignatureAlgorithm.DSA
+        elif isinstance(public_key, ec.EllipticCurvePublicKey):
+            self._add_ec_public_key(public_key)
+            algo = tls.SignatureAlgorithm.ECDSA
+        elif isinstance(public_key, ed25519.Ed25519PublicKey):
+            self._add_ed_public_key(public_key)
+            algo = tls.SignatureAlgorithm.ED25519
+        elif isinstance(public_key, ed448.Ed448PublicKey):
+            self._add_ed_public_key(public_key)
+            algo = tls.SignatureAlgorithm.ED448
+        else:
+            raise ValueError("public key not supported")
+        self.add("key_type", ProfileBasicEnum(algo))
+
+
+class SPCertNoticeReference(ProfileDict):
+    """Notice Reference
+    """
+
+    def __init__(self, notice):
+        super().__init__()
+        self.add("organization", ProfileBasic(notice.organization))
+        numbers = ProfileList(key_func=lambda x: x.get())
+        self.add("notice_numbers", numbers)
+        for number in notice.notice_numbers:
+            numbers.append(ProfileBasic(number))
+
+
+class SPCertUserNotice(ProfileDict):
+    """User Notice
+    """
+
+    def __init__(self, user_notice):
+        super().__init__()
+        if isinstance(user_notice, x509.UserNotice):
+            self.add("notice_reference", SPCertNoticeReference(user_notice))
+        else:
+            self.add("text", ProfileBasic(user_notice))
+
+
+class SPCertPolicyInfo(ProfileDict):
+    """Policy information
+    """
+
+    def __init__(self, policy):
+        super().__init__()
+        self.add("policy_name", ProfileBasic(policy.policy_identifier._name))
+        self.add("policy_oid", ProfileBasic(policy.policy_identifier.dotted_string))
+        if policy.policy_qualifiers is not None:
+            qualifiers = ProfileSimpleList()
+            self.add("policy_qualifiers", qualifiers)
+
+            for user_notice in policy.policy_qualifiers:
+                qualifiers.append(SPCertUserNotice(user_notice))
+
+
+class SPCertAccessDescription(ProfileDict):
+    """Access Description
+    """
+
+    def __init__(self, acc_descr):
+        super().__init__()
+        self.add("access_method", ProfileBasic(acc_descr.access_method._name))
+        self.add("access_location", ProfileBasic(acc_descr.access_location.value))
+
+
+class SPCertSignedTimestamp(ProfileDict):
+    """Signed Certificate Timestamp
+    """
+
+    def __init__(self, signed_timestamp):
+        super().__init__()
+        self.add("version", ProfileBasicEnum(signed_timestamp.version))
+        self.add("log_id", ProfileBytes(signed_timestamp.log_id))
+        self.add("timestamp", ProfileDateTime(signed_timestamp.timestamp))
+        self.add("entry_type", ProfileBasicEnum(signed_timestamp.entry_type))
+
+
+class SPCertGeneralName(ProfileDict):
+    """General Name
+    """
+
+    def __init__(self, name):
+        super().__init__()
+        if isinstance(name, x509.DirectoryName):
+            self.add("value", ProfileBasic(name.value.rfc4514_string()))
+        elif isinstance(name, x509.RegisteredID):
+            self.add("oid", ProfileBasic(name.value.dotted_string))
+            if name.value._name is not None:
+                self.add("name", ProfileBasic(name.value._name))
+        elif isinstance(name, x509.OtherName):
+            self.add("bytes", ProfileBytes(name.value))
+            self.add("oid", ProfileBasic(name.type_id.dotted_string))
+            if name.type_id._name is not None:
+                self.add("name", ProfileBasic(name.name.type_id._name._name))
+        else:
+            self.add("value", ProfileBasic(name.value))
+
+class SPCertExtension(ProfileDict):
+    """Certificate extension
+    """
+
+    def __init__(self, ext):
+        super().__init__()
+        self.add("oid", ProfileBasic(ext.oid.dotted_string))
+        if not isinstance(ext.value, x509.UnrecognizedExtension):
+            self.add("name", ProfileBasic(ext.oid._name))
+        self.add("criticality", ProfileBasicEnum(tls.SPBool(ext.critical)))
+        func = self._map_ext.get(type(ext.value))
+        if func is None:
+            pass
+        else:
+            func(self, ext.value)
+
+    def _ext_key_usage(self, value):
+        key_usage = ProfileList(key_func=lambda x: x.get())
+        self.add("key_usage", key_usage)
+
+        if value.digital_signature:
+            key_usage.append(ProfileBasicEnum(tls.CertKeyUsage.DIGITAL_SIGNATURE))
+        if value.content_commitment:
+            key_usage.append(ProfileBasicEnum(tls.CertKeyUsage.CONTENT_COMMITMENT))
+        if value.key_encipherment:
+            key_usage.append(ProfileBasicEnum(tls.CertKeyUsage.KEY_ENCIPHERMENT))
+        if value.data_encipherment:
+            key_usage.append(ProfileBasicEnum(tls.CertKeyUsage.DATA_ENCIPHERMENT))
+        if value.key_agreement:
+            key_usage.append(ProfileBasicEnum(tls.CertKeyUsage.KEY_AGREEMENT))
+            if value.encipher_only:
+                key_usage.append(ProfileBasicEnum(tls.CertKeyUsage.ENCIPHER_ONLY))
+            if value.decipher_only:
+                key_usage.append(ProfileBasicEnum(tls.CertKeyUsage.DECIPHER_ONLY))
+        if value.key_cert_sign:
+            key_usage.append(ProfileBasicEnum(tls.CertKeyUsage.KEY_CERT_SIGN))
+        if value.crl_sign:
+            key_usage.append(ProfileBasicEnum(tls.CertKeyUsage.CRL_SIGN))
+
+    def _ext_basic_constraints(self, value):
+        self.add("ca", ProfileBasicEnum(tls.SPBool(value.ca)))
+        if value.path_length is not None:
+            self.add("path_length", ProfileBasic(value.path_length))
+
+    def _ext_extended_key_usage(self, value):
+        key_usage = ProfileList(key_func=lambda x: x.get())
+        self.add("extended_key_usage", key_usage)
+
+        for usage in value:
+            key_usage.append(ProfileBasic(usage._name))
+
+    def _ext_ocsp_no_check(self, value):
+        logging.error("Certificate extensions OcspNoCheck not implemented")
+
+    def _ext_tls_features(self, value):
+        features = ProfileList(key_func=lambda x: x.get())
+        self.add("tls_features", features)
+
+        for feature in value:
+            features.append(ProfileBasicEnum(tls.Extension(feature.value)))
+
+    def _ext_name_constraints(self, value):
+        logging.error("Certificate extensions NameContraints not implemented")
+
+    def _ext_authority_key_id(self, value):
+        self.add("key_identifier", ProfileBytes(value.key_identifier))
+        if value.authority_cert_issuer is not None:
+            general_names = ProfileSimpleList()
+            self.add("authority_cert_issuer", general_names)
+
+            for gen_name in value.authority_cert_issuer:
+                general_names.append(SPCertGeneralName(gen_name))
+        if value.authority_cert_serial_number is not None:
+            self.add(
+                "authority_cert_serial_number",
+                ProfileBasic(value.authority_cert_serial_number),
+            )
+
+    def _ext_subjec_key_id(self, value):
+        self.add("digest", ProfileBytes(value.digest))
+
+    def _ext_subj_alt_name(self, value):
+        subj_alt_names = ProfileSimpleList()
+        self.add("subject_alternate_names", subj_alt_names)
+
+        for subj_alt_name in value:
+            subj_alt_names.append(ProfileBasic(subj_alt_name.value))
+
+    def _ext_issuer_alt_name(self, value):
+        logging.error("Certificate extensions IssuerAltName not implemented")
+
+    def _ext_precert_signed_cert_timestamps(self, value):
+        signed_timestamps = ProfileSimpleList()
+        self.add("signed_certificate_timestamps", signed_timestamps)
+
+        for timestamp in value:
+            signed_timestamps.append(SPCertSignedTimestamp(timestamp))
+
+    def _ext_precert_poison(self, value):
+        logging.error("Certificate extensions PreCertPoison not implemented")
+
+    def _ext_signed_cert_timestamps(self, value):
+        logging.error("Certificate extensions SignedCertTimestamp not implemented")
+
+    def _ext_delta_clr_indicator(self, value):
+        logging.error("Certificate extensions DeltaClrIndicator not implemented")
+
+    def _ext_authority_info_access(self, value):
+        access_descriptions = ProfileSimpleList()
+        self.add("authority_info_access", access_descriptions)
+
+        for descr in value:
+            access_descriptions.append(SPCertAccessDescription(descr))
+
+    def _ext_subject_info_access(self, value):
+        logging.error("Certificate extensions SubjectInfoAccess not implemented")
+
+    def _ext_freshest_crl(self, value):
+        logging.error("Certificate extensions FreshestCrl not implemented")
+
+    def _ext_crl_distribution_points(self, value):
+        distr_points = ProfileSimpleList()
+        self.add("distribution_points", distr_points)
+
+        for distr_point in value:
+            point = ProfileDict()
+            distr_points.append(point)
+            if distr_point.full_name is not None:
+                full_names = ProfileSimpleList()
+                point.add("full_name", full_names)
+                for name in distr_point.full_name:
+                    full_names.append(ProfileBasic(name.value))
+
+            if distr_point.relative_name is not None:
+                logging.error(
+                    "Certificate extensions CrlDistrPoints: relative name "
+                    "not implemented"
+                )
+            if distr_point.crl_issuer is not None:
+                logging.error(
+                    "Certificate extensions CrlDistrPoints: crl_issuer not implemented"
+                )
+            if distr_point.reasons is not None:
+                logging.error(
+                    "Certificate extensions CrlDistrPoints: reasons not implemented"
+                )
+
+    def _ext_inhibit_any_policy(self, value):
+        logging.error("Certificate extensions InhibitAnyPolicy not implemented")
+
+    def _ext_policy_constraints(self, value):
+        logging.error("Certificate extensions PolicyConstraints not implemented")
+
+    def _ext_crl_number(self, value):
+        logging.error("Certificate extensions CrlNumber not implemented")
+
+    def _ext_issuing_dist_point(self, value):
+        logging.error("Certificate extensions IssuingDistPoint not implemented")
+
+    def _ext_unrecognized_extension(self, value):
+        self.add("bytes", ProfileBytes(value.value))
+
+    def _ext_cert_issuer(self, value):
+        logging.error("Certificate extensions CertIssuer not implemented")
+
+    def _ext_crl_reason(self, value):
+        logging.error("Certificate extensions CrlReason not implemented")
+
+    def _ext_invalidity_date(self, value):
+        logging.error("Certificate extensions InvalidityDate not implemented")
+
+    def _ext_ocsp_nonce(self, value):
+        logging.error("Certificate extensions OcspNonce not implemented")
+
+    def _ext_cert_policies(self, value):
+        cert_policies = ProfileSimpleList()
+        self.add("certificate_policies", cert_policies)
+
+        for policy in value:
+            cert_policies.append(SPCertPolicyInfo(policy))
+
+    _map_ext = {
+        x509.extensions.KeyUsage: _ext_key_usage,
+        x509.extensions.BasicConstraints: _ext_basic_constraints,
+        x509.extensions.ExtendedKeyUsage: _ext_extended_key_usage,
+        x509.extensions.OCSPNoCheck: _ext_ocsp_no_check,
+        x509.extensions.TLSFeature: _ext_tls_features,
+        x509.extensions.NameConstraints: _ext_name_constraints,
+        x509.extensions.AuthorityKeyIdentifier: _ext_authority_key_id,
+        x509.extensions.SubjectKeyIdentifier: _ext_subjec_key_id,
+        x509.extensions.SubjectAlternativeName: _ext_subj_alt_name,
+        x509.extensions.IssuerAlternativeName: _ext_issuer_alt_name,
+        x509.extensions.PrecertificateSignedCertificateTimestamps: (
+            _ext_precert_signed_cert_timestamps
+        ),
+        x509.extensions.PrecertPoison: _ext_precert_poison,
+        x509.extensions.SignedCertificateTimestamps: _ext_signed_cert_timestamps,
+        x509.extensions.DeltaCRLIndicator: _ext_delta_clr_indicator,
+        x509.extensions.AuthorityInformationAccess: _ext_authority_info_access,
+        x509.extensions.SubjectInformationAccess: _ext_subject_info_access,
+        x509.extensions.FreshestCRL: _ext_freshest_crl,
+        x509.extensions.CRLDistributionPoints: _ext_crl_distribution_points,
+        x509.extensions.InhibitAnyPolicy: _ext_inhibit_any_policy,
+        x509.extensions.PolicyConstraints: _ext_policy_constraints,
+        x509.extensions.CRLNumber: _ext_crl_number,
+        x509.extensions.IssuingDistributionPoint: _ext_issuing_dist_point,
+        x509.extensions.UnrecognizedExtension: _ext_unrecognized_extension,
+        x509.extensions.CertificatePolicies: _ext_cert_policies,
+        x509.extensions.CertificateIssuer: _ext_cert_issuer,
+        x509.extensions.CRLReason: _ext_crl_reason,
+        x509.extensions.InvalidityDate: _ext_invalidity_date,
+        x509.extensions.OCSPNonce: _ext_ocsp_nonce,
+    }
+
+
 class SPCertificate(ProfileDict):
     """Class to represent a certificate
 
@@ -278,26 +707,30 @@ class SPCertificate(ProfileDict):
         self.add("version", ProfileBasicEnum(cert.parsed.version))
         self.add("serial_number_int", ProfileBasic(cert.parsed.serial_number))
         ser_bytes = utils.int_to_bytes(cert.parsed.serial_number)
-        self.add(
-            "serial_number_bytes",
-            ProfileBasic(pdu.dump(ser_bytes, separator=":", with_length=False)),
-        )
-        # self.add(
-        #     "signature",
-        #     ProfileBasic(
-        #         pdu.dump(cert.parsed.signature, separator=":", with_length=False)
-        #     ),
-        # )
+        self.add("serial_number_bytes", ProfileBytes(ser_bytes))
+        self.add("signature", ProfileBytes(cert.parsed.signature))
 
-        self.add(
-            "not_valid_before", ProfileBasic(cert.parsed.not_valid_before.isoformat())
-        )
-        self.add(
-            "not_valid_after", ProfileBasic(cert.parsed.not_valid_after.isoformat())
-        )
+        self.add("not_valid_before", ProfileDateTime(cert.parsed.not_valid_before))
+        self.add("not_valid_after", ProfileDateTime(cert.parsed.not_valid_after))
+        diff = cert.parsed.not_valid_after - cert.parsed.not_valid_before
+        self.add("validity_period_days", ProfileBasic(diff.days))
 
         self_signed = tls.SPBool.C_TRUE if cert.self_signed else tls.SPBool.C_FALSE
         self.add("self_signed", ProfileBasicEnum(self_signed))
+        if cert.subject_matches is not None:
+            match = tls.SPBool.C_TRUE if cert.subject_matches else tls.SPBool.C_FALSE
+            self.add("subject_matches", ProfileBasicEnum(match))
+        self.add("fingerprint_sha1", ProfileBasic(cert.fingerprint_sha1))
+        self.add("fingerprint_sha256", ProfileBasic(cert.fingerprint_sha256))
+        self.add("signature_algorithm", ProfileBasicEnum(cert.signature_algorithm))
+        self.add("public_key", SPCertificateKey(cert.parsed.public_key()))
+
+        extensions = cert.parsed.extensions
+        if len(extensions):
+            ext_list = ProfileList(key_func=lambda x: x.get("oid"))
+            self.add("extensions", ext_list)
+            for ext in extensions:
+                ext_list.append(SPCertExtension(ext))
 
 
 class SPCertificateChain(ProfileDict):

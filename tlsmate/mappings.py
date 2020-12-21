@@ -2083,3 +2083,25 @@ key_exchange = {
         key_ex_type=tls.KeyExchangeType.NONE, key_auth=tls.KeyAuthentication.RSA
     ),
 }
+
+curve_to_group = {
+    'brainpoolP256r1': tls.SupportedGroups.BRAINPOOLP256R1,
+    'brainpoolP384r1': tls.SupportedGroups.BRAINPOOLP384R1,
+    'brainpoolP512r1': tls.SupportedGroups.BRAINPOOLP512R1,
+    'secp192r1': tls.SupportedGroups.SECP192R1,
+    'secp224r1': tls.SupportedGroups.SECP224R1,
+    'secp256k1': tls.SupportedGroups.SECP256K1,
+    'secp256r1': tls.SupportedGroups.SECP256R1,
+    'secp384r1': tls.SupportedGroups.SECP384R1,
+    'secp521r1': tls.SupportedGroups.SECP521R1,
+    'sect163k1': tls.SupportedGroups.SECT163K1,
+    'sect163r2': tls.SupportedGroups.SECT163R2,
+    'sect233k1': tls.SupportedGroups.SECT233K1,
+    'sect233r1': tls.SupportedGroups.SECT233R1,
+    'sect283k1': tls.SupportedGroups.SECT283K1,
+    'sect283r1': tls.SupportedGroups.SECT283R1,
+    'sect409k1': tls.SupportedGroups.SECT409K1,
+    'sect409r1': tls.SupportedGroups.SECT409R1,
+    'sect571k1': tls.SupportedGroups.SECT571K1,
+    'sect571r1': tls.SupportedGroups.SECT571R1,
+}

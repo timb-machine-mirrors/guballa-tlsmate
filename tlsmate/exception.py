@@ -47,7 +47,7 @@ class CurveNotSupportedError(Exception):
 
 
 class ScanError(Exception):
-    """Execption which might occur during a scan.
+    """Exception which might occur during a scan.
 
     The exception will be raised if an abnormal condition during a scan is
     detected.

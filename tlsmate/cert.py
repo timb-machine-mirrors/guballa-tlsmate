@@ -12,6 +12,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.exceptions import InvalidSignature
 from tlsmate import constants as tls
+from tlsmate import pdu
 from tlsmate.exception import CertValidationError, CertChainValidationError
 
 
@@ -370,8 +371,11 @@ class TrustStore(object):
 class Certificate(object):
     """Represents a certificate.
 
+    The arguments der and pem are exclusive.
+
     Arguments:
-        bin_cert (bytes): the certificate in DER-format (raw bytes)
+        der (bytes): the certificate in DER-format (raw bytes)
+        pem (bytes): the certificate in PEM-format
     """
 
     def __init__(self, der=None, pem=None):
@@ -386,6 +390,10 @@ class Certificate(object):
         self._parsed = None
         self._subject_str = None
         self._self_signed = None
+        self.subject_matches = None
+        self.fingerprint_sha1 = None
+        self.fingerprint_sha256 = None
+        self.signature_algorithm = None
 
         if der is not None:
             self._bytes = der
@@ -394,6 +402,7 @@ class Certificate(object):
                 pem = pem.encode()
             self._pem = pem
             self._parsed = x509.load_pem_x509_certificate(pem)
+            self._parse()
 
     def __str__(self):
         return self.subject_str
@@ -415,6 +424,7 @@ class Certificate(object):
         """
         if self._parsed is None:
             self._parsed = x509.load_der_x509_certificate(self._bytes)
+            self._parse()
         return self._parsed
 
     @property
@@ -430,6 +440,20 @@ class Certificate(object):
         if self._pem is None:
             self._pem = self.parsed.public_bytes(Encoding.PEM)
         return self._pem
+
+    def _parse(self):
+        """Parse the certificate, so that all attributes are set.
+        """
+        self.fingerprint_sha1 = pdu.string(
+            self._parsed.fingerprint(hashes.SHA1())
+        )
+        self.fingerprint_sha256 = pdu.string(
+            self._parsed.fingerprint(hashes.SHA256()),
+        )
+        self.signature_algorithm = map_x509_sig_scheme(
+            self._parsed.signature_hash_algorithm,
+            self._parsed.signature_algorithm_oid,
+        )
 
     def _common_name(self, name):
         cns = name.get_attributes_for_oid(NameOID.COMMON_NAME)
@@ -479,6 +503,7 @@ class Certificate(object):
 
         subject_cn = self._common_name(self.parsed.subject)
         if subject_matches(subject_cn, domain, no_subdomain):
+            self.subject_matches = True
             return
 
         subj_alt_names = self.parsed.extensions.get_extension_for_oid(
@@ -486,8 +511,10 @@ class Certificate(object):
         )
         for name in subj_alt_names.value.get_values_for_type(x509.DNSName):
             if subject_matches(name, domain, no_subdomain):
+                self.subject_matches = True
                 return
 
+        self.subject_matches = False
         raise CertValidationError(f'subject name does not match for "{self}"')
 
     def validate_signature(self, sig_scheme, data, signature):
@@ -590,7 +617,6 @@ class CertChain(object):
         self._raise_on_failure = raise_on_failure
         root_cert = None
         prev_cert = None
-        sig_scheme = None
         last_idx = len(self.certificates) - 1
         for idx, cert in enumerate(self.certificates):
 
@@ -620,7 +646,7 @@ class CertChain(object):
 
                     try:
                         cert.validate_signature(
-                            sig_scheme,
+                            prev_cert.signature_algorithm,
                             prev_cert.parsed.tbs_certificate_bytes,
                             prev_cert.parsed.signature,
                         )
@@ -634,10 +660,6 @@ class CertChain(object):
                             raise CertChainValidationError(issue)
 
             prev_cert = cert
-            sig_scheme = map_x509_sig_scheme(
-                prev_cert.parsed.signature_hash_algorithm,
-                prev_cert.parsed.signature_algorithm_oid,
-            )
 
         self.root_cert_transmitted = root_cert is not None
         if root_cert is None:
@@ -656,7 +678,7 @@ class CertChain(object):
                 try:
                     validate_signature(
                         cert,
-                        sig_scheme,
+                        prev_cert.signature_algorithm,
                         prev_cert.parsed.tbs_certificate_bytes,
                         prev_cert.parsed.signature,
                     )
@@ -674,4 +696,4 @@ class CertChain(object):
                 self.issues.append(issue)
                 if raise_on_failure:
                     raise CertChainValidationError(issue)
-        self.successful_validation = True
+        self.successful_validation = (len(self.issues) == 0)

@@ -975,3 +975,18 @@ class SSLVersion(ExtendedEnum):
     """
 
     SSL2 = 0x0002
+
+
+class CertKeyUsage(ExtendedEnum):
+    """Representing the various flags of the KeyUsage extension for certificates
+    """
+
+    DIGITAL_SIGNATURE = enum.auto()
+    CONTENT_COMMITMENT = enum.auto()
+    KEY_ENCIPHERMENT = enum.auto()
+    DATA_ENCIPHERMENT = enum.auto()
+    KEY_AGREEMENT = enum.auto()
+    KEY_CERT_SIGN = enum.auto()
+    CRL_SIGN = enum.auto()
+    ENCIPHER_ONLY = enum.auto()
+    DECIPHER_ONLY = enum.auto()

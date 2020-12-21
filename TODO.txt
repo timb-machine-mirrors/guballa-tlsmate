@@ -1,6 +1,5 @@
 
     - support for renegotiation
-    - certificate validation and extraction to server profile
     - HelloRetryRequest
     - more scan results
     - improved error handling, e.g. if host name cannot be resolved
@@ -16,3 +15,9 @@
       - adapt check if new session ticket was received to decide if the second
         handshake must be performed
     - consistently use "verify" or "validate" when checking sigatures and certificates
+    - replace "pickle" by YAML/JSON for security reasons (deserialization of objects)
+    - implement signature of server params for TLS1.0/TLS1.1 as well (require newest library from cryptography)
+    - cleanups for certificate parsing required:
+        - move the code from server_profile to scan_command?
+        - use more classes
+        - documentation
