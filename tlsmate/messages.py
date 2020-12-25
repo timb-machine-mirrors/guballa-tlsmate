@@ -476,11 +476,14 @@ class KeyExchangeEC(object):
         offset = self._deserialize_ServerECDHParams(fragment, offset, conn)
         self.signed_params = fragment[signed_params_start:offset]
         # Signature           signed_params;
-        if conn.version is tls.Version.TLS12:
-            sig_scheme, offset = pdu.unpack_uint16(fragment, offset)
-            self.sig_scheme = tls.SignatureScheme.val2enum(sig_scheme)
-        signature_len, offset = pdu.unpack_uint16(fragment, offset)
-        self.signature, offset = pdu.unpack_bytes(fragment, offset, signature_len)
+        if conn.cs_details.key_algo_struct.key_auth is not tls.KeyAuthentication.NONE:
+            if conn.version is tls.Version.TLS12:
+                sig_scheme, offset = pdu.unpack_uint16(fragment, offset)
+                self.sig_scheme = tls.SignatureScheme.val2enum(sig_scheme)
+                signature_len, offset = pdu.unpack_uint16(fragment, offset)
+                self.signature, offset = pdu.unpack_bytes(
+                    fragment, offset, signature_len
+                )
         return self
 
 
