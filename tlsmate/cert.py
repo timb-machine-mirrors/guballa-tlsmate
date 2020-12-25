@@ -3,6 +3,7 @@
 """
 import stringprep
 import unicodedata
+import urllib.request
 import pem
 from cryptography import x509
 from cryptography.x509.oid import NameOID, ExtensionOID
@@ -302,6 +303,58 @@ def map_x509_sig_scheme(x509_hash, x509_oid):
         return sig_scheme
 
 
+class CrlManager(object):
+    """Handles all CRL related operations and acts as a cache as well
+    """
+
+    _crls = {}
+
+    @classmethod
+    def _get_crl_obj(cls, url):
+        if url not in cls._crls:
+            try:
+                with urllib.request.urlopen(url, timeout=5) as response:
+                    bin_crl = response.read()
+            except Exception:
+                cls._crls[url] = None
+            else:
+                cls._crls[url] = x509.load_der_x509_crl(bin_crl)
+        return cls._crls[url]
+
+    @classmethod
+    def get_crl_status(cls, urls, serial_nbr, issuer, issuer_cert):
+        """Determines the CRL revokation status for a given cert/urls.
+
+        Downloads the CRL (if a download fails, the next url is tried), if not yet
+        cached, validates the CRL against the issuer & its signature and checks if
+        the certicifate is present in the CRL or not.
+
+        Arguments:
+            urls (list of str): a list of CRL-urls
+            serial_nbr (int): the serial number of the certificate to check
+            issuer (:obj:`x509.Name`): the issuer name of the cert to check
+            issuer_cert (:obj:`Certificate`): the certificate of the issuer
+
+        Returns:
+            :obj:`tls.CertCrlStatus`: the final status.
+        """
+        status = None
+        for url in urls:
+            crl = cls._get_crl_obj(url)
+            if crl is None:
+                status = tls.CertCrlStatus.FAILED_CRL_DOWNLOAD
+                continue
+            if not equal_names(issuer, issuer_cert.parsed.subject):
+                return tls.CertCrlStatus.WRONG_CRL_ISSUER
+            if not crl.is_signature_valid(issuer_cert.parsed.public_key()):
+                return tls.CertCrlStatus.CRL_SIGNATURE_INVALID
+            if crl.get_revoked_certificate_by_serial_number(serial_nbr) is None:
+                return tls.CertCrlStatus.NOT_REVOKED
+            else:
+                return tls.CertCrlStatus.REVOKED
+        return status
+
+
 class TrustStore(object):
     """Represents a trust store containing trusted root certificates
 
@@ -332,7 +385,7 @@ class TrustStore(object):
         """Checks if a given certificate is present in the trust store.
 
         Arguments:
-            cert (:obj:`cryptography.x509.Certificate`): the certificate to check
+            cert (:obj:`Certificate`): the certificate to check
 
         Returns:
             bool: True, if the given certificate is present in the trust store
@@ -354,8 +407,7 @@ class TrustStore(object):
             issuer_name (:obj:`cryptography.x509.Name`): the name of the issuer
 
         Returns:
-            :obj:`cryptography.x509.Certificate` or None if the certificate is not
-                found.
+            :obj:`Certificate` or None if the certificate is not found.
         """
 
         for cert in self:
@@ -394,6 +446,7 @@ class Certificate(object):
         self.fingerprint_sha1 = None
         self.fingerprint_sha256 = None
         self.signature_algorithm = None
+        self.crl_status = None
 
         if der is not None:
             self._bytes = der
@@ -444,15 +497,10 @@ class Certificate(object):
     def _parse(self):
         """Parse the certificate, so that all attributes are set.
         """
-        self.fingerprint_sha1 = pdu.string(
-            self._parsed.fingerprint(hashes.SHA1())
-        )
-        self.fingerprint_sha256 = pdu.string(
-            self._parsed.fingerprint(hashes.SHA256()),
-        )
+        self.fingerprint_sha1 = pdu.string(self._parsed.fingerprint(hashes.SHA1()))
+        self.fingerprint_sha256 = pdu.string(self._parsed.fingerprint(hashes.SHA256()),)
         self.signature_algorithm = map_x509_sig_scheme(
-            self._parsed.signature_hash_algorithm,
-            self._parsed.signature_algorithm_oid,
+            self._parsed.signature_hash_algorithm, self._parsed.signature_algorithm_oid,
         )
 
     def _common_name(self, name):
@@ -595,6 +643,49 @@ class CertChain(object):
             if self._raise_on_failure:
                 raise
 
+    def _validate_linked_certs(self, cert, issuer_cert, raise_on_failure):
+
+        try:
+            issuer_cert.validate_signature(
+                cert.signature_algorithm,
+                cert.parsed.tbs_certificate_bytes,
+                cert.parsed.signature,
+            )
+        except InvalidSignature:
+            issue = (
+                f'signature of certificate "{cert}" cannot be '
+                f'validated by issuer certificate "{issuer_cert}"'
+            )
+            self.issues.append(issue)
+            if raise_on_failure:
+                raise CertChainValidationError(issue)
+
+        try:
+            dist_points = cert.parsed.extensions.get_extension_for_oid(
+                 x509.oid.ExtensionOID.CRL_DISTRIBUTION_POINTS
+            )
+        except x509.ExtensionNotFound:
+            return
+
+        crl_urls = []
+        for dist_point in dist_points.value:
+            if dist_point.full_name is not None:
+                for gen_name in dist_point.full_name:
+                    if gen_name.value.startswith("http://"):
+                        crl_urls.append(gen_name.value)
+            elif dist_point.relative_me is not None:
+                raise NotImplementedEor
+
+        cert.crl_status = CrlManager.get_crl_status(
+            crl_urls, cert.parsed.serial_number, cert.parsed.issuer, issuer_cert
+        )
+        if cert.crl_status is not tls.CertCrlStatus.NOT_REVOKED:
+            issue = f'CRL status not ok for certificate "{cert}"'
+            self.issues.append(issue)
+            if raise_on_failure:
+                raise CertChainValidationError(issue)
+
+
     def validate(self, timestamp, domain_name, trust_store, raise_on_failure):
         """Only the minimal checks are supported.
 
@@ -635,6 +726,7 @@ class CertChain(object):
                         raise CertChainValidationError(issue)
             else:
                 if prev_cert is not None:
+
                     if not equal_names(prev_cert.parsed.issuer, cert.parsed.subject):
                         issue = (
                             f'certificate "{cert}" is not issuer of certificate '
@@ -643,21 +735,22 @@ class CertChain(object):
                         self.issues.append(issue)
                         if raise_on_failure:
                             raise CertChainValidationError(issue)
+                    self._validate_linked_certs(prev_cert, cert, raise_on_failure)
 
-                    try:
-                        cert.validate_signature(
-                            prev_cert.signature_algorithm,
-                            prev_cert.parsed.tbs_certificate_bytes,
-                            prev_cert.parsed.signature,
-                        )
-                    except InvalidSignature:
-                        issue = (
-                            f'signature of certificate "{prev_cert}" cannot be '
-                            f'validated by issuer certificate "{cert}"'
-                        )
-                        self.issues.append(issue)
-                        if raise_on_failure:
-                            raise CertChainValidationError(issue)
+                    # try:
+                    #     cert.validate_signature(
+                    #         prev_cert.signature_algorithm,
+                    #         prev_cert.parsed.tbs_certificate_bytes,
+                    #         prev_cert.parsed.signature,
+                    #     )
+                    # except InvalidSignature:
+                    #     issue = (
+                    #         f'signature of certificate "{prev_cert}" cannot be '
+                    #         f'validated by issuer certificate "{cert}"'
+                    #     )
+                    #     self.issues.append(issue)
+                    #     if raise_on_failure:
+                    #         raise CertChainValidationError(issue)
 
             prev_cert = cert
 
@@ -675,25 +768,27 @@ class CertChain(object):
             else:
                 self.root_cert = cert
                 self.validate_cert(self.root_cert, timestamp)
-                try:
-                    validate_signature(
-                        cert,
-                        prev_cert.signature_algorithm,
-                        prev_cert.parsed.tbs_certificate_bytes,
-                        prev_cert.parsed.signature,
-                    )
-                except InvalidSignature:
-                    issue = (
-                        f'signature of certificate "{prev_cert}" cannot be '
-                        f'validated by issuer certificate "{cert}"'
-                    )
-                    self.issues.append(issue)
-                    if raise_on_failure:
-                        raise CertChainValidationError(issue)
+
+                self._validate_linked_certs(prev_cert, cert, raise_on_failure)
+                # try:
+                #     validate_signature(
+                #         cert,
+                #         prev_cert.signature_algorithm,
+                #         prev_cert.parsed.tbs_certificate_bytes,
+                #         prev_cert.parsed.signature,
+                #     )
+                # except InvalidSignature:
+                #     issue = (
+                #         f'signature of certificate "{prev_cert}" cannot be '
+                #         f'validated by issuer certificate "{cert}"'
+                #     )
+                #     self.issues.append(issue)
+                #     if raise_on_failure:
+                #         raise CertChainValidationError(issue)
         else:
             if not trust_store.cert_in_trust_store(prev_cert):
                 issue = f'root certificate "{root_cert}" not found in trust store'
                 self.issues.append(issue)
                 if raise_on_failure:
                     raise CertChainValidationError(issue)
-        self.successful_validation = (len(self.issues) == 0)
+        self.successful_validation = len(self.issues) == 0

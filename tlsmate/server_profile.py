@@ -715,15 +715,15 @@ class SPCertificate(ProfileDict):
         diff = cert.parsed.not_valid_after - cert.parsed.not_valid_before
         self.add("validity_period_days", ProfileBasic(diff.days))
 
-        self_signed = tls.SPBool.C_TRUE if cert.self_signed else tls.SPBool.C_FALSE
-        self.add("self_signed", ProfileBasicEnum(self_signed))
+        self.add("self_signed", ProfileBasicEnum(tls.SPBool(cert.self_signed)))
         if cert.subject_matches is not None:
-            match = tls.SPBool.C_TRUE if cert.subject_matches else tls.SPBool.C_FALSE
-            self.add("subject_matches", ProfileBasicEnum(match))
+            self.add("subject_matches", ProfileBasicEnum(tls.SPBool(cert.subject_matches)))
         self.add("fingerprint_sha1", ProfileBasic(cert.fingerprint_sha1))
         self.add("fingerprint_sha256", ProfileBasic(cert.fingerprint_sha256))
         self.add("signature_algorithm", ProfileBasicEnum(cert.signature_algorithm))
         self.add("public_key", SPCertificateKey(cert.parsed.public_key()))
+        if cert.crl_status is not None:
+            self.add("crl_revokation_status", ProfileBasicEnum(cert.crl_status))
 
         extensions = cert.parsed.extensions
         if len(extensions):

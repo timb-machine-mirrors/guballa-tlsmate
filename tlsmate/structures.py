@@ -8,6 +8,7 @@ from tlsmate.kdf import Kdf
 from cryptography.hazmat.primitives.ciphers import algorithms
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography import x509
 
 
 class SessionStateId(NamedTuple):

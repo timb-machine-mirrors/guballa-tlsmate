@@ -990,3 +990,15 @@ class CertKeyUsage(ExtendedEnum):
     CRL_SIGN = enum.auto()
     ENCIPHER_ONLY = enum.auto()
     DECIPHER_ONLY = enum.auto()
+
+
+class CertCrlStatus(ExtendedEnum):
+    """CRL Revokation Status
+    """
+
+    UNDETERMINED = enum.auto()
+    NOT_REVOKED = enum.auto()
+    REVOKED = enum.auto()
+    CRL_DOWNLOAD_FAILED = enum.auto()
+    WRONG_CRL_ISSUER = enum.auto()
+    CRL_SIGNATURE_INVALID = enum.auto()
