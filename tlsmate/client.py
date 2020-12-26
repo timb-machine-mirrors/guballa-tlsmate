@@ -187,9 +187,9 @@ class Client(object):
         msg = ClientHello()
         max_version = max(self.versions)
         if max_version is tls.Version.TLS13:
-            msg.client_version = tls.Version.TLS12
+            msg.version = tls.Version.TLS12
         else:
-            msg.client_version = max_version
+            msg.version = max_version
         msg.random = None  # will be provided autonomously
 
         if self.support_session_ticket and self.session_state_ticket is not None:
@@ -200,7 +200,7 @@ class Client(object):
             msg.session_id = b""
         msg.cipher_suites = self.cipher_suites
         msg.compression_methods = self.compression_methods
-        if msg.client_version == tls.Version.SSL30:
+        if msg.version == tls.Version.SSL30:
             msg.extensions = None
         else:
             if self.support_sni:

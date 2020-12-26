@@ -153,7 +153,7 @@ class ClientHello(HandshakeMessage):
     """This class respresents a ClientHello message.
 
     Attributes:
-        client_version (:obj:`tlsmate.constants.Version`):
+        version (:obj:`tlsmate.constants.Version`):
             The version the client offers to the server.
         random (bytes): The random value.
         session_id (bytes): The session id.
@@ -184,7 +184,7 @@ class ClientHello(HandshakeMessage):
         msg = bytearray()
 
         # version
-        version = self.client_version
+        version = self.version
         if type(version) == tls.Version:
             version = version.value
         msg.extend(pdu.pack_uint16(version))
@@ -476,14 +476,14 @@ class KeyExchangeEC(object):
         offset = self._deserialize_ServerECDHParams(fragment, offset, conn)
         self.signed_params = fragment[signed_params_start:offset]
         # Signature           signed_params;
-        if conn.cs_details.key_algo_struct.key_auth is not tls.KeyAuthentication.NONE:
+        if conn.cs_details.key_algo is not tls.KeyExchangeAlgorithm.ECDH_ANON:
             if conn.version is tls.Version.TLS12:
                 sig_scheme, offset = pdu.unpack_uint16(fragment, offset)
                 self.sig_scheme = tls.SignatureScheme.val2enum(sig_scheme)
-                signature_len, offset = pdu.unpack_uint16(fragment, offset)
-                self.signature, offset = pdu.unpack_bytes(
-                    fragment, offset, signature_len
-                )
+            signature_len, offset = pdu.unpack_uint16(fragment, offset)
+            self.signature, offset = pdu.unpack_bytes(
+                fragment, offset, signature_len
+            )
         return self
 
 
@@ -982,7 +982,7 @@ class SSL2ClientHello(SSL2Message):
     """This class respresents an SSL2 CLientHello message.
 
     Attributes:
-        client_version (:obj:`tlsmate.constants.SSLVersion`): The version "SSL2".
+        version (:obj:`tlsmate.constants.SSLVersion`): The version "SSL2".
         cipher_specs (list of :obj:`tlsmate.constants.SSLCipherKind`): The list
             of cipher kinds offered by the client.
         session_id (bytes): The session id.
@@ -994,7 +994,7 @@ class SSL2ClientHello(SSL2Message):
     """
 
     def __init__(self):
-        self.client_version = tls.SSLVersion.SSL2
+        self.version = tls.SSLVersion.SSL2
         self.cipher_specs = [
             tls.SSLCipherKind.SSL_CK_RC4_128_WITH_MD5,
             tls.SSLCipherKind.SSL_CK_RC4_128_EXPORT40_WITH_MD5,
@@ -1010,7 +1010,7 @@ class SSL2ClientHello(SSL2Message):
     def serialize(self, conn):
         msg = bytearray()
         msg.extend(pdu.pack_uint8(self.msg_type.value))
-        msg.extend(pdu.pack_uint16(self.client_version.value))
+        msg.extend(pdu.pack_uint16(self.version.value))
         msg.extend(pdu.pack_uint16(3 * len(self.cipher_specs)))
         msg.extend(pdu.pack_uint16(len(self.session_id)))
         msg.extend(pdu.pack_uint16(len(self.challenge)))

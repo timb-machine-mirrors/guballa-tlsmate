@@ -156,7 +156,7 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
         'wheel',
-        'cryptography',
+        'cryptography>=3.3',
         'dependency_injector',
         'dill',
         'pyyaml',

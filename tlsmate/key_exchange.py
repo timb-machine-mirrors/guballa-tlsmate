@@ -8,10 +8,12 @@ from tlsmate import dh_numbers
 import tlsmate.constants as tls
 from tlsmate import pdu
 from tlsmate.exception import FatalAlert, CurveNotSupportedError
+from tlsmate import kdf
 
 from cryptography.hazmat.primitives.asymmetric import ec, x25519, x448, dh
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
+from cryptography.exceptions import InvalidSignature
 
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
@@ -22,7 +24,7 @@ from cryptography.hazmat.primitives.serialization import (
 )
 
 
-def verify_signed_params(params, msgs, default_scheme):
+def verify_signed_params(params, msgs, default_scheme, version):
     """Verify the signed parameters from a ServerKeyExchange message.
 
     Arguments:
@@ -31,7 +33,8 @@ def verify_signed_params(params, msgs, default_scheme):
             received/sent messages
         default_scheme (:class:`tlsmate.constants.SignatureScheme`): the default
             signature scheme to use (if not present in the message)
-
+        version (:class:`tlsmate.Version`): the TLS version. For TLS1.1 and below the
+            signature is constructed differently (using SHA1 + MD digests)
     Raises:
         cryptography.exceptions.InvalidSignature: If the signature does not
             validate.
@@ -39,13 +42,26 @@ def verify_signed_params(params, msgs, default_scheme):
     data = bytes(
         msgs.client_hello.random + msgs.server_hello.random + params.signed_params
     )
-    if params.sig_scheme is None:
-        sig_scheme = default_scheme
-    else:
-        sig_scheme = params.sig_scheme
-
     cert = msgs.server_certificate.chain.certificates[0]
-    cert.validate_signature(sig_scheme, data, params.signature)
+    if version is tls.Version.TLS12:
+        if params.sig_scheme is None:
+            sig_scheme = default_scheme
+        else:
+            sig_scheme = params.sig_scheme
+
+        cert.validate_signature(sig_scheme, data, params.signature)
+    else:
+        digest = kdf.Kdf()
+        digest.start_msg_digest()
+        digest.set_msg_digest_algo(None)
+        digest.update_msg_digest(data)
+        hashed1 = digest.finalize_msg_digest()
+        key = cert.parsed.public_key()
+        hashed2 = key.recover_data_from_signature(
+            params.signature, padding.PKCS1v15(), None
+        )
+        if hashed1 != hashed2:
+            raise InvalidSignature
 
 
 def verify_certificate_verify(cert_ver, msgs, msg_digest):

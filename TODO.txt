@@ -8,6 +8,7 @@
     - use __str__ for messages and extension displaying their names, cover all enums as well
     - use :class:`XXX` iso :obj: in the *.rst files where appropriate
     - cover all key exchange algorithms in mappings.key_exchange
+      - ECDH_ANON is supported as well, but we need a test case
     - refactoring: Alert and CCS(?): do they need a msg_type?
     - more command line options, e.g. to scan only specific versions,
       or to enable/disable specific parts of the trace.
@@ -16,8 +17,9 @@
         handshake must be performed
     - consistently use "verify" or "validate" when checking sigatures and certificates
     - replace "pickle" by YAML/JSON for security reasons (deserialization of objects)
-    - implement signature of server params for TLS1.0/TLS1.1 as well (require newest library from cryptography)
     - cleanups for certificate parsing required:
         - move the code from server_profile to scan_command?
+        - implement quite a lot of missing stuff, e.g. proper handling of CRL, cert policies, etc.
         - use more classes
         - documentation
+    - recorder for CRL access

@@ -333,7 +333,7 @@ class TlsConnection(object):
 
     def _pre_serialization_ch(self, msg):
         logging.info(f"version: {msg.get_version()}")
-        self.client_version_sent = msg.client_version
+        self.client_version_sent = msg.version
         if self.recorder.is_injecting():
             msg.random = self.recorder.inject(client_random=None)
         else:
@@ -705,9 +705,12 @@ class TlsConnection(object):
 
     def _on_server_key_exchange_received(self, msg):
         if msg.ec is not None:
-            if msg.ec.signed_params is not None and self.version is tls.Version.TLS12:
+            if msg.ec.signed_params is not None:
                 kex.verify_signed_params(
-                    msg.ec, self.msg, self.cs_details.key_algo_struct.default_sig_scheme
+                    msg.ec,
+                    self.msg,
+                    self.cs_details.key_algo_struct.default_sig_scheme,
+                    self.version,
                 )
                 logging.debug("signed ec parameters successfully verified")
 
@@ -719,9 +722,12 @@ class TlsConnection(object):
                 self.key_exchange.set_remote_key(msg.ec.public)
         elif msg.dh is not None:
             dh = msg.dh
-            if dh.signed_params is not None and self.version is tls.Version.TLS12:
+            if dh.signed_params is not None:
                 kex.verify_signed_params(
-                    msg.dh, self.msg, self.cs_details.key_algo_struct.default_sig_scheme
+                    msg.dh,
+                    self.msg,
+                    self.cs_details.key_algo_struct.default_sig_scheme,
+                    self.version,
                 )
                 logging.debug("signed dh parameters successfully verified")
             self.key_exchange = kex.DhKeyExchange(self, self.recorder)
@@ -854,12 +860,12 @@ class TlsConnection(object):
         if msg.chain.digest not in self._cert_chain_digests:
             self._cert_chain_digests.append(msg.chain.digest)
             timestamp = datetime.datetime.now()
-            msg.chain.validate(
-                timestamp,
-                self.client.config["server"],
-                self.client.trust_store,
-                self.client.alert_on_invalid_cert,
-            )
+            # msg.chain.validate(
+            #     timestamp,
+            #     self.client.config["server"],
+            #     self.client.trust_store,
+            #     self.client.alert_on_invalid_cert,
+            # )
 
     def _on_certificate_verify_received(self, msg):
         if self.version is tls.Version.TLS13:
