@@ -4,6 +4,7 @@
 import stringprep
 import unicodedata
 import urllib.request
+import logging
 import pem
 from cryptography import x509
 from cryptography.x509.oid import NameOID, ExtensionOID
@@ -340,6 +341,7 @@ class CrlManager(object):
         """
         status = None
         for url in urls:
+            logging.debug(f"downloading CRL from {url}")
             crl = cls._get_crl_obj(url)
             if crl is None:
                 status = tls.CertCrlStatus.FAILED_CRL_DOWNLOAD
@@ -679,6 +681,7 @@ class CertChain(object):
         cert.crl_status = CrlManager.get_crl_status(
             crl_urls, cert.parsed.serial_number, cert.parsed.issuer, issuer_cert
         )
+        logging.debug(f'CRL status for certificate "{cert}": {cert.crl_status}')
         if cert.crl_status is not tls.CertCrlStatus.NOT_REVOKED:
             issue = f'CRL status not ok for certificate "{cert}"'
             self.issues.append(issue)
@@ -737,21 +740,7 @@ class CertChain(object):
                             raise CertChainValidationError(issue)
                     self._validate_linked_certs(prev_cert, cert, raise_on_failure)
 
-                    # try:
-                    #     cert.validate_signature(
-                    #         prev_cert.signature_algorithm,
-                    #         prev_cert.parsed.tbs_certificate_bytes,
-                    #         prev_cert.parsed.signature,
-                    #     )
-                    # except InvalidSignature:
-                    #     issue = (
-                    #         f'signature of certificate "{prev_cert}" cannot be '
-                    #         f'validated by issuer certificate "{cert}"'
-                    #     )
-                    #     self.issues.append(issue)
-                    #     if raise_on_failure:
-                    #         raise CertChainValidationError(issue)
-
+            logging.debug(f'certificate "{cert}" successfully validated')
             prev_cert = cert
 
         self.root_cert_transmitted = root_cert is not None
@@ -770,21 +759,6 @@ class CertChain(object):
                 self.validate_cert(self.root_cert, timestamp)
 
                 self._validate_linked_certs(prev_cert, cert, raise_on_failure)
-                # try:
-                #     validate_signature(
-                #         cert,
-                #         prev_cert.signature_algorithm,
-                #         prev_cert.parsed.tbs_certificate_bytes,
-                #         prev_cert.parsed.signature,
-                #     )
-                # except InvalidSignature:
-                #     issue = (
-                #         f'signature of certificate "{prev_cert}" cannot be '
-                #         f'validated by issuer certificate "{cert}"'
-                #     )
-                #     self.issues.append(issue)
-                #     if raise_on_failure:
-                #         raise CertChainValidationError(issue)
         else:
             if not trust_store.cert_in_trust_store(prev_cert):
                 issue = f'root certificate "{root_cert}" not found in trust store'

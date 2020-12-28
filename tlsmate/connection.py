@@ -860,12 +860,12 @@ class TlsConnection(object):
         if msg.chain.digest not in self._cert_chain_digests:
             self._cert_chain_digests.append(msg.chain.digest)
             timestamp = datetime.datetime.now()
-            # msg.chain.validate(
-            #     timestamp,
-            #     self.client.config["server"],
-            #     self.client.trust_store,
-            #     self.client.alert_on_invalid_cert,
-            # )
+            msg.chain.validate(
+                timestamp,
+                self.client.config["server"],
+                self.client.trust_store,
+                self.client.alert_on_invalid_cert,
+            )
 
     def _on_certificate_verify_received(self, msg):
         if self.version is tls.Version.TLS13:

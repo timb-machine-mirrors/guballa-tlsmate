@@ -43,14 +43,12 @@ def verify_signed_params(params, msgs, default_scheme, version):
         msgs.client_hello.random + msgs.server_hello.random + params.signed_params
     )
     cert = msgs.server_certificate.chain.certificates[0]
-    if version is tls.Version.TLS12:
-        if params.sig_scheme is None:
-            sig_scheme = default_scheme
-        else:
-            sig_scheme = params.sig_scheme
 
-        cert.validate_signature(sig_scheme, data, params.signature)
-    else:
+    if (
+        default_scheme is tls.SignatureScheme.RSA_PKCS1_SHA1
+        and version is not tls.Version.TLS12
+    ):
+        # Digest is a combination of MD5 and SHA1
         digest = kdf.Kdf()
         digest.start_msg_digest()
         digest.set_msg_digest_algo(None)
@@ -62,6 +60,13 @@ def verify_signed_params(params, msgs, default_scheme, version):
         )
         if hashed1 != hashed2:
             raise InvalidSignature
+    else:
+        if params.sig_scheme is None:
+            sig_scheme = default_scheme
+        else:
+            sig_scheme = params.sig_scheme
+
+        cert.validate_signature(sig_scheme, data, params.signature)
 
 
 def verify_certificate_verify(cert_ver, msgs, msg_digest):
