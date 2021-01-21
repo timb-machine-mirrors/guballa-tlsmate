@@ -3,6 +3,8 @@
 """
 
 import enum
+import yaml
+import datetime
 
 
 class RecorderState(enum.Enum):
@@ -26,8 +28,8 @@ class Recorder(object):
     and they are "recorded", i.e., they are stored in the recorder object. This mode
     is used to record a unit test case (which can be as complex as a complete scan of
     a server). After the recoding is finished, the complete recorder object is
-    pickled (i.e. serialized) and stored in a file.
-    When replaying (normally triggered by pytest), the recorder object is unpickled
+    serialized to a YAML file.
+    When replaying (normally triggered by pytest), the recorder object is deserialized
     from the file, and all recorded data is injected when the external interfaces
     are used. This way an EXACTLY clone of the connection(s) is/are executed. The
     replayed test case uses the same keying material as well, it is a "byte-to-byte""
@@ -37,39 +39,44 @@ class Recorder(object):
     allows easier debugging in case a replayed test deviates from the recorded twin.
     """
 
-    _attr = [
-        "client_random",
-        "server_random",
-        "pre_master_secret",
-        "master_secret",
-        "private_key",
-        "client_write_mac_key",
-        "server_write_mac_key",
-        "client_write_key",
-        "server_write_key",
-        "client_write_iv",
-        "server_write_iv",
-        "verify_data_finished_rec",
-        "verify_data_finished_calc",
-        "msg_digest_finished_rec",
-        "msg_digest_finished_sent",
-        "verify_data_finished_sent",
-        "ec_seed",
-        "pms_rsa",
-        "rsa_enciphered",
-        "x_val",
-        "y_val",
-        "openssl_command",
-        "early_secret",
-        "early_tr_secret",
-        "msg_digest_tls13",
-        "binder",
-        "binder_key",
-        "finished_key",
-        "msg_without_binders",
-        "hmac_algo",
-        "timestamp",
-    ]
+    _attr = {
+        "client_random": bytes,
+        "server_random": bytes,
+        "pre_master_secret": bytes,
+        "master_secret": bytes,
+        "private_key": bytes,
+        "client_write_mac_key": bytes,
+        "server_write_mac_key": bytes,
+        "client_write_key": bytes,
+        "server_write_key": bytes,
+        "client_write_iv": bytes,
+        "server_write_iv": bytes,
+        "verify_data_finished_rec": bytes,
+        "verify_data_finished_calc": bytes,
+        "msg_digest_finished_rec": bytes,
+        "msg_digest_finished_sent": bytes,
+        "verify_data_finished_sent": bytes,
+        "ec_seed": int,
+        "pms_rsa": bytes,
+        "rsa_enciphered": bytes,
+        "x_val": int,
+        "y_val": int,
+        "openssl_command": str,
+        "early_secret": bytes,
+        "early_tr_secret": bytes,
+        "msg_digest_tls13": bytes,
+        "binder": bytes,
+        "binder_key": bytes,
+        "finished_key": bytes,
+        "msg_without_binders": bytes,
+        "hmac_algo": str,
+        "timestamp": float,
+        "datetime": datetime.datetime,
+        "msg_sendall": bytes,
+        "msg_recv": bytes,
+        "crl_url": str,
+        "crl": bytes,
+    }
 
     def __init__(self):
         self.reset()
@@ -78,10 +85,49 @@ class Recorder(object):
         """Reset the recorder to an initial state.
         """
         self._state = RecorderState.INACTIVE
-        self._msg_sendall = []
-        self._msg_recv = []
-        for attr in self._attr:
-            setattr(self, attr, [])
+        self.data = {}
+        for key in self._attr.keys():
+            self.data[key] = []
+
+    @staticmethod
+    def _serialize_val(val, val_type):
+        """Convert values to JSON/YAML serializable types
+
+        Arguments:
+            val: the value to convert
+            val_type: the type of value
+
+        Returns:
+            ret: the converted value
+        """
+        if val_type is bytes:
+            return val.hex()
+        elif val_type is datetime.datetime:
+            return val.timestamp()
+        return val
+
+    @staticmethod
+    def _deserialize_val(val, val_type):
+        """Convert a serialized type to the original type
+
+        Arguments:
+            val: the value to convert
+            val_type: the type of value
+
+        Returns:
+            ret: the converted value
+        """
+        if val_type is bytes:
+            return bytes.fromhex(val)
+        elif val_type is datetime.datetime:
+            return datetime.datetime.fromtimestamp(val)
+        return val
+
+    def _store_value(self, name, value):
+        self.data[name].append(self._serialize_val(value, self._attr[name]))
+
+    def _unstore_value(self, name):
+        return self._deserialize_val(self.data[name].pop(0), self._attr[name])
 
     def deactivate(self):
         """Deactivate the recorder.
@@ -121,7 +167,7 @@ class Recorder(object):
             msg (bytes): the message in raw format
         """
         if self._state == RecorderState.RECORDING:
-            self._msg_recv.append(msg)
+            self._store_value("msg_recv", msg)
 
     def inject_socket_recv(self):
         """If the recorder is replaying, inject the previously recorded message.
@@ -130,7 +176,7 @@ class Recorder(object):
             bytes: the message previously recorded
         """
         if self._state == RecorderState.REPLAYING:
-            return self._msg_recv.pop(0)
+            return self._unstore_value("msg_recv")
         return None
 
     def trace_socket_sendall(self, msg):
@@ -143,7 +189,7 @@ class Recorder(object):
             bool: True, if the message is sent externally.
         """
         if self._state == RecorderState.RECORDING:
-            self._msg_sendall.append(msg)
+            self._store_value("msg_sendall", msg)
         return self._state != RecorderState.REPLAYING
 
     def trace(self, **kwargs):
@@ -157,14 +203,9 @@ class Recorder(object):
         name, val = kwargs.popitem()
         if name in self._attr:
             if self._state == RecorderState.REPLAYING:
-                item = getattr(self, name)
-                if isinstance(item, list):
-                    rec_val = item.pop(0)
-                else:
-                    rec_val = item
-                assert rec_val == val
+                assert val == self._unstore_value(name)
             else:
-                getattr(self, name).append(val)
+                self._store_value(name, val)
 
     def inject(self, **kwargs):
         """Interface to potentially inject recorded data
@@ -184,9 +225,31 @@ class Recorder(object):
             return val
         if name in self._attr:
             if self._state == RecorderState.REPLAYING:
-                val = getattr(self, name)
-                if isinstance(val, list):
-                    val = val.pop(0)
+                val = self._unstore_value(name)
             else:
-                getattr(self, name).append(val)
+                self._store_value(name, val)
         return val
+
+    def serialize(self, filename):
+        """Serialize the recorded data to a file using YAML
+
+        Arguments:
+            filename (pathlib.Path): the file name to store the data in
+        """
+
+        if filename.exists():
+            print(f"File {filename} existing. Yaml file not generated")
+            return
+
+        with open(filename, "w") as fd:
+            yaml.dump(self.data, fd, indent=4)
+
+    def deserialize(self, filename):
+        """Deserialize the recorded data from a file
+
+        Arguments:
+            filename (str): the file name to deserialize the data from
+        """
+
+        with open(filename) as fd:
+            self.data = yaml.safe_load(fd)

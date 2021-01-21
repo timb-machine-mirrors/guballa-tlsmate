@@ -5,21 +5,20 @@
     - improved error handling, e.g. if host name cannot be resolved
     - more checks on server_hello: have the stuff selected by the server
       actually been offered?
-    - use __str__ for messages and extension displaying their names, cover all enums as well
     - use :class:`XXX` iso :obj: in the *.rst files where appropriate
     - cover all key exchange algorithms in mappings.key_exchange
       - ECDH_ANON is supported as well, but we need a test case
     - refactoring: Alert and CCS(?): do they need a msg_type?
     - more command line options, e.g. to scan only specific versions,
       or to enable/disable specific parts of the trace.
-    - implement proper handling of the scenario for session_tickets:
-      - adapt check if new session ticket was received to decide if the second
-        handshake must be performed
     - consistently use "verify" or "validate" when checking sigatures and certificates
-    - replace "pickle" by YAML/JSON for security reasons (deserialization of objects)
     - cleanups for certificate parsing required:
         - move the code from server_profile to scan_command?
         - implement quite a lot of missing stuff, e.g. proper handling of CRL, cert policies, etc.
         - use more classes
         - documentation
-    - recorder for CRL access
+    - analitika.traktir.ru: Supports SSLv2 but there are problems to be resolved regarding the certificate chain
+    - api2.bb.com.br: scan fails (SSLv2)
+    - moag.gov.il: scan failed
+    - www.howard.edu: scan failed
+    - mail.mm-grp.com: scan failed

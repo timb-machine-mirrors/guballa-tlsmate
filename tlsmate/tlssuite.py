@@ -1,7 +1,7 @@
 import abc
 from pathlib import Path
-import dill as pickle
-from tlsmate.dependency_injection import Container, providers
+import yaml
+from tlsmate.dependency_injection import Container
 from tlsmate import utils
 
 
@@ -40,14 +40,14 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
     """Base class to define unit tests
     """
 
-    recorder_pickle = None
-    sp_in_pickle = None
-    sp_out_pickle = None
+    recorder_yaml = None
+    sp_in_yaml = None
+    sp_out_yaml = None
     path = None
     server = None
     port = None
 
-    def get_pickle_file(self, name):
+    def get_yaml_file(self, name):
         """Determine the file where an object is serialized to.
 
         Arguments:
@@ -55,36 +55,36 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
                 the suffix
 
         Returns:
-            :class:`pathlib.Path`: a Path object for the pickle file
+            :class:`pathlib.Path`: a Path object for the yaml file
         """
-        return self.path.resolve().parent / "recordings" / (name + ".pickle")
+        return self.path.resolve().parent / "recordings" / (name + ".yaml")
 
-    def pickle_obj(self, obj, name):
-        """Dump the pickled object to a file.
+    def serialize(self, obj, name):
+        """Dump the object to a yaml file.
 
         Arguments:
-            obj (object): the object to pickle
+            obj (dict): the object to serialize
             name (str): the file name (without directory and suffix) to write the
-                pickled object to
+                serialized object to
         """
-        file_name = self.get_pickle_file(name)
+        file_name = self.get_yaml_file(name)
         if file_name.exists():
-            print(f"File {file_name} existing. Pickle file not generated")
+            print(f"File {file_name} existing. Yaml file not generated")
             return
-        with open(file_name, "wb") as fd:
-            pickle.dump(obj, fd)
+        with open(file_name, "w") as fd:
+            yaml.dump(obj, fd)
 
-    def unpickle_obj(self, name):
-        """Deserialize a pickled object from a file.
+    def deserialize(self, name):
+        """Deserialize a yaml file.
 
         Arguments:
             name (str): the full file name
 
         Returns:
-            object: the unpickled object
+            object: the deserialized object
         """
-        with open(self.get_pickle_file(name), "rb") as fd:
-            return pickle.load(fd)
+        with open(self.get_yaml_file(name)) as fd:
+            return yaml.safe_load(fd)
 
     def entry(self, is_replaying=False):
         """Entry point for a test case.
@@ -93,17 +93,16 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             is_replaying (bool): an indication if the test case is replayed or recorded.
                 Defaults to False.
         """
-        container_args = {}
+        container = Container()
+        recorder = container.recorder()
+        profile = container.server_profile()
 
-        if is_replaying and self.recorder_pickle is not None:
-            recorder = self.unpickle_obj(self.recorder_pickle)
+        if is_replaying and self.recorder_yaml is not None:
+            recorder.deserialize(self.get_yaml_file(self.recorder_yaml))
             recorder.replay()
-            container_args["recorder"] = providers.Object(recorder)
-        if self.sp_in_pickle is not None:
-            server_profile = self.unpickle_obj(self.sp_in_pickle)
-            container_args["server_profile"] = providers.Object(server_profile)
-
-        container = Container(**container_args)
+        if self.sp_in_yaml is not None:
+            data = self.deserialize(self.sp_in_yaml)
+            profile.load(data)
 
         ini_file = Path.home() / ".tlsmate.ini"
         if not ini_file.is_file():
@@ -122,12 +121,10 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         self.run(container, is_replaying)
 
         if not is_replaying:
-            if self.recorder_pickle is not None:
-                recorder = container.recorder()
-                self.pickle_obj(recorder, self.recorder_pickle)
-            if self.sp_out_pickle is not None:
-                server_profile = container.server_profile()
-                self.pickle_obj(server_profile, self.sp_out_pickle)
+            if self.recorder_yaml is not None:
+                recorder.serialize(self.get_yaml_file(self.recorder_yaml))
+            if self.sp_out_yaml is not None:
+                self.serialize(profile.make_serializable(), self.sp_out_yaml)
 
     def test_entry(self):
         """Entry point for pytest.

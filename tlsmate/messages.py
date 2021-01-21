@@ -353,6 +353,10 @@ class Certificate(HandshakeMessage):
         pass
 
     def _deserialize_msg_body(self, fragment, offset, conn):
+        # TODO: Redesign, make container globally available to avoid those wired
+        # injections.
+        self.chain.set_recorder(conn.recorder)
+
         if conn.version is tls.Version.TLS13:
             length, offset = pdu.unpack_uint8(fragment, offset)
             if length:
@@ -481,9 +485,7 @@ class KeyExchangeEC(object):
                 sig_scheme, offset = pdu.unpack_uint16(fragment, offset)
                 self.sig_scheme = tls.SignatureScheme.val2enum(sig_scheme)
             signature_len, offset = pdu.unpack_uint16(fragment, offset)
-            self.signature, offset = pdu.unpack_bytes(
-                fragment, offset, signature_len
-            )
+            self.signature, offset = pdu.unpack_bytes(fragment, offset, signature_len)
         return self
 
 

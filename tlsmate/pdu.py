@@ -237,5 +237,6 @@ def dump(data, separator=" ", with_length=True):
         ret = ret + f" ({len(data)})"
     return ret
 
+
 def string(data):
     return dump(data, separator=":", with_length=False)

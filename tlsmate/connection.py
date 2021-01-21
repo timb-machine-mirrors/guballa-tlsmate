@@ -396,7 +396,7 @@ class TlsConnection(object):
                 for idx, val in enumerate(binder):
                     msg_data[offset + idx] = val
 
-                self.recorder.trace(hmac_algo=psk.hmac.hmac_algo)
+                self.recorder.trace(hmac_algo=psk.hmac.hmac_algo.name)
                 self.recorder.trace(msg_digest_tls13=hash_val)
                 self.recorder.trace(early_secret=early_secret)
                 self.recorder.trace(binder_key=binder_key)
@@ -859,7 +859,11 @@ class TlsConnection(object):
 
         if msg.chain.digest not in self._cert_chain_digests:
             self._cert_chain_digests.append(msg.chain.digest)
-            timestamp = datetime.datetime.now()
+            if self.recorder.is_injecting():
+                timestamp = self.recorder.inject(datetime=None)
+            else:
+                timestamp = datetime.datetime.now()
+                self.recorder.trace(datetime=timestamp)
             msg.chain.validate(
                 timestamp,
                 self.client.config["server"],

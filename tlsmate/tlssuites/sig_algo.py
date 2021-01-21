@@ -6,7 +6,7 @@ import tlsmate.messages as msg
 import tlsmate.constants as tls
 from tlsmate.tlssuite import TlsSuite
 from tlsmate import utils
-from tlsmate.server_profile import SPSignatureAlgorithms, ProfileEnum, ProfileBasic
+from tlsmate.server_profile import SPSignatureAlgorithms
 
 
 class _Backend(metaclass=abc.ABCMeta):
@@ -59,53 +59,60 @@ class ScanSigAlgs(TlsSuite):
         self.client.cipher_suites = cipher_suites
         self.client.support_signature_algorithms = True
         self.client.signature_algorithms = sig_algs
+
         while sig_algs:
             sig_alg, cert_chain = backend.get_sig_alg_from_server(
                 self.client, cipher_suites, sig_algs
             )
             if sig_alg is None:
                 break
-            self.server_profile.get("cert_chain").append_unique(cert_chain)
+            self.server_profile.append_unique_cert_chain(cert_chain)
             if sig_alg not in sig_algs:
-                prof_sig_algo.add(
-                    "info",
-                    ProfileBasic(
-                        f"server selects sig_alg {sig_alg} even when not offered"
-                    ),
-                    keep_existing=True,
-                )
+                if not hasattr(prof_sig_algo, "info"):
+                    prof_sig_algo.info = []
+                info = f"server selects sig_alg {sig_alg} even when not offered"
+                if info not in prof_sig_algo.info:
+                    prof_sig_algo.info.append(info)
                 break
             sig_alg_supported.append(sig_alg)
             sig_algs.remove(sig_alg)
-        if (
-            len(sig_alg_supported) > 1
-            and prof_sig_algo.get("server_preference").get() is tls.SPBool.C_NA
-        ):
+
+        if len(sig_alg_supported) > 1:
             ref_sig_algo = sig_alg_supported[0]
             sig_alg_supported.append(sig_alg_supported.pop(0))
             sig_alg = backend.get_sig_alg_from_server(
                 self.client, cipher_suites, sig_alg_supported
             )
             sig_alg_supported.insert(0, sig_alg_supported.pop())
+
             if sig_alg is ref_sig_algo:
-                prof_sig_algo.get("server_preference").set(tls.SPBool.C_TRUE)
+                status = tls.SPBool.C_TRUE
             else:
-                prof_sig_algo.get("server_preference").set(tls.SPBool.C_FALSE)
+                status = tls.SPBool.C_FALSE
+        else:
+            prof_sig_algo.server_preference = tls.SPBool.C_NA
+
+        if (
+            prof_sig_algo.server_preference is tls.SPBool.C_UNDETERMINED
+            or prof_sig_algo.server_preference is tls.SPBool.C_NA
+            or status is not tls.SPBool.C_NA
+        ):
+            prof_sig_algo.server_preference = status
+
         for sig_algo in sig_alg_supported:
-            prof_sig_algo.get("algorithms").append(ProfileEnum(sig_algo))
+            prof_sig_algo.algorithms.append(sig_algo)
 
     def scan_tls12(self):
-        version = self.server_profile.get("versions").key(tls.Version.TLS12)
-        if version is None:
+        prof_version = self.server_profile.get_version_profile(tls.Version.TLS12)
+        if prof_version is None:
             return
-        prof_sig_algo = SPSignatureAlgorithms()
-        version.add("signature_algorithms", prof_sig_algo)
-        cs_list = version.get("cipher_suites").all()
+        if not hasattr(prof_version, "signature_algorithms"):
+            prof_version.signature_algorithms = SPSignatureAlgorithms()
+        prof_sig_algo = prof_version.signature_algorithms
+        cs_list = prof_version.cipher_suites
         sigalg_list = tls.SignatureScheme.all()
         self.client.support_supported_groups = True
-        self.client.supported_groups = (
-            version.get("supported_groups").get("groups").all()
-        )
+        self.client.supported_groups = prof_version.supported_groups.groups
         self.client.versions = [tls.Version.TLS12]
 
         rsa_ciphers = utils.filter_cipher_suites(
@@ -148,20 +155,22 @@ class ScanSigAlgs(TlsSuite):
         )
 
     def scan_tls13(self):
-        prof_version = self.server_profile.get("versions").key(tls.Version.TLS13)
+        prof_version = self.server_profile.get_version_profile(tls.Version.TLS13)
         if prof_version is None:
             return
-        prof_sig_algo = SPSignatureAlgorithms()
-        prof_version.add("signature_algorithms", prof_sig_algo)
-        cs_list = prof_version.get("cipher_suites").all()
-        sigalg_list = tls.SignatureScheme.all()
+        if not hasattr(prof_version, "signature_algorithms"):
+            prof_version.signature_algorithms = SPSignatureAlgorithms()
+        prof_sig_algo = prof_version.signature_algorithms
         self.client.support_supported_groups = True
-        self.client.supported_groups = (
-            prof_version.get("supported_groups").get("groups").all()
-        )
+        self.client.supported_groups = prof_version.supported_groups.groups
         self.client.versions = [tls.Version.TLS13]
 
-        self.scan_auth_method(cs_list, sigalg_list, prof_sig_algo, _BackendTls13)
+        self.scan_auth_method(
+            prof_version.cipher_suites,
+            tls.SignatureScheme.all(),
+            prof_sig_algo,
+            _BackendTls13,
+        )
 
     def run(self):
         self.scan_tls12()

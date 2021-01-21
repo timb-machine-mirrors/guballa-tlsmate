@@ -81,8 +81,8 @@ class TestCase(TlsSuiteTester):
     For more information refer to the documentation of the TcRecorder class.
     """
 
-    sp_out_pickle = "profile_basic_openssl3_0_0"
-    recorder_pickle = "recorder_eval_cipher_suites_openssl3_0_0"
+    sp_out_yaml = "profile_basic_openssl3_0_0"
+    recorder_yaml = "recorder_eval_cipher_suites_openssl3_0_0"
     path = pathlib.Path(__file__)
 
     server = "localhost"
@@ -107,7 +107,7 @@ class TestCase(TlsSuiteTester):
             assert a == b["name"]
 
     def check_profile(self, profile):
-        self.check_cert_chain(profile["cert_chain"])
+        self.check_cert_chain(profile["cert_chains"])
         self.check_versions(profile["versions"])
 
     def run(self, container, is_replaying):
@@ -116,7 +116,7 @@ class TestCase(TlsSuiteTester):
         test_suite._inject_dependencies(server_profile, container.client())
         test_suite.run()
 
-        self.check_profile(server_profile.serialize())
+        self.check_profile(server_profile.make_serializable())
 
 
 if __name__ == "__main__":

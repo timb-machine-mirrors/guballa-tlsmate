@@ -915,7 +915,7 @@ class PskKeyExchangeMode(ExtendedEnum):
     PSK_DHE_KE = 1
 
 
-class SPBool(enum.Enum):
+class SPBool(ExtendedEnum):
     """Enum representing a pseudo-boolean value in the server profile.
 
     In addition to True and false the two values are defined:

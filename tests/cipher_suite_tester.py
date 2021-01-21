@@ -17,7 +17,7 @@ class CipherSuiteTester(TlsSuiteTester):
     compatible server, as it is expected to receive the openssl-command from a
     simple http request (opensssl s_server -www ...).
 
-    The pickle file for the recorder is named after the cipher suite (done in the
+    The yaml file for the recorder is named after the cipher suite (done in the
     base class). The cipher suite is specified as a class property.
     Optionally, the version, the supported groups and the signature algorithms
     may be specified as well, otherwise, defaults are used.
@@ -28,7 +28,7 @@ class CipherSuiteTester(TlsSuiteTester):
     (via test_entry method of the TlsSuiteTester class).
     """
 
-    # The name of the pickle file. If None, the name is taken from the
+    # The name of the yaml file. If None, the name is taken from the
     # cipher suite name
     name = None
     path = None
@@ -81,7 +81,7 @@ class CipherSuiteTester(TlsSuiteTester):
             # Cool feature by openssl: if the server is started with the -www
             # option, an HTTP get request will return some information,
             # including the command line used to start the server. We will
-            # extract this line and add it to the pickle file.
+            # extract this line and add it to the yaml file.
             # The command openssl_command.py can then be used to read out this
             # information.
             conn.send(msg.AppData(b"GET / HTTP/1.1\n"))
@@ -106,7 +106,7 @@ class CipherSuiteTester(TlsSuiteTester):
             utils.set_logging("debug")
         name = getattr(self, "name")
         if name is not None:
-            self.recorder_pickle = self.name
+            self.recorder_yaml = self.name
         else:
-            self.recorder_pickle = self.cipher_suite.name
+            self.recorder_yaml = self.cipher_suite.name
         super().entry(is_replaying)

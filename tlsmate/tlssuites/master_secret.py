@@ -3,8 +3,6 @@
 """
 import tlsmate.constants as tls
 from tlsmate.tlssuite import TlsSuite
-from tlsmate.server_profile import ProfileBasicEnum
-from tlsmate import utils
 
 
 class ScanExtendedMasterSecret(TlsSuite):
@@ -14,27 +12,16 @@ class ScanExtendedMasterSecret(TlsSuite):
 
     def extended_master_secret(self):
         state = tls.SPBool.C_UNDETERMINED
-        cipher_suites = []
-        groups = []
-        sig_algs = []
-        versions = []
-        for version in self.server_profile.get_versions():
-            if version not in [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]:
-                continue
-            versions.append(version)
-            cipher_suites.extend(self.server_profile.get_cipher_suites(version))
-            sig_algs.extend(self.server_profile.get_signature_algorithms(version))
-            groups.extend(self.server_profile.get_supported_groups(version))
-        if not cipher_suites:
-            # no CBC cipher suite supported
+        versions = [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]
+        prof_values = self.server_profile.get_profile_values(versions, full_hs=True)
+        if not prof_values.verions:
             state = tls.SPBool.C_NA
         else:
-            cipher_suites = utils.filter_cipher_suites(cipher_suites, full_hs=True)
             self.client.reset_profile()
-            self.client.versions = versions
-            self.client.cipher_suites = set(cipher_suites)
-            self.client.supported_groups = set(groups)
-            self.client.signature_algorithms = set(sig_algs)
+            self.client.versions = prof_values.versions
+            self.client.cipher_suites = prof_values.cipher_suites
+            self.client.supported_groups = prof_values.supported_groups
+            self.client.signature_algorithms = prof_values.signature_algorithms
             self.client.support_extended_master_secret = True
             with self.client.create_connection() as conn:
                 conn.handshake()
@@ -45,8 +32,7 @@ class ScanExtendedMasterSecret(TlsSuite):
                     state = tls.SPBool.C_TRUE
                 else:
                     state = tls.SPBool.C_FALSE
-        prof_features = self.server_profile.get("features")
-        prof_features.add("extended_master_secret", ProfileBasicEnum(state))
+        self.server_profile.features.extended_master_secret = state
 
     def run(self):
         self.extended_master_secret()

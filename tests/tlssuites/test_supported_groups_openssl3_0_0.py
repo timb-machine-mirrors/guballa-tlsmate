@@ -6,10 +6,9 @@ from tlsmate.tlssuites.supported_groups import ScanSupportedGroups
 from tlsmate.tlssuite import TlsSuiteTester
 
 
-groups_tls12 = ["SECP256R1", "SECP384R1", "SECP521R1", "X25519", "X448"]
+groups_tls12 = ["SECP384R1", "SECP521R1", "X25519", "X448", "SECP256R1"]
 
 groups_tls13 = [
-    "SECP256R1",
     "SECP384R1",
     "SECP521R1",
     "X25519",
@@ -19,6 +18,7 @@ groups_tls13 = [
     "FFDHE4096",
     "FFDHE6144",
     "FFDHE8192",
+    "SECP256R1",
 ]
 
 
@@ -28,9 +28,9 @@ class TestCase(TlsSuiteTester):
     For more information refer to the documentation of the TcRecorder class.
     """
 
-    sp_in_pickle = "profile_basic_openssl3_0_0"
-    sp_out_pickle = "profile_supported_groups_openssl3_0_0"
-    recorder_pickle = "recorder_supported_groups_openssl3_0_0"
+    sp_in_yaml = "profile_basic_openssl3_0_0"
+    sp_out_yaml = "profile_supported_groups_openssl3_0_0"
+    recorder_yaml = "recorder_supported_groups_openssl3_0_0"
     path = pathlib.Path(__file__)
 
     server = "localhost"
@@ -39,7 +39,7 @@ class TestCase(TlsSuiteTester):
     def check_tls12(self, profile):
         assert profile["extension_supported"] == "C_TRUE"
         assert profile["server_preference"] == "C_FALSE"
-        assert "groups_advertised" not in profile
+        assert profile["groups_advertised"] == "C_NA"
         assert len(profile["groups"]) == len(groups_tls12)
         for a, b in zip(groups_tls12, profile["groups"]):
             assert a == b["name"]
@@ -62,7 +62,7 @@ class TestCase(TlsSuiteTester):
         test_suite._inject_dependencies(server_profile, container.client())
         test_suite.run()
 
-        self.check_profile(server_profile.serialize())
+        self.check_profile(server_profile.make_serializable())
 
 
 if __name__ == "__main__":

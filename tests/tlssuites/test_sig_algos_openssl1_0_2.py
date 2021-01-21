@@ -24,9 +24,9 @@ class TestCase(TlsSuiteTester):
     For more information refer to the documentation of the TcRecorder class.
     """
 
-    sp_in_pickle = "profile_supported_groups_openssl1_0_2"
-    sp_out_pickle = "profile_sig_algos_openssl1_0_2"
-    recorder_pickle = "recorder_sig_algos_openssl1_0_2"
+    sp_in_yaml = "profile_supported_groups_openssl1_0_2"
+    sp_out_yaml = "profile_sig_algos_openssl1_0_2"
+    recorder_yaml = "recorder_sig_algos_openssl1_0_2"
     path = pathlib.Path(__file__)
 
     server = "localhost"
@@ -47,7 +47,7 @@ class TestCase(TlsSuiteTester):
         test_suite._inject_dependencies(server_profile, container.client())
         test_suite.run()
 
-        self.check_profile(server_profile.serialize())
+        self.check_profile(server_profile.make_serializable())
 
 
 if __name__ == "__main__":

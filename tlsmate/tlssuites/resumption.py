@@ -3,7 +3,8 @@
 """
 import tlsmate.constants as tls
 from tlsmate.tlssuite import TlsSuite
-from tlsmate.server_profile import ProfileBasic, ProfileBasicEnum
+
+# from tlsmate.server_profile import ProfileBasic, ProfileBasicEnum
 
 
 class ScanResumption(TlsSuite):
@@ -46,15 +47,14 @@ class ScanResumption(TlsSuite):
     def run(self):
         versions = [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]
         prof_vals = self.server_profile.get_profile_values(versions, full_hs=True)
-        prof_features = self.server_profile.get("features")
+        prof_features = self.server_profile.features
 
         session_id_support = self.resumption_tls12(prof_vals, session_ticket=False)
-        prof_features.add("session_id", ProfileBasicEnum(session_id_support))
+        prof_features.session_id = session_id_support
 
         session_ticket_support = self.resumption_tls12(prof_vals, session_ticket=True)
-        prof_features.add("session_ticket", ProfileBasicEnum(session_ticket_support))
+        prof_features.session_ticket = session_ticket_support
         if session_ticket_support is tls.SPBool.C_TRUE:
-            prof_features.add(
-                "session_ticket_lifetime",
-                ProfileBasic(self.client.session_state_ticket.lifetime),
-            )
+            prof_features.session_ticket_lifetime = (
+                self.client.session_state_ticket.lifetime
+            )  # noqa: 501

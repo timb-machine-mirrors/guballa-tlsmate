@@ -3,7 +3,8 @@
 """
 import tlsmate.constants as tls
 from tlsmate.tlssuite import TlsSuite
-from tlsmate.server_profile import ProfileBasicEnum
+
+# from tlsmate.server_profile import ProfileBasicEnum
 from tlsmate import utils
 
 
@@ -14,28 +15,22 @@ class ScanEncryptThenMac(TlsSuite):
 
     def encrypt_then_mac(self):
         state = tls.SPBool.C_UNDETERMINED
-        cipher_suites = []
-        groups = []
-        sig_algs = []
-        versions = []
-        for version in self.server_profile.get_versions():
-            if version not in [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]:
-                continue
-            versions.append(version)
-            cs = self.server_profile.get_cipher_suites(version)
-            filt_cs = utils.filter_cipher_suites(cs, cipher_type=[tls.CipherType.BLOCK])
-            cipher_suites.extend(filt_cs)
-            sig_algs.extend(self.server_profile.get_signature_algorithms(version))
-            groups.extend(self.server_profile.get_supported_groups(version))
+        versions = [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]
+
+        prof_values = self.server_profile.get_profile_values(versions, full_hs=True)
+        cipher_suites = utils.filter_cipher_suites(
+            prof_values.cipher_suites, cipher_type=[tls.CipherType.BLOCK]
+        )
+
         if not cipher_suites:
             # no CBC cipher suite supported
             state = tls.SPBool.C_NA
         else:
             self.client.reset_profile()
             self.client.versions = versions
-            self.client.cipher_suites = set(cipher_suites)
-            self.client.supported_groups = groups
-            self.client.signature_algorithms = sig_algs
+            self.client.cipher_suites = cipher_suites
+            self.client.supported_groups = prof_values.supported_groups
+            self.client.signature_algorithms = prof_values.signature_algorithms
             self.client.support_encrypt_then_mac = True
             with self.client.create_connection() as conn:
                 conn.handshake()
@@ -44,8 +39,7 @@ class ScanEncryptThenMac(TlsSuite):
                     state = tls.SPBool.C_TRUE
                 else:
                     state = tls.SPBool.C_FALSE
-        prof_features = self.server_profile.get("features")
-        prof_features.add("encrypt_then_mac", ProfileBasicEnum(state))
+        self.server_profile.features.encrypt_then_mac = state
 
     def run(self):
         self.encrypt_then_mac()
