@@ -163,6 +163,8 @@ setup(
         'pathlib',
         'pem',
         'configparser',
+        'marshmallow',
+        'marshmallow_oneofschema',
     ],
 
     # List additional groups of dependencies here (e.g. development
