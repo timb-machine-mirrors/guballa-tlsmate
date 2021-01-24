@@ -324,6 +324,18 @@ class TlsConnection(object):
         self.key_shares[group] = key_share
         return key_share.get_key_share()
 
+    def _init_handshake(self):
+        self._finished_treated = False
+        self.ticket_sent = False
+        self.abbreviated_hs = False
+        self.session_id_sent = None
+        self.handshake_completed = False
+        self.alert_received = False
+        self.alert_sent = False
+        self.send_early_data = False
+        self.early_data_accepted = False
+        self.ext_psk = None
+
     # ###########################
     # sending ClientHello methods
     # ###########################
@@ -332,6 +344,7 @@ class TlsConnection(object):
         return self.client.client_hello()
 
     def _pre_serialization_ch(self, msg):
+        self._init_handshake()
         logging.info(f"version: {msg.get_version()}")
         self.client_version_sent = msg.version
         if self.recorder.is_injecting():

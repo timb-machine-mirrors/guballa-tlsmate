@@ -149,6 +149,29 @@ class HandshakeMessage(TlsMessage):
         )
 
 
+class HelloRequest(HandshakeMessage):
+    """This class respresents a HelloRequest message.
+    """
+
+    msg_type = tls.HandshakeType.HELLO_REQUEST
+    """:obj:`tlsmate.constants.HandshakeType.HELLO_REQUEST`
+    """
+
+    def __init__(self):
+        pass
+
+    def _serialize_msg_body(self, conn):
+        return b""
+
+    def _deserialize_msg_body(self, fragment, offset, conn):
+        if offset != len(fragment):
+            raise FatalAlert(
+                f"Message length error for {self.msg_type}",
+                tls.AlertDescription.DECODE_ERROR,
+            )
+        return self
+
+
 class ClientHello(HandshakeMessage):
     """This class respresents a ClientHello message.
 
@@ -1074,7 +1097,7 @@ class SSL2ServerHello(SSL2Message):
 """Map the handshake message type to the corresponding class.
 """
 _hs_deserialization_map = {
-    # tls.HandshakeType.HELLO_REQUEST = 0
+    tls.HandshakeType.HELLO_REQUEST: HelloRequest,
     tls.HandshakeType.CLIENT_HELLO: ClientHello,
     tls.HandshakeType.SERVER_HELLO: ServerHello,
     tls.HandshakeType.NEW_SESSION_TICKET: NewSessionTicket,

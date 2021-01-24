@@ -547,6 +547,8 @@ class RecordLayerState(object):
             The unprotected record layer message (plain text).
         """
         if self._version is tls.Version.TLS13:
+            if rl_msg.content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
+                return rl_msg
             return self._tls13_unprotect(rl_msg)
         else:
             # We do not support compression.

@@ -167,10 +167,7 @@ class RecordLayer(object):
             content_type=content_type, version=version, fragment=fragment
         )
 
-        if (
-            self._read_state is None
-            or content_type is tls.ContentType.CHANGE_CIPHER_SPEC
-        ):
+        if self._read_state is None:
             return rl_msg
         else:
             return self._read_state.unprotect_msg(rl_msg)
