@@ -161,7 +161,7 @@ class TlsConnectionMsgs(object):
     """
 
     _map_msg2attr = {
-        tls.HandshakeType.HELLO_REQUEST: None,
+        tls.HandshakeType.HELLO_REQUEST: "hello_request",
         tls.HandshakeType.CLIENT_HELLO: "client_hello",
         tls.HandshakeType.SERVER_HELLO: "server_hello",
         tls.HandshakeType.NEW_SESSION_TICKET: "new_session_ticket",
@@ -183,6 +183,7 @@ class TlsConnectionMsgs(object):
     }
 
     def __init__(self):
+        self.hello_request = None
         self.client_hello = None
         self.server_hello = None
         self.encrypted_extensions = None

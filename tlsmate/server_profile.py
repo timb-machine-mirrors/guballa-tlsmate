@@ -1030,6 +1030,8 @@ class SPCertificate(SPObject):
         self.signature_algorithm = cert.signature_algorithm
         self.public_key = SPPublicKey(pub_key=cert.parsed.public_key())
         self.extensions = [SPCertExtension(ext=ext) for ext in cert.parsed.extensions]
+        if cert.crl_status is not None:
+            self.crl_revokation_status = cert.crl_status
 
 
 class SPCertificateSchema(ProfileSchema):

@@ -22,3 +22,4 @@
     - moag.gov.il: scan failed
     - www.howard.edu: scan failed
     - mail.mm-grp.com: scan failed
+    - CRL: don't use CRL from issuer, use own CRL

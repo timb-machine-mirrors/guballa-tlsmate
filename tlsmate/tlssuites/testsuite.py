@@ -14,7 +14,7 @@ class ScanScratch(TlsSuite):
 
     def run(self):
         client = self.client
-        client.versions = [tls.Version.TLS11]
+        client.versions = [tls.Version.TLS12]
         client.cipher_suites = [
             # tls.CipherSuite.TLS_DHE_DSS_WITH_AES_256_CBC_SHA,
             # tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8,
@@ -153,12 +153,16 @@ class ScanScratch(TlsSuite):
             # conn.wait(msg.ChangeCipherSpec)
             # conn.wait(msg.Finished)
             conn.handshake()
-            time.sleep(4)
-            conn.send(msg.AppData(b"GET / HTTP/1.1\r\nHost: localhost:44330\r\n\r\n"))
-            while True:
-                app_data = conn.wait(msg.AppData)
-                if len(app_data.data):
-                    break
-            for line in app_data.data.decode("utf-8").split("\n"):
-                if line.startswith("s_server"):
-                    logging.debug("openssl_command: " + line)
+            # time.sleep(4)
+            # conn.send(msg.AppData(b"GET / HTTP/1.1\r\nHost: localhost:44330\r\n\r\n"))
+            # while True:
+            #     app_data = conn.wait(msg.AppData)
+            #     if len(app_data.data):
+            #         break
+            # for line in app_data.data.decode("utf-8").split("\n"):
+            #     if line.startswith("s_server"):
+            #         logging.debug("openssl_command: " + line)
+
+            #conn.wait(msg.HelloRequest, timeout=60000)
+            conn.wait(msg.Any, timeout=3000, optional=True)
+            conn.handshake()

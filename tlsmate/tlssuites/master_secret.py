@@ -14,7 +14,7 @@ class ScanExtendedMasterSecret(TlsSuite):
         state = tls.SPBool.C_UNDETERMINED
         versions = [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]
         prof_values = self.server_profile.get_profile_values(versions, full_hs=True)
-        if not prof_values.verions:
+        if not prof_values.versions:
             state = tls.SPBool.C_NA
         else:
             self.client.reset_profile()
