@@ -817,18 +817,17 @@ class CertChain(object):
                     self.issues.append(issue)
                     if raise_on_failure:
                         raise CertChainValidationError(issue)
-            else:
-                if prev_cert is not None:
+            if prev_cert is not None:
 
-                    if not equal_names(prev_cert.parsed.issuer, cert.parsed.subject):
-                        issue = (
-                            f'certificate "{cert}" is not issuer of certificate '
-                            f'"{prev_cert}"'
-                        )
-                        self.issues.append(issue)
-                        if raise_on_failure:
-                            raise CertChainValidationError(issue)
-                    self._validate_linked_certs(prev_cert, cert, raise_on_failure)
+                if not equal_names(prev_cert.parsed.issuer, cert.parsed.subject):
+                    issue = (
+                        f'certificate "{cert}" is not issuer of certificate '
+                        f'"{prev_cert}"'
+                    )
+                    self.issues.append(issue)
+                    if raise_on_failure:
+                        raise CertChainValidationError(issue)
+                self._validate_linked_certs(prev_cert, cert, raise_on_failure)
 
             logging.debug(f'certificate "{cert}" successfully validated')
             prev_cert = cert

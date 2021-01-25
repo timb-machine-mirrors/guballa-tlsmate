@@ -1,5 +1,4 @@
 
-    - support for renegotiation
     - HelloRetryRequest
     - more scan results
     - improved error handling, e.g. if host name cannot be resolved
@@ -23,3 +22,7 @@
     - www.howard.edu: scan failed
     - mail.mm-grp.com: scan failed
     - CRL: don't use CRL from issuer, use own CRL
+    - Add conn.wait(msg.NoMessage, timout=xxx) to wait for nothing, i.e. implementing a delay
+    - recorder: implement the original delay for replaying messages
+    - implement makefile for test cases generation, where the openssl-server is started with 
+      the correct parameters.
