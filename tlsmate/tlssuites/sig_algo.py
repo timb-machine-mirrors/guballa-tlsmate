@@ -111,8 +111,9 @@ class ScanSigAlgs(TlsSuite):
         prof_sig_algo = prof_version.signature_algorithms
         cs_list = prof_version.cipher_suites
         sigalg_list = tls.SignatureScheme.all()
-        self.client.support_supported_groups = True
-        self.client.supported_groups = prof_version.supported_groups.groups
+        if hasattr(prof_version.supported_groups, "groups"):
+            self.client.support_supported_groups = True
+            self.client.supported_groups = prof_version.supported_groups.groups
         self.client.versions = [tls.Version.TLS12]
 
         rsa_ciphers = utils.filter_cipher_suites(
