@@ -984,6 +984,16 @@ class SSLVersion(ExtendedEnum):
     SSL2 = 0x0002
 
 
+class SSLError(ExtendedEnum):
+    """Enum representing SSLv2 errors.
+    """
+
+    NO_CIPHER = 0x0001
+    NO_CERTIFICATE = 0x0002
+    BAD_CERTIFICATE = 0x0004
+    UNSUPPORTED_CERTIFICATE_TYPE = 0x0006
+
+
 class CertKeyUsage(ExtendedEnum):
     """Representing the various flags of the KeyUsage extension for certificates
     """

@@ -1094,6 +1094,35 @@ class SSL2ServerHello(SSL2Message):
         return self
 
 
+class SSL2Error(SSL2Message):
+    """This class respresents an SSL2 Error message.
+
+    Attributes:
+        session_id_hit (int): An indication if the session id offered by the client
+            will be used.
+        cert_type (int): The type of the certificate.
+        version (:obj:`tlsmate.constants.SSLVersion`): The version "SSL2".
+        cipher_specs (list of :obj:`tlsmate.constants.SSLCipherKind`): The list
+            of cipher kinds offered by the server.
+        connection_id (bytes): The connection id.
+        certificate (bytes): The certificate provided by the server.
+    """
+
+    msg_type = tls.SSLMessagType.SSL2_ERROR
+    """:obj:`tlsmate.constants.SSLMessagType.SSL2_ERROR`
+    """
+
+    def __init__(self):
+        self.error = None
+
+    def serialize(self, conn):
+        pass
+
+    def _deserialize_msg_body(self, fragment, offset, conn):
+        error = pdu.unpack_uint16(fragment, offset)
+        self.error = tls.SSLError.val2enum(error)
+        return self
+
 """Map the handshake message type to the corresponding class.
 """
 _hs_deserialization_map = {
@@ -1122,4 +1151,7 @@ _ccs_deserialization_map = {tls.CCSType.CHANGE_CIPHER_SPEC: ChangeCipherSpec}
 
 """Map the SSL2 message type to the corresponding class.
 """
-_ssl2_deserialization_map = {tls.SSLMessagType.SSL2_SERVER_HELLO: SSL2ServerHello}
+_ssl2_deserialization_map = {
+    tls.SSLMessagType.SSL2_SERVER_HELLO: SSL2ServerHello,
+    tls.SSLMessagType.SSL2_ERROR: SSL2Error,
+}
