@@ -19,20 +19,15 @@ class ScanCompression(TlsSuite):
             features.compression = []
         self.client.reset_profile()
         self.client.versions = [version]
-        self.client.cipher_suites = self.server_profile.get_cipher_suites(version)
+        values = self.server_profile.get_profile_values([version])
 
-        prof_version = self.server_profile.get_version_profile(version)
-        groups = getattr(prof_version.supported_groups, "groups", None)
+        self.client.cipher_suites = values.cipher_suites
+        if values.supported_groups:
+            self.client.supported_groups = values.supported_groups
+            self.client.supported_groups = values.supported_groups
+        if values.signature_algorithms:
+            self.client.signature_algorithms = values.signature_algorithms
 
-        if groups:
-            self.client.supported_groups = groups
-            self.client.key_share = groups
-
-        sig_algos = getattr(prof_version.supported_groups, "signature_algorithms", None)
-
-        if sig_algos:
-            prof = self.server_profile
-            self.client.signature_algorithms = prof.get_signature_algorithms(version)
         comp_methods = tls.CompressionMethod.all()
 
         while comp_methods:
@@ -52,5 +47,5 @@ class ScanCompression(TlsSuite):
                 features.compression.append(server_hello.compression_method)
 
     def run(self):
-        for version in self.server_profile.get_versions():
+        for version in self.server_profile.get_versions(exclude=[tls.Version.SSL20]):
             self.compression(version)

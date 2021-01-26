@@ -106,7 +106,7 @@ class _Scan(metaclass=abc.ABCMeta):
         except ScanError as exc:
             logging.info(f'scan error in "{testsuite_name}": {exc.message}')
             # TODO: strategy for handling status messages
-            self._profile_groups.set_status(exc.message)
+            # self._profile_groups.set_status(exc.message)
 
 
 class _TLS12_Scan(_Scan):

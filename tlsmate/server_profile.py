@@ -1195,13 +1195,15 @@ class ServerProfile(SPObject):
         chain.id = idx
         self.cert_chains.append(SPCertChain(chain=chain))
 
-    def get_versions(self):
+    def get_versions(self, exclude=None):
         """Get all TLS versions from the profile.
 
         Returns:
             list(:obj:`tlsmate.constants.Version`): A list of all supported versions.
         """
-        return [version_obj.version for version_obj in self.versions]
+        if exclude is None:
+            exclude = []
+        return [obj.version for obj in self.versions if obj.version not in exclude]
 
     def get_version_profile(self, version):
         """Get the profile entry for a given version.
@@ -1239,9 +1241,10 @@ class ServerProfile(SPObject):
                 TLS version.
         """
         version_prof = self.get_version_profile(version)
-        if version_prof is not None:
+        try:
             return version_prof.supported_groups.groups
-        return None
+        except AttributeError:
+            return None
 
     def get_signature_algorithms(self, version):
         """Get all signature algorithms for a given TLS version.
@@ -1293,7 +1296,8 @@ class ServerProfile(SPObject):
                 sig_algos.extend([algo for algo in vers_sig if algo not in sig_algos])
 
             vers_group = self.get_supported_groups(version)
-            groups.extend([group for group in vers_group if group not in groups])
+            if vers_group is not None:
+                groups.extend([group for group in vers_group if group not in groups])
 
         if full_hs:
             cipher_suites = utils.filter_cipher_suites(cipher_suites, full_hs=True)
