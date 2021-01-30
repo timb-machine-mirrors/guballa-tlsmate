@@ -13,14 +13,7 @@
     - consistently use "verify" or "validate" when checking sigatures and certificates
     - cleanups for certificate parsing required:
         - move the code from server_profile to scan_command?
-        - implement quite a lot of missing stuff, e.g. proper handling of CRL, cert policies, etc.
-        - use more classes
-        - documentation
-    - analitika.traktir.ru: Supports SSLv2 but there are problems to be resolved regarding the certificate chain
-    - api2.bb.com.br: scan fails (SSLv2)
-    - moag.gov.il: scan failed
-    - www.howard.edu: scan failed
-    - mail.mm-grp.com: scan failed
+        - implement quite a lot of missing stuff, e.g. proper handling of cert policies, etc.
     - Add conn.wait(msg.NoMessage, timout=xxx) to wait for nothing, i.e. implementing a delay
     - recorder: implement the original delay for replaying messages
     - implement makefile for test cases generation, where the openssl-server is started with 

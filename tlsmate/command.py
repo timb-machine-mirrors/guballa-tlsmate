@@ -97,6 +97,20 @@ def build_parser():
     )
 
     parser.add_argument(
+        "--client-key",
+        type=str,
+        help="a file containing the client private key in PEM format.",
+    )
+
+    parser.add_argument(
+        "--client-cert",
+        type=str,
+        help=("a file containing the certificate chain used for client authentication "
+            "in PEM format."
+        ),
+    )
+
+    parser.add_argument(
         "host",
         help=(
             "the host to scan. May optionally have the port number appended, "
@@ -134,6 +148,8 @@ def main():
     config.merge_config("progress", args.progress)
     config.merge_config("ca_certs", args.ca_certs)
     config.merge_config("logging", args.logging)
+    config.merge_config("client_key", args.client_key)
+    config.merge_config("client_cert", args.client_cert)
 
     utils.set_logging(config["logging"])
 

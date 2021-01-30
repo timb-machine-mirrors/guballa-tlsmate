@@ -5,7 +5,8 @@ import tlsmate.constants as tls
 import tlsmate.extensions as ext
 from tlsmate.messages import ClientHello
 from tlsmate.cert import TrustStore
-
+import pem
+from cryptography.hazmat.primitives import serialization
 
 class Client(object):
     """The class representing a TLS client
@@ -85,6 +86,18 @@ class Client(object):
         self.reset_profile()
         ca_files = config["ca_certs"]
         self.trust_store = TrustStore(ca_files=ca_files)
+        self.client_key = None
+        self.client_cert = []
+        self._read_client_files(config)
+
+    def _read_client_files(self, config):
+        if config["client_key"] is not None:
+            with open(config["client_key"], "rb") as fd:
+                self.client_key = serialization.load_pem_private_key(fd.read(), password=None)
+        if config["client_cert"] is not None:
+            pem_list = pem.parse_file(config["client_cert"])
+            for pem_item in pem_list:
+                self.client_cert.append(Certificate(pem=pem_item.as_bytes()))
 
     def reset_profile(self):
         """Resets the client profile to a very basic state
