@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """Module containing the test suite
 """
-import logging
-import time
 import tlsmate.messages as msg
 import tlsmate.constants as tls
 from tlsmate.tlssuite import TlsSuite
@@ -106,12 +104,9 @@ class ScanScratch(TlsSuite):
             tls.SignatureScheme.RSA_PKCS1_MD5,
             tls.SignatureScheme.ECDSA_SHA1,
             tls.SignatureScheme.RSA_PKCS1_SHA256,
-            # tls.SignatureScheme.RSA_PKCS1_SHA256_LEGACY,
             # tls.SignatureScheme.RSA_PKCS1_SHA384,
             # tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
-            # tls.SignatureScheme.RSA_PKCS1_SHA384_LEGACY,
             # tls.SignatureScheme.RSA_PKCS1_SHA512,
-            # tls.SignatureScheme.RSA_PKCS1_SHA512_LEGACY,
         ]
         # client.support_encrypt_then_mac = True
         # client.support_extended_master_secret = True
@@ -134,8 +129,8 @@ class ScanScratch(TlsSuite):
         # client.support_psk = True
         # client.psk_key_exchange_modes = [tls.PskKeyExchangeMode.PSK_DHE_KE]
         with client.create_connection() as conn:
-            # conn.send(msg.ClientHello)
-            # conn.wait(msg.ServerHello)
+            conn.send(msg.ClientHello)
+            conn.wait(msg.ServerHello)
 
             # # conn.wait(msg.ChangeCipherSpec, optional=True)
             # # conn.wait(msg.EncryptedExtensions)
@@ -146,13 +141,18 @@ class ScanScratch(TlsSuite):
             # # conn.wait(msg.NewSessionTicket)
             # # conn.wait(msg.NewSessionTicket)
 
-            # conn.wait(msg.Certificate)
-            # conn.wait(msg.ServerKeyExchange, optional=True)
-            # conn.wait(msg.ServerHelloDone)
-            # conn.send(msg.ClientKeyExchange, msg.ChangeCipherSpec, msg.Finished)
-            # conn.wait(msg.ChangeCipherSpec)
-            # conn.wait(msg.Finished)
-            conn.handshake()
+            conn.wait(msg.Certificate)
+            conn.wait(msg.ServerKeyExchange, optional=True)
+            conn.wait(msg.CertificateRequest)
+            conn.wait(msg.ServerHelloDone)
+            conn.send(msg.Certificate)
+            conn.send(msg.ClientKeyExchange)
+            conn.send(msg.CertificateVerify)
+            conn.send(msg.ChangeCipherSpec, msg.Finished)
+
+            conn.wait(msg.ChangeCipherSpec)
+            conn.wait(msg.Finished)
+            # conn.handshake()
             # time.sleep(4)
             # conn.send(msg.AppData(b"GET / HTTP/1.1\r\nHost: localhost:44330\r\n\r\n"))
             # while True:
@@ -163,6 +163,6 @@ class ScanScratch(TlsSuite):
             #     if line.startswith("s_server"):
             #         logging.debug("openssl_command: " + line)
 
-            #conn.wait(msg.HelloRequest, timeout=60000)
-            conn.wait(msg.Any, timeout=3000, optional=True)
-            conn.handshake()
+            # conn.wait(msg.HelloRequest, timeout=60000)
+            # conn.wait(msg.Any, timeout=3000, optional=True)
+            # conn.handshake()

@@ -2,7 +2,6 @@
 """Implements a class to be used for unit testing.
 """
 import pathlib
-import logging
 from tests.cipher_suite_tester import CipherSuiteTester
 import tlsmate.constants as tls
 import tlsmate.messages as msg

@@ -25,6 +25,8 @@ from tlsmate import utils
 import tlsmate.structures as structs
 import tlsmate.key_exchange as kex
 from tlsmate.kdf import Kdf
+from cryptography.hazmat.primitives.asymmetric import padding, ec
+from cryptography.hazmat.primitives import hashes
 
 
 def get_random_value():
@@ -165,14 +167,14 @@ class TlsConnectionMsgs(object):
         tls.HandshakeType.CLIENT_HELLO: "client_hello",
         tls.HandshakeType.SERVER_HELLO: "server_hello",
         tls.HandshakeType.NEW_SESSION_TICKET: "new_session_ticket",
-        tls.HandshakeType.END_OF_EARLY_DATA: None,
+        tls.HandshakeType.END_OF_EARLY_DATA: "end_of_early_data",
         tls.HandshakeType.ENCRYPTED_EXTENSIONS: "encrypted_extensions",
         tls.HandshakeType.CERTIFICATE: "_certificate",
         tls.HandshakeType.SERVER_KEY_EXCHANGE: "server_key_exchange",
-        tls.HandshakeType.CERTIFICATE_REQUEST: None,
+        tls.HandshakeType.CERTIFICATE_REQUEST: "certificate_request",
         tls.HandshakeType.SERVER_HELLO_DONE: "server_hello_done",
-        tls.HandshakeType.CERTIFICATE_VERIFY: None,
-        tls.HandshakeType.CLIENT_KEY_EXCHANGE: None,
+        tls.HandshakeType.CERTIFICATE_VERIFY: "certificate_verify",
+        tls.HandshakeType.CLIENT_KEY_EXCHANGE: "client_key_exchange",
         tls.HandshakeType.FINISHED: "_finished",
         tls.HandshakeType.KEY_UPDATE: None,
         tls.HandshakeType.COMPRESSED_CERTIFICATE: None,
@@ -337,6 +339,51 @@ class TlsConnection(object):
         self.early_data_accepted = False
         self.ext_psk = None
 
+    def _sign_rsa_pss(self, key, data, hash_algo):
+        return key.sign(
+            data,
+            padding.PSS(
+                mgf=padding.MGF1(hash_algo()), salt_length=hash_algo.digest_size
+            ),
+            hash_algo(),
+        )
+
+    def _sign_rsa_pkcsv15(self, key, data, hash_algo):
+        return key.sign(data, padding.PKCS1v15(), hash_algo())
+
+    def _sign_dsa(self, key, data, hash_algo):
+        return key.sign(data, hash_algo())
+
+    def _sign_ecdsa(self, key, data, hash_algo):
+        return key.sign(data, ec.ECDSA(hash_algo()))
+
+    def _sign_with_client_key(self, algo, data):
+        func, hash_algo = self._map_client_signature_algorithm[algo]
+        return func(self, self.client.client_key, data, hash_algo)
+
+    _map_client_signature_algorithm = {
+        tls.SignatureScheme.RSA_PKCS1_MD5: (_sign_rsa_pkcsv15, hashes.MD5),
+        tls.SignatureScheme.RSA_PKCS1_SHA1: (_sign_rsa_pkcsv15, hashes.SHA1),
+        tls.SignatureScheme.RSA_PKCS1_SHA224: (_sign_rsa_pkcsv15, hashes.SHA224),
+        tls.SignatureScheme.RSA_PKCS1_SHA256: (_sign_rsa_pkcsv15, hashes.SHA256),
+        tls.SignatureScheme.RSA_PKCS1_SHA384: (_sign_rsa_pkcsv15, hashes.SHA384),
+        tls.SignatureScheme.RSA_PKCS1_SHA512: (_sign_rsa_pkcsv15, hashes.SHA512),
+        tls.SignatureScheme.RSA_PSS_PSS_SHA256: (_sign_rsa_pss, hashes.SHA256),
+        tls.SignatureScheme.RSA_PSS_PSS_SHA384: (_sign_rsa_pss, hashes.SHA384),
+        tls.SignatureScheme.RSA_PSS_PSS_SHA512: (_sign_rsa_pss, hashes.SHA512),
+        tls.SignatureScheme.DSA_MD5: (_sign_dsa, hashes.MD5),
+        tls.SignatureScheme.DSA_SHA1: (_sign_dsa, hashes.SHA1),
+        tls.SignatureScheme.DSA_SHA224: (_sign_dsa, hashes.SHA224),
+        tls.SignatureScheme.DSA_SHA256: (_sign_dsa, hashes.SHA256),
+        tls.SignatureScheme.DSA_SHA384: (_sign_dsa, hashes.SHA384),
+        tls.SignatureScheme.DSA_SHA512: (_sign_dsa, hashes.SHA512),
+        tls.SignatureScheme.ECDSA_SHA1: (_sign_ecdsa, hashes.SHA1),
+        tls.SignatureScheme.ECDSA_SECP256R1_SHA256: (_sign_ecdsa, hashes.SHA256),
+        tls.SignatureScheme.ECDSA_SECP384R1_SHA384: (_sign_ecdsa, hashes.SHA256),
+        tls.SignatureScheme.ECDSA_SECP521R1_SHA512: (_sign_ecdsa, hashes.SHA256),
+        tls.SignatureScheme.ECDSA_SECP224R1_SHA224: (_sign_ecdsa, hashes.SHA256),
+    }
+
     # ###########################
     # sending ClientHello methods
     # ###########################
@@ -493,6 +540,38 @@ class TlsConnection(object):
         self._generate_master_secret()
         self._key_derivation()
 
+    # ###########################
+    # sending Certificate methods
+    # ###########################
+
+    def _generate_cert(self, cls):
+        # TODO: Server side implementation
+
+        msg = cls()
+        msg.request_context = None
+        if not self.client.client_chain:
+            raise ValueError("no certificate chain for client authentication defined")
+        msg.chain = self.client.client_chain
+        return msg
+
+    # #################################
+    # sending CertificateVerify methods
+    # #################################
+
+    def _generate_cert_verify(self, cls):
+        # TODO: Server side implementation
+
+        msg = cls()
+        client_cert = self.client.client_chain.certificates[0]
+
+        for algo in self.msg.certificate_request.supported_signature_algorithms:
+            if algo in client_cert.tls12_signature_algorithms:
+                msg.signature_scheme = algo
+                data = self.kdf.get_handshake_messages()
+                msg.signature = self._sign_with_client_key(algo, data)
+                break
+        return msg
+
     # ##############################
     # sending EndOfEarlyData methods
     # ##############################
@@ -575,6 +654,8 @@ class TlsConnection(object):
         tls.HandshakeType.CLIENT_HELLO: _generate_ch,
         tls.HandshakeType.CLIENT_KEY_EXCHANGE: _generate_cke,
         tls.HandshakeType.FINISHED: _generate_finished,
+        tls.HandshakeType.CERTIFICATE: _generate_cert,
+        tls.HandshakeType.CERTIFICATE_VERIFY: _generate_cert_verify,
     }
 
     _pre_serialization_method = {tls.HandshakeType.CLIENT_HELLO: _pre_serialization_ch}

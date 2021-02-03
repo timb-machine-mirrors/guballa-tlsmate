@@ -234,6 +234,7 @@ class Kdf(object):
         self._msg_digest_active = True
         self._backend = None
         self._empty_msg_digest = None
+        self._all_msgs = bytearray()
 
     def set_msg_digest_algo(self, hash_algo):
         """Function to set the hash algo for the message digest.
@@ -269,6 +270,7 @@ class Kdf(object):
         """
         if not self._msg_digest_active:
             return
+        self._all_msgs.extend(msg)
         if self._backend is None:
             if self._msg_digest_queue is None:
                 self._msg_digest_queue = bytearray(msg)
@@ -276,6 +278,14 @@ class Kdf(object):
                 self._msg_digest_queue.extend(msg)
         else:
             self._backend.update_msg_digest(msg)
+
+    def get_handshake_messages(self):
+        """Get all messages received/sent so far.
+
+        Returns:
+            bytes: the concatenation of all messages.
+        """
+        return self._all_msgs
 
     def empty_msg_digest(self):
         """Return the message digest for an emty message array.

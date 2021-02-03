@@ -384,7 +384,8 @@ cert_chains:
   id: 2
   successful_validation: C_TRUE
 - cert_chain:
-  - extensions:
+  - crl_revokation_status: NOT_REVOKED
+    extensions:
     - ca: C_FALSE
       criticality: C_TRUE
       name: BasicConstraints
@@ -588,7 +589,8 @@ cert_chains:
   id: 1
   successful_validation: C_TRUE
 - cert_chain:
-  - extensions:
+  - crl_revokation_status: NOT_REVOKED
+    extensions:
     - ca: C_FALSE
       criticality: C_TRUE
       name: BasicConstraints

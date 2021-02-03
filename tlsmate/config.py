@@ -57,6 +57,8 @@ class Configuration(object):
             "logging": "error",
             "progress": False,
             "ca_certs": None,
+            "client_key": None,
+            "client_chain": None,
         }
         parser = configparser.ConfigParser(os.environ)
         if ini_file is not None:

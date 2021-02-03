@@ -103,9 +103,10 @@ def build_parser():
     )
 
     parser.add_argument(
-        "--client-cert",
+        "--client-chain",
         type=str,
-        help=("a file containing the certificate chain used for client authentication "
+        help=(
+            "a file containing the certificate chain used for client authentication "
             "in PEM format."
         ),
     )
@@ -149,7 +150,7 @@ def main():
     config.merge_config("ca_certs", args.ca_certs)
     config.merge_config("logging", args.logging)
     config.merge_config("client_key", args.client_key)
-    config.merge_config("client_cert", args.client_cert)
+    config.merge_config("client_chain", args.client_chain)
 
     utils.set_logging(config["logging"])
 

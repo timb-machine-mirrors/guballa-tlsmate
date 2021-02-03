@@ -15,6 +15,7 @@ from cryptography.hazmat.primitives.asymmetric import (
     rsa,
     dsa,
     ed25519,
+    ed448,
 )
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
@@ -462,7 +463,7 @@ class Certificate(object):
         self.subject_matches = None
         self.fingerprint_sha1 = None
         self.fingerprint_sha256 = None
-        self.signature_algorithm = None
+        self.tls12_signature_algorithms = None
         self.crl_status = None
 
         if der is not None:
@@ -511,6 +512,49 @@ class Certificate(object):
             self._pem = self.parsed.public_bytes(Encoding.PEM)
         return self._pem
 
+    def _determine_signature_algorithms(self, public_key):
+        if isinstance(public_key, rsa.RSAPublicKey):
+            self.tls12_signature_algorithms = [
+                tls.SignatureScheme.RSA_PKCS1_SHA1,
+                tls.SignatureScheme.RSA_PKCS1_SHA256,
+                tls.SignatureScheme.RSA_PKCS1_SHA384,
+                tls.SignatureScheme.RSA_PKCS1_SHA512,
+                tls.SignatureScheme.RSA_PKCS1_MD5,
+                tls.SignatureScheme.RSA_PKCS1_SHA224,
+            ]
+
+        elif isinstance(public_key, dsa.DSAPublicKey):
+            self.tls12_signature_algorithms = [
+                tls.SignatureScheme.DSA_MD5,
+                tls.SignatureScheme.DSA_SHA1,
+                tls.SignatureScheme.DSA_SHA224,
+                tls.SignatureScheme.DSA_SHA256,
+                tls.SignatureScheme.DSA_SHA384,
+                tls.SignatureScheme.DSA_SHA512,
+            ]
+
+        elif isinstance(public_key, ec.EllipticCurvePublicKey):
+            size_to_algo = {
+                128: tls.SignatureScheme.ECDSA_SHA1,
+                224: tls.SignatureScheme.ECDSA_SECP224R1_SHA224,
+                256: tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
+                384: tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
+                512: tls.SignatureScheme.ECDSA_SECP521R1_SHA512,
+            }
+            sig_scheme = size_to_algo.get(public_key.curve.key_size)
+            if sig_scheme is None:
+                raise ValueError(
+                    f"unknown keysize {public_key.curve.key_size} for ECDSA public key"
+                )
+
+            self.tls12_signature_algorithms = [sig_scheme]
+
+        elif isinstance(public_key, ed25519.Ed25519PublicKey):
+            self.tls12_signature_algorithms = [tls.Signature.ED25519]
+
+        elif isinstance(public_key, ed448.Ed448PublicKey):
+            self.tls12_signature_algorithms = [tls.Signature.ED448]
+
     def _parse(self):
         """Parse the certificate, so that all attributes are set.
         """
@@ -519,6 +563,14 @@ class Certificate(object):
         self.signature_algorithm = map_x509_sig_scheme(
             self._parsed.signature_hash_algorithm, self._parsed.signature_algorithm_oid,
         )
+        try:
+            key_usage = self._parsed.extensions.get_extension_for_oid(
+                ExtensionOID.KEY_USAGE
+            )
+            if key_usage.value.digital_signature:
+                self._determine_signature_algorithms(self._parsed.public_key())
+        except x509.ExtensionNotFound:
+            self._determine_signature_algorithms(self._parsed.public_key())
 
     def _common_name(self, name):
         cns = name.get_attributes_for_oid(NameOID.COMMON_NAME)
@@ -631,7 +683,7 @@ class Certificate(object):
             key.key_type = tls.SignatureAlgorithm.ED25519
             key.key = pub_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
 
-        elif isinstance(pub_key, ed25519.Ed448PublicKey):
+        elif isinstance(pub_key, ed448.Ed448PublicKey):
             key.key_type = tls.SignatureAlgorithm.ED448
             key.key = pub_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
 
@@ -695,6 +747,16 @@ class CertChain(object):
         """
         self.certificates.append(Certificate(der=bin_cert))
         self._digest.update(bin_cert)
+
+    def append_pem_cert(self, pem_cert):
+        """Append the chain by a certificate given in pem format.
+
+        Arguments:
+            pem_cert (bytes): the certificate to append in pem format
+        """
+        cert = Certificate(pem=pem_cert)
+        self.certificates.append(cert)
+        self._digest.update(cert.bytes)
 
     @property
     def digest(self):
