@@ -22,4 +22,3 @@
       - test case for client auth
       - TLS13 support
       - client authentication after completed handshake
-      - conn.handshake()

@@ -1339,8 +1339,13 @@ class TlsConnection(object):
                     tls.KeyExchangeAlgorithm.DH_ANON,
                 ]:
                     self.wait(msg.ServerKeyExchange)
+                cert_req = self.wait(msg.CertificateRequest, optional=True)
                 self.wait(msg.ServerHelloDone)
+                if cert_req is not None:
+                    self.send(msg.Certificate)
                 self.send(msg.ClientKeyExchange)
+                if cert_req is not None:
+                    self.send(msg.CertificateVerify)
                 self.send(msg.ChangeCipherSpec)
                 self.send(msg.Finished)
                 self.wait(msg.ChangeCipherSpec)
