@@ -87,22 +87,25 @@ class Client(object):
         self.reset_profile()
         ca_files = config["ca_certs"]
         self.trust_store = TrustStore(ca_files=ca_files)
-        self.client_key = None
-        self.client_chain = []
+        self.client_keys = []
+        self.client_chains = []
         self._read_client_files(config)
 
     def _read_client_files(self, config):
         if config["client_key"] is not None:
-            with open(config["client_key"], "rb") as fd:
-                self.client_key = serialization.load_pem_private_key(
-                    fd.read(), password=None
-                )
-        if config["client_chain"] is not None:
-            self.client_chain = CertChain()
+            for key_file in config["client_key"]:
+                with open(key_file, "rb") as fd:
+                    self.client_keys.append(
+                        serialization.load_pem_private_key(fd.read(), password=None)
+                    )
 
-            pem_list = pem.parse_file(config["client_chain"])
-            for pem_item in pem_list:
-                self.client_chain.append_pem_cert(pem_item.as_bytes())
+        if config["client_chain"] is not None:
+            for chain_file in config["client_chain"]:
+                client_chain = CertChain()
+                pem_list = pem.parse_file(chain_file)
+                for pem_item in pem_list:
+                    client_chain.append_pem_cert(pem_item.as_bytes())
+                self.client_chains.append(client_chain)
 
     def reset_profile(self):
         """Resets the client profile to a very basic state

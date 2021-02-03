@@ -18,3 +18,8 @@
     - recorder: implement the original delay for replaying messages
     - implement makefile for test cases generation, where the openssl-server is started with 
       the correct parameters.
+    - client authentication:
+      - test case for client auth
+      - TLS13 support
+      - client authentication after completed handshake
+      - conn.handshake()

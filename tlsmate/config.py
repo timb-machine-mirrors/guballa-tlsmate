@@ -48,7 +48,12 @@ class Configuration(object):
     'localhost'
     """
 
-    _format_option = {"progress": _str_to_bool, "ca_certs": _str_to_strlist}
+    _format_option = {
+        "progress": _str_to_bool,
+        "ca_certs": _str_to_strlist,
+        "client_key": _str_to_strlist,
+        "client_chain": _str_to_strlist,
+    }
 
     def __init__(self, ini_file=None):
         self.config = {

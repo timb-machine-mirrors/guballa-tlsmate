@@ -275,6 +275,9 @@ class TlsConnection(object):
         self.key_ex_type = None
         self.key_auth = None
 
+        self._clientauth_key_idx = None
+        self._clientauth_sig_algo = None
+
         self.client_write_keys = None
         self.server_write_keys = None
         self.cipher = None
@@ -338,6 +341,8 @@ class TlsConnection(object):
         self.send_early_data = False
         self.early_data_accepted = False
         self.ext_psk = None
+        self._clientauth_key_idx = None
+        self._clientauth_sig_algo = None
 
     def _sign_rsa_pss(self, key, data, hash_algo):
         return key.sign(
@@ -357,9 +362,9 @@ class TlsConnection(object):
     def _sign_ecdsa(self, key, data, hash_algo):
         return key.sign(data, ec.ECDSA(hash_algo()))
 
-    def _sign_with_client_key(self, algo, data):
+    def _sign_with_client_key(self, priv_key, algo, data):
         func, hash_algo = self._map_client_signature_algorithm[algo]
-        return func(self, self.client.client_key, data, hash_algo)
+        return func(self, priv_key, data, hash_algo)
 
     _map_client_signature_algorithm = {
         tls.SignatureScheme.RSA_PKCS1_MD5: (_sign_rsa_pkcsv15, hashes.MD5),
@@ -545,13 +550,11 @@ class TlsConnection(object):
     # ###########################
 
     def _generate_cert(self, cls):
-        # TODO: Server side implementation
-
         msg = cls()
         msg.request_context = None
-        if not self.client.client_chain:
-            raise ValueError("no certificate chain for client authentication defined")
-        msg.chain = self.client.client_chain
+        msg.chain = None
+        if self._clientauth_key_idx is not None:
+            msg.chain = self.client.client_chains[self._clientauth_key_idx]
         return msg
 
     # #################################
@@ -559,17 +562,18 @@ class TlsConnection(object):
     # #################################
 
     def _generate_cert_verify(self, cls):
-        # TODO: Server side implementation
+        if self._clientauth_key_idx is None:
+            return None
 
         msg = cls()
-        client_cert = self.client.client_chain.certificates[0]
+        msg.signature_scheme = self._clientauth_sig_algo
+        data = self.kdf.get_handshake_messages()
+        msg.signature = self._sign_with_client_key(
+            self.client.client_keys[self._clientauth_key_idx],
+            self._clientauth_sig_algo,
+            data,
+        )
 
-        for algo in self.msg.certificate_request.supported_signature_algorithms:
-            if algo in client_cert.tls12_signature_algorithms:
-                msg.signature_scheme = algo
-                data = self.kdf.get_handshake_messages()
-                msg.signature = self._sign_with_client_key(algo, data)
-                break
         return msg
 
     # ##############################
@@ -711,9 +715,11 @@ class TlsConnection(object):
                 methods will be called to instantiate an object.
         """
         for message in messages:
-            logging.info(f"{utils.Log.time()}: ==> {message.msg_type}")
             if inspect.isclass(message):
                 message = self._generate_outgoing_msg(message)
+                if message is None:
+                    continue
+            logging.info(f"{utils.Log.time()}: ==> {message.msg_type}")
             self._pre_serialization_hook(message)
             self._msg_logging(message)
             msg_data = message.serialize(self)
@@ -966,6 +972,17 @@ class TlsConnection(object):
                 self.client.alert_on_invalid_cert,
             )
 
+    def _on_certificate_request_received(self, msg):
+        for algo in msg.supported_signature_algorithms:
+            for idx, chain in enumerate(self.client.client_chains):
+                if algo in chain.certificates[0].tls12_signature_algorithms:
+                    self._clientauth_key_idx = idx
+                    self._clientauth_sig_algo = algo
+                    break
+
+        if self._clientauth_key_idx is None:
+            logging.info("No suitable certificate found for client authentication")
+
     def _on_certificate_verify_received(self, msg):
         if self.version is tls.Version.TLS13:
             kex.verify_certificate_verify(msg, self.msg, self.certificate_digest)
@@ -975,6 +992,7 @@ class TlsConnection(object):
         tls.HandshakeType.ENCRYPTED_EXTENSIONS: _on_encrypted_extensions_received,
         tls.HandshakeType.SERVER_KEY_EXCHANGE: _on_server_key_exchange_received,
         tls.HandshakeType.CERTIFICATE: _on_certificate_received,
+        tls.HandshakeType.CERTIFICATE_REQUEST: _on_certificate_request_received,
         tls.HandshakeType.CERTIFICATE_VERIFY: _on_certificate_verify_received,
         tls.CCSType.CHANGE_CIPHER_SPEC: _on_change_cipher_spec_received,
         tls.HandshakeType.FINISHED: _on_finished_received,

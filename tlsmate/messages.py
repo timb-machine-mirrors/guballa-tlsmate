@@ -373,9 +373,10 @@ class Certificate(HandshakeMessage):
 
     def _serialize_msg_body(self, conn):
         cert_list = bytearray()
-        for certificate in self.chain.certificates:
-            cert_list.extend(pdu.pack_uint24(len(certificate.bytes)))
-            cert_list.extend(certificate.bytes)
+        if self.chain is not None:
+            for certificate in self.chain.certificates:
+                cert_list.extend(pdu.pack_uint24(len(certificate.bytes)))
+                cert_list.extend(certificate.bytes)
 
         return pdu.pack_uint24(len(cert_list)) + cert_list
 
