@@ -263,6 +263,9 @@ _sig_schemes = {
     tls.SignatureScheme.ECDSA_SECP256R1_SHA256: (_verify_ecdsa, hashes.SHA256),
     tls.SignatureScheme.ECDSA_SECP384R1_SHA384: (_verify_ecdsa, hashes.SHA384),
     tls.SignatureScheme.ECDSA_SECP521R1_SHA512: (_verify_ecdsa, hashes.SHA512),
+    tls.SignatureScheme.RSA_PSS_PSS_SHA256: (_verify_rsae_pss, hashes.SHA256),
+    tls.SignatureScheme.RSA_PSS_PSS_SHA384: (_verify_rsae_pss, hashes.SHA384),
+    tls.SignatureScheme.RSA_PSS_PSS_SHA512: (_verify_rsae_pss, hashes.SHA512),
     tls.SignatureScheme.RSA_PSS_RSAE_SHA256: (_verify_rsae_pss, hashes.SHA256),
     tls.SignatureScheme.RSA_PSS_RSAE_SHA384: (_verify_rsae_pss, hashes.SHA384),
     tls.SignatureScheme.RSA_PSS_RSAE_SHA512: (_verify_rsae_pss, hashes.SHA512),
@@ -464,6 +467,7 @@ class Certificate(object):
         self.fingerprint_sha1 = None
         self.fingerprint_sha256 = None
         self.tls12_signature_algorithms = None
+        self.tls13_signature_algorithms = None
         self.crl_status = None
 
         if der is not None:
@@ -521,6 +525,21 @@ class Certificate(object):
                 tls.SignatureScheme.RSA_PKCS1_SHA512,
                 tls.SignatureScheme.RSA_PKCS1_MD5,
                 tls.SignatureScheme.RSA_PKCS1_SHA224,
+                # Currently, cryptography does not support RSA-PSS-PSS
+                #tls.SignatureScheme.RSA_PSS_PSS_SHA256,
+                #tls.SignatureScheme.RSA_PSS_PSS_SHA384,
+                #tls.SignatureScheme.RSA_PSS_PSS_SHA512,
+                tls.SignatureScheme.RSA_PSS_RSAE_SHA256,
+                tls.SignatureScheme.RSA_PSS_RSAE_SHA384,
+                tls.SignatureScheme.RSA_PSS_RSAE_SHA512,
+            ]
+            self.tls13_signature_algorithms = [
+                #tls.SignatureScheme.RSA_PSS_PSS_SHA256,
+                #tls.SignatureScheme.RSA_PSS_PSS_SHA384,
+                #tls.SignatureScheme.RSA_PSS_PSS_SHA512,
+                tls.SignatureScheme.RSA_PSS_RSAE_SHA256,
+                tls.SignatureScheme.RSA_PSS_RSAE_SHA384,
+                tls.SignatureScheme.RSA_PSS_RSAE_SHA512,
             ]
 
         elif isinstance(public_key, dsa.DSAPublicKey):
@@ -532,6 +551,7 @@ class Certificate(object):
                 tls.SignatureScheme.DSA_SHA384,
                 tls.SignatureScheme.DSA_SHA512,
             ]
+            self.tls13_signature_algorithms = []
 
         elif isinstance(public_key, ec.EllipticCurvePublicKey):
             size_to_algo = {
@@ -548,12 +568,18 @@ class Certificate(object):
                 )
 
             self.tls12_signature_algorithms = [sig_scheme]
+            if sig_scheme is tls.SignatureScheme.ECDSA_SHA1:
+                self.tls13_signature_algorithms = []
+            else:
+                self.tls13_signature_algorithms = [sig_scheme]
 
         elif isinstance(public_key, ed25519.Ed25519PublicKey):
             self.tls12_signature_algorithms = [tls.Signature.ED25519]
+            self.tls13_signature_algorithms = [tls.Signature.ED25519]
 
         elif isinstance(public_key, ed448.Ed448PublicKey):
             self.tls12_signature_algorithms = [tls.Signature.ED448]
+            self.tls13_signature_algorithms = [tls.Signature.ED448]
 
     def _parse(self):
         """Parse the certificate, so that all attributes are set.

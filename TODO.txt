@@ -20,5 +20,4 @@
       the correct parameters.
     - client authentication:
       - test case for client auth
-      - TLS13 support
-      - client authentication after completed handshake
+      - TLS13: client authentication after handshake

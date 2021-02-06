@@ -206,6 +206,7 @@ class Extension(ExtendedEnum):
     EXTERNAL_ID_HASH = 55
     EXTERNAL_SESSION_ID = 56
     RENEGOTIATION_INFO = 65281
+    UNKNOW_EXTENSION = 0x10000
 
 
 class CipherSuite(ExtendedEnum):

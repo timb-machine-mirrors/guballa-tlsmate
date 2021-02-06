@@ -35,7 +35,11 @@ class Extension(metaclass=abc.ABCMeta):
             bytes: The serialized extension.
         """
         ext_body = self.serialize_ext_body(conn)
-        ext = bytearray(pdu.pack_uint16(self.extension_id.value))
+        if self.extension_id is tls.Extension.UNKNOW_EXTENSION:
+            ext_id = self.id
+        else:
+            ext_id = self.extension_id.value
+        ext = bytearray(pdu.pack_uint16(ext_id))
         ext.extend(pdu.pack_uint16(len(ext_body)))
         ext.extend(ext_body)
         return ext
@@ -52,14 +56,36 @@ class Extension(metaclass=abc.ABCMeta):
             :obj:`Extension`, new offset: The deserialized extension as an
                 python object and the new offset into the fragment.
         """
-        ext_id, offset = pdu.unpack_uint16(fragment, offset)
-        ext_id = tls.Extension.val2enum(ext_id, alert_on_failure=True)
+        ext_id_int, offset = pdu.unpack_uint16(fragment, offset)
+        ext_id = tls.Extension.val2enum(ext_id_int)
         ext_len, offset = pdu.unpack_uint16(fragment, offset)
         ext_body, offset = pdu.unpack_bytes(fragment, offset, ext_len)
-        cls_name = deserialization_map[ext_id]
+        cls_name = deserialization_map.get(ext_id)
+        if cls_name is None:
+            return ExtUnknownExtension(id=ext_id_int, bytes=fragment)
         extension = cls_name()
         extension.deserialize_ext_body(ext_body)
         return extension, offset
+
+class ExtUnknownExtension(Extension):
+    """Any extensions which is not known by tlsmate (yet).
+
+    Arguments:
+        id (int): the Id of the extensions as used in the PDU
+        bytes (bytes): the content of the extension as a byte string
+    """
+    extension_id = tls.Extension.UNKNOW_EXTENSION
+
+    def __init__(self, **kwargs):
+        self.id = None
+        self.bytes = None
+
+    def serialize_ext_body(self, conn):
+        return self.bytes
+
+    def deserialize_ext_body(self, fragment):
+        # deserialization implemented in base class.
+        pass
 
 
 class ExtServerNameIndication(Extension):
@@ -281,6 +307,45 @@ class ExtSignatureAlgorithms(Extension):
         ext_body.extend(algo_list)
         return ext_body
 
+    def deserialize_ext_body(self, ext_body):
+        length, offset = pdu.unpack_uint16(ext_body, 0)
+        end_of_list = offset + length
+        while offset < end_of_list:
+            algo, offset = pdu.unpack_uint16(ext_body, offset)
+            try:
+                algo = tls.SignatureScheme(algo)
+            except ValueError:
+                pass
+            self.signature_algorithms.append(algo)
+        return self
+
+
+class ExtCertificateAuthorities(Extension):
+    """Represents the CertificateAuthorities extension.
+
+    Attributes:
+        authorities (list of bytes): The list of authorities in original ASN.1 format.
+    """
+
+    extension_id = tls.Extension.CERTIFICATE_AUTHORITIES
+    """:obj:`tlsmate.constants.Extension.CERTIFICATE_AUTHORITIES`
+    """
+
+    def __init__(self, **kwargs):
+        self.authorities = kwargs.get("authorities", [])
+
+    def serialize_ext_body(self, conn):
+        raise NotImplementedError(f"serialization of extension {self} not implemented")
+
+    def deserialize_ext_body(self, ext_body):
+        length, offset = pdu.unpack_uint16(ext_body, 0)
+        end_of_list = offset + length
+        while offset < end_of_list:
+            length, offset = pdu.unpack_uint16(ext_body, offset)
+            authority, offset = pdu.unpack_bytes(ext_body, offset, length)
+            self.authorities.append(authority)
+        return self
+
 
 class ExtSessionTicket(Extension):
     """Represents the SessionTicket extension.
@@ -497,7 +562,7 @@ deserialization_map = {
     tls.Extension.SUPPORTED_GROUPS: ExtSupportedGroups,
     tls.Extension.EC_POINT_FORMATS: ExtEcPointFormats,
     # tls.Extension.SRP = 12
-    # tls.Extension.SIGNATURE_ALGORITHMS = 13
+    tls.Extension.SIGNATURE_ALGORITHMS: ExtSignatureAlgorithms,
     # tls.Extension.USE_SRTP = 14
     # tls.Extension.HEARTBEAT = 15
     # tls.Extension.APPLICATION_LAYER_PROTOCOL_NEGOTIATION = 16
@@ -526,7 +591,7 @@ deserialization_map = {
     tls.Extension.SUPPORTED_VERSIONS: ExtSupportedVersions,
     # tls.Extension.COOKIE = 44
     # tls.Extension.PSK_KEY_EXCHANGE_MODES = 45
-    # tls.Extension.CERTIFICATE_AUTHORITIES = 47
+    tls.Extension.CERTIFICATE_AUTHORITIES: ExtCertificateAuthorities,
     # tls.Extension.OID_FILTERS = 48
     # tls.Extension.POST_HANDSHAKE_AUTH = 49
     # tls.Extension.SIGNATURE_ALGORITHMS_CERT = 50

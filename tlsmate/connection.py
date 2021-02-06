@@ -376,6 +376,9 @@ class TlsConnection(object):
         tls.SignatureScheme.RSA_PSS_PSS_SHA256: (_sign_rsa_pss, hashes.SHA256),
         tls.SignatureScheme.RSA_PSS_PSS_SHA384: (_sign_rsa_pss, hashes.SHA384),
         tls.SignatureScheme.RSA_PSS_PSS_SHA512: (_sign_rsa_pss, hashes.SHA512),
+        tls.SignatureScheme.RSA_PSS_RSAE_SHA256: (_sign_rsa_pss, hashes.SHA256),
+        tls.SignatureScheme.RSA_PSS_RSAE_SHA384: (_sign_rsa_pss, hashes.SHA384),
+        tls.SignatureScheme.RSA_PSS_RSAE_SHA512: (_sign_rsa_pss, hashes.SHA512),
         tls.SignatureScheme.DSA_MD5: (_sign_dsa, hashes.MD5),
         tls.SignatureScheme.DSA_SHA1: (_sign_dsa, hashes.SHA1),
         tls.SignatureScheme.DSA_SHA224: (_sign_dsa, hashes.SHA224),
@@ -551,10 +554,18 @@ class TlsConnection(object):
 
     def _generate_cert(self, cls):
         msg = cls()
-        msg.request_context = None
+        if self.version is tls.Version.TLS13:
+            msg.request_context = (
+                self.msg.certificate_request.certificate_request_context
+            )
+
+        else:
+            msg.request_context = None
+
         msg.chain = None
         if self._clientauth_key_idx is not None:
             msg.chain = self.client.client_chains[self._clientauth_key_idx]
+
         return msg
 
     # #################################
@@ -566,13 +577,19 @@ class TlsConnection(object):
             return None
 
         msg = cls()
+        logging.debug(f"using {self._clientauth_sig_algo} for client authentication")
         msg.signature_scheme = self._clientauth_sig_algo
-        data = self.kdf.get_handshake_messages()
-        msg.signature = self._sign_with_client_key(
+        if self.version is tls.Version.TLS13:
+            data = (" " * 64 + "TLS 1.3, client CertificateVerify"+ "\0").encode() + self.kdf.finalize_msg_digest(intermediate=True)
+        else:
+            data = self.kdf.get_handshake_messages()
+
+        signature = self._sign_with_client_key(
             self.client.client_keys[self._clientauth_key_idx],
             self._clientauth_sig_algo,
             data,
         )
+        msg.signature = signature
 
         return msg
 
@@ -973,12 +990,32 @@ class TlsConnection(object):
             )
 
     def _on_certificate_request_received(self, msg):
-        for algo in msg.supported_signature_algorithms:
+        if self.version is tls.Version.TLS13:
+            sig_algo_ext = msg.get_extension(tls.Extension.SIGNATURE_ALGORITHMS)
+            if sig_algo_ext is None:
+                raise FatalAlert(
+                    "certificate request without extension SignatureAlgorithms received"
+                )
+            algos = sig_algo_ext.signature_algorithms
+
+        else:
+            algos = msg.supported_signature_algorithms
+
+        end_loops = False
+        for algo in algos:
             for idx, chain in enumerate(self.client.client_chains):
-                if algo in chain.certificates[0].tls12_signature_algorithms:
+                if self.version is tls.Version.TLS13:
+                    cert_algos = chain.certificates[0].tls13_signature_algorithms
+                else:
+                    cert_algos = chain.certificates[0].tls12_signature_algorithms
+
+                if algo in cert_algos:
                     self._clientauth_key_idx = idx
                     self._clientauth_sig_algo = algo
+                    end_loops = True
                     break
+            if end_loops:
+                break
 
         if self._clientauth_key_idx is None:
             logging.info("No suitable certificate found for client authentication")
@@ -1287,6 +1324,7 @@ class TlsConnection(object):
 
         * full handshake
         * abbreviated handshake (with and without server authentication)
+        * client authentication
 
         TLS1.3:
 
@@ -1302,6 +1340,7 @@ class TlsConnection(object):
         self.send(msg.ClientHello)
         if self.client.early_data is not None:
             self.send(msg.AppData(self.client.early_data))
+
         self.wait(msg.ServerHello)
         if self.version is tls.Version.TLS13:
             self.wait(msg.ChangeCipherSpec, optional=True)
@@ -1309,10 +1348,13 @@ class TlsConnection(object):
             if not self.abbreviated_hs:
                 self.wait(msg.Certificate)
                 self.wait(msg.CertificateVerify)
+
             self.wait(msg.Finished)
             if self.early_data_accepted:
                 self.send(msg.EndOfEarlyData)
+
             self.send(msg.Finished)
+
         else:
             if self.abbreviated_hs:
                 self.wait(msg.ChangeCipherSpec)
@@ -1331,6 +1373,7 @@ class TlsConnection(object):
                         cert = False
                 if cert:
                     self.wait(msg.Certificate)
+
                 if self.cs_details.key_algo in [
                     tls.KeyExchangeAlgorithm.DHE_DSS,
                     tls.KeyExchangeAlgorithm.DHE_RSA,
@@ -1339,13 +1382,16 @@ class TlsConnection(object):
                     tls.KeyExchangeAlgorithm.DH_ANON,
                 ]:
                     self.wait(msg.ServerKeyExchange)
+
                 cert_req = self.wait(msg.CertificateRequest, optional=True)
                 self.wait(msg.ServerHelloDone)
                 if cert_req is not None:
                     self.send(msg.Certificate)
+
                 self.send(msg.ClientKeyExchange)
                 if cert_req is not None:
                     self.send(msg.CertificateVerify)
+
                 self.send(msg.ChangeCipherSpec)
                 self.send(msg.Finished)
                 self.wait(msg.ChangeCipherSpec)
