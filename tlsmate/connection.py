@@ -580,7 +580,9 @@ class TlsConnection(object):
         logging.debug(f"using {self._clientauth_sig_algo} for client authentication")
         msg.signature_scheme = self._clientauth_sig_algo
         if self.version is tls.Version.TLS13:
-            data = (" " * 64 + "TLS 1.3, client CertificateVerify"+ "\0").encode() + self.kdf.finalize_msg_digest(intermediate=True)
+            data = (
+                " " * 64 + "TLS 1.3, client CertificateVerify" + "\0"
+            ).encode() + self.kdf.finalize_msg_digest(intermediate=True)
         else:
             data = self.kdf.get_handshake_messages()
 
@@ -611,8 +613,13 @@ class TlsConnection(object):
         hash_val = self.kdf.finalize_msg_digest(intermediate=intermediate)
         if self.version is tls.Version.TLS13:
             # TODO: server side implementation
+            if self.handshake_completed:
+                secret = self.c_app_tr_secret
+            else:
+                secret = self.c_hs_tr_secret
+
             finished_key = self.kdf.hkdf_expand_label(
-                self.c_hs_tr_secret, "finished", b"", self.cs_details.mac_struct.key_len
+                secret, "finished", b"", self.cs_details.mac_struct.key_len
             )
             logging.debug(f"finished_key: {pdu.dump(finished_key)}")
             val = self.kdf.hkdf_extract(hash_val, finished_key)
@@ -639,15 +646,17 @@ class TlsConnection(object):
         if self.version is not tls.Version.TLS13:
             return
         ciph = self.cs_details.cipher_struct
-        c_app_tr_secret = self.kdf.hkdf_expand_label(
+        self.c_app_tr_secret = self.kdf.hkdf_expand_label(
             self.master_secret,
             "c ap traffic",
             self.server_finished_digest,
             self.cs_details.mac_struct.key_len,
         )
-        logging.debug(f"c_app_tr_secret: {pdu.dump(c_app_tr_secret)}")
-        c_enc = self.kdf.hkdf_expand_label(c_app_tr_secret, "key", b"", ciph.key_len)
-        c_iv = self.kdf.hkdf_expand_label(c_app_tr_secret, "iv", b"", ciph.iv_len)
+        logging.debug(f"c_app_tr_secret: {pdu.dump(self.c_app_tr_secret)}")
+        c_enc = self.kdf.hkdf_expand_label(
+            self.c_app_tr_secret, "key", b"", ciph.key_len
+        )
+        c_iv = self.kdf.hkdf_expand_label(self.c_app_tr_secret, "iv", b"", ciph.iv_len)
 
         self.recorder.trace(client_write_key=c_enc)
         self.recorder.trace(client_write_iv=c_iv)
@@ -663,7 +672,7 @@ class TlsConnection(object):
                 is_write_state=True,
             )
         )
-        hash_val = self.kdf.finalize_msg_digest()
+        hash_val = self.kdf.finalize_msg_digest(intermediate=True)
         self.res_ms = self.kdf.hkdf_expand_label(
             self.master_secret,
             "res master",
@@ -1075,7 +1084,8 @@ class TlsConnection(object):
                 self._pre_finished_digest = self.kdf.finalize_msg_digest(
                     intermediate=not self._finished_treated
                 )
-            self.kdf.update_msg_digest(mb.msg)
+            if not msg.msg_type is tls.HandshakeType.NEW_SESSION_TICKET:
+                self.kdf.update_msg_digest(mb.msg)
         elif mb.content_type is tls.ContentType.ALERT:
             self.alert_received = True
             msg = Alert.deserialize(mb.msg, self)

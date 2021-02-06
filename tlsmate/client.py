@@ -209,31 +209,40 @@ class Client(object):
         max_version = max(self.versions)
         if max_version is tls.Version.TLS13:
             msg.version = tls.Version.TLS12
+
         else:
             msg.version = max_version
+
         msg.random = None  # will be provided autonomously
 
         if self.support_session_ticket and self.session_state_ticket is not None:
             msg.session_id = bytes.fromhex("dead beaf")
+
         elif self.support_session_id and self.session_state_id is not None:
             msg.session_id = self.session_state_id.session_id
+
         else:
             msg.session_id = b""
+
         msg.cipher_suites = self.cipher_suites
         msg.compression_methods = self.compression_methods
         if msg.version == tls.Version.SSL30:
             msg.extensions = None
+
         else:
             if self.support_sni:
                 msg.extensions.append(
                     ext.ExtServerNameIndication(host_name=self.server_name)
                 )
+
             if self.support_extended_master_secret:
                 msg.extensions.append(ext.ExtExtendedMasterSecret())
+
             if self.support_ec_point_formats:
                 msg.extensions.append(
                     ext.ExtEcPointFormats(ec_point_formats=self.ec_point_formats)
                 )
+
             if self.supported_groups:
                 msg.extensions.append(
                     ext.ExtSupportedGroups(supported_groups=self.supported_groups)
@@ -246,26 +255,36 @@ class Client(object):
                         signature_algorithms=self.signature_algorithms
                     )
                 )
+
             if self.support_encrypt_then_mac:
                 msg.extensions.append(ext.ExtEncryptThenMac())
+
             if self.support_session_ticket:
                 kwargs = {}
                 if self.session_state_ticket is not None:
                     kwargs["ticket"] = self.session_state_ticket.ticket
+
                 msg.extensions.append(ext.ExtSessionTicket(**kwargs))
+
             if tls.Version.TLS13 in self.versions:
+                if self.client_keys:
+                    msg.extensions.append(ext.ExtPostHandshakeAuth())
+
                 self._key_share_objects = []
                 msg.extensions.append(ext.ExtSupportedVersions(versions=self.versions))
                 # TLS13 key shares: enforce the same sequence as in supported groups
                 key_shares = []
                 if not self.key_shares:
                     self.key_shares = self.supported_groups
+
                 for group in self.supported_groups:
                     if group in self.key_shares:
                         key_shares.append(group)
+
                 msg.extensions.append(ext.ExtKeyShare(key_shares=key_shares))
                 if self.early_data is not None:
                     msg.extensions.append(ext.ExtEarlyData())
+
                 if self.support_psk and self.psks:
                     msg.extensions.append(
                         ext.ExtPskKeyExchangeMode(modes=self.psk_key_exchange_modes)

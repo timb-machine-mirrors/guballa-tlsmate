@@ -150,7 +150,6 @@ class ExtExtendedMasterSecret(Extension):
                 f"Message length error for {self.extension_id}",
                 tls.AlertDescription.DECODE_ERROR,
             )
-        return self
 
 
 class ExtEncryptThenMac(Extension):
@@ -170,7 +169,6 @@ class ExtEncryptThenMac(Extension):
                 f"Message length error for {self.extension_id}",
                 tls.AlertDescription.DECODE_ERROR,
             )
-        return self
 
 
 class ExtRenegotiationInfo(Extension):
@@ -192,7 +190,6 @@ class ExtRenegotiationInfo(Extension):
 
     def deserialize_ext_body(self, ext_body):
         self.opaque, _ = pdu.unpack_bytes(ext_body, 0, len(ext_body))
-        return self
 
 
 class ExtEcPointFormats(Extension):
@@ -235,7 +232,6 @@ class ExtEcPointFormats(Extension):
         for i in range(length):
             point_format, offset = pdu.unpack_uint8(ext_body, offset)
             self.point_formats.append(tls.EcPointFormat.val2enum(point_format))
-        return self
 
 
 class ExtSupportedGroups(Extension):
@@ -275,7 +271,6 @@ class ExtSupportedGroups(Extension):
             except ValueError:
                 pass
             self.supported_groups.append(group)
-        return self
 
 
 class ExtSignatureAlgorithms(Extension):
@@ -317,7 +312,6 @@ class ExtSignatureAlgorithms(Extension):
             except ValueError:
                 pass
             self.signature_algorithms.append(algo)
-        return self
 
 
 class ExtCertificateAuthorities(Extension):
@@ -344,7 +338,6 @@ class ExtCertificateAuthorities(Extension):
             length, offset = pdu.unpack_uint16(ext_body, offset)
             authority, offset = pdu.unpack_bytes(ext_body, offset, length)
             self.authorities.append(authority)
-        return self
 
 
 class ExtSessionTicket(Extension):
@@ -368,7 +361,7 @@ class ExtSessionTicket(Extension):
         return ext_body
 
     def deserialize_ext_body(self, ext_body):
-        return self
+        pass
 
 
 class ExtSupportedVersions(Extension):
@@ -402,7 +395,6 @@ class ExtSupportedVersions(Extension):
             version, offset = pdu.unpack_uint16(ext_body, offset)
             version = tls.Version.val2enum(version)
             self.versions.append(version)
-        return self
 
 
 class ExtKeyShare(Extension):
@@ -448,7 +440,6 @@ class ExtKeyShare(Extension):
             self.key_shares.append(
                 structs.KeyShareEntry(group=group, key_exchange=share)
             )
-        return self
 
 
 class ExtPreSharedKey(Extension):
@@ -495,7 +486,6 @@ class ExtPreSharedKey(Extension):
 
     def deserialize_ext_body(self, ext_body):
         self.selected_id, offset = pdu.unpack_uint16(ext_body, 0)
-        return self
 
 
 class ExtPskKeyExchangeMode(Extension):
@@ -543,7 +533,25 @@ class ExtEarlyData(Extension):
     def deserialize_ext_body(self, ext_body):
         if ext_body:
             self.max_early_data_size, _ = pdu.unpack_uint32(ext_body, 0)
-        return self
+
+
+class ExtPostHandshakeAuth(Extension):
+    """Represents the PostHandshakeAuth extension.
+    """
+
+    extension_id = tls.Extension.POST_HANDSHAKE_AUTH
+    """:obj:`tlsmate.constants.Extension.POST_HANDSHAKE_AUTH`
+    """
+
+    def serialize_ext_body(self, conn):
+        return b""
+
+    def deserialize_ext_body(self, ext_body):
+        if ext_body:
+            raise FatalAlert(
+                f"Message length error for {self.extension_id}",
+                tls.AlertDescription.DECODE_ERROR,
+            )
 
 
 """Map the extensions id to the corresponding class.
@@ -593,7 +601,7 @@ deserialization_map = {
     # tls.Extension.PSK_KEY_EXCHANGE_MODES = 45
     tls.Extension.CERTIFICATE_AUTHORITIES: ExtCertificateAuthorities,
     # tls.Extension.OID_FILTERS = 48
-    # tls.Extension.POST_HANDSHAKE_AUTH = 49
+    tls.Extension.POST_HANDSHAKE_AUTH: ExtPostHandshakeAuth,
     # tls.Extension.SIGNATURE_ALGORITHMS_CERT = 50
     tls.Extension.KEY_SHARE: ExtKeyShare,
     # tls.Extension.TRANSPARENCY_INFO = 52
