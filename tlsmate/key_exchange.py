@@ -53,7 +53,7 @@ def verify_signed_params(params, msgs, default_scheme, version):
         digest.start_msg_digest()
         digest.set_msg_digest_algo(None)
         digest.update_msg_digest(data)
-        hashed1 = digest.finalize_msg_digest()
+        hashed1 = digest.current_msg_digest(suspend=True)
         key = cert.parsed.public_key()
         hashed2 = key.recover_data_from_signature(
             params.signature, padding.PKCS1v15(), None

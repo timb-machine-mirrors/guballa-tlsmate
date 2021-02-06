@@ -445,7 +445,7 @@ class TlsConnection(object):
                 kdf.start_msg_digest()
                 kdf.set_msg_digest_algo(psk.hmac.hmac_algo)
                 kdf.update_msg_digest(msg_without_binders)
-                hash_val = kdf.finalize_msg_digest(intermediate=(idx == 0))
+                hash_val = kdf.current_msg_digest(suspend=(idx != 0))
                 early_secret = kdf.hkdf_extract(psk.psk, b"")
                 if idx == 0:
                     self.early_data = structs.EarlyData(
@@ -478,7 +478,7 @@ class TlsConnection(object):
         if self.send_early_data:
             self.record_layer_version = tls.Version.TLS12
             self.early_data.kdf.update_msg_digest(self.binders_bytes)
-            hash_val = self.early_data.kdf.finalize_msg_digest()
+            hash_val = self.early_data.kdf.current_msg_digest(suspend=True)
             early_tr_secret = self.early_data.kdf.hkdf_expand_label(
                 self.early_data.early_secret,
                 "c e traffic",
@@ -582,7 +582,7 @@ class TlsConnection(object):
         if self.version is tls.Version.TLS13:
             data = (
                 " " * 64 + "TLS 1.3, client CertificateVerify" + "\0"
-            ).encode() + self.kdf.finalize_msg_digest(intermediate=True)
+            ).encode() + self.kdf.current_msg_digest()
         else:
             data = self.kdf.get_handshake_messages()
 
@@ -607,10 +607,10 @@ class TlsConnection(object):
     # ########################
 
     def _generate_finished(self, cls):
-        intermediate = not self._finished_treated
+        suspend = self._finished_treated
         if self.version is tls.Version.TLS13:
-            intermediate = True
-        hash_val = self.kdf.finalize_msg_digest(intermediate=intermediate)
+            suspend = False
+        hash_val = self.kdf.current_msg_digest(suspend=suspend)
         if self.version is tls.Version.TLS13:
             # TODO: server side implementation
             if self.handshake_completed:
@@ -672,7 +672,7 @@ class TlsConnection(object):
                 is_write_state=True,
             )
         )
-        hash_val = self.kdf.finalize_msg_digest(intermediate=True)
+        hash_val = self.kdf.current_msg_digest()
         self.res_ms = self.kdf.hkdf_expand_label(
             self.master_secret,
             "res master",
@@ -888,9 +888,7 @@ class TlsConnection(object):
                     "Received Finished: verify_data does not match",
                     tls.AlertDescription.DECRYPT_ERROR,
                 )
-            self.server_finished_digest = self.kdf.finalize_msg_digest(
-                intermediate=True
-            )
+            self.server_finished_digest = self.kdf.current_msg_digest()
             s_app_tr_secret = self.kdf.hkdf_expand_label(
                 self.master_secret,
                 "s ap traffic",
@@ -982,7 +980,7 @@ class TlsConnection(object):
     def _on_certificate_received(self, msg):
 
         if self.version is tls.Version.TLS13:
-            self.certificate_digest = self.kdf.finalize_msg_digest(intermediate=True)
+            self.certificate_digest = self.kdf.current_msg_digest()
 
         if msg.chain.digest not in self._cert_chain_digests:
             self._cert_chain_digests.append(msg.chain.digest)
@@ -1081,11 +1079,16 @@ class TlsConnection(object):
         if mb.content_type is tls.ContentType.HANDSHAKE:
             msg = HandshakeMessage.deserialize(mb.msg, self)
             if msg.msg_type is tls.HandshakeType.FINISHED:
-                self._pre_finished_digest = self.kdf.finalize_msg_digest(
-                    intermediate=not self._finished_treated
+                self._pre_finished_digest = self.kdf.current_msg_digest(
+                    suspend=self._finished_treated
                 )
-            if not msg.msg_type is tls.HandshakeType.NEW_SESSION_TICKET:
+
+            if msg.msg_type is tls.HandshakeType.CERTIFICATE_REQUEST:
+                self.kdf.resume_msg_digest()
+
+            if self.kdf.msg_digest_active():
                 self.kdf.update_msg_digest(mb.msg)
+
         elif mb.content_type is tls.ContentType.ALERT:
             self.alert_received = True
             msg = Alert.deserialize(mb.msg, self)
@@ -1193,7 +1196,7 @@ class TlsConnection(object):
 
     def _generate_master_secret(self):
         if self.extended_ms:
-            msg_digest = self.kdf.finalize_msg_digest(intermediate=True)
+            msg_digest = self.kdf.current_msg_digest()
             self.master_secret = self.kdf.prf(
                 self.premaster_secret, b"extended master secret", msg_digest, 48
             )
@@ -1231,7 +1234,7 @@ class TlsConnection(object):
 
         handshake_secret = self.kdf.hkdf_extract(shared_secret, derived)
         logging.debug(f"handshake secret: {pdu.dump(handshake_secret)}")
-        hello_digest = self.kdf.finalize_msg_digest(intermediate=True)
+        hello_digest = self.kdf.current_msg_digest()
         logging.debug(f"hello_digest: {pdu.dump(hello_digest)}")
         c_hs_tr_secret = self.kdf.hkdf_expand_label(
             handshake_secret, "c hs traffic", hello_digest, mac.key_len

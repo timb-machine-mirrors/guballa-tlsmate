@@ -73,17 +73,12 @@ class _Backend(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def finalize_msg_digest(self, intermediate=False):
-        """Determine finally the value of the message digest.
-
-        Arguments:
-            intermediate (bool): If set to True, provide the message digest in the
-                current state, but allow to add more messages to the digest lateron.
-                Defaults to False.
+    def current_msg_digest(self):
+        """Determine the current value of the message digest.
 
         Returns:
-            bytes: The calculated message digest, output has the same length than
-            the hash length.
+            bytes: The calculated current  message digest, output has the same length 
+            than the hash length.
         """
         raise NotImplementedError
 
@@ -117,12 +112,10 @@ class _BackendTls10(_Backend):
         self._msg_digest_md5.update(msg)
         self._msg_digest_sha.update(msg)
 
-    def finalize_msg_digest(self, intermediate=False):
-        if intermediate:
-            tmp_digest_md5 = self._msg_digest_md5.copy()
-            tmp_digest_sha = self._msg_digest_sha.copy()
-            return tmp_digest_md5.finalize() + tmp_digest_sha.finalize()
-        return self._msg_digest_md5.finalize() + self._msg_digest_sha.finalize()
+    def current_msg_digest(self):
+        tmp_digest_md5 = self._msg_digest_md5.copy()
+        tmp_digest_sha = self._msg_digest_sha.copy()
+        return tmp_digest_md5.finalize() + tmp_digest_sha.finalize()
 
     def prf(self, secret, label, seed, size):
         length = math.ceil(len(secret) / 2)
@@ -147,11 +140,8 @@ class _BackendTls12(_Backend):
     def update_msg_digest(self, msg):
         self._msg_digest.update(msg)
 
-    def finalize_msg_digest(self, intermediate=False):
-        if intermediate:
-            tmp_digest = self._msg_digest.copy()
-            return tmp_digest.finalize()
-        return self._msg_digest.finalize()
+    def current_msg_digest(self):
+        return self._msg_digest.copy().finalize()
 
     def prf(self, secret, label, seed, size):
         return self._expand(secret, label + seed, size, self._hash_algo)
@@ -253,7 +243,7 @@ class Kdf(object):
             self._backend = _BackendTls10(hash_algo)
         else:
             self._backend = _BackendTls12(hash_algo)
-        self._empty_msg_digest = self.finalize_msg_digest(intermediate=True)
+        self._empty_msg_digest = self.current_msg_digest()
         if self._msg_digest_queue is not None:
             self._backend.update_msg_digest(self._msg_digest_queue)
             self._msg_digest_queue = None
@@ -295,20 +285,36 @@ class Kdf(object):
         """
         return self._empty_msg_digest
 
-    def finalize_msg_digest(self, intermediate=False):
+    def current_msg_digest(self, suspend=False):
         """Gets the message digest.
 
         Arguments:
-            intermediate (bool): If set to True, provide the message digest in the
+            suspend (bool): If set to False, provide the message digest in the
                 current state, but allow to add more messages to the digest lateron.
+                If set to True, provide the messge digest, but do not consider 
+                further messages.
 
         Returns:
             bytes: The calculated message digest, output has the same length than
             the hash length.
         """
-        if not intermediate:
+        if suspend:
             self._msg_digest_active = False
-        return self._backend.finalize_msg_digest(intermediate=intermediate)
+        return self._backend.current_msg_digest()
+
+    def msg_digest_active(self):
+        """Returns the state of the message digest.
+
+        Returns:
+            bool: an indication if the message digest is suspended or active.
+        """
+        return self._msg_digest_active
+
+    def resume_msg_digest(self):
+        """Change the state of the message digest to active
+        """
+        self._msg_digest_active = True
+
 
     def prf(self, secret, label, seed, size):
         """Implements a pseudo random function.
