@@ -1,7 +1,5 @@
 
 High prio
-    - client authentication:
-      - test case for client auth
     - recorder: implement the original delay for replaying messages
     - Add conn.wait(msg.NoMessage, timout=xxx) to wait for nothing, i.e. implementing a delay
     - add basic client profiles, e.g. firefox-like settings for the client_hello

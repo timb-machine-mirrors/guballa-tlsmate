@@ -67,6 +67,7 @@ class Extension(metaclass=abc.ABCMeta):
         extension.deserialize_ext_body(ext_body)
         return extension, offset
 
+
 class ExtUnknownExtension(Extension):
     """Any extensions which is not known by tlsmate (yet).
 
@@ -74,6 +75,7 @@ class ExtUnknownExtension(Extension):
         id (int): the Id of the extensions as used in the PDU
         bytes (bytes): the content of the extension as a byte string
     """
+
     extension_id = tls.Extension.UNKNOW_EXTENSION
 
     def __init__(self, **kwargs):

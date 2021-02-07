@@ -77,7 +77,7 @@ class _Backend(metaclass=abc.ABCMeta):
         """Determine the current value of the message digest.
 
         Returns:
-            bytes: The calculated current  message digest, output has the same length 
+            bytes: The calculated current  message digest, output has the same length
             than the hash length.
         """
         raise NotImplementedError
@@ -291,7 +291,7 @@ class Kdf(object):
         Arguments:
             suspend (bool): If set to False, provide the message digest in the
                 current state, but allow to add more messages to the digest lateron.
-                If set to True, provide the messge digest, but do not consider 
+                If set to True, provide the messge digest, but do not consider
                 further messages.
 
         Returns:
@@ -314,7 +314,6 @@ class Kdf(object):
         """Change the state of the message digest to active
         """
         self._msg_digest_active = True
-
 
     def prf(self, secret, label, seed, size):
         """Implements a pseudo random function.

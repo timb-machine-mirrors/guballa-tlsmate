@@ -402,7 +402,6 @@ class Certificate(HandshakeMessage):
                     # no extensions supported right now, set length to 0.
                     cert_list.extend(pdu.pack_uint16(0))
 
-
         msg.extend(pdu.pack_uint24(len(cert_list)))
         msg.extend(cert_list)
         return msg
@@ -868,6 +867,7 @@ class CertificateRequest(HandshakeMessage):
         if not hasattr(self, "extensions"):
             return None
         return _get_extension(self.extensions, ext_id)
+
 
 CertificateRequest.get_extension.__doc__ = ClientHello.get_extension.__doc__
 

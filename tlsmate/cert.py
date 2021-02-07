@@ -526,17 +526,17 @@ class Certificate(object):
                 tls.SignatureScheme.RSA_PKCS1_MD5,
                 tls.SignatureScheme.RSA_PKCS1_SHA224,
                 # Currently, cryptography does not support RSA-PSS-PSS
-                #tls.SignatureScheme.RSA_PSS_PSS_SHA256,
-                #tls.SignatureScheme.RSA_PSS_PSS_SHA384,
-                #tls.SignatureScheme.RSA_PSS_PSS_SHA512,
+                # tls.SignatureScheme.RSA_PSS_PSS_SHA256,
+                # tls.SignatureScheme.RSA_PSS_PSS_SHA384,
+                # tls.SignatureScheme.RSA_PSS_PSS_SHA512,
                 tls.SignatureScheme.RSA_PSS_RSAE_SHA256,
                 tls.SignatureScheme.RSA_PSS_RSAE_SHA384,
                 tls.SignatureScheme.RSA_PSS_RSAE_SHA512,
             ]
             self.tls13_signature_algorithms = [
-                #tls.SignatureScheme.RSA_PSS_PSS_SHA256,
-                #tls.SignatureScheme.RSA_PSS_PSS_SHA384,
-                #tls.SignatureScheme.RSA_PSS_PSS_SHA512,
+                # tls.SignatureScheme.RSA_PSS_PSS_SHA256,
+                # tls.SignatureScheme.RSA_PSS_PSS_SHA384,
+                # tls.SignatureScheme.RSA_PSS_PSS_SHA512,
                 tls.SignatureScheme.RSA_PSS_RSAE_SHA256,
                 tls.SignatureScheme.RSA_PSS_RSAE_SHA384,
                 tls.SignatureScheme.RSA_PSS_RSAE_SHA512,

@@ -20,5 +20,6 @@ class TestCase(CipherSuiteTester):
     # adapt it to your needs.
     # version = tls.Version.TLS12
 
+
 if __name__ == "__main__":
     TestCase().entry(is_replaying=False)

@@ -21,7 +21,6 @@ class TestCase(CipherSuiteTester):
     # adapt it to your needs.
     version = tls.Version.TLS13
 
-
     def run(self, container, is_replaying=False):
         """The basic scenario to be recorded or replayed.
         """
@@ -45,6 +44,7 @@ class TestCase(CipherSuiteTester):
         assert end_of_tc_reached is True
         assert conn.handshake_completed is True
         return conn
+
 
 if __name__ == "__main__":
     TestCase().entry(is_replaying=False)
