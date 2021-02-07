@@ -1,23 +1,29 @@
 
+High prio
+    - client authentication:
+      - test case for client auth
+    - recorder: implement the original delay for replaying messages
+    - Add conn.wait(msg.NoMessage, timout=xxx) to wait for nothing, i.e. implementing a delay
+    - add basic client profiles, e.g. firefox-like settings for the client_hello
+
+Medium prio
+    - implement makefile for test cases generation, where the openssl-server is started with
+      the correct parameters.
+
+Low prio
+    - more command line options, e.g. to scan only specific versions,
+    - cover all key exchange algorithms in mappings.key_exchange
+      - ECDH_ANON is supported as well, but we need a test case
     - HelloRetryRequest
     - more scan results
     - improved error handling, e.g. if host name cannot be resolved
+
+Nice to have
     - more checks on server_hello: have the stuff selected by the server
       actually been offered?
     - use :class:`XXX` iso :obj: in the *.rst files where appropriate
-    - cover all key exchange algorithms in mappings.key_exchange
-      - ECDH_ANON is supported as well, but we need a test case
     - refactoring: Alert and CCS(?): do they need a msg_type?
-    - more command line options, e.g. to scan only specific versions,
       or to enable/disable specific parts of the trace.
     - consistently use "verify" or "validate" when checking sigatures and certificates
     - cleanups for certificate parsing required:
-        - move the code from server_profile to scan_command?
         - implement quite a lot of missing stuff, e.g. proper handling of cert policies, etc.
-    - Add conn.wait(msg.NoMessage, timout=xxx) to wait for nothing, i.e. implementing a delay
-    - recorder: implement the original delay for replaying messages
-    - implement makefile for test cases generation, where the openssl-server is started with 
-      the correct parameters.
-    - client authentication:
-      - test case for client auth
-      - TLS13: client authentication after handshake

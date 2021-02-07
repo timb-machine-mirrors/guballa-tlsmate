@@ -591,6 +591,11 @@ class TlsConnection(object):
             self._clientauth_sig_algo,
             data,
         )
+        if self.recorder.is_injecting():
+            signature = self.recorder.inject(signature=None)
+        else:
+            self.recorder.trace(signature=signature)
+
         msg.signature = signature
 
         return msg
@@ -611,6 +616,7 @@ class TlsConnection(object):
         if self.version is tls.Version.TLS13:
             suspend = False
         hash_val = self.kdf.current_msg_digest(suspend=suspend)
+
         if self.version is tls.Version.TLS13:
             # TODO: server side implementation
             if self.handshake_completed:

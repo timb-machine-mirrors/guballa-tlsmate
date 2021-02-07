@@ -76,6 +76,7 @@ class Recorder(object):
         "msg_recv": bytes,
         "crl_url": str,
         "crl": bytes,
+        "signature": bytes,
     }
 
     def __init__(self):
