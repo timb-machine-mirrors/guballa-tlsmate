@@ -1365,12 +1365,16 @@ class TlsConnection(object):
             self.wait(msg.ChangeCipherSpec, optional=True)
             self.wait(msg.EncryptedExtensions)
             if not self.abbreviated_hs:
+                cert_req = self.wait(msg.CertificateRequest, optional=True)
                 self.wait(msg.Certificate)
                 self.wait(msg.CertificateVerify)
 
             self.wait(msg.Finished)
             if self.early_data_accepted:
                 self.send(msg.EndOfEarlyData)
+            elif cert_req is not None:
+                self.send(msg.Certificate)
+                self.send(msg.CertificateVerify)
 
             self.send(msg.Finished)
 
