@@ -4,7 +4,7 @@
 import pathlib
 from tests.cipher_suite_tester import CipherSuiteTester
 import tlsmate.constants as tls
-import tlsmate.messages as msg
+from tlsmate import messages as msg
 
 
 class TestCase(CipherSuiteTester):
@@ -13,33 +13,37 @@ class TestCase(CipherSuiteTester):
     For more information refer to the documentation of the CipherSuiteTester class.
     """
 
-    name = "Legacy_Renegotiation_Server"
     path = pathlib.Path(__file__)
+    name = "ClientAuth_ECDSA_SHA256_posthandshake"
+    cipher_suite = tls.CipherSuite.TLS_AES_128_GCM_SHA256
 
     # Uncomment the line below if you do not want to use the default version and
     # adapt it to your needs.
-    # version = tls.Version.TLS12
+    version = tls.Version.TLS13
 
     def run(self, container, is_replaying=False):
+        """The basic scenario to be recorded or replayed.
+        """
         client = container.client()
 
-        client.versions = [tls.Version.TLS12]
-        client.cipher_suites = [tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384]
-        client.support_supported_groups = True
-        client.support_signature_algorithms = True
-        client.supported_groups = [
-            tls.SupportedGroups.SECP256R1,
-            tls.SupportedGroups.SECP384R1,
-            tls.SupportedGroups.SECP521R1,
-        ]
-        client.signature_algorithms = [tls.SignatureScheme.RSA_PKCS1_SHA256]
+        client.versions = [self.version]
+        client.cipher_suites = [self.cipher_suite]
+        client.supported_groups = self.supported_groups
+        client.signature_algorithms = self.signature_algorithms
+
         end_of_tc_reached = False
         with client.create_connection() as conn:
             conn.handshake()
-            conn.wait(msg.HelloRequest)
-            conn.handshake()
+
+            conn.wait(msg.CertificateRequest, timeout=15000)
+            conn.send(msg.Certificate)
+            conn.send(msg.CertificateVerify)
+            conn.send(msg.Finished)
+
             end_of_tc_reached = True
         assert end_of_tc_reached is True
+        assert conn.handshake_completed is True
+        return conn
 
 
 if __name__ == "__main__":

@@ -25,6 +25,8 @@ from tlsmate import utils
 import tlsmate.structures as structs
 import tlsmate.key_exchange as kex
 from tlsmate.kdf import Kdf
+from cryptography.hazmat.primitives.asymmetric import padding, ec
+from cryptography.hazmat.primitives import hashes
 
 
 def get_random_value():
@@ -165,14 +167,14 @@ class TlsConnectionMsgs(object):
         tls.HandshakeType.CLIENT_HELLO: "client_hello",
         tls.HandshakeType.SERVER_HELLO: "server_hello",
         tls.HandshakeType.NEW_SESSION_TICKET: "new_session_ticket",
-        tls.HandshakeType.END_OF_EARLY_DATA: None,
+        tls.HandshakeType.END_OF_EARLY_DATA: "end_of_early_data",
         tls.HandshakeType.ENCRYPTED_EXTENSIONS: "encrypted_extensions",
         tls.HandshakeType.CERTIFICATE: "_certificate",
         tls.HandshakeType.SERVER_KEY_EXCHANGE: "server_key_exchange",
-        tls.HandshakeType.CERTIFICATE_REQUEST: None,
+        tls.HandshakeType.CERTIFICATE_REQUEST: "certificate_request",
         tls.HandshakeType.SERVER_HELLO_DONE: "server_hello_done",
-        tls.HandshakeType.CERTIFICATE_VERIFY: None,
-        tls.HandshakeType.CLIENT_KEY_EXCHANGE: None,
+        tls.HandshakeType.CERTIFICATE_VERIFY: "certificate_verify",
+        tls.HandshakeType.CLIENT_KEY_EXCHANGE: "client_key_exchange",
         tls.HandshakeType.FINISHED: "_finished",
         tls.HandshakeType.KEY_UPDATE: None,
         tls.HandshakeType.COMPRESSED_CERTIFICATE: None,
@@ -273,6 +275,9 @@ class TlsConnection(object):
         self.key_ex_type = None
         self.key_auth = None
 
+        self._clientauth_key_idx = None
+        self._clientauth_sig_algo = None
+
         self.client_write_keys = None
         self.server_write_keys = None
         self.cipher = None
@@ -336,6 +341,56 @@ class TlsConnection(object):
         self.send_early_data = False
         self.early_data_accepted = False
         self.ext_psk = None
+        self._clientauth_key_idx = None
+        self._clientauth_sig_algo = None
+
+    def _sign_rsa_pss(self, key, data, hash_algo):
+        return key.sign(
+            data,
+            padding.PSS(
+                mgf=padding.MGF1(hash_algo()), salt_length=hash_algo.digest_size
+            ),
+            hash_algo(),
+        )
+
+    def _sign_rsa_pkcsv15(self, key, data, hash_algo):
+        return key.sign(data, padding.PKCS1v15(), hash_algo())
+
+    def _sign_dsa(self, key, data, hash_algo):
+        return key.sign(data, hash_algo())
+
+    def _sign_ecdsa(self, key, data, hash_algo):
+        return key.sign(data, ec.ECDSA(hash_algo()))
+
+    def _sign_with_client_key(self, priv_key, algo, data):
+        func, hash_algo = self._map_client_signature_algorithm[algo]
+        return func(self, priv_key, data, hash_algo)
+
+    _map_client_signature_algorithm = {
+        tls.SignatureScheme.RSA_PKCS1_MD5: (_sign_rsa_pkcsv15, hashes.MD5),
+        tls.SignatureScheme.RSA_PKCS1_SHA1: (_sign_rsa_pkcsv15, hashes.SHA1),
+        tls.SignatureScheme.RSA_PKCS1_SHA224: (_sign_rsa_pkcsv15, hashes.SHA224),
+        tls.SignatureScheme.RSA_PKCS1_SHA256: (_sign_rsa_pkcsv15, hashes.SHA256),
+        tls.SignatureScheme.RSA_PKCS1_SHA384: (_sign_rsa_pkcsv15, hashes.SHA384),
+        tls.SignatureScheme.RSA_PKCS1_SHA512: (_sign_rsa_pkcsv15, hashes.SHA512),
+        tls.SignatureScheme.RSA_PSS_PSS_SHA256: (_sign_rsa_pss, hashes.SHA256),
+        tls.SignatureScheme.RSA_PSS_PSS_SHA384: (_sign_rsa_pss, hashes.SHA384),
+        tls.SignatureScheme.RSA_PSS_PSS_SHA512: (_sign_rsa_pss, hashes.SHA512),
+        tls.SignatureScheme.RSA_PSS_RSAE_SHA256: (_sign_rsa_pss, hashes.SHA256),
+        tls.SignatureScheme.RSA_PSS_RSAE_SHA384: (_sign_rsa_pss, hashes.SHA384),
+        tls.SignatureScheme.RSA_PSS_RSAE_SHA512: (_sign_rsa_pss, hashes.SHA512),
+        tls.SignatureScheme.DSA_MD5: (_sign_dsa, hashes.MD5),
+        tls.SignatureScheme.DSA_SHA1: (_sign_dsa, hashes.SHA1),
+        tls.SignatureScheme.DSA_SHA224: (_sign_dsa, hashes.SHA224),
+        tls.SignatureScheme.DSA_SHA256: (_sign_dsa, hashes.SHA256),
+        tls.SignatureScheme.DSA_SHA384: (_sign_dsa, hashes.SHA384),
+        tls.SignatureScheme.DSA_SHA512: (_sign_dsa, hashes.SHA512),
+        tls.SignatureScheme.ECDSA_SHA1: (_sign_ecdsa, hashes.SHA1),
+        tls.SignatureScheme.ECDSA_SECP256R1_SHA256: (_sign_ecdsa, hashes.SHA256),
+        tls.SignatureScheme.ECDSA_SECP384R1_SHA384: (_sign_ecdsa, hashes.SHA256),
+        tls.SignatureScheme.ECDSA_SECP521R1_SHA512: (_sign_ecdsa, hashes.SHA256),
+        tls.SignatureScheme.ECDSA_SECP224R1_SHA224: (_sign_ecdsa, hashes.SHA256),
+    }
 
     # ###########################
     # sending ClientHello methods
@@ -390,7 +445,7 @@ class TlsConnection(object):
                 kdf.start_msg_digest()
                 kdf.set_msg_digest_algo(psk.hmac.hmac_algo)
                 kdf.update_msg_digest(msg_without_binders)
-                hash_val = kdf.finalize_msg_digest(intermediate=(idx == 0))
+                hash_val = kdf.current_msg_digest(suspend=(idx != 0))
                 early_secret = kdf.hkdf_extract(psk.psk, b"")
                 if idx == 0:
                     self.early_data = structs.EarlyData(
@@ -423,7 +478,7 @@ class TlsConnection(object):
         if self.send_early_data:
             self.record_layer_version = tls.Version.TLS12
             self.early_data.kdf.update_msg_digest(self.binders_bytes)
-            hash_val = self.early_data.kdf.finalize_msg_digest()
+            hash_val = self.early_data.kdf.current_msg_digest(suspend=True)
             early_tr_secret = self.early_data.kdf.hkdf_expand_label(
                 self.early_data.early_secret,
                 "c e traffic",
@@ -493,6 +548,58 @@ class TlsConnection(object):
         self._generate_master_secret()
         self._key_derivation()
 
+    # ###########################
+    # sending Certificate methods
+    # ###########################
+
+    def _generate_cert(self, cls):
+        msg = cls()
+        if self.version is tls.Version.TLS13:
+            msg.request_context = (
+                self.msg.certificate_request.certificate_request_context
+            )
+
+        else:
+            msg.request_context = None
+
+        msg.chain = None
+        if self._clientauth_key_idx is not None:
+            msg.chain = self.client.client_chains[self._clientauth_key_idx]
+
+        return msg
+
+    # #################################
+    # sending CertificateVerify methods
+    # #################################
+
+    def _generate_cert_verify(self, cls):
+        if self._clientauth_key_idx is None:
+            return None
+
+        msg = cls()
+        logging.debug(f"using {self._clientauth_sig_algo} for client authentication")
+        msg.signature_scheme = self._clientauth_sig_algo
+        if self.version is tls.Version.TLS13:
+            data = (
+                " " * 64 + "TLS 1.3, client CertificateVerify" + "\0"
+            ).encode() + self.kdf.current_msg_digest()
+        else:
+            data = self.kdf.get_handshake_messages()
+
+        signature = self._sign_with_client_key(
+            self.client.client_keys[self._clientauth_key_idx],
+            self._clientauth_sig_algo,
+            data,
+        )
+        if self.recorder.is_injecting():
+            signature = self.recorder.inject(signature=None)
+        else:
+            self.recorder.trace(signature=signature)
+
+        msg.signature = signature
+
+        return msg
+
     # ##############################
     # sending EndOfEarlyData methods
     # ##############################
@@ -505,14 +612,20 @@ class TlsConnection(object):
     # ########################
 
     def _generate_finished(self, cls):
-        intermediate = not self._finished_treated
+        suspend = self._finished_treated
         if self.version is tls.Version.TLS13:
-            intermediate = True
-        hash_val = self.kdf.finalize_msg_digest(intermediate=intermediate)
+            suspend = False
+        hash_val = self.kdf.current_msg_digest(suspend=suspend)
+
         if self.version is tls.Version.TLS13:
             # TODO: server side implementation
+            if self.handshake_completed:
+                secret = self.c_app_tr_secret
+            else:
+                secret = self.c_hs_tr_secret
+
             finished_key = self.kdf.hkdf_expand_label(
-                self.c_hs_tr_secret, "finished", b"", self.cs_details.mac_struct.key_len
+                secret, "finished", b"", self.cs_details.mac_struct.key_len
             )
             logging.debug(f"finished_key: {pdu.dump(finished_key)}")
             val = self.kdf.hkdf_extract(hash_val, finished_key)
@@ -539,15 +652,17 @@ class TlsConnection(object):
         if self.version is not tls.Version.TLS13:
             return
         ciph = self.cs_details.cipher_struct
-        c_app_tr_secret = self.kdf.hkdf_expand_label(
+        self.c_app_tr_secret = self.kdf.hkdf_expand_label(
             self.master_secret,
             "c ap traffic",
             self.server_finished_digest,
             self.cs_details.mac_struct.key_len,
         )
-        logging.debug(f"c_app_tr_secret: {pdu.dump(c_app_tr_secret)}")
-        c_enc = self.kdf.hkdf_expand_label(c_app_tr_secret, "key", b"", ciph.key_len)
-        c_iv = self.kdf.hkdf_expand_label(c_app_tr_secret, "iv", b"", ciph.iv_len)
+        logging.debug(f"c_app_tr_secret: {pdu.dump(self.c_app_tr_secret)}")
+        c_enc = self.kdf.hkdf_expand_label(
+            self.c_app_tr_secret, "key", b"", ciph.key_len
+        )
+        c_iv = self.kdf.hkdf_expand_label(self.c_app_tr_secret, "iv", b"", ciph.iv_len)
 
         self.recorder.trace(client_write_key=c_enc)
         self.recorder.trace(client_write_iv=c_iv)
@@ -563,7 +678,7 @@ class TlsConnection(object):
                 is_write_state=True,
             )
         )
-        hash_val = self.kdf.finalize_msg_digest()
+        hash_val = self.kdf.current_msg_digest()
         self.res_ms = self.kdf.hkdf_expand_label(
             self.master_secret,
             "res master",
@@ -575,6 +690,8 @@ class TlsConnection(object):
         tls.HandshakeType.CLIENT_HELLO: _generate_ch,
         tls.HandshakeType.CLIENT_KEY_EXCHANGE: _generate_cke,
         tls.HandshakeType.FINISHED: _generate_finished,
+        tls.HandshakeType.CERTIFICATE: _generate_cert,
+        tls.HandshakeType.CERTIFICATE_VERIFY: _generate_cert_verify,
     }
 
     _pre_serialization_method = {tls.HandshakeType.CLIENT_HELLO: _pre_serialization_ch}
@@ -630,9 +747,11 @@ class TlsConnection(object):
                 methods will be called to instantiate an object.
         """
         for message in messages:
-            logging.info(f"{utils.Log.time()}: ==> {message.msg_type}")
             if inspect.isclass(message):
                 message = self._generate_outgoing_msg(message)
+                if message is None:
+                    continue
+            logging.info(f"{utils.Log.time()}: ==> {message.msg_type}")
             self._pre_serialization_hook(message)
             self._msg_logging(message)
             msg_data = message.serialize(self)
@@ -775,9 +894,7 @@ class TlsConnection(object):
                     "Received Finished: verify_data does not match",
                     tls.AlertDescription.DECRYPT_ERROR,
                 )
-            self.server_finished_digest = self.kdf.finalize_msg_digest(
-                intermediate=True
-            )
+            self.server_finished_digest = self.kdf.current_msg_digest()
             s_app_tr_secret = self.kdf.hkdf_expand_label(
                 self.master_secret,
                 "s ap traffic",
@@ -869,7 +986,7 @@ class TlsConnection(object):
     def _on_certificate_received(self, msg):
 
         if self.version is tls.Version.TLS13:
-            self.certificate_digest = self.kdf.finalize_msg_digest(intermediate=True)
+            self.certificate_digest = self.kdf.current_msg_digest()
 
         if msg.chain.digest not in self._cert_chain_digests:
             self._cert_chain_digests.append(msg.chain.digest)
@@ -885,6 +1002,37 @@ class TlsConnection(object):
                 self.client.alert_on_invalid_cert,
             )
 
+    def _on_certificate_request_received(self, msg):
+        if self.version is tls.Version.TLS13:
+            sig_algo_ext = msg.get_extension(tls.Extension.SIGNATURE_ALGORITHMS)
+            if sig_algo_ext is None:
+                raise FatalAlert(
+                    "certificate request without extension SignatureAlgorithms received"
+                )
+            algos = sig_algo_ext.signature_algorithms
+
+        else:
+            algos = msg.supported_signature_algorithms
+
+        end_loops = False
+        for algo in algos:
+            for idx, chain in enumerate(self.client.client_chains):
+                if self.version is tls.Version.TLS13:
+                    cert_algos = chain.certificates[0].tls13_signature_algorithms
+                else:
+                    cert_algos = chain.certificates[0].tls12_signature_algorithms
+
+                if algo in cert_algos:
+                    self._clientauth_key_idx = idx
+                    self._clientauth_sig_algo = algo
+                    end_loops = True
+                    break
+            if end_loops:
+                break
+
+        if self._clientauth_key_idx is None:
+            logging.info("No suitable certificate found for client authentication")
+
     def _on_certificate_verify_received(self, msg):
         if self.version is tls.Version.TLS13:
             kex.verify_certificate_verify(msg, self.msg, self.certificate_digest)
@@ -894,6 +1042,7 @@ class TlsConnection(object):
         tls.HandshakeType.ENCRYPTED_EXTENSIONS: _on_encrypted_extensions_received,
         tls.HandshakeType.SERVER_KEY_EXCHANGE: _on_server_key_exchange_received,
         tls.HandshakeType.CERTIFICATE: _on_certificate_received,
+        tls.HandshakeType.CERTIFICATE_REQUEST: _on_certificate_request_received,
         tls.HandshakeType.CERTIFICATE_VERIFY: _on_certificate_verify_received,
         tls.CCSType.CHANGE_CIPHER_SPEC: _on_change_cipher_spec_received,
         tls.HandshakeType.FINISHED: _on_finished_received,
@@ -936,10 +1085,16 @@ class TlsConnection(object):
         if mb.content_type is tls.ContentType.HANDSHAKE:
             msg = HandshakeMessage.deserialize(mb.msg, self)
             if msg.msg_type is tls.HandshakeType.FINISHED:
-                self._pre_finished_digest = self.kdf.finalize_msg_digest(
-                    intermediate=not self._finished_treated
+                self._pre_finished_digest = self.kdf.current_msg_digest(
+                    suspend=self._finished_treated
                 )
-            self.kdf.update_msg_digest(mb.msg)
+
+            if msg.msg_type is tls.HandshakeType.CERTIFICATE_REQUEST:
+                self.kdf.resume_msg_digest()
+
+            if self.kdf.msg_digest_active():
+                self.kdf.update_msg_digest(mb.msg)
+
         elif mb.content_type is tls.ContentType.ALERT:
             self.alert_received = True
             msg = Alert.deserialize(mb.msg, self)
@@ -1047,7 +1202,7 @@ class TlsConnection(object):
 
     def _generate_master_secret(self):
         if self.extended_ms:
-            msg_digest = self.kdf.finalize_msg_digest(intermediate=True)
+            msg_digest = self.kdf.current_msg_digest()
             self.master_secret = self.kdf.prf(
                 self.premaster_secret, b"extended master secret", msg_digest, 48
             )
@@ -1085,7 +1240,7 @@ class TlsConnection(object):
 
         handshake_secret = self.kdf.hkdf_extract(shared_secret, derived)
         logging.debug(f"handshake secret: {pdu.dump(handshake_secret)}")
-        hello_digest = self.kdf.finalize_msg_digest(intermediate=True)
+        hello_digest = self.kdf.current_msg_digest()
         logging.debug(f"hello_digest: {pdu.dump(hello_digest)}")
         c_hs_tr_secret = self.kdf.hkdf_expand_label(
             handshake_secret, "c hs traffic", hello_digest, mac.key_len
@@ -1188,6 +1343,7 @@ class TlsConnection(object):
 
         * full handshake
         * abbreviated handshake (with and without server authentication)
+        * client authentication
 
         TLS1.3:
 
@@ -1203,17 +1359,25 @@ class TlsConnection(object):
         self.send(msg.ClientHello)
         if self.client.early_data is not None:
             self.send(msg.AppData(self.client.early_data))
+
         self.wait(msg.ServerHello)
         if self.version is tls.Version.TLS13:
             self.wait(msg.ChangeCipherSpec, optional=True)
             self.wait(msg.EncryptedExtensions)
             if not self.abbreviated_hs:
+                cert_req = self.wait(msg.CertificateRequest, optional=True)
                 self.wait(msg.Certificate)
                 self.wait(msg.CertificateVerify)
+
             self.wait(msg.Finished)
             if self.early_data_accepted:
                 self.send(msg.EndOfEarlyData)
+            elif cert_req is not None:
+                self.send(msg.Certificate)
+                self.send(msg.CertificateVerify)
+
             self.send(msg.Finished)
+
         else:
             if self.abbreviated_hs:
                 self.wait(msg.ChangeCipherSpec)
@@ -1232,6 +1396,7 @@ class TlsConnection(object):
                         cert = False
                 if cert:
                     self.wait(msg.Certificate)
+
                 if self.cs_details.key_algo in [
                     tls.KeyExchangeAlgorithm.DHE_DSS,
                     tls.KeyExchangeAlgorithm.DHE_RSA,
@@ -1240,8 +1405,16 @@ class TlsConnection(object):
                     tls.KeyExchangeAlgorithm.DH_ANON,
                 ]:
                     self.wait(msg.ServerKeyExchange)
+
+                cert_req = self.wait(msg.CertificateRequest, optional=True)
                 self.wait(msg.ServerHelloDone)
+                if cert_req is not None:
+                    self.send(msg.Certificate)
+
                 self.send(msg.ClientKeyExchange)
+                if cert_req is not None:
+                    self.send(msg.CertificateVerify)
+
                 self.send(msg.ChangeCipherSpec)
                 self.send(msg.Finished)
                 self.wait(msg.ChangeCipherSpec)

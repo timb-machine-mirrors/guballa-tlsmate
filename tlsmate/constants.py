@@ -76,6 +76,13 @@ class ExtendedEnum(enum.Enum):
         return self.name
 
 
+#    def __eq__(self, other):
+#        return self.value == other.value
+#
+#    def __ne__(self, other):
+#        return self.value != other.value
+
+
 class ExtendedIntEnum(ExtendedEnum):
     """Clas for comparable enums
 
@@ -199,6 +206,7 @@ class Extension(ExtendedEnum):
     EXTERNAL_ID_HASH = 55
     EXTERNAL_SESSION_ID = 56
     RENEGOTIATION_INFO = 65281
+    UNKNOW_EXTENSION = 0x10000
 
 
 class CipherSuite(ExtendedEnum):
@@ -733,13 +741,10 @@ class SignatureScheme(ExtendedEnum):
     ECDSA_SHA1 = 0x0203
     RSA_PKCS1_SHA256 = 0x0401
     ECDSA_SECP256R1_SHA256 = 0x0403
-    RSA_PKCS1_SHA256_LEGACY = 0x0420
     RSA_PKCS1_SHA384 = 0x0501
     ECDSA_SECP384R1_SHA384 = 0x0503
-    RSA_PKCS1_SHA384_LEGACY = 0x0520
     RSA_PKCS1_SHA512 = 0x0601
     ECDSA_SECP521R1_SHA512 = 0x0603
-    RSA_PKCS1_SHA512_LEGACY = 0x0620
     ECCSI_SHA256 = 0x0704
     RSA_PSS_RSAE_SHA256 = 0x0804
     RSA_PSS_RSAE_SHA384 = 0x0805
@@ -992,6 +997,22 @@ class SSLError(ExtendedEnum):
     NO_CERTIFICATE = 0x0002
     BAD_CERTIFICATE = 0x0004
     UNSUPPORTED_CERTIFICATE_TYPE = 0x0006
+
+
+class CertType(ExtendedEnum):
+    """Enum representing certificate types.
+    """
+
+    RSA_SIGN = 1
+    DSS_SIGN = 2
+    RSA_FIXED_DH = 3
+    DSS_FIXED_DH = 4
+    RSA_EPHEMERAL_DH = 5
+    DSS_EPHEMERAL_DH = 6
+    FORTEZZA_DMS = 20
+    ECDSA_SIGN = 64
+    RSA_FIXED_ECDH = 65
+    ECDSA_FIXED_ECDH = 66
 
 
 class CertKeyUsage(ExtendedEnum):

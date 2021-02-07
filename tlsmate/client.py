@@ -4,9 +4,10 @@
 import tlsmate.constants as tls
 import tlsmate.extensions as ext
 from tlsmate.messages import ClientHello
-from tlsmate.cert import TrustStore
+from tlsmate.cert import TrustStore, CertChain
 import pem
 from cryptography.hazmat.primitives import serialization
+
 
 class Client(object):
     """The class representing a TLS client
@@ -86,18 +87,25 @@ class Client(object):
         self.reset_profile()
         ca_files = config["ca_certs"]
         self.trust_store = TrustStore(ca_files=ca_files)
-        self.client_key = None
-        self.client_cert = []
+        self.client_keys = []
+        self.client_chains = []
         self._read_client_files(config)
 
     def _read_client_files(self, config):
         if config["client_key"] is not None:
-            with open(config["client_key"], "rb") as fd:
-                self.client_key = serialization.load_pem_private_key(fd.read(), password=None)
-        if config["client_cert"] is not None:
-            pem_list = pem.parse_file(config["client_cert"])
-            for pem_item in pem_list:
-                self.client_cert.append(Certificate(pem=pem_item.as_bytes()))
+            for key_file in config["client_key"]:
+                with open(key_file, "rb") as fd:
+                    self.client_keys.append(
+                        serialization.load_pem_private_key(fd.read(), password=None)
+                    )
+
+        if config["client_chain"] is not None:
+            for chain_file in config["client_chain"]:
+                client_chain = CertChain()
+                pem_list = pem.parse_file(chain_file)
+                for pem_item in pem_list:
+                    client_chain.append_pem_cert(pem_item.as_bytes())
+                self.client_chains.append(client_chain)
 
     def reset_profile(self):
         """Resets the client profile to a very basic state
@@ -201,31 +209,40 @@ class Client(object):
         max_version = max(self.versions)
         if max_version is tls.Version.TLS13:
             msg.version = tls.Version.TLS12
+
         else:
             msg.version = max_version
+
         msg.random = None  # will be provided autonomously
 
         if self.support_session_ticket and self.session_state_ticket is not None:
             msg.session_id = bytes.fromhex("dead beaf")
+
         elif self.support_session_id and self.session_state_id is not None:
             msg.session_id = self.session_state_id.session_id
+
         else:
             msg.session_id = b""
+
         msg.cipher_suites = self.cipher_suites
         msg.compression_methods = self.compression_methods
         if msg.version == tls.Version.SSL30:
             msg.extensions = None
+
         else:
             if self.support_sni:
                 msg.extensions.append(
                     ext.ExtServerNameIndication(host_name=self.server_name)
                 )
+
             if self.support_extended_master_secret:
                 msg.extensions.append(ext.ExtExtendedMasterSecret())
+
             if self.support_ec_point_formats:
                 msg.extensions.append(
                     ext.ExtEcPointFormats(ec_point_formats=self.ec_point_formats)
                 )
+
             if self.supported_groups:
                 msg.extensions.append(
                     ext.ExtSupportedGroups(supported_groups=self.supported_groups)
@@ -238,26 +255,36 @@ class Client(object):
                         signature_algorithms=self.signature_algorithms
                     )
                 )
+
             if self.support_encrypt_then_mac:
                 msg.extensions.append(ext.ExtEncryptThenMac())
+
             if self.support_session_ticket:
                 kwargs = {}
                 if self.session_state_ticket is not None:
                     kwargs["ticket"] = self.session_state_ticket.ticket
+
                 msg.extensions.append(ext.ExtSessionTicket(**kwargs))
+
             if tls.Version.TLS13 in self.versions:
+                if self.client_keys:
+                    msg.extensions.append(ext.ExtPostHandshakeAuth())
+
                 self._key_share_objects = []
                 msg.extensions.append(ext.ExtSupportedVersions(versions=self.versions))
                 # TLS13 key shares: enforce the same sequence as in supported groups
                 key_shares = []
                 if not self.key_shares:
                     self.key_shares = self.supported_groups
+
                 for group in self.supported_groups:
                     if group in self.key_shares:
                         key_shares.append(group)
+
                 msg.extensions.append(ext.ExtKeyShare(key_shares=key_shares))
                 if self.early_data is not None:
                     msg.extensions.append(ext.ExtEarlyData())
+
                 if self.support_psk and self.psks:
                     msg.extensions.append(
                         ext.ExtPskKeyExchangeMode(modes=self.psk_key_exchange_modes)

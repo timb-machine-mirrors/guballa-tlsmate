@@ -88,7 +88,7 @@ def build_parser():
 
     parser.add_argument(
         "--ca-certs",
-        nargs="+",
+        nargs="*",
         type=str,
         help=(
             "list of root-ca cert files. Each file may contain multiple root-CA "
@@ -99,13 +99,16 @@ def build_parser():
     parser.add_argument(
         "--client-key",
         type=str,
+        nargs="*",
         help="a file containing the client private key in PEM format.",
     )
 
     parser.add_argument(
-        "--client-cert",
+        "--client-chain",
         type=str,
-        help=("a file containing the certificate chain used for client authentication "
+        nargs="*",
+        help=(
+            "a file containing the certificate chain used for client authentication "
             "in PEM format."
         ),
     )
@@ -124,6 +127,26 @@ def build_parser():
     return parser
 
 
+def _args_consistency(args, parser):
+    """Check the consistency of the given args which cannot be checked by argparse.
+
+    Arguments:
+        args (object): the arguments parsed as an object
+        parser (:obj:`argparse.ArgumentParser`): the parser object
+    """
+    if (args.client_key is not None) or (args.client_chain is not None):
+        if (args.client_chain is None) or (args.client_chain is None):
+            parser.error(
+                "if --client-key is given, --client-chain must be given as well, "
+                "and vice versa"
+            )
+        if len(args.client_key) != len(args.client_chain):
+            parser.error(
+                "number of arguments for --client-key and --client-chain must "
+                "be identical"
+            )
+
+
 def main():
     """The entry point for the command line interface
     """
@@ -134,6 +157,8 @@ def main():
     parser = build_parser()
 
     args = parser.parse_args()
+    _args_consistency(args, parser)
+
     host_arg = args.host.split(":")
     host = host_arg.pop(0)
     if host_arg:
@@ -149,7 +174,7 @@ def main():
     config.merge_config("ca_certs", args.ca_certs)
     config.merge_config("logging", args.logging)
     config.merge_config("client_key", args.client_key)
-    config.merge_config("client_cert", args.client_cert)
+    config.merge_config("client_chain", args.client_chain)
 
     utils.set_logging(config["logging"])
 
