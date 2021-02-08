@@ -108,6 +108,13 @@ class Any(object):
     pass
 
 
+class Timeout(object):
+    """Class to allow waiting for a timeout.
+    """
+
+    msg_type = "Timeout"
+
+
 class HandshakeMessage(TlsMessage):
     """A base class for all handshake messages.
     """
