@@ -670,7 +670,7 @@ class TlsConnection(object):
                 is_write_state=True,
             )
         )
-        hash_val = self.kdf.current_msg_digest()
+        hash_val = self.kdf.current_msg_digest(suspend=True)
         self.res_ms = self.kdf.hkdf_expand_label(
             self.master_secret,
             "res master",

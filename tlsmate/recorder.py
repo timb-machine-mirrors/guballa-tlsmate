@@ -5,6 +5,8 @@
 import enum
 import yaml
 import datetime
+import time
+from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
 
 
 class RecorderState(enum.Enum):
@@ -14,6 +16,15 @@ class RecorderState(enum.Enum):
     INACTIVE = 0
     RECORDING = 1
     REPLAYING = 2
+
+
+class SocketEvent(enum.Enum):
+    """Events that might occur when waiting for socket data
+    """
+
+    TIMEOUT = 0
+    DATA = 1
+    CLOSURE = 2
 
 
 class Recorder(object):
@@ -73,7 +84,7 @@ class Recorder(object):
         "timestamp": float,
         "datetime": datetime.datetime,
         "msg_sendall": bytes,
-        "msg_recv": bytes,
+        "msg_recv": "msg_recv",
         "crl_url": str,
         "crl": bytes,
         "signature": bytes,
@@ -105,6 +116,11 @@ class Recorder(object):
             return val.hex()
         elif val_type is datetime.datetime:
             return val.timestamp()
+        elif val_type == "msg_recv":
+            timeout, event_type, data = val
+            if data is not None:
+                data = data.hex()
+            return [timeout, event_type.value, data]
         return val
 
     @staticmethod
@@ -122,6 +138,12 @@ class Recorder(object):
             return bytes.fromhex(val)
         elif val_type is datetime.datetime:
             return datetime.datetime.fromtimestamp(val)
+        elif val_type == "msg_recv":
+            timout, event_type, data = val
+            event_type = SocketEvent(event_type)
+            if data is not None:
+                data = bytes.fromhex(data)
+            val = (timout, event_type, data)
         return val
 
     def _store_value(self, name, value):
@@ -161,14 +183,16 @@ class Recorder(object):
         """
         return self._state == RecorderState.RECORDING
 
-    def trace_socket_recv(self, msg):
+    def trace_socket_recv(self, timeout, event_type, data=None):
         """Trace a message received from a socket (if state is recording).
 
         Arguments:
-            msg (bytes): the message in raw format
+            timeout (float): the timeout after that the event occured
+            event_type (:obj:`SocketEvent`): the event that occured
+            data (bytes): the message in raw format (if event_type is data)
         """
         if self._state == RecorderState.RECORDING:
-            self._store_value("msg_recv", msg)
+            self._store_value("msg_recv", (timeout, event_type, data))
 
     def inject_socket_recv(self):
         """If the recorder is replaying, inject the previously recorded message.
@@ -177,7 +201,13 @@ class Recorder(object):
             bytes: the message previously recorded
         """
         if self._state == RecorderState.REPLAYING:
-            return self._unstore_value("msg_recv")
+            timeout, event_type, data = self._unstore_value("msg_recv")
+            time.sleep(timeout)
+            if event_type is SocketEvent.CLOSURE:
+                raise TlsConnectionClosedError
+            elif event_type is SocketEvent.TIMEOUT:
+                raise TlsMsgTimeoutError
+            return data
         return None
 
     def trace_socket_sendall(self, msg):

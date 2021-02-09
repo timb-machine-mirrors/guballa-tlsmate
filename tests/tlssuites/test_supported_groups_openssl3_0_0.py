@@ -34,7 +34,7 @@ class TestCase(TlsSuiteTester):
     path = pathlib.Path(__file__)
 
     server = "localhost"
-    port = 44332
+    port = 44330
 
     def check_tls12(self, profile):
         assert profile["extension_supported"] == "C_TRUE"

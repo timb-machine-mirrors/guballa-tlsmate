@@ -39,6 +39,7 @@ class TestCase(CipherSuiteTester):
             conn.send(msg.Certificate)
             conn.send(msg.CertificateVerify)
             conn.send(msg.Finished)
+            conn.timeout(500)
 
             end_of_tc_reached = True
         assert end_of_tc_reached is True

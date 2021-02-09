@@ -5,9 +5,11 @@
 import socket
 import select
 import logging
+import time
 import sys
 from tlsmate import utils
 from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
+from tlsmate import recorder
 
 
 class Socket(object):
@@ -78,15 +80,21 @@ class Socket(object):
         if data is None:
             if self._socket is None:
                 self.open_socket()
+            start = time.time()
             rfds, wfds, efds = select.select([self._socket], [], [], timeout)
+            timeout = time.time() - start
             if not rfds:
+                self._recorder.trace_socket_recv(timeout, recorder.SocketEvent.TIMEOUT)
                 raise TlsMsgTimeoutError
             try:
                 data = self._socket.recv(self._fragment_max_size)
             except ConnectionResetError:
+                self._recorder.trace_socket_recv(timeout, recorder.SocketEvent.CLOSURE)
                 self.close_socket()
                 raise TlsConnectionClosedError
-            self._recorder.trace_socket_recv(data)
+            self._recorder.trace_socket_recv(
+                timeout, recorder.SocketEvent.DATA, data=data
+            )
         if data == b"":
             self.close_socket()
             raise TlsConnectionClosedError
