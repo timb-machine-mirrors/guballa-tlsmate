@@ -234,6 +234,8 @@ class ScanSupportedGroups(TlsSuite):
         versions = self.server_profile.get_versions()
         if tls.Version.SSL20 in versions:
             versions.remove(tls.Version.SSL20)
+
+        self.client.alert_on_invalid_cert = False
         for version in versions:
             vers_prof = self.server_profile.get_version_profile(version)
             if vers_prof is not None:
