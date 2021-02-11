@@ -86,7 +86,7 @@
     python tests/tls12/test_tls12_TLS_RSA_WITH_AES_128_GCM_SHA256.py
     python tests/tls12/test_tls12_EncryptThenMac.py
     python tests/tls12/test_tls12_ResumptionById.py
-
+    python tests/features/test_features_ClientProfiles.py
 
 # ECDH, TLS1.2
 ./start_openssl --port 44330 --prefix /opt/openssl1.0.2 --cert rsa --cert2 ecdsa --mode www -- -cipher ALL

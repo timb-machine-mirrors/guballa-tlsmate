@@ -1040,3 +1040,13 @@ class CertCrlStatus(ExtendedEnum):
     CRL_DOWNLOAD_FAILED = enum.auto()
     WRONG_CRL_ISSUER = enum.auto()
     CRL_SIGNATURE_INVALID = enum.auto()
+
+
+class Profile(ExtendedEnum):
+    """Different types for client profile
+    """
+
+    LEGACY = enum.auto()
+    INTEROPERABILITY = enum.auto()
+    MODERN = enum.auto()
+    TLS13 = enum.auto()

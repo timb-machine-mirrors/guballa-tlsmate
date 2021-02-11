@@ -148,6 +148,239 @@ class Client(object):
         self.support_encrypt_then_mac = False
         self.alert_on_invalid_cert = True
 
+    def set_profile_interoperability(self):
+        """Define profile for interoperability, like used in modern browsers
+
+        Properties:
+          - TLS Versions 1.0 - 1.3
+          - ECDHE cipher & RSA-based key transport
+          - AESGCM, AES, CHACHA_POLY and 3DES as last resort
+          - Signature algorithms: ECDSA+SHA1, RSA PKCS1+SHA1 as last resort
+          - Resumption, encrypt-then-mac, extended-mastersecret
+          - pskmode psk_dhe
+        """
+        self.reset_profile()
+        self.versions = [
+            tls.Version.TLS10,
+            tls.Version.TLS11,
+            tls.Version.TLS12,
+            tls.Version.TLS13,
+        ]
+        self.cipher_suites = [
+            tls.CipherSuite.TLS_AES_128_GCM_SHA256,
+            tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
+            tls.CipherSuite.TLS_AES_256_GCM_SHA384,
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+            tls.CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
+            tls.CipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384,
+            tls.CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+            tls.CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA,
+            tls.CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+        ]
+        self.supported_groups = [
+            tls.SupportedGroups.X25519,
+            tls.SupportedGroups.SECP256R1,
+            tls.SupportedGroups.SECP384R1,
+            tls.SupportedGroups.SECP521R1,
+        ]
+        self.key_shares = [tls.SupportedGroups.X25519, tls.SupportedGroups.SECP256R1]
+        self.psk_key_exchange_modes = [tls.PskKeyExchangeMode.PSK_DHE_KE]
+        self.signature_algorithms = [
+            tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA256,
+            tls.SignatureScheme.RSA_PKCS1_SHA256,
+            tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA384,
+            tls.SignatureScheme.RSA_PKCS1_SHA384,
+            tls.SignatureScheme.ECDSA_SECP521R1_SHA512,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA512,
+            tls.SignatureScheme.RSA_PKCS1_SHA512,
+            tls.SignatureScheme.ECDSA_SHA1,
+            tls.SignatureScheme.RSA_PKCS1_SHA1,
+        ]
+        self.support_ec_point_formats = True
+        self.ec_point_formats = [tls.EcPointFormat.UNCOMPRESSED]
+        self.support_sni = True
+        self.support_extended_master_secret = True
+        self.support_session_id = True
+        self.support_session_ticket = True
+        self.support_encrypt_then_mac = True
+
+    def set_profile_legacy(self):
+        """Define profile for legacy like client
+
+        Properties:
+          - TLS Versions 1.0 - 1.2
+          - ECDHE cipher & DHE & RSA-based key transport
+          - AESGCM, AES, CHACHA_POLY and 3DES as last resort
+          - Signature algorithms: ECDSA+SHA1, RSA PKCS1+SHA1 as last resort
+          - Resumption, encrypt-then-mac, extended-mastersecret
+        """
+        self.reset_profile()
+        self.versions = [
+            tls.Version.TLS10,
+            tls.Version.TLS11,
+            tls.Version.TLS12,
+        ]
+        self.cipher_suites = [
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+
+            tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
+            tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_GCM_SHA384,
+            tls.CipherSuite.TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+            tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA256,
+            tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_CBC_SHA256,
+            tls.CipherSuite.TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
+            tls.CipherSuite.TLS_DHE_RSA_WITH_AES_256_CBC_SHA,
+
+            tls.CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256,
+            tls.CipherSuite.TLS_RSA_WITH_AES_256_GCM_SHA384,
+            tls.CipherSuite.TLS_RSA_WITH_AES_128_CBC_SHA,
+            tls.CipherSuite.TLS_RSA_WITH_AES_256_CBC_SHA,
+            tls.CipherSuite.TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+        ]
+        self.supported_groups = [
+            tls.SupportedGroups.X25519,
+            tls.SupportedGroups.SECP256R1,
+            tls.SupportedGroups.SECP384R1,
+            tls.SupportedGroups.SECP521R1,
+        ]
+        self.signature_algorithms = [
+            tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA256,
+            tls.SignatureScheme.RSA_PKCS1_SHA256,
+            tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA384,
+            tls.SignatureScheme.RSA_PKCS1_SHA384,
+            tls.SignatureScheme.ECDSA_SECP521R1_SHA512,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA512,
+            tls.SignatureScheme.RSA_PKCS1_SHA512,
+            tls.SignatureScheme.ECDSA_SHA1,
+            tls.SignatureScheme.RSA_PKCS1_SHA1,
+        ]
+        self.support_ec_point_formats = True
+        self.ec_point_formats = [tls.EcPointFormat.UNCOMPRESSED]
+        self.support_sni = True
+        self.support_extended_master_secret = True
+        self.support_session_id = True
+        self.support_session_ticket = True
+        self.support_encrypt_then_mac = True
+
+    def set_profile_modern(self):
+        """Define profile for "modern" configurations
+
+        Properties:
+          - TLS Versions 1.2 + 1.3
+          - ECDHE cipher
+          - AESGCM, CHACHA_POLY
+          - signatures: ECDSA + PSS_RSAE
+          - Resumption, encrypt-then-mac, extended-mastersecret
+          - pskmode psk_dhe
+        """
+        self.reset_profile()
+        self.versions = [tls.Version.TLS12, tls.Version.TLS13]
+        self.cipher_suites = [
+            tls.CipherSuite.TLS_AES_128_GCM_SHA256,
+            tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
+            tls.CipherSuite.TLS_AES_256_GCM_SHA384,
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+        ]
+        self.supported_groups = [
+            tls.SupportedGroups.X25519,
+            tls.SupportedGroups.SECP256R1,
+            tls.SupportedGroups.SECP384R1,
+            tls.SupportedGroups.SECP521R1,
+        ]
+        self.key_shares = [tls.SupportedGroups.X25519, tls.SupportedGroups.SECP256R1]
+        self.psk_key_exchange_modes = [tls.PskKeyExchangeMode.PSK_DHE_KE]
+        self.signature_algorithms = [
+            tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA256,
+            tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA384,
+            tls.SignatureScheme.ECDSA_SECP521R1_SHA512,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA512,
+        ]
+        self.support_ec_point_formats = True
+        self.ec_point_formats = [tls.EcPointFormat.UNCOMPRESSED]
+        self.support_sni = True
+        self.support_extended_master_secret = True
+        self.support_session_id = True
+        self.support_session_ticket = True
+
+    def set_profile_tls13(self):
+        """Define profile for TLS1.3 only.
+
+        Properties:
+          - TLS Version 1.3
+          - AESGCM + CHACHA_POLY
+          - pskmode psk_dhe
+        """
+        self.reset_profile()
+        self.versions = [tls.Version.TLS13]
+        self.cipher_suites = [
+            tls.CipherSuite.TLS_AES_128_GCM_SHA256,
+            tls.CipherSuite.TLS_CHACHA20_POLY1305_SHA256,
+            tls.CipherSuite.TLS_AES_256_GCM_SHA384,
+        ]
+        self.supported_groups = [
+            tls.SupportedGroups.X25519,
+            tls.SupportedGroups.SECP256R1,
+            tls.SupportedGroups.SECP384R1,
+            tls.SupportedGroups.SECP521R1,
+        ]
+        self.key_shares = [tls.SupportedGroups.X25519, tls.SupportedGroups.SECP256R1]
+        self.psk_key_exchange_modes = [tls.PskKeyExchangeMode.PSK_DHE_KE]
+        self.signature_algorithms = [
+            tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA256,
+            tls.SignatureScheme.RSA_PKCS1_SHA256,
+            tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA384,
+            tls.SignatureScheme.RSA_PKCS1_SHA384,
+            tls.SignatureScheme.ECDSA_SECP521R1_SHA512,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA512,
+            tls.SignatureScheme.RSA_PKCS1_SHA512,
+        ]
+        self.support_ec_point_formats = True
+        self.ec_point_formats = [tls.EcPointFormat.UNCOMPRESSED]
+        self.support_sni = True
+
+    def set_profile(self, profile):
+        if profile is tls.Profile.INTEROPERABILITY:
+            self.set_profile_interoperability()
+        elif profile is tls.Profile.TLS13:
+            self.set_profile_tls13()
+        elif profile is tls.Profile.MODERN:
+            self.set_profile_modern()
+        elif profile is tls.Profile.LEGACY:
+            self.set_profile_legacy()
+        else:
+            raise ValueError(f"client profile {profile} unknown")
+
     def create_connection(self):
         """Create a new connection object
 
