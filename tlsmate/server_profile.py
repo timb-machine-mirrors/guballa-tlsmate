@@ -719,7 +719,6 @@ class SPCertExtOCSPNoCheckSchema(ProfileSchema):
     name = fields.String()
     oid = fields.String()
     criticality = FieldsEnumString(enum_class=tls.SPBool)
-    tls_features = fields.List(FieldsEnumString(enum_class=tls.Extension))
 
 
 class SPCertExtTLSFeatureSchema(ProfileSchema):
@@ -730,6 +729,7 @@ class SPCertExtTLSFeatureSchema(ProfileSchema):
     name = fields.String()
     oid = fields.String()
     criticality = FieldsEnumString(enum_class=tls.SPBool)
+    tls_features = fields.List(FieldsEnumString(enum_class=tls.Extension))
 
 
 class SPCertExtNameConstraintsSchema(ProfileSchema):
