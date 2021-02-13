@@ -16,6 +16,7 @@ from tlsmate.tlssuites.compression import ScanCompression
 from tlsmate.tlssuites.encrypt_then_mac import ScanEncryptThenMac
 from tlsmate.tlssuites.master_secret import ScanExtendedMasterSecret
 from tlsmate.tlssuites.resumption import ScanResumption
+from tlsmate.tlssuites.renegotiation import ScanRenegotiation
 from tlsmate import utils
 
 from tlsmate.version import __version__
@@ -204,6 +205,7 @@ SuiteManager.register_cli(
         ScanEncryptThenMac,
         ScanExtendedMasterSecret,
         ScanResumption,
+        ScanRenegotiation,
         ScanEnd,
     ],
 )
