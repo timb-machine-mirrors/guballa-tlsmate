@@ -229,6 +229,9 @@ class SPFeaturesSchema(ProfileSchema):
     session_id = FieldsEnumString(enum_class=tls.SPBool)
     session_ticket = FieldsEnumString(enum_class=tls.SPBool)
     session_ticket_lifetime = fields.Integer()
+    insecure_renegotiation = FieldsEnumString(enum_class=tls.SPBool)
+    secure_renegotation = FieldsEnumString(enum_class=tls.SPBool)
+    scsv_renegotiation = FieldsEnumString(enum_class=tls.SPBool)
 
 
 class SPPublicKey(SPObject):

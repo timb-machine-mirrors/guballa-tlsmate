@@ -73,6 +73,8 @@
     python tests/tls11/test_tls11_TLS_RSA_WITH_RC4_128_SHA.py
     python tests/tls12/test_tls12_ExtendedMasterSecret.py
     python tests/tls12/test_tls12_ResumptionByTicket.py
+    python tests/tls12/test_tls12_SecureRenegotiation.py
+    python tests/tls12/test_tls12_SecureRenegotiationSCSV.py
 
 # TLS12
 ./start_openssl --port 44330 --cert rsa --cert2 ecdsa --mode www
