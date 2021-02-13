@@ -185,13 +185,20 @@ class ExtRenegotiationInfo(Extension):
     """
 
     def __init__(self, **kwargs):
-        self.opaque = kwargs.get("opaque", b"\0")
+        self.renegotiated_connection = kwargs.get("renegotiated_connection", b"\0")
 
     def serialize_ext_body(self, conn):
-        return self.opaque
+        ext_body = (
+            pdu.pack_uint8(len(self.renegotiated_connection))
+            + self.renegotiated_connection
+        )
+        return ext_body
 
     def deserialize_ext_body(self, ext_body):
-        self.opaque, _ = pdu.unpack_bytes(ext_body, 0, len(ext_body))
+        length, offset = pdu.unpack_uint8(ext_body, 0)
+        self.renegotiated_connection, offset = pdu.unpack_bytes(
+            ext_body, offset, length
+        )
 
 
 class ExtEcPointFormats(Extension):

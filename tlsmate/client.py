@@ -147,6 +147,8 @@ class Client(object):
 
         self.support_encrypt_then_mac = False
         self.alert_on_invalid_cert = True
+        self.support_secure_renegotiation = False
+        self.support_scsv_renegotiation = False
 
     def set_profile_interoperability(self):
         """Define profile for interoperability, like used in modern browsers
@@ -455,7 +457,8 @@ class Client(object):
         else:
             msg.session_id = b""
 
-        msg.cipher_suites = self.cipher_suites
+        msg.cipher_suites = self.cipher_suites.copy()
+
         msg.compression_methods = self.compression_methods
         if msg.version == tls.Version.SSL30:
             msg.extensions = None

@@ -16,6 +16,7 @@ from tlsmate import pdu
 from tlsmate import utils
 import tlsmate.structures as structs
 import tlsmate.key_exchange as kex
+from tlsmate import extensions as ext
 from tlsmate.kdf import Kdf
 from cryptography.hazmat.primitives.asymmetric import padding, ec
 from cryptography.hazmat.primitives import hashes
@@ -273,6 +274,7 @@ class TlsConnection(object):
         self.client_write_keys = None
         self.server_write_keys = None
         self.cipher = None
+        self._initial_handshake = None
 
     def __enter__(self):
         self.record_layer.open_socket()
@@ -306,6 +308,21 @@ class TlsConnection(object):
             client (:obj:`tlsmate.client.Client`): the client object
         """
         self.client = client
+        self._secure_reneg_cl_data = None
+        self._secure_reneg_sv_data = None
+        self._secure_reneg_request = False
+        self._secure_reneg_flag = False
+        self._secure_reneg_ext = False
+        self._secure_reneg_scsv = False
+
+        if client.support_secure_renegotiation:
+            self._secure_reneg_request = True
+            self._secure_reneg_ext = True
+
+        if client.support_scsv_renegotiation:
+            self._secure_reneg_request = True
+            self._secure_reneg_scsv = True
+
         return self
 
     def get_key_share(self, group):
@@ -335,6 +352,7 @@ class TlsConnection(object):
         self.ext_psk = None
         self._clientauth_key_idx = None
         self._clientauth_sig_algo = None
+        self._initial_handshake = True if self._initial_handshake is None else False
 
     def _sign_rsa_pss(self, key, data, hash_algo):
         return key.sign(
@@ -389,7 +407,31 @@ class TlsConnection(object):
     # ###########################
 
     def _generate_ch(self, cls):
-        return self.client.client_hello()
+        msg = self.client.client_hello()
+        if self._secure_reneg_request:
+            if self._initial_handshake is None:
+                if self._secure_reneg_scsv:
+                    msg.cipher_suites.append(
+                        tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV
+                    )
+
+                if self._secure_reneg_ext:
+                    # Put it in the beginning, just to be sure preshared_keys stays the
+                    # last extension (if present at all)
+                    msg.extensions.insert(
+                        0, ext.ExtRenegotiationInfo(renegotiated_connection=b"")
+                    )
+
+            elif self._secure_reneg_flag:
+                if self._secure_reneg_cl_data is not None:
+                    msg.extensions.insert(
+                        0,
+                        ext.ExtRenegotiationInfo(
+                            renegotiated_connection=self._secure_reneg_cl_data
+                        ),
+                    )
+
+        return msg
 
     def _pre_serialization_ch(self, msg):
         self._init_handshake()
@@ -420,6 +462,8 @@ class TlsConnection(object):
                     self.send_early_data = True
                 elif ext is tls.Extension.PRE_SHARED_KEY:
                     self.ext_psk = extension
+                elif ext is tls.Extension.RENEGOTIATION_INFO:
+                    logging.debug(f"renegotiated_connection: {pdu.dump(extension.renegotiated_connection)}")
         self.kdf.start_msg_digest()
 
     def _post_serialization_ch(self, msg, msg_data):
@@ -628,6 +672,7 @@ class TlsConnection(object):
             else:
                 label = b"server finished"
             val = self.kdf.prf(self.master_secret, label, hash_val, 12)
+            self._secure_reneg_cl_data = val
             self._update_write_state()
         self.recorder.trace(msg_digest_finished_sent=hash_val)
         self.recorder.trace(verify_data_finished_sent=val)
@@ -814,6 +859,41 @@ class TlsConnection(object):
         self.extended_ms = (
             msg.get_extension(tls.Extension.EXTENDED_MASTER_SECRET) is not None
         )
+        if self._secure_reneg_request:
+            data = None
+            reneg = msg.get_extension(tls.Extension.RENEGOTIATION_INFO)
+            if reneg is not None:
+                data = reneg.renegotiated_connection
+
+            if self._initial_handshake:
+                self._secure_reneg_flag = False
+                if data == b"":
+                    self._secure_reneg_flag = True
+
+                elif data is not None:
+                    raise FatalAlert(
+                        "secure renegotiation check failed",
+                        tls.AlertDescription.HANDSHAKE_FAILURE,
+                    )
+
+            elif self._secure_reneg_flag:
+                self._secure_reneg_flag = False
+                if self._secure_reneg_cl_data and self._secure_reneg_sv_data:
+                    if data != self._secure_reneg_cl_data + self._secure_reneg_sv_data:
+                        raise FatalAlert(
+                            "secure renegotiation check failed",
+                            tls.AlertDescription.HANDSHAKE_FAILURE,
+                        )
+                    self._secure_reneg_flag = True
+
+                else:
+                    raise FatalAlert(
+                        "secure renegotiation check failed",
+                        tls.AlertDescription.HANDSHAKE_FAILURE,
+                    )
+
+            self._secure_reneg_cl_data = None
+            self._secure_reneg_sv_data = None
 
     def _on_server_hello_received(self, msg):
         self.server_random = msg.random
@@ -919,6 +999,7 @@ class TlsConnection(object):
             else:
                 label = b"client finished"
             val = self.kdf.prf(self.master_secret, label, self._pre_finished_digest, 12)
+            self._secure_reneg_sv_data = val
             self.recorder.trace(msg_digest_finished_rec=self._pre_finished_digest)
             self.recorder.trace(verify_data_finished_rec=msg.verify_data)
             self.recorder.trace(verify_data_finished_calc=val)
