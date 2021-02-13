@@ -869,6 +869,7 @@ class TlsConnection(object):
                 self._secure_reneg_flag = False
                 if data == b"":
                     self._secure_reneg_flag = True
+                    logging.debug("renegotiation extension successfully verified")
 
                 elif data is not None:
                     raise FatalAlert(
@@ -885,6 +886,7 @@ class TlsConnection(object):
                             tls.AlertDescription.HANDSHAKE_FAILURE,
                         )
                     self._secure_reneg_flag = True
+                    logging.debug("renegotiation extension successfully verified")
 
                 else:
                     raise FatalAlert(
