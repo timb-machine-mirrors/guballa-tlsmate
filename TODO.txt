@@ -1,7 +1,5 @@
 
 High prio
-    - recorder: implement the original delay for replaying messages
-    - add basic client profiles, e.g. firefox-like settings for the client_hello
 
 Medium prio
     - implement makefile for test cases generation, where the openssl-server is started with

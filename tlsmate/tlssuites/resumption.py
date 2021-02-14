@@ -3,8 +3,7 @@
 """
 import tlsmate.constants as tls
 from tlsmate.tlssuite import TlsSuite
-
-# from tlsmate.server_profile import ProfileBasic, ProfileBasicEnum
+from tlsmate import messages as msg
 
 
 class ScanResumption(TlsSuite):
@@ -13,9 +12,7 @@ class ScanResumption(TlsSuite):
     prio = 30
 
     def resumption_tls12(self, prof_vals, session_ticket=False):
-        if not prof_vals.versions:
-            state = tls.SPBool.C_NA
-        elif not prof_vals.cipher_suites:
+        if not prof_vals.cipher_suites:
             # no cipher suite, for which a hull handshake is supported.
             state = tls.SPBool.C_UNDETERMINED
         else:
@@ -44,17 +41,69 @@ class ScanResumption(TlsSuite):
                         state = tls.SPBool.C_TRUE
         return state
 
-    def run(self):
+    def run_tls12(self):
         versions = [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]
         prof_vals = self.server_profile.get_profile_values(versions, full_hs=True)
         prof_features = self.server_profile.features
 
-        session_id_support = self.resumption_tls12(prof_vals, session_ticket=False)
-        prof_features.session_id = session_id_support
+        session_id_support = tls.SPBool.C_NA
+        session_ticket_support = tls.SPBool.C_NA
+        if prof_vals.versions:
+            session_id_support = self.resumption_tls12(prof_vals, session_ticket=False)
+            session_ticket_support = self.resumption_tls12(
+                prof_vals, session_ticket=True
+            )
 
-        session_ticket_support = self.resumption_tls12(prof_vals, session_ticket=True)
         prof_features.session_ticket = session_ticket_support
+        prof_features.session_id = session_id_support
         if session_ticket_support is tls.SPBool.C_TRUE:
             prof_features.session_ticket_lifetime = (
                 self.client.session_state_ticket.lifetime
-            )  # noqa: 501
+            )
+
+    def run_tls13(self):
+        resumption_psk = tls.SPBool.C_NA
+        early_data = tls.SPBool.C_NA
+        psk_lifetime = None
+        prof_vals = self.server_profile.get_profile_values(
+            [tls.Version.TLS13], full_hs=True
+        )
+        if prof_vals.versions:
+            self.client.reset_profile()
+            self.client.versions = prof_vals.versions
+            self.client.cipher_suites = prof_vals.cipher_suites
+            self.client.supported_groups = prof_vals.supported_groups
+            self.client.signature_algorithms = prof_vals.signature_algorithms
+            self.client.support_psk = True
+            self.client.psk_key_exchange_modes = [
+                tls.PskKeyExchangeMode.PSK_DHE_KE,
+                tls.PskKeyExchangeMode.PSK_KE,
+            ]
+            ticket_msg = None
+            with self.client.create_connection() as conn:
+                conn.handshake()
+                ticket_msg = conn.wait(msg.NewSessionTicket, optional=True, timeout=200)
+                if ticket_msg is not None:
+                    psk_lifetime = ticket_msg.lifetime
+                else:
+                    resumption_psk = tls.SPBool.C_FALSE
+
+            if ticket_msg:
+                resumption_psk = tls.SPBool.C_TRUE
+                early_data = tls.SPBool.C_FALSE
+
+                self.client.early_data = b"This is EarlyData (0-RTT)"
+                with self.client.create_connection() as conn:
+                    conn.handshake()
+
+                if conn.early_data_accepted:
+                    early_data = tls.SPBool.C_TRUE
+
+        self.server_profile.features.resumption_psk = resumption_psk
+        self.server_profile.features.early_data = early_data
+        if psk_lifetime is not None:
+            self.server_profile.features.psk_lifetime = psk_lifetime
+
+    def run(self):
+        self.run_tls12()
+        self.run_tls13()
