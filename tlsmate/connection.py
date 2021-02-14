@@ -1452,6 +1452,7 @@ class TlsConnection(object):
         if self.version is tls.Version.TLS13:
             self.wait(msg.ChangeCipherSpec, optional=True)
             self.wait(msg.EncryptedExtensions)
+            cert_req = None
             if not self.abbreviated_hs:
                 cert_req = self.wait(msg.CertificateRequest, optional=True)
                 self.wait(msg.Certificate)
