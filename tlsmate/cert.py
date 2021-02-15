@@ -649,13 +649,16 @@ class Certificate(object):
             self.subject_matches = True
             return
 
-        subj_alt_names = self.parsed.extensions.get_extension_for_oid(
-            ExtensionOID.SUBJECT_ALTERNATIVE_NAME
-        )
-        for name in subj_alt_names.value.get_values_for_type(x509.DNSName):
-            if subject_matches(name, domain, no_subdomain):
-                self.subject_matches = True
-                return
+        try:
+            subj_alt_names = self.parsed.extensions.get_extension_for_oid(
+                ExtensionOID.SUBJECT_ALTERNATIVE_NAME
+            )
+            for name in subj_alt_names.value.get_values_for_type(x509.DNSName):
+                if subject_matches(name, domain, no_subdomain):
+                    self.subject_matches = True
+                    return
+        except x509.ExtensionNotFound:
+            pass
 
         self.subject_matches = False
         raise CertValidationError(f'subject name does not match for "{self}"')
