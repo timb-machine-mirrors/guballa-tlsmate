@@ -21,10 +21,11 @@ class Socket(object):
         recorder (:obj:`tlsmate.recorder.Recorder`): The recorder object
     """
 
-    def __init__(self, config, recorder):
+    def __init__(self, config, recorder, server_endpoint):
         self._socket = None
         self._config = config
         self._recorder = recorder
+        self._server_endpoint = server_endpoint
         self._fragment_max_size = 16384
 
     def open_socket(self):
@@ -32,8 +33,10 @@ class Socket(object):
         """
         if self._recorder.is_injecting():
             return
-        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._socket.connect((self._config["server"], self._config["port"]))
+
+        self._server_endpoint.resolve_ip()
+        self._socket = socket.socket(self._server_endpoint.family, socket.SOCK_STREAM)
+        self._socket.connect((self._server_endpoint.ip, self._server_endpoint.port))
         laddr, lport = self._socket.getsockname()
         raddr, rport = self._socket.getpeername()
         if self._config["progress"]:

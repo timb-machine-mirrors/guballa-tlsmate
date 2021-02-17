@@ -463,7 +463,10 @@ class TlsConnection(object):
                 elif ext is tls.Extension.PRE_SHARED_KEY:
                     self.ext_psk = extension
                 elif ext is tls.Extension.RENEGOTIATION_INFO:
-                    logging.debug(f"renegotiated_connection: {pdu.dump(extension.renegotiated_connection)}")
+                    logging.debug(
+                        f"renegotiated_connection: "
+                        f"{pdu.dump(extension.renegotiated_connection)}"
+                    )
         self.kdf.start_msg_digest()
 
     def _post_serialization_ch(self, msg, msg_data):
@@ -1072,7 +1075,7 @@ class TlsConnection(object):
                 self.recorder.trace(datetime=timestamp)
             msg.chain.validate(
                 timestamp,
-                self.client.config["server"],
+                self.client.server_endpoint.sni,
                 self.client.trust_store,
                 self.client.alert_on_invalid_cert,
             )

@@ -1155,6 +1155,24 @@ class SPCipherSuiteSchema(ProfileEnumSchema):
     __profile_class__ = tls.CipherSuite
 
 
+class SPServer(SPObject):
+    """Data class for the servers' information
+    """
+
+
+class SPServerSchema(ProfileSchema):
+    """Schema for the server's information
+    """
+
+    __profile_class__ = SPServer
+    name = fields.String()
+    ip = fields.String()
+    port = fields.Integer()
+    sni = fields.String()
+    ipv4_addresses = fields.List(fields.String())
+    ipv6_addresses = fields.List(fields.String())
+
+
 class SPVersion(SPObject):
     """Data class for a dedicated TLS version.
     """
@@ -1182,6 +1200,7 @@ class ServerProfile(SPObject):
         self.cert_chains = []
         self.features = SPFeatures()
         self.scan_info = SPScanInfo()
+        self.server = None
         self.versions = []
 
     def append_unique_cert_chain(self, chain):
@@ -1335,6 +1354,7 @@ class ServerProfileSchema(ProfileSchema):
     cert_chains = fields.List(fields.Nested(SPCertChainSchema))
     features = fields.Nested(SPFeaturesSchema)
     scan_info = fields.Nested(SPScanInfoSchema)
+    server = fields.Nested(SPServerSchema)
     versions = fields.List(fields.Nested(SPVersionSchema))
 
     def __init__(self, profile=None, **kwargs):
