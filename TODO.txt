@@ -6,12 +6,11 @@ Medium prio
       the correct parameters.
 
 Low prio
-    - more command line options, e.g. to scan only specific versions,
+    - more command line options, e.g. to scan only via IPv4 or IPv6
     - cover all key exchange algorithms in mappings.key_exchange
       - ECDH_ANON is supported as well, but we need a test case
     - HelloRetryRequest
     - more scan results
-    - improved error handling, e.g. if host name cannot be resolved
 
 Nice to have
     - more checks on server_hello: have the stuff selected by the server
