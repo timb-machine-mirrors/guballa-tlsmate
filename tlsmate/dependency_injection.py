@@ -10,6 +10,7 @@ from tlsmate.record_layer import RecordLayer
 from tlsmate.recorder import Recorder
 from tlsmate.socket import Socket
 from tlsmate.kdf import Kdf
+from tlsmate.server_endpoint import ServerEndpoint
 from tlsmate.config import Configuration
 
 from tlsmate.suitemanager import SuiteManager
@@ -21,11 +22,15 @@ class Container(containers.DeclarativeContainer):
 
     config = providers.Singleton(Configuration)
 
+    server_endpoint = providers.Singleton(ServerEndpoint)
+
     server_profile = providers.Singleton(ServerProfile)
 
     recorder = providers.Singleton(Recorder)
 
-    socket = providers.Factory(Socket, config=config, recorder=recorder)
+    socket = providers.Factory(
+        Socket, config=config, recorder=recorder, server_endpoint=server_endpoint,
+    )
 
     kdf = providers.Factory(Kdf)
 
@@ -43,7 +48,10 @@ class Container(containers.DeclarativeContainer):
     )
 
     client = providers.Factory(
-        Client, connection_factory=connection.provider, config=config
+        Client,
+        connection_factory=connection.provider,
+        config=config,
+        server_endpoint=server_endpoint,
     )
 
     test_manager = providers.Singleton(SuiteManager)

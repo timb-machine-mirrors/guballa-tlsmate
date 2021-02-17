@@ -3,7 +3,12 @@
 """
 
 
-class FatalAlert(Exception):
+class TlsmateException(Exception):
+    """A class all exception for tlsmate are based on
+    """
+
+
+class FatalAlert(TlsmateException):
     """Exception which leads to the closure of the TLS connection with a fatal alert.
 
     Attributes:
@@ -17,21 +22,21 @@ class FatalAlert(Exception):
         self.message = message
 
 
-class TlsConnectionClosedError(Exception):
+class TlsConnectionClosedError(TlsmateException):
     """Exception raised when the TLS connection is closed.
     """
 
     pass
 
 
-class TlsMsgTimeoutError(Exception):
+class TlsMsgTimeoutError(TlsmateException):
     """Exception raised when message is not received within timeout
     """
 
     pass
 
 
-class CurveNotSupportedError(Exception):
+class CurveNotSupportedError(TlsmateException):
     """Exception if a curve is negotiated which we do not support
 
     Attributes:
@@ -46,7 +51,7 @@ class CurveNotSupportedError(Exception):
         self.curve = curve
 
 
-class ScanError(Exception):
+class ScanError(TlsmateException):
     """Exception which might occur during a scan.
 
     The exception will be raised if an abnormal condition during a scan is
@@ -60,7 +65,7 @@ class ScanError(Exception):
         self.message = message
 
 
-class CertValidationError(Exception):
+class CertValidationError(TlsmateException):
     """Exception for certificate validation errors
 
     Attributes:
@@ -71,7 +76,7 @@ class CertValidationError(Exception):
         self.issue = issue
 
 
-class CertChainValidationError(Exception):
+class CertChainValidationError(TlsmateException):
     """Exception for certificate chain validation errors
 
     Attributes:

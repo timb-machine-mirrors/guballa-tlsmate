@@ -22,6 +22,7 @@ class SuiteManager(object):
 
     cli_help = {}
     test_suites = {}
+    prio_pool = {}
 
     @classmethod
     def register_cli(cls, argument, cli_help="", classes=[]):
@@ -42,6 +43,18 @@ class SuiteManager(object):
         cls.cli_help[argument] = cli_help
         cls.test_suites[argument] = classes
 
+    @classmethod
+    def register(self, classes):
+        """Register a set of non-cli test suites.
+
+        Arguments:
+            classes (list of :obj:`TestSuite`): A list of plugins that are executed
+            regardless of any cli options.
+        """
+        for cls in classes:
+            self.prio_pool.setdefault(cls.prio, [])
+            self.prio_pool[cls.prio].append(cls)
+
     def run(self, container, selected_test_suite_args):
         """Function to actually start the test manager.
 
@@ -51,14 +64,13 @@ class SuiteManager(object):
             selected_test_suite_args (list of str): The list of CLI options which
                 were given on the CLI to select a set of plugins.
         """
-        prio_pool = {}
         for arg in selected_test_suite_args:
             for cls in self.test_suites[arg]:
-                prio_pool.setdefault(cls.prio, [])
-                if cls not in prio_pool[cls.prio]:
-                    prio_pool[cls.prio].append(cls)
-        for prio_list in sorted(prio_pool.keys()):
-            for cls in sorted(prio_pool[prio_list], key=lambda cls: cls.name):
+                self.prio_pool.setdefault(cls.prio, [])
+                if cls not in self.prio_pool[cls.prio]:
+                    self.prio_pool[cls.prio].append(cls)
+        for prio_list in sorted(self.prio_pool.keys()):
+            for cls in sorted(self.prio_pool[prio_list], key=lambda cls: cls.name):
                 logging.debug(f"starting test suite {cls.name}")
                 test_suite = cls()
                 test_suite._inject_dependencies(

@@ -17,6 +17,8 @@ from tlsmate.tlssuites.encrypt_then_mac import ScanEncryptThenMac
 from tlsmate.tlssuites.master_secret import ScanExtendedMasterSecret
 from tlsmate.tlssuites.resumption import ScanResumption
 from tlsmate.tlssuites.renegotiation import ScanRenegotiation
+
+# from tlsmate.tlssuites.name_resolution import ScanNameResolution
 from tlsmate import utils
 
 from tlsmate.version import __version__
@@ -115,6 +117,17 @@ def build_parser():
     )
 
     parser.add_argument(
+        "--sni",
+        type=str,
+        help=(
+            "the server name indication, i.e., the domain name of for the server to "
+            "to contact. If not given, the value will be taken from the host parameter "
+            "(after stripping of the port number, if present). This parameter is "
+            "useful, if the host is given as an IP address."
+        ),
+    )
+
+    parser.add_argument(
         "host",
         help=(
             "the host to scan. May optionally have the port number appended, "
@@ -160,22 +173,16 @@ def main():
     args = parser.parse_args()
     _args_consistency(args, parser)
 
-    host_arg = args.host.split(":")
-    host = host_arg.pop(0)
-    if host_arg:
-        port = int(host_arg.pop(0))
-    else:
-        port = 443
-
     config = container.config(ini_file=args.config_file)
 
-    config.merge_config("server", host)
-    config.merge_config("port", port)
     config.merge_config("progress", args.progress)
     config.merge_config("ca_certs", args.ca_certs)
     config.merge_config("logging", args.logging)
+
     config.merge_config("client_key", args.client_key)
     config.merge_config("client_chain", args.client_chain)
+    config.merge_config("server", args.host)
+    config.merge_config("sni", args.sni)
 
     utils.set_logging(config["logging"])
 
@@ -192,7 +199,7 @@ def main():
     test_manager.run(container, selected_plugins)
 
 
-# always register the basic plugins provided with tlsmate
+# always register the basic cli plugins provided with tlsmate
 SuiteManager.register_cli(
     "--scan",
     cli_help="performs a basic scan",

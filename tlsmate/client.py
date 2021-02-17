@@ -41,8 +41,6 @@ class Client(object):
             usable to resume a session with the session_ticket extension
         support_sni (bool):
             an indication if the SNI extension is supported
-        server_name (str):
-            the server name which will included in the SNI extension
         support_extended_master_secret (bool): an indication if the client supports
             the extensions EXTENDED_MASTER_SECRET
         support_ec_point_formats (bool): an indication if the client supports
@@ -75,7 +73,7 @@ class Client(object):
             the scan would be aborted otherwise.
     """
 
-    def __init__(self, connection_factory, config):
+    def __init__(self, connection_factory, config, server_endpoint):
         """Initialize the client object
 
         Args:
@@ -90,6 +88,8 @@ class Client(object):
         self.client_keys = []
         self.client_chains = []
         self._read_client_files(config)
+        self.server_endpoint = server_endpoint
+        server_endpoint.configure(config)
 
     def _read_client_files(self, config):
         if config["client_key"] is not None:
@@ -127,7 +127,6 @@ class Client(object):
         self.session_state_ticket = None
 
         self.support_sni = True
-        self.server_name = self.config["server"]
 
         self.support_extended_master_secret = False
 
@@ -466,7 +465,7 @@ class Client(object):
         else:
             if self.support_sni:
                 msg.extensions.append(
-                    ext.ExtServerNameIndication(host_name=self.server_name)
+                    ext.ExtServerNameIndication(host_name=self.server_endpoint.sni)
                 )
 
             if self.support_extended_master_secret:
