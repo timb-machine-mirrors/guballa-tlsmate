@@ -53,6 +53,12 @@ class Configuration(object):
         "ca_certs": _str_to_strlist,
         "client_key": _str_to_strlist,
         "client_chain": _str_to_strlist,
+        "sslv2": _str_to_bool,
+        "sslv3": _str_to_bool,
+        "tls10": _str_to_bool,
+        "tls11": _str_to_bool,
+        "tls12": _str_to_bool,
+        "tls13": _str_to_bool,
     }
 
     def __init__(self, ini_file=None):
@@ -64,6 +70,12 @@ class Configuration(object):
             "ca_certs": None,
             "client_key": None,
             "client_chain": None,
+            "sslv2": False,
+            "sslv3": False,
+            "tls10": False,
+            "tls11": False,
+            "tls12": False,
+            "tls13": False,
         }
         parser = configparser.ConfigParser(os.environ)
         if ini_file is not None:

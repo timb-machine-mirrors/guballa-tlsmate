@@ -176,5 +176,22 @@ class ScanCipherSuites(TlsSuite):
             tls.SignatureScheme.RSA_PKCS1_SHA1,
         ]
 
-        for version in tls.Version.all():
+        mapping = {
+            "sslv2": tls.Version.SSL20,
+            "sslv3": tls.Version.SSL30,
+            "tls10": tls.Version.TLS10,
+            "tls11": tls.Version.TLS11,
+            "tls12": tls.Version.TLS12,
+            "tls13": tls.Version.TLS13,
+        }
+
+        config = self.client.config
+        versions = [mapping[vers] for vers in mapping.keys() if config[vers] is True]
+
+        if versions:
+            versions.sort()
+        else:
+            versions = tls.Version.all()
+
+        for version in versions:
             self.enum_version(version)

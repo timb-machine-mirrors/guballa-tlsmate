@@ -56,6 +56,60 @@ def add_plugins_to_parser(parser):
         )
 
 
+def add_tls_versions(parser):
+    """Define command line options to filter on specific protocol versions.
+
+    Arguments:
+        parser (:obj:`argparse.ArgumentParser`): the parser object
+    """
+
+    group = parser.add_argument_group(
+        "TLS protocol versions",
+        (
+            "Perform the scan for the given TLS protocol versions. "
+            "If no version is given, then the default applies which means to scan "
+            "for all versions."
+        ),
+    )
+
+    group.add_argument(
+        "--sslv2",
+        help="scan for protocol version SSLv2",
+        action="store_const",
+        const=True,
+    )
+    group.add_argument(
+        "--sslv3",
+        help="scan for protocol version SSLv3",
+        action="store_const",
+        const=True,
+    )
+    group.add_argument(
+        "--tls10",
+        help="scan for protocol version TLS1.0",
+        action="store_const",
+        const=True,
+    )
+    group.add_argument(
+        "--tls11",
+        help="scan for protocol version TLS1.1",
+        action="store_const",
+        const=True,
+    )
+    group.add_argument(
+        "--tls12",
+        help="scan for protocol version TLS1.2",
+        action="store_const",
+        const=True,
+    )
+    group.add_argument(
+        "--tls13",
+        help="scan for protocol version TLS1.3",
+        action="store_const",
+        const=True,
+    )
+
+
 def build_parser():
     """Creates the parser object
 
@@ -80,7 +134,7 @@ def build_parser():
     parser.add_argument(
         "--logging",
         choices=["critical", "error", "warning", "info", "debug"],
-        help="sets the loggin level. Default id error.",
+        help="sets the loggin level. Default is error.",
     )
     parser.add_argument(
         "--progress",
@@ -103,7 +157,7 @@ def build_parser():
         "--client-key",
         type=str,
         nargs="*",
-        help="a file containing the client private key in PEM format.",
+        help="a file containing the client private key in PEM format",
     )
 
     parser.add_argument(
@@ -112,9 +166,11 @@ def build_parser():
         nargs="*",
         help=(
             "a file containing the certificate chain used for client authentication "
-            "in PEM format."
+            "in PEM format"
         ),
     )
+
+    add_tls_versions(parser)
 
     parser.add_argument(
         "--sni",
@@ -178,6 +234,12 @@ def main():
     config.merge_config("progress", args.progress)
     config.merge_config("ca_certs", args.ca_certs)
     config.merge_config("logging", args.logging)
+    config.merge_config("sslv2", args.sslv2)
+    config.merge_config("sslv3", args.sslv3)
+    config.merge_config("tls10", args.tls10)
+    config.merge_config("tls11", args.tls11)
+    config.merge_config("tls12", args.tls12)
+    config.merge_config("tls13", args.tls13)
 
     config.merge_config("client_key", args.client_key)
     config.merge_config("client_chain", args.client_chain)
