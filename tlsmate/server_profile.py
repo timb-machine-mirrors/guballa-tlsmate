@@ -1,14 +1,19 @@
 # -*- coding: utf-8 -*-
 """Module containing the server profile class
 """
+# import basic stuff
 import abc
-import yaml
 import logging
-from tlsmate import constants as tls
+
+# import own stuff
+from tlsmate import tls
 from tlsmate import utils
 from tlsmate import pdu
 from tlsmate import mappings
-from tlsmate import structures as structs
+from tlsmate import structs
+
+# import other stuff
+import yaml
 from cryptography.hazmat.primitives.asymmetric import rsa, ed25519, ed448, dsa, ec
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography import x509

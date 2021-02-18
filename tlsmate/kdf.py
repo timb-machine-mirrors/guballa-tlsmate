@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 """Module containing the class implementing hashing functions & prf
 """
-
+# import basic stuff
 import abc
 import math
 import struct
+
+# import own stuff
+
+# import other stuff
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.kdf.hkdf import HKDFExpand
 

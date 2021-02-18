@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 """Module defining constants for the TLS protocol
 """
-
+# import basic stuff
 import enum
+
+# import own stuff
 from tlsmate.exception import FatalAlert
+
+# import other stuff
 
 
 class ExtendedEnum(enum.Enum):
@@ -74,13 +78,6 @@ class ExtendedEnum(enum.Enum):
             str: the name of the enum item
         """
         return self.name
-
-
-#    def __eq__(self, other):
-#        return self.value == other.value
-#
-#    def __ne__(self, other):
-#        return self.value != other.value
 
 
 class ExtendedIntEnum(ExtendedEnum):

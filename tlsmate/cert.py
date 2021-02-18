@@ -1,11 +1,21 @@
 # -*- coding: utf-8 -*-
 """Module for handling a certificate chain
 """
+# import basic stuff
 import stringprep
 import unicodedata
 import urllib.request
 import logging
 import pem
+
+# import own stuff
+from tlsmate import tls
+from tlsmate import utils
+from tlsmate import mappings
+from tlsmate.exception import CertValidationError, CertChainValidationError
+from tlsmate.server_profile import SPPublicKey, SPCertGeneralName
+
+# import other stuff
 from cryptography import x509
 from cryptography.x509.oid import NameOID, ExtensionOID
 from cryptography.x509.oid import SignatureAlgorithmOID as sigalg_oid
@@ -20,11 +30,6 @@ from cryptography.hazmat.primitives.asymmetric import (
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.exceptions import InvalidSignature
-from tlsmate import constants as tls
-from tlsmate import utils
-from tlsmate import mappings
-from tlsmate.exception import CertValidationError, CertChainValidationError
-from tlsmate.server_profile import SPPublicKey, SPCertGeneralName
 
 
 def string_prep(label):

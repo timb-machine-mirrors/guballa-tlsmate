@@ -1,15 +1,19 @@
 # -*- coding: utf-8 -*-
 """Module containing a classes to abstract the socket
 """
-
+# import basic stuff
 import socket
 import select
 import logging
 import time
 import sys
+
+# import own stuff
 from tlsmate import utils
 from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
 from tlsmate import recorder
+
+# import other stuff
 
 
 class Socket(object):

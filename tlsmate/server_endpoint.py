@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
 """Module containing a classes to abstract the socket
 """
-
+# import basic stuff
 import socket
 import re
 import logging
+
+# import own stuff
 from tlsmate.exception import ScanError
+
+# import other stuff
 
 
 class ServerEndpoint(object):

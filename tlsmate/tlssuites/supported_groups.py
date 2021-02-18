@@ -1,15 +1,20 @@
 # -*- coding: utf-8 -*-
 """Module containing the test suite
 """
+# import basic stuff
 import logging
 import abc
-import tlsmate.messages as msg
-import tlsmate.constants as tls
+
+# import own stuff
+from tlsmate import msg
+from tlsmate import tls
 from tlsmate.tlssuite import TlsSuite
 from tlsmate.exception import ScanError
 from tlsmate.server_profile import SPSupportedGroups
 from tlsmate import utils
 from tlsmate.exception import CurveNotSupportedError
+
+# import other stuff
 
 
 class _Scan(metaclass=abc.ABCMeta):

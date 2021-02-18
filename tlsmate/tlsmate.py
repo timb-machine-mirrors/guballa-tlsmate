@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """Module for dependency injection
 """
-from dependency_injector import containers, providers
-import tlsmate.constants as tls
+# import basic stuff
+
+# import own stuff
+from tlsmate import tls
 from tlsmate.server_profile import ServerProfile
 from tlsmate.connection import TlsConnection, TlsConnectionMsgs
 from tlsmate.client import Client
@@ -12,11 +14,13 @@ from tlsmate.socket import Socket
 from tlsmate.kdf import Kdf
 from tlsmate.server_endpoint import ServerEndpoint
 from tlsmate.config import Configuration
-
 from tlsmate.suitemanager import SuiteManager
 
+# import other stuff
+from dependency_injector import containers, providers
 
-class Container(containers.DeclarativeContainer):
+
+class TlsMate(containers.DeclarativeContainer):
     """Class defining all the dependencies
     """
 

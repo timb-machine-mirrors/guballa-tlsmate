@@ -2,6 +2,7 @@
 """Module containing the class implementing a TLS connection
 """
 
+# import basic stuff
 import inspect
 import logging
 import os
@@ -9,15 +10,19 @@ import io
 import traceback as tb
 import time
 import datetime
+
+# import own stuff
 from tlsmate.exception import FatalAlert, TlsConnectionClosedError, TlsMsgTimeoutError
-from tlsmate import messages as msg
-import tlsmate.constants as tls
+from tlsmate import msg
+from tlsmate import tls
 from tlsmate import pdu
 from tlsmate import utils
-import tlsmate.structures as structs
-import tlsmate.key_exchange as kex
-from tlsmate import extensions as ext
+from tlsmate import structs
+from tlsmate import key_exchange as kex
+from tlsmate import ext
 from tlsmate.kdf import Kdf
+
+# import other stuff
 from cryptography.hazmat.primitives.asymmetric import padding, ec
 from cryptography.hazmat.primitives import hashes
 

@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 """Module impleminting helper functions for handling protocol data units
 """
+# import basic stuff
 import struct
+
+# import own stuff
 from tlsmate.exception import FatalAlert
-import tlsmate.constants as tls
+from tlsmate import tls
+
+# import other stuff
 
 
 def pack_uint8(val):

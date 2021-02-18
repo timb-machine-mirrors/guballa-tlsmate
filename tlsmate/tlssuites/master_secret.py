@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
 """Module containing the test suite
 """
-import tlsmate.constants as tls
+# import basic stuff
+
+# import own stuff
+from tlsmate import tls
 from tlsmate.tlssuite import TlsSuite
+
+# import other stuff
 
 
 class ScanExtendedMasterSecret(TlsSuite):

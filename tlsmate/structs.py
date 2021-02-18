@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 """Module defining various structures
 """
+# import basic stuff
 from typing import NamedTuple
-import tlsmate.constants as tls
+
+# import own stuff
+from tlsmate import tls
 from tlsmate.kdf import Kdf
 
+# import other stuff
 from cryptography.hazmat.primitives.ciphers import algorithms
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding

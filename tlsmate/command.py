@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 """Module containing the CLI implementation
 """
+# import basic stuff
 import argparse
 import importlib
 import pkgutil
 
-import tlsmate.dependency_injection as dependency
+# import own stuff
+from tlsmate.tlsmate import TlsMate
 from tlsmate.suitemanager import SuiteManager
 from tlsmate.tlssuites.eval_cipher_suites import ScanCipherSuites
 from tlsmate.tlssuites.scanner_info import ScanStart, ScanEnd
@@ -17,11 +19,10 @@ from tlsmate.tlssuites.encrypt_then_mac import ScanEncryptThenMac
 from tlsmate.tlssuites.master_secret import ScanExtendedMasterSecret
 from tlsmate.tlssuites.resumption import ScanResumption
 from tlsmate.tlssuites.renegotiation import ScanRenegotiation
-
-# from tlsmate.tlssuites.name_resolution import ScanNameResolution
 from tlsmate import utils
-
 from tlsmate.version import __version__
+
+# import other stuff
 
 
 def print_version():
@@ -221,30 +222,30 @@ def main():
     """The entry point for the command line interface
     """
 
-    container = dependency.Container()
+    tlsmate = TlsMate()
 
-    test_manager = container.test_manager()
+    test_manager = tlsmate.test_manager()
     parser = build_parser()
 
     args = parser.parse_args()
     _args_consistency(args, parser)
 
-    config = container.config(ini_file=args.config_file)
+    config = tlsmate.config(ini_file=args.config_file)
 
-    config.merge_config("progress", args.progress)
-    config.merge_config("ca_certs", args.ca_certs)
-    config.merge_config("logging", args.logging)
-    config.merge_config("sslv2", args.sslv2)
-    config.merge_config("sslv3", args.sslv3)
-    config.merge_config("tls10", args.tls10)
-    config.merge_config("tls11", args.tls11)
-    config.merge_config("tls12", args.tls12)
-    config.merge_config("tls13", args.tls13)
+    config.set_config("progress", args.progress)
+    config.set_config("ca_certs", args.ca_certs)
+    config.set_config("logging", args.logging)
+    config.set_config("sslv2", args.sslv2)
+    config.set_config("sslv3", args.sslv3)
+    config.set_config("tls10", args.tls10)
+    config.set_config("tls11", args.tls11)
+    config.set_config("tls12", args.tls12)
+    config.set_config("tls13", args.tls13)
 
-    config.merge_config("client_key", args.client_key)
-    config.merge_config("client_chain", args.client_chain)
-    config.merge_config("server", args.host)
-    config.merge_config("sni", args.sni)
+    config.set_config("client_key", args.client_key)
+    config.set_config("client_chain", args.client_chain)
+    config.set_config("server", args.host)
+    config.set_config("sni", args.sni)
 
     utils.set_logging(config["logging"])
 
@@ -258,7 +259,7 @@ def main():
         options = " ".join(plugin_cli_options)
         parser.error("specify at least one of the following options: " + options)
 
-    test_manager.run(container, selected_plugins)
+    test_manager.run(tlsmate, selected_plugins)
 
 
 # always register the basic cli plugins provided with tlsmate

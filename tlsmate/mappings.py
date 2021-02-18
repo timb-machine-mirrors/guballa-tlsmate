@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
 """Module containing various mapping tables
 """
-import tlsmate.constants as tls
+# import basic stuff
 
+# import own stuff
+from tlsmate import tls
+from tlsmate import structs
+
+# import other stuff
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers import algorithms, aead
-import tlsmate.structures as structs
 
 # this map contains all cipher suites for which a full handshake is supported,
 # i.e., application data can be exchanged encrypted

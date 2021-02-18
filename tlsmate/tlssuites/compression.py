@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 """Module containing the test suite
 """
-import tlsmate.messages as msg
-import tlsmate.constants as tls
+# import basic stuff
+
+# import own stuff
+from tlsmate import msg
+from tlsmate import tls
 from tlsmate.tlssuite import TlsSuite
 
-# from tlsmate.server_profile import ProfileList, ProfileEnum
+# import other stuff
 
 
 class ScanCompression(TlsSuite):

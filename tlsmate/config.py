@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 """Module containing the class for the configuration
 """
+# import basic stuff
 import os
-import configparser
-
 from pathlib import Path
+
+# import own stuff
+
+# import other stuff
+import configparser
 
 
 def _str_to_bool(string):
@@ -105,7 +109,7 @@ class Configuration(object):
     def __getitem__(self, key):
         return self.config.get(key)
 
-    def merge_config(self, key, val):
+    def set_config(self, key, val):
         """Add a configuration option.
 
         If the given configuration is already defined, it will be overwritten by

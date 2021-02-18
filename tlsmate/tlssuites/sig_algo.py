@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
 """Module containing the test suite
 """
+# import basic stuff
 import abc
-import tlsmate.messages as msg
-import tlsmate.constants as tls
+
+# import own stuff
+from tlsmate import msg
+from tlsmate import tls
 from tlsmate.tlssuite import TlsSuite
 from tlsmate import utils
 from tlsmate.server_profile import SPSignatureAlgorithms
+
+# import other stuff
 
 
 class _Backend(metaclass=abc.ABCMeta):
