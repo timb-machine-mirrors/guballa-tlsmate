@@ -1,8 +1,16 @@
+# -*- coding: utf-8 -*-
+"""Module defining classes for test suites
+"""
+# import basic stuff
 import abc
+
+# import own stuff
+from tlsmate.tlsmate import TlsMate
+from tlsmate import utils
+
+# import other stuff
 from pathlib import Path
 import yaml
-from tlsmate.dependency_injection import Container
-from tlsmate import utils
 
 
 class TlsSuite(metaclass=abc.ABCMeta):
@@ -93,9 +101,9 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             is_replaying (bool): an indication if the test case is replayed or recorded.
                 Defaults to False.
         """
-        container = Container()
-        recorder = container.recorder()
-        profile = container.server_profile()
+        tlsmate = TlsMate()
+        recorder = tlsmate.recorder()
+        profile = tlsmate.server_profile()
 
         if is_replaying and self.recorder_yaml is not None:
             recorder.deserialize(self.get_yaml_file(self.recorder_yaml))
@@ -108,17 +116,17 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         if not ini_file.is_file():
             ini_file = Path.cwd() / ".tlsmate.ini"
 
-        config = container.config(ini_file=ini_file)
-        config.merge_config("server", self.server)
-        config.merge_config("port", self.port)
-        config.merge_config("progress", False)
+        config = tlsmate.config(ini_file=ini_file)
+        config.set_config("server", self.server)
+        config.set_config("port", self.port)
+        config.set_config("progress", False)
 
         utils.set_logging(config["logging"])
 
         if not is_replaying:
-            container.recorder().record()
+            tlsmate.recorder().record()
 
-        self.run(container, is_replaying)
+        self.run(tlsmate, is_replaying)
 
         if not is_replaying:
             if self.recorder_yaml is not None:

@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 """Module providing infos about the scanner
 """
+# import basic stuff
 import sys
 import time
 import datetime
-import yaml
+
+# import own stuff
 from tlsmate.tlssuite import TlsSuite
 from tlsmate.version import __version__
+from tlsmate.server_profile import SPServer
+
+# import other stuff
+import yaml
 
 
 class ScanStart(TlsSuite):
@@ -20,6 +26,19 @@ class ScanStart(TlsSuite):
         scan_info.version = __version__
         scan_info.start_timestamp = start_time
         scan_info.start_date = datetime.datetime.fromtimestamp(int(start_time))
+        srv = self.client.server_endpoint
+        srv.resolve_ip()
+        data = {"ip": srv.ip, "port": srv.port, "sni": srv.sni}
+        if srv.host_name is not None:
+            data["name"] = srv.host_name
+
+        if srv.ipv4_addresses is not None:
+            data["ipv4_addresses"] = srv.ipv4_addresses
+
+        if srv.ipv6_addresses is not None:
+            data["ipv6_addresses"] = srv.ipv6_addresses
+
+        self.server_profile.server = SPServer(data=data)
 
 
 class ScanEnd(TlsSuite):

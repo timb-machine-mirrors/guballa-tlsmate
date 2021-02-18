@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 """Helper module for generating and executing test cases
 """
-
+# import basic stuff
 import logging
-import tlsmate.constants as tls
-import tlsmate.messages as msg
+
+# import own stuff
+from tlsmate import tls
+from tlsmate import msg
 from tlsmate.tlssuite import TlsSuiteTester
 from tlsmate import utils
+
+# import other stuff
 
 
 class CipherSuiteTester(TlsSuiteTester):

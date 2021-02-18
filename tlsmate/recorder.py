@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 """Module with a class for recording a tls connection
 """
-
+# import basic stuff
 import enum
-import yaml
 import datetime
 import time
+
+# import own stuff
 from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
+
+# import other stuff
+import yaml
 
 
 class RecorderState(enum.Enum):

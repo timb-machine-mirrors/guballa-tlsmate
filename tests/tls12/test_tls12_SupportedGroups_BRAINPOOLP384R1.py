@@ -3,7 +3,7 @@
 """
 import pathlib
 from tests.cipher_suite_tester import CipherSuiteTester
-import tlsmate.constants as tls
+from tlsmate import tls
 
 
 class TestCase(CipherSuiteTester):

@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 """Module containing the test suite
 """
-import tlsmate.constants as tls
+# import basic stuff
+
+# import own stuff
+from tlsmate import tls
 from tlsmate.tlssuite import TlsSuite
-from tlsmate import messages as msg
+from tlsmate import msg
+
+# import other stuff
 
 
 class ScanResumption(TlsSuite):

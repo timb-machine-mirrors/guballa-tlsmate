@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 """Module implementing a suite manager class
 """
-
+# import basic stuff
 import logging
+
+# import own stuff
+
+# import other stuff
 
 
 class SuiteManager(object):

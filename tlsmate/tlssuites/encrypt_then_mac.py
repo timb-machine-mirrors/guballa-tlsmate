@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 """Module containing the test suite
 """
-import tlsmate.constants as tls
-from tlsmate.tlssuite import TlsSuite
+# import basic stuff
 
-# from tlsmate.server_profile import ProfileBasicEnum
+# import own stuff
+from tlsmate import tls
+from tlsmate.tlssuite import TlsSuite
 from tlsmate import utils
+
+# import other stuff
 
 
 class ScanEncryptThenMac(TlsSuite):

@@ -2,12 +2,17 @@
 """Module containing the TLS Extension classes
 """
 
+# import basic stuff
 import abc
 import time
+
+# import own stuff
 from tlsmate.exception import FatalAlert
-import tlsmate.constants as tls
-import tlsmate.structures as structs
+from tlsmate import tls
+from tlsmate import structs
 from tlsmate import pdu
+
+# import other stuff
 
 
 class Extension(metaclass=abc.ABCMeta):

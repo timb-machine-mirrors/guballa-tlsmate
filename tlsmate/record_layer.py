@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
 """Module containing the class implementing the record layer
 """
+# import basic stuff
 import logging
-import tlsmate.constants as tls
-import tlsmate.structures as structs
+
+# import own stuff
+from tlsmate import tls
+from tlsmate import structs
 from tlsmate import pdu
 from tlsmate.record_layer_state import RecordLayerState
+
+# import other stuff
 
 
 class RecordLayer(object):

@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
 """Module which provides known DH numbers
 """
+# import basic stuff
 from typing import NamedTuple
-import tlsmate.constants as tls
+
+# import own stuff
+from tlsmate import tls
+
+# import other stuff
 
 
 class DHNumbers(NamedTuple):

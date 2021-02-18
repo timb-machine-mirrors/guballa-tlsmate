@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
 """Module containing the test suite
 """
-
+# import basic stuff
 import logging
-import tlsmate.messages as msg
-import tlsmate.constants as tls
+
+# import own stuff
+from tlsmate import msg
+from tlsmate import tls
 from tlsmate.tlssuite import TlsSuite
-import tlsmate.utils as utils
+from tlsmate import utils
 from tlsmate.server_profile import SPVersion
+
+# import other stuff
 
 
 class ScanCipherSuites(TlsSuite):

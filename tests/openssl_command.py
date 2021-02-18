@@ -2,8 +2,13 @@
 # -*- coding: utf-8 -*-
 """Script to extract the openssl s_server command line from a given pickle file
 """
-import pickle
+# import basic stuff
 import argparse
+
+# import own stuff
+
+# import other stuff
+import pickle
 
 
 def main():

@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
 """Module defining some utilities
 """
+# import basic stuff
 import time
 import logging
-import tlsmate.constants as tls
+
+# import own stuff
+from tlsmate import tls
 from tlsmate import mappings
-import tlsmate.structures as structs
+from tlsmate import structs
+
+# import other stuff
 
 
 def get_cipher_suite_details(cipher_suite):

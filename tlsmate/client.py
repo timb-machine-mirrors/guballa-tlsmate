@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 """Module containing the class for the client client
 """
-import tlsmate.constants as tls
-import tlsmate.extensions as ext
-from tlsmate.messages import ClientHello
+# import basic stuff
+# import own stuff
+from tlsmate import tls
+from tlsmate import ext
+from tlsmate.msg import ClientHello
 from tlsmate.cert import TrustStore, CertChain
+
+# import other stuff
 import pem
 from cryptography.hazmat.primitives import serialization
 

@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 """Module providing classes for each TLS message.
 """
+# import basic stuff
 import abc
 import os
-import tlsmate.constants as tls
-import tlsmate.extensions as ext
+
+# import own stuff
+from tlsmate import tls
+from tlsmate import ext
 from tlsmate.exception import FatalAlert
 from tlsmate import cert
 from tlsmate import pdu
+
+# import other stuff
 
 
 def _get_extension(extensions, ext_id):

@@ -1,20 +1,23 @@
 # -*- coding: utf-8 -*-
 """Module containing classes for the key exchange
 """
+# import basic stuff
 import abc
 from typing import NamedTuple
 import os
+
+# import own stuff
 from tlsmate import dh_numbers
-import tlsmate.constants as tls
+from tlsmate import tls
 from tlsmate import pdu
 from tlsmate.exception import FatalAlert, CurveNotSupportedError
 from tlsmate import kdf
 
+# import other stuff
 from cryptography.hazmat.primitives.asymmetric import ec, x25519, x448, dh
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import hashes
 from cryptography.exceptions import InvalidSignature
-
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
     PublicFormat,

@@ -4,8 +4,8 @@
 import pathlib
 import logging
 from tests.cipher_suite_tester import CipherSuiteTester
-import tlsmate.constants as tls
-import tlsmate.messages as msg
+from tlsmate import tls
+from tlsmate import msg
 
 
 class TestCase(CipherSuiteTester):

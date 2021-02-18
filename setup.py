@@ -158,7 +158,6 @@ setup(
         'wheel',
         'cryptography>=3.3',
         'dependency_injector',
-        'dill',
         'pyyaml',
         'pathlib',
         'pem',

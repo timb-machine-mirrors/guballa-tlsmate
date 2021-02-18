@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
 """Module containing the class implementing the record layer
 """
+# import basic stuff
 import struct
+
+# import own stuff
 from tlsmate import pdu
-import tlsmate.constants as tls
-import tlsmate.structures as structs
+from tlsmate import tls
+from tlsmate import structs
 from tlsmate.exception import FatalAlert
+
+# import other stuff
 from cryptography.hazmat.primitives import hmac
 from cryptography.hazmat.primitives.ciphers import Cipher, modes, aead
 

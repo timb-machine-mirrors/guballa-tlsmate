@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
 """Implements a class to be used for unit testing.
 """
-import pathlib
+
+# import basic stuff
+
+# import own stuff
 from tests.tc_recorder import TcRecorder
-import tlsmate.constants as tls
+from tlsmate import tls
+
+# import other stuff
+import pathlib
 
 
 class TestCase(TcRecorder):
