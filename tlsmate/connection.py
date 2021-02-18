@@ -1078,9 +1078,18 @@ class TlsConnection(object):
             else:
                 timestamp = datetime.datetime.now()
                 self.recorder.trace(datetime=timestamp)
+
+            sni_ext = self.msg.client_hello.get_extension(tls.Extension.SERVER_NAME)
+            if sni_ext is not None:
+                sni = sni_ext.host_name
+            else:
+                sni = self.client.get_sni()
+                if sni is None:
+                    raise ValueError("No SNI defined")
+
             msg.chain.validate(
                 timestamp,
-                self.client.server_endpoint.sni,
+                sni,
                 self.client.trust_store,
                 self.client.alert_on_invalid_cert,
             )

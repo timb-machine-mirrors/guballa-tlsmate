@@ -45,6 +45,10 @@ class Client(object):
             usable to resume a session with the session_ticket extension
         support_sni (bool):
             an indication if the SNI extension is supported
+        sni (str):
+            the SNI to use in the ClientHello. If None, the value will be taken from
+            the configuration (config["sni"]). If this is None as well, it will be
+            the host_name of the server.
         support_extended_master_secret (bool): an indication if the client supports
             the extensions EXTENDED_MASTER_SECRET
         support_ec_point_formats (bool): an indication if the client supports
@@ -86,14 +90,14 @@ class Client(object):
         """
         self.connection_factory = connection_factory
         self.config = config
-        self.reset_profile()
+        self.set_profile_modern()
         ca_files = config["ca_certs"]
         self.trust_store = TrustStore(ca_files=ca_files)
         self.client_keys = []
         self.client_chains = []
         self._read_client_files(config)
         self.server_endpoint = server_endpoint
-        server_endpoint.configure(config)
+        server_endpoint.configure(config["server"])
 
     def _read_client_files(self, config):
         if config["client_key"] is not None:
@@ -131,6 +135,7 @@ class Client(object):
         self.session_state_ticket = None
 
         self.support_sni = True
+        self.sni = None
 
         self.support_extended_master_secret = False
 
@@ -384,12 +389,15 @@ class Client(object):
         else:
             raise ValueError(f"client profile {profile} unknown")
 
-    def create_connection(self):
+    def create_connection(self, server=None):
         """Create a new connection object
 
         Returns:
             :obj:`TlsConnection`: the created connection object
         """
+        if server is not None:
+            self.server_endpoint.configure(server)
+
         return self.connection_factory().set_client(self)
 
     def save_session_state_id(self, session_state):
@@ -435,6 +443,27 @@ class Client(object):
         """
         self.psks.append(psk)
 
+    def get_sni(self):
+        """Get the current SNI
+
+        Returns:
+            str: the SNI
+
+        Raises:
+            ValueError: if no SNI can be determined
+        """
+        if self.sni is not None:
+            return self.sni
+
+        elif self.config["sni"] is not None:
+            return self.config["sni"]
+
+        elif self.server_endpoint.host_name is not None:
+            return self.server_endpoint.host_name
+
+        raise ValueError("No SNI defined")
+
+
     def client_hello(self):
         """Populate a ClientHello message according to the current client profile
 
@@ -469,7 +498,7 @@ class Client(object):
         else:
             if self.support_sni:
                 msg.extensions.append(
-                    ext.ExtServerNameIndication(host_name=self.server_endpoint.sni)
+                    ext.ExtServerNameIndication(host_name=self.get_sni())
                 )
 
             if self.support_extended_master_secret:

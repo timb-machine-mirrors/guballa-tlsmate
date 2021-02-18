@@ -28,7 +28,13 @@ class ScanStart(TlsSuite):
         scan_info.start_date = datetime.datetime.fromtimestamp(int(start_time))
         srv = self.client.server_endpoint
         srv.resolve_ip()
-        data = {"ip": srv.ip, "port": srv.port, "sni": srv.sni}
+        data = {"ip": srv.ip, "port": srv.port}
+        try:
+            data["sni"] = self.client.get_sni()
+
+        except ValueError:
+            pass
+
         if srv.host_name is not None:
             data["name"] = srv.host_name
 
