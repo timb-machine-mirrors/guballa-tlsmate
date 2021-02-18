@@ -400,12 +400,13 @@ class TrustStore(object):
         for cert in self._cert_cache:
             yield cert
 
-        for file_name in self._ca_files:
-            pem_list = pem.parse_file(file_name)
-            for pem_item in pem_list:
-                if not isinstance(pem_item, pem.Certificate):
-                    continue
-                yield Certificate(pem=pem_item.as_bytes())
+        if self._ca_files:
+            for file_name in self._ca_files:
+                pem_list = pem.parse_file(file_name)
+                for pem_item in pem_list:
+                    if not isinstance(pem_item, pem.Certificate):
+                        continue
+                    yield Certificate(pem=pem_item.as_bytes())
 
     def cert_in_trust_store(self, cert):
         """Checks if a given certificate is present in the trust store.
