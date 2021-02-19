@@ -244,7 +244,7 @@ def main():
 
     config.set_config("client_key", args.client_key)
     config.set_config("client_chain", args.client_chain)
-    config.set_config("server", args.host)
+    config.set_config("endpoint", args.host)
     config.set_config("sni", args.sni)
 
     utils.set_logging(config["logging"])

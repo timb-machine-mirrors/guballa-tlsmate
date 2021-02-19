@@ -25,6 +25,7 @@ class TestCase(CipherSuiteTester):
         """The basic scenario to be recorded or replayed.
         """
         client = container.client()
+        client.reset_profile()
 
         client.versions = [self.version]
         client.cipher_suites = [self.cipher_suite]

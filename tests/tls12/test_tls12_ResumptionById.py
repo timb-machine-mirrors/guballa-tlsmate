@@ -23,6 +23,7 @@ class TestCase(CipherSuiteTester):
 
     def run(self, container, is_replaying=False):
         client = container.client()
+        client.reset_profile()
 
         client.versions = [tls.Version.TLS12]
         client.cipher_suites = [tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA]

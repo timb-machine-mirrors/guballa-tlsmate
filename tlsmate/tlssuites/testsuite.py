@@ -134,13 +134,11 @@ class ScanScratch(TlsSuite):
         # # client.support_psk = True
         # # client.psk_key_exchange_modes = [tls.PskKeyExchangeMode.PSK_DHE_KE]
         client.set_profile(tls.Profile.LEGACY)
-        client.support_scsv_renegotiation = True
+        # client.support_scsv_renegotiation = True
 
         with client.create_connection() as conn:
             conn.handshake()
-            conn.timeout(1000)
-            conn.handshake()
-            conn.timeout(1000)
+        with client.create_connection() as conn:
             conn.handshake()
             # conn.send(msg.ClientHello)
             # conn.wait(msg.ServerHello)

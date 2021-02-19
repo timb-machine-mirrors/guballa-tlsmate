@@ -48,7 +48,7 @@ class Configuration(object):
     The configuration options can be retrieved by using the object like a dict:
 
     >>> config = Configuration()
-    >>> config["server"]
+    >>> config["endpoint"]
     'localhost'
     """
 
@@ -67,8 +67,7 @@ class Configuration(object):
 
     def __init__(self, ini_file=None):
         self.config = {
-            "server": "localhost",
-            "port": 443,
+            "endpoint": "localhost",
             "logging": "error",
             "progress": False,
             "ca_certs": None,
