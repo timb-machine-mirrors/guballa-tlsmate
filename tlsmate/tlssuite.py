@@ -117,8 +117,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             ini_file = Path.cwd() / ".tlsmate.ini"
 
         config = tlsmate.config(ini_file=ini_file)
-        config.set_config("server", self.server)
-        config.set_config("port", self.port)
+        config.set_config("endpoint", self.server + ":" + str(self.port))
         config.set_config("progress", False)
 
         utils.set_logging(config["logging"])

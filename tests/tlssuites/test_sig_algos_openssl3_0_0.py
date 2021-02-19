@@ -56,8 +56,10 @@ class TestCase(TlsSuiteTester):
 
     def run(self, container, is_replaying):
         server_profile = container.server_profile()
+        client = container.client()
+        client.reset_profile()
         test_suite = ScanSigAlgs()
-        test_suite._inject_dependencies(server_profile, container.client())
+        test_suite._inject_dependencies(server_profile, client)
         test_suite.run()
 
         self.check_profile(server_profile.make_serializable())

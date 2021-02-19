@@ -25,6 +25,7 @@ class TestCase(CipherSuiteTester):
 
     def run(self, container, is_replaying=False):
         client = container.client()
+        client.reset_profile()
 
         client.versions = [tls.Version.TLS13]
         client.cipher_suites = [tls.CipherSuite.TLS_AES_128_GCM_SHA256]

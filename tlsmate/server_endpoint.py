@@ -26,7 +26,6 @@ class ServerEndpoint(object):
         self.family = None
         self._is_host_name = False
 
-
     def configure(self, endpoint):
         """Configure the server endpoint based on tlsmates' config.
 

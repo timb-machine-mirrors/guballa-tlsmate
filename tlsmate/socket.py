@@ -35,10 +35,10 @@ class Socket(object):
     def open_socket(self):
         """Opens a socket.
         """
+        self._server_endpoint.resolve_ip()
         if self._recorder.is_injecting():
             return
 
-        self._server_endpoint.resolve_ip()
         self._socket = socket.socket(self._server_endpoint.family, socket.SOCK_STREAM)
         self._socket.connect((self._server_endpoint.ip, self._server_endpoint.port))
         laddr, lport = self._socket.getsockname()

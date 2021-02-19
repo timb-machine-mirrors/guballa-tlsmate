@@ -97,7 +97,7 @@ class Client(object):
         self.client_chains = []
         self._read_client_files(config)
         self.server_endpoint = server_endpoint
-        server_endpoint.configure(config["server"])
+        server_endpoint.configure(config["endpoint"])
 
     def _read_client_files(self, config):
         if config["client_key"] is not None:
@@ -395,9 +395,10 @@ class Client(object):
         Returns:
             :obj:`TlsConnection`: the created connection object
         """
-        if server is not None:
-            self.server_endpoint.configure(server)
+        if server is None:
+            server = self.config["endpoint"]
 
+        self.server_endpoint.configure(server)
         return self.connection_factory().set_client(self)
 
     def save_session_state_id(self, session_state):
@@ -462,7 +463,6 @@ class Client(object):
             return self.server_endpoint.host_name
 
         raise ValueError("No SNI defined")
-
 
     def client_hello(self):
         """Populate a ClientHello message according to the current client profile
