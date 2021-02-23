@@ -37,6 +37,7 @@ class TestCase(CipherSuiteTester):
         with client.create_connection() as conn:
             conn.send(msg.ClientHello)
             conn.wait(msg.ServerHello)
+            import pudb; pudb.set_trace()
             conn.wait(msg.Certificate)
             conn.wait(msg.ServerKeyExchange)
             conn.wait(msg.ServerHelloDone)

@@ -21,3 +21,18 @@ Nice to have
     - consistently use "verify" or "validate" when checking sigatures and certificates
     - cleanups for certificate parsing required:
         - implement quite a lot of missing stuff, e.g. proper handling of cert policies, etc.
+
+git clone --depth 1 --branch OpenSSL_1_1_1j https://github.com/openssl/openssl.git
+cd openssl
+./config --prefix=/opt/openssl1.1.1
+make
+sudo make install
+
+
+git clone --depth 1 --branch OpenSSL_1_0_2u https://github.com/openssl/openssl.git
+cd openssl
+./config --prefix=/opt/openssl1.0.2 enable-ssl2
+make depend
+make
+sudo make install
+
