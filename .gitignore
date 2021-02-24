@@ -1,3 +1,13 @@
+# CA files
+ca/**/*.pem
+ca/*/certs
+ca/*/chains
+ca/*/private
+ca/*/crl
+ca/*/csr
+ca/*/db
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

@@ -19,6 +19,10 @@ def _str_to_strlist(string):
     return [val.strip() for val in string.split(",")]
 
 
+def _str_to_int(string):
+    return int(string)
+
+
 class Configuration(object):
     """Class representing the configuration for tlsmate.
 
@@ -63,6 +67,7 @@ class Configuration(object):
         "tls11": _str_to_bool,
         "tls12": _str_to_bool,
         "tls13": _str_to_bool,
+        "pytest_port": _str_to_int,
     }
 
     def __init__(self, ini_file=None):
@@ -79,6 +84,10 @@ class Configuration(object):
             "tls11": False,
             "tls12": False,
             "tls13": False,
+            "pytest_port": None,
+            "pytest_openssl_1_0_2": None,
+            "pytest_openssl_1_1_1": None,
+            "pytest_openssl_3_0_0": None,
         }
         parser = configparser.ConfigParser(os.environ)
         if ini_file is not None:
