@@ -2,6 +2,7 @@
 """Module for dependency injection
 """
 # import basic stuff
+import pathlib
 
 # import own stuff
 from tlsmate import tls
@@ -18,6 +19,9 @@ from tlsmate.suitemanager import SuiteManager
 
 # import other stuff
 from dependency_injector import containers, providers
+
+
+TLSMATE_DIR = pathlib.Path(__file__).parent.parent.resolve()
 
 
 class TlsMate(containers.DeclarativeContainer):

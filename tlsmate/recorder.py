@@ -101,6 +101,7 @@ class Recorder(object):
         """Reset the recorder to an initial state.
         """
         self._state = RecorderState.INACTIVE
+        self._add_delay = None
         self.data = {}
         for key in self._attr.keys():
             self.data[key] = []
@@ -191,11 +192,15 @@ class Recorder(object):
         """Trace a message received from a socket (if state is recording).
 
         Arguments:
-            timeout (float): the timeout after that the event occured
+            timeout (float): the timeout after that the event occured in seconds
             event_type (:obj:`SocketEvent`): the event that occured
             data (bytes): the message in raw format (if event_type is data)
         """
         if self._state == RecorderState.RECORDING:
+            if self._add_delay is not None:
+                timeout += self._add_delay
+                self._add_delay = None
+
             self._store_value("msg_recv", (timeout, event_type, data))
 
     def inject_socket_recv(self):
@@ -213,6 +218,18 @@ class Recorder(object):
                 raise TlsMsgTimeoutError
             return data
         return None
+
+    def additional_delay(self, delay):
+        """Indicate that there is an additional delay when waiting to inject a message.
+
+        Arguments:
+            delay (float): The additional delay to take into account when injecting
+                a received message the next time.
+        """
+        if self._add_delay is None:
+            self._add_delay = delay
+        else:
+            self._add_delay += delay
 
     def trace_socket_sendall(self, msg):
         """Interface for the sendall socket function.

@@ -3,14 +3,30 @@
 """
 # import basic stuff
 import abc
+import subprocess
+import sys
+import time
+import enum
 
 # import own stuff
-from tlsmate.tlsmate import TlsMate
+from tlsmate.tlsmate import TlsMate, TLSMATE_DIR
 from tlsmate import utils
 
 # import other stuff
 from pathlib import Path
 import yaml
+
+
+class OpensslVersion(enum.Enum):
+    v1_0_2 = enum.auto()
+    v1_1_1 = enum.auto()
+    v3_0_0 = enum.auto()
+
+
+def _absolute_path(path):
+    if not path.startswith("/"):
+        path = str(TLSMATE_DIR / path)
+    return path
 
 
 class TlsSuite(metaclass=abc.ABCMeta):
@@ -54,6 +70,45 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
     path = None
     server = None
     port = None
+
+    def _start_server(self):
+        openssl_prefix = {
+            OpensslVersion.v1_0_2: self.config["pytest_openssl_1_0_2"],
+            OpensslVersion.v1_1_1: self.config["pytest_openssl_1_1_1"],
+            OpensslVersion.v3_0_0: self.config["pytest_openssl_3_0_0"],
+        }[self.openssl_version]
+
+        cmd = (
+            str(TLSMATE_DIR)
+            + "/"
+            + self.server_cmd.format(prefix=openssl_prefix, port=self.port)
+        )
+
+        self.server_proc = subprocess.Popen(
+            cmd.split(),
+            stdin=subprocess.PIPE,
+            stdout=sys.stdout,
+            universal_newlines=True,
+        )
+        time.sleep(2)  # give openssl some time for a clean startup
+
+    def server_input(self, input_str, timeout=None):
+        """Feed a string to the server process' STDIN pipe
+
+        Arguments:
+            input_str (str): the string to provide on the STDIN pipe
+            timeout (int): the timeout to wait before providing the input in milli
+            seconds.
+        """
+
+        if self.recorder.is_injecting():
+            return
+
+        if timeout is not None:
+            self.recorder.additional_delay(timeout / 1000)
+            time.sleep(timeout / 1000)
+
+        print(input_str, file=self.server_proc.stdin, flush=True)
 
     def get_yaml_file(self, name):
         """Determine the file where an object is serialized to.
@@ -102,34 +157,53 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
                 Defaults to False.
         """
         tlsmate = TlsMate()
-        recorder = tlsmate.recorder()
+        self.recorder = tlsmate.recorder()
         profile = tlsmate.server_profile()
 
         if is_replaying and self.recorder_yaml is not None:
-            recorder.deserialize(self.get_yaml_file(self.recorder_yaml))
-            recorder.replay()
+            self.recorder.deserialize(self.get_yaml_file(self.recorder_yaml))
+            self.recorder.replay()
         if self.sp_in_yaml is not None:
             data = self.deserialize(self.sp_in_yaml)
             profile.load(data)
 
+        use_tlsmate_dir = False
         ini_file = Path.home() / ".tlsmate.ini"
         if not ini_file.is_file():
-            ini_file = Path.cwd() / ".tlsmate.ini"
+            use_tlsmate_dir = True
+            ini_file = TLSMATE_DIR / ".tlsmate.ini"
 
-        config = tlsmate.config(ini_file=ini_file)
-        config.set_config("endpoint", self.server + ":" + str(self.port))
-        config.set_config("progress", False)
+        self.config = tlsmate.config(ini_file=ini_file)
+        if use_tlsmate_dir:
+            self.config.set_config(
+                "ca_certs", [_absolute_path(path) for path in self.config["ca_certs"]],
+            )
+            self.config.set_config(
+                "client_key",
+                [_absolute_path(path) for path in self.config["client_key"]],
+            )
+            self.config.set_config(
+                "client_chain",
+                [_absolute_path(path) for path in self.config["client_chain"]],
+            )
 
-        utils.set_logging(config["logging"])
+        self.port = self.config["pytest_port"]
+        if self.port is None:
+            self.port = 44330
+
+        self.config.set_config("endpoint", self.server + ":" + str(self.port))
+        self.config.set_config("progress", False)
+        utils.set_logging(self.config["logging"])
 
         if not is_replaying:
-            tlsmate.recorder().record()
+            self._start_server()
+            self.recorder.record()
 
         self.run(tlsmate, is_replaying)
 
         if not is_replaying:
             if self.recorder_yaml is not None:
-                recorder.serialize(self.get_yaml_file(self.recorder_yaml))
+                self.recorder.serialize(self.get_yaml_file(self.recorder_yaml))
             if self.sp_out_yaml is not None:
                 self.serialize(profile.make_serializable(), self.sp_out_yaml)
 

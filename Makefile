@@ -1,5 +1,5 @@
 .PHONY: clean clean-test clean-pyc clean-build docs help lint black test \
-	test-all dist install install-dev uninstall tags
+	test-all dist install install-dev uninstall tags certs
 .DEFAULT_GOAL := help
 
 SHELL := /bin/bash
@@ -53,6 +53,9 @@ black-diff: ## provide the changes black would do as a diff
 
 black-reformat: ## let black reformat the python code
 	black tlsmate tests
+
+certs: ## create certificates using private ca
+	(cd ca && $(MAKE) all)
 
 test: ## run tests quickly with the default Python
 	py.test
