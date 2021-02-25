@@ -16,6 +16,7 @@ from tlsmate.kdf import Kdf
 from tlsmate.server_endpoint import ServerEndpoint
 from tlsmate.config import Configuration
 from tlsmate.suitemanager import SuiteManager
+from tlsmate.cert import TrustStore
 
 # import other stuff
 from dependency_injector import containers, providers
@@ -35,6 +36,8 @@ class TlsMate(containers.DeclarativeContainer):
     server_profile = providers.Singleton(ServerProfile)
 
     recorder = providers.Singleton(Recorder)
+
+    trust_store = providers.Singleton(TrustStore, recorder=recorder)
 
     socket = providers.Factory(
         Socket, config=config, recorder=recorder, server_endpoint=server_endpoint,
@@ -60,6 +63,7 @@ class TlsMate(containers.DeclarativeContainer):
         connection_factory=connection.provider,
         config=config,
         server_endpoint=server_endpoint,
+        trust_store=trust_store,
     )
 
     test_manager = providers.Singleton(SuiteManager)

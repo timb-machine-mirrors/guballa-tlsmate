@@ -391,10 +391,20 @@ class TrustStore(object):
             PEM-format.
     """
 
-    def __init__(self, ca_files=None):
-        self._ca_files = ca_files
+    def __init__(self, recorder):
+        self._recorder = recorder
+        self._ca_files = None
         self._cert_cache = []
         self._fingerprint_cache = []
+        if recorder.is_injecting():
+            for cert in recorder.get_trust_store():
+                self._add_to_cache(Certificate(pem=cert))
+
+    def set_ca_files(self, ca_files):
+        """Store the CA files containing certs in PEM format
+        """
+
+        self._ca_files = ca_files
 
     def __iter__(self):
 
@@ -413,6 +423,9 @@ class TrustStore(object):
         if cert.fingerprint_sha256 not in self._fingerprint_cache:
             self._fingerprint_cache.append(cert.fingerprint_sha256)
             self._cert_cache.append(cert)
+            if self._recorder.is_recording():
+                cert_pem = cert.parsed.public_bytes(Encoding.PEM).decode()
+                self._recorder.trace(trust_store=cert_pem)
 
     def cert_in_trust_store(self, cert):
         """Checks if a given certificate is present in the trust store.
@@ -423,7 +436,7 @@ class TrustStore(object):
         Returns:
             bool: True, if the given certificate is present in the trust store
         """
-        if self._ca_files is None:
+        if self._ca_files is None and not self._cert_cache:
             return False
 
         for cert2 in self:

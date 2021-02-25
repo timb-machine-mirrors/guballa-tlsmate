@@ -92,6 +92,7 @@ class Recorder(object):
         "crl_url": str,
         "crl": bytes,
         "signature": bytes,
+        "trust_store": str,
     }
 
     def __init__(self):
@@ -187,6 +188,9 @@ class Recorder(object):
             bool: True, if the recorder is recording
         """
         return self._state == RecorderState.RECORDING
+
+    def get_trust_store(self):
+        return self.data["trust_store"]
 
     def trace_socket_recv(self, timeout, event_type, data=None):
         """Trace a message received from a socket (if state is recording).

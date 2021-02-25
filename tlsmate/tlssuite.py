@@ -170,8 +170,11 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         use_tlsmate_dir = False
         ini_file = Path.home() / ".tlsmate.ini"
         if not ini_file.is_file():
-            use_tlsmate_dir = True
             ini_file = TLSMATE_DIR / ".tlsmate.ini"
+            if not ini_file.is_file():
+                ini_file = None
+            else:
+                use_tlsmate_dir = True
 
         self.config = tlsmate.config(ini_file=ini_file)
         if use_tlsmate_dir:

@@ -81,7 +81,7 @@ class Client(object):
             the scan would be aborted otherwise.
     """
 
-    def __init__(self, connection_factory, config, server_endpoint):
+    def __init__(self, connection_factory, config, server_endpoint, trust_store):
         """Initialize the client object
 
         Args:
@@ -92,7 +92,8 @@ class Client(object):
         self.config = config
         self.set_profile_modern()
         ca_files = config["ca_certs"]
-        self.trust_store = TrustStore(ca_files=ca_files)
+        trust_store.set_ca_files(ca_files)
+        self.trust_store = trust_store
         self.client_keys = []
         self.client_chains = []
         self._read_client_files(config)
