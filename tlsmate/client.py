@@ -6,7 +6,7 @@
 from tlsmate import tls
 from tlsmate import ext
 from tlsmate.msg import ClientHello
-from tlsmate.cert import TrustStore, CertChain
+from tlsmate.cert import CertChain
 
 # import other stuff
 import pem

@@ -14,7 +14,7 @@ class TestCase(CipherSuiteTester):
     """
 
     path = pathlib.Path(__file__)
-    name = "ClientAuth_PSS_RSA_SHA256"
+    name = "ClientAuth_PSS_RSAE_SHA256"
     cipher_suite = tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
     server_cmd = (
         "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
