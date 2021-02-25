@@ -394,6 +394,7 @@ class TrustStore(object):
     def __init__(self, ca_files=None):
         self._ca_files = ca_files
         self._cert_cache = []
+        self._fingerprint_cache = []
 
     def __iter__(self):
 
@@ -407,6 +408,11 @@ class TrustStore(object):
                     if not isinstance(pem_item, pem.Certificate):
                         continue
                     yield Certificate(pem=pem_item.as_bytes())
+
+    def _add_to_cache(self, cert):
+        if cert.fingerprint_sha256 not in self._fingerprint_cache:
+            self._fingerprint_cache.append(cert.fingerprint_sha256)
+            self._cert_cache.append(cert)
 
     def cert_in_trust_store(self, cert):
         """Checks if a given certificate is present in the trust store.
@@ -422,7 +428,7 @@ class TrustStore(object):
 
         for cert2 in self:
             if cert2 == cert:
-                self._cert_cache.append(cert2)
+                self._add_to_cache(cert2)
                 return True
 
         return False
@@ -441,7 +447,7 @@ class TrustStore(object):
             # TODO: Optimize this, as the issuer_name is string_prepped with
             # always the same result in the loop
             if equal_names(cert.parsed.subject, issuer_name):
-                self._cert_cache.append(cert)
+                self._add_to_cache(cert)
                 return cert
 
         return None

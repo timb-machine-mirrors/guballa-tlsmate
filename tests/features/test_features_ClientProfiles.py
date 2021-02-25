@@ -22,7 +22,6 @@ class TestCase(CipherSuiteTester):
     )
     openssl_version = OpensslVersion.v1_1_1
 
-
     # Uncomment the line below if you do not want to use the default version and
     # adapt it to your needs.
     # version = tls.Version.TLS12
