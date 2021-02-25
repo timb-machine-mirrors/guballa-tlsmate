@@ -18,8 +18,8 @@ class TestCase(CipherSuiteTester):
     name = "ClientAuth_RSA_SHA256_posthandshake"
     cipher_suite = tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
     server_cmd = (
-        "utils/start_openssl --port {port} --prefix {prefix} --cert rsa "
-        "--cert2 ecdsa -- -client_sigalgs RSA+SHA256 -legacy_renegotiation"
+        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
+        "-- -client_sigalgs RSA+SHA256 -legacy_renegotiation"
     )
     openssl_version = OpensslVersion.v1_1_1
 

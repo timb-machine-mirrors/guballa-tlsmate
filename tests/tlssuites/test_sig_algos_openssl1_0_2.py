@@ -4,6 +4,7 @@
 import pathlib
 from tlsmate.tlssuites.sig_algo import ScanSigAlgs
 from tlsmate.tlssuite import TlsSuiteTester
+from tlsmate.tlssuite import OpensslVersion
 
 sig_algs = [
     "RSA_PKCS1_SHA1",
@@ -28,9 +29,13 @@ class TestCase(TlsSuiteTester):
     sp_out_yaml = "profile_sig_algos_openssl1_0_2"
     recorder_yaml = "recorder_sig_algos_openssl1_0_2"
     path = pathlib.Path(__file__)
+    server_cmd = (
+        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
+        "--mode www -- -cipher ALL"
+    )
+    openssl_version = OpensslVersion.v1_0_2
 
     server = "localhost"
-    port = 44330
 
     def check_profile(self, profile):
         assert "signature_algorithms" not in profile["versions"][0]  # SSL30

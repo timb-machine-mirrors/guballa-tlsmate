@@ -1205,7 +1205,7 @@ class ServerProfile(SPObject):
         self.cert_chains = []
         self.features = SPFeatures()
         self.scan_info = SPScanInfo()
-        self.server = None
+        self.server = SPServer()
         self.versions = []
 
     def append_unique_cert_chain(self, chain):

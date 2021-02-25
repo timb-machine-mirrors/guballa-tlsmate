@@ -4,6 +4,7 @@
 import pathlib
 from tlsmate.tlssuites.eval_cipher_suites import ScanCipherSuites
 from tlsmate.tlssuite import TlsSuiteTester
+from tlsmate.tlssuite import OpensslVersion
 
 
 tls12_cs = [
@@ -84,9 +85,13 @@ class TestCase(TlsSuiteTester):
     sp_out_yaml = "profile_basic_openssl3_0_0"
     recorder_yaml = "recorder_eval_cipher_suites_openssl3_0_0"
     path = pathlib.Path(__file__)
+    server_cmd = (
+        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
+        "--mode www -- -cipher ALL"
+    )
+    openssl_version = OpensslVersion.v3_0_0
 
     server = "localhost"
-    port = 44330
 
     def check_cert_chain(self, cert_chain):
         assert len(cert_chain) == 2
