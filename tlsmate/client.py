@@ -100,6 +100,7 @@ class Client(object):
         self.client_keys = []
         self.client_chains = []
         self._read_client_files(config)
+        self._recorder_client_chain()
         self.server_endpoint = server_endpoint
         server_endpoint.configure(config["endpoint"])
 
@@ -117,6 +118,28 @@ class Client(object):
                 pem_list = pem.parse_file(chain_file)
                 for pem_item in pem_list:
                     client_chain.append_pem_cert(pem_item.as_bytes())
+
+                self.client_chains.append(client_chain)
+
+    def _recorder_client_chain(self):
+        if self._recorder.is_recording():
+            for chain in self.client_chains:
+                rec_chain = []
+                for cert in chain.certificates:
+                    rec_chain.append(cert.pem)
+
+                self._recorder.trace(client_chain=rec_chain)
+
+        elif self._recorder.is_injecting():
+            while True:
+                rec_chain = self._recorder.inject(client_chain=None)
+                if not rec_chain:
+                    break
+
+                client_chain = CertChain()
+                for cert in rec_chain:
+                    client_chain.append_pem_cert(cert)
+
                 self.client_chains.append(client_chain)
 
     def reset_profile(self):

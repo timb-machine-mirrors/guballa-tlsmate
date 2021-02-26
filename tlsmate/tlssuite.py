@@ -174,8 +174,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         self.config = tlsmate.config(ini_file=ini_file)
         if self.config["ca_certs"] is not None:
             self.config.set_config(
-                "ca_certs",
-                [_absolute_path(path) for path in self.config["ca_certs"]],
+                "ca_certs", [_absolute_path(path) for path in self.config["ca_certs"]],
             )
 
         if self.config["client_key"] is not None:

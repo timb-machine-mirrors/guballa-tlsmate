@@ -94,6 +94,7 @@ class Recorder(object):
         "signature": bytes,
         "trust_store": str,
         "client_auth": bool,
+        "client_chain": "client_chain",
     }
 
     def __init__(self):
@@ -121,13 +122,20 @@ class Recorder(object):
         """
         if val_type is bytes:
             return val.hex()
+
         elif val_type is datetime.datetime:
             return val.timestamp()
+
         elif val_type == "msg_recv":
             timeout, event_type, data = val
             if data is not None:
                 data = data.hex()
+
             return [timeout, event_type.value, data]
+
+        elif val_type == "client_chain":
+            return [cert.hex() for cert in val]
+
         return val
 
     @staticmethod
@@ -151,12 +159,17 @@ class Recorder(object):
             if data is not None:
                 data = bytes.fromhex(data)
             val = (timout, event_type, data)
+        elif val_type == "client_chain":
+            return [bytes.fromhex(cert) for cert in val]
         return val
 
     def _store_value(self, name, value):
         self.data[name].append(self._serialize_val(value, self._attr[name]))
 
     def _unstore_value(self, name):
+        if not self.data[name]:
+            return None
+
         return self._deserialize_val(self.data[name].pop(0), self._attr[name])
 
     def deactivate(self):
