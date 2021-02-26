@@ -4,6 +4,7 @@
 import pathlib
 from tlsmate.tlssuites.sig_algo import ScanSigAlgs
 from tlsmate.tlssuite import TlsSuiteTester
+from tlsmate.tlssuite import OpensslVersion
 
 sig_algs_tls12 = [
     "RSA_PKCS1_SHA256",
@@ -34,9 +35,13 @@ class TestCase(TlsSuiteTester):
     sp_out_yaml = "profile_sig_algos_openssl3_0_0"
     recorder_yaml = "recorder_sig_algos_openssl3_0_0"
     path = pathlib.Path(__file__)
+    server_cmd = (
+        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
+        "--mode www -- -cipher ALL"
+    )
+    openssl_version = OpensslVersion.v3_0_0
 
     server = "localhost"
-    port = 44330
 
     def check_tls12(self, prof):
         assert prof["server_preference"] == "C_FALSE"

@@ -6,7 +6,7 @@
 from tlsmate import tls
 from tlsmate import ext
 from tlsmate.msg import ClientHello
-from tlsmate.cert import TrustStore, CertChain
+from tlsmate.cert import CertChain
 
 # import other stuff
 import pem
@@ -81,39 +81,65 @@ class Client(object):
             the scan would be aborted otherwise.
     """
 
-    def __init__(self, connection_factory, config, server_endpoint):
+    def __init__(
+        self, connection_factory, config, server_endpoint, trust_store, recorder
+    ):
         """Initialize the client object
 
         Args:
             connection_factory: method used to create a new connction object
             config: the configuration object
         """
+        self._recorder = recorder
         self.connection_factory = connection_factory
         self.config = config
         self.set_profile_modern()
         ca_files = config["ca_certs"]
-        self.trust_store = TrustStore(ca_files=ca_files)
+        trust_store.set_ca_files(ca_files)
+        self.trust_store = trust_store
         self.client_keys = []
         self.client_chains = []
-        self._read_client_files(config)
+        self._set_client_auth_config(config)
         self.server_endpoint = server_endpoint
         server_endpoint.configure(config["endpoint"])
 
-    def _read_client_files(self, config):
-        if config["client_key"] is not None:
-            for key_file in config["client_key"]:
-                with open(key_file, "rb") as fd:
-                    self.client_keys.append(
-                        serialization.load_pem_private_key(fd.read(), password=None)
-                    )
+    def _set_client_auth_config(self, config):
+        if self._recorder.is_injecting():
+            while True:
+                rec_chain = self._recorder.inject(client_chain=None)
+                if not rec_chain:
+                    break
 
-        if config["client_chain"] is not None:
-            for chain_file in config["client_chain"]:
                 client_chain = CertChain()
-                pem_list = pem.parse_file(chain_file)
-                for pem_item in pem_list:
-                    client_chain.append_pem_cert(pem_item.as_bytes())
+                for cert in rec_chain:
+                    client_chain.append_pem_cert(cert)
+
                 self.client_chains.append(client_chain)
+
+        else:
+            if config["client_key"] is not None:
+                for key_file in config["client_key"]:
+                    with open(key_file, "rb") as fd:
+                        self.client_keys.append(
+                            serialization.load_pem_private_key(fd.read(), password=None)
+                        )
+
+            if config["client_chain"] is not None:
+                for chain_file in config["client_chain"]:
+                    client_chain = CertChain()
+                    pem_list = pem.parse_file(chain_file)
+                    for pem_item in pem_list:
+                        client_chain.append_pem_cert(pem_item.as_bytes())
+
+                    self.client_chains.append(client_chain)
+
+            if self._recorder.is_recording():
+                for chain in self.client_chains:
+                    rec_chain = []
+                    for cert in chain.certificates:
+                        rec_chain.append(cert.pem)
+
+                    self._recorder.trace(client_chain=rec_chain)
 
     def reset_profile(self):
         """Resets the client profile to a very basic state
@@ -533,7 +559,7 @@ class Client(object):
                 msg.extensions.append(ext.ExtSessionTicket(**kwargs))
 
             if tls.Version.TLS13 in self.versions:
-                if self.client_keys:
+                if self._recorder.inject(client_auth=(bool(self.client_keys))):
                     msg.extensions.append(ext.ExtPostHandshakeAuth())
 
                 self._key_share_objects = []

@@ -1,15 +1,15 @@
 # specific for early data
-./start_openssl --port 44330 --prefix /opt/openssl3.0.0 --cert rsa --cert2 ecdsa -- -early_data
+./start_openssl --port 44330 --prefix /opt/openssl1.1.1 --cert rsa --cert2 ecdsa -- -early_data
     python tests/tls13/test_tls13_EarlyData.py
 
 # general for TLS13
-./start_openssl --port 44330 --prefix /opt/openssl3.0.0 --cert rsa --cert2 ecdsa --mode www
+./start_openssl --port 44330 --prefix /opt/openssl1.1.1 --cert rsa --cert2 ecdsa --mode www
     python tests/tls13/test_tls13_TLS_AES_128_GCM_SHA256.py
     python tests/tls13/test_tls13_TLS_AES_256_GCM_SHA384.py
     python tests/tls13/test_tls13_TLS_CHACHA20_POLY1305_SHA256.py
 
 # TLS1.3, CCM
-./start_openssl --port 44330 --prefix /opt/openssl3.0.0 --cert rsa --cert2 ecdsa --mode www -- -ciphersuites TLS_AES_128_CCM_SHA256:TLS_AES_128_CCM_8_SHA256
+./start_openssl --port 44330 --prefix /opt/openssl1.1.1 --cert rsa --cert2 ecdsa --mode www -- -ciphersuites TLS_AES_128_CCM_SHA256:TLS_AES_128_CCM_8_SHA256
     python tests/tls13/test_tls13_TLS_AES_128_CCM_SHA256.py
     python tests/tls13/test_tls13_TLS_AES_128_CCM_8_SHA256.py
 
@@ -130,7 +130,7 @@
     python tests/tls12/test_tls12_SupportedGroups_SECT571R1.py
 
 # Curves
-./start_openssl --port 44330 --prefix /opt/openssl3.0.0 --cert rsa --cert2 ecdsa --mode www -- -cipher ALL -curves sect233k1:sect163r2:sect163k1:sect233r1:sect283k1:sect283r1:sect409k1:sect409r1:sect571k1:sect571r1:secp224r1:secp256k1:brainpoolP256r1:brainpoolP384r1:brainpoolP512r1
+./start_openssl --port 44330 --prefix /opt/openssl1.1.1 --cert rsa --cert2 ecdsa --mode www -- -cipher ALL -curves sect233k1:sect163r2:sect163k1:sect233r1:sect283k1:sect283r1:sect409k1:sect409r1:sect571k1:sect571r1:secp224r1:secp256k1:brainpoolP256r1:brainpoolP384r1:brainpoolP512r1
     python tests/tls12/test_tls12_SupportedGroups_SECT163K1.py
     python tests/tls12/test_tls12_SupportedGroups_SECT163R2.py
 

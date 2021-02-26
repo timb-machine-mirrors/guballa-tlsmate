@@ -4,6 +4,7 @@
 import pathlib
 from tlsmate.tlssuites.supported_groups import ScanSupportedGroups
 from tlsmate.tlssuite import TlsSuiteTester
+from tlsmate.tlssuite import OpensslVersion
 
 
 class TestCase(TlsSuiteTester):
@@ -16,9 +17,13 @@ class TestCase(TlsSuiteTester):
     sp_out_yaml = "profile_supported_groups_openssl1_0_2"
     recorder_yaml = "recorder_supported_groups_openssl1_0_2"
     path = pathlib.Path(__file__)
+    server_cmd = (
+        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
+        "--mode www -- -cipher ALL"
+    )
+    openssl_version = OpensslVersion.v1_0_2
 
     server = "localhost"
-    port = 44330
 
     def check_ssl30(self, profile):
         assert profile["extension_supported"] == "C_FALSE"

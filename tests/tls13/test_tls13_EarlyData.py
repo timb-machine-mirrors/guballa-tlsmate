@@ -5,6 +5,7 @@ import pathlib
 from tests.cipher_suite_tester import CipherSuiteTester
 from tlsmate import tls
 from tlsmate import msg
+from tlsmate.tlssuite import OpensslVersion
 
 
 class TestCase(CipherSuiteTester):
@@ -18,6 +19,11 @@ class TestCase(CipherSuiteTester):
 
     name = "EarlyData"
     path = pathlib.Path(__file__)
+    server_cmd = (
+        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
+        "-- -early_data"
+    )
+    openssl_version = OpensslVersion.v1_1_1
 
     # Uncomment the line below if you do not want to use the default version and
     # adapt it to your needs.

@@ -630,14 +630,14 @@ class TlsConnection(object):
         else:
             data = self.kdf.get_handshake_messages()
 
-        signature = self._sign_with_client_key(
-            self.client.client_keys[self._clientauth_key_idx],
-            self._clientauth_sig_algo,
-            data,
-        )
         if self.recorder.is_injecting():
             signature = self.recorder.inject(signature=None)
         else:
+            signature = self._sign_with_client_key(
+                self.client.client_keys[self._clientauth_key_idx],
+                self._clientauth_sig_algo,
+                data,
+            )
             self.recorder.trace(signature=signature)
 
         msg.signature = signature
