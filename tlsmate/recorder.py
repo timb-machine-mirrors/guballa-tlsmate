@@ -93,6 +93,7 @@ class Recorder(object):
         "crl": bytes,
         "signature": bytes,
         "trust_store": str,
+        "client_auth": bool,
     }
 
     def __init__(self):

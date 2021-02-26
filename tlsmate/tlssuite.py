@@ -13,7 +13,6 @@ from tlsmate.tlsmate import TlsMate, TLSMATE_DIR
 from tlsmate import utils
 
 # import other stuff
-from pathlib import Path
 import yaml
 
 
@@ -25,7 +24,7 @@ class OpensslVersion(enum.Enum):
 
 def _absolute_path(path):
     if not path.startswith("/"):
-        path = str(TLSMATE_DIR / path)
+        path = str(TLSMATE_DIR / "tests" / path)
     return path
 
 
@@ -163,28 +162,29 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         if is_replaying and self.recorder_yaml is not None:
             self.recorder.deserialize(self.get_yaml_file(self.recorder_yaml))
             self.recorder.replay()
+
         if self.sp_in_yaml is not None:
             data = self.deserialize(self.sp_in_yaml)
             profile.load(data)
 
-        use_tlsmate_dir = False
-        ini_file = Path.home() / ".tlsmate.ini"
+        ini_file = TLSMATE_DIR / "tests/tlsmate.ini"
         if not ini_file.is_file():
-            ini_file = TLSMATE_DIR / ".tlsmate.ini"
-            if not ini_file.is_file():
-                ini_file = None
-            else:
-                use_tlsmate_dir = True
+            ini_file = None
 
         self.config = tlsmate.config(ini_file=ini_file)
-        if use_tlsmate_dir:
+        if self.config["ca_certs"] is not None:
             self.config.set_config(
-                "ca_certs", [_absolute_path(path) for path in self.config["ca_certs"]],
+                "ca_certs",
+                [_absolute_path(path) for path in self.config["ca_certs"]],
             )
+
+        if self.config["client_key"] is not None:
             self.config.set_config(
                 "client_key",
                 [_absolute_path(path) for path in self.config["client_key"]],
             )
+
+        if self.config["client_chain"] is not None:
             self.config.set_config(
                 "client_chain",
                 [_absolute_path(path) for path in self.config["client_chain"]],

@@ -64,6 +64,7 @@ class TlsMate(containers.DeclarativeContainer):
         config=config,
         server_endpoint=server_endpoint,
         trust_store=trust_store,
+        recorder=recorder,
     )
 
     test_manager = providers.Singleton(SuiteManager)

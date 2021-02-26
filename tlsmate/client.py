@@ -81,13 +81,16 @@ class Client(object):
             the scan would be aborted otherwise.
     """
 
-    def __init__(self, connection_factory, config, server_endpoint, trust_store):
+    def __init__(
+        self, connection_factory, config, server_endpoint, trust_store, recorder
+    ):
         """Initialize the client object
 
         Args:
             connection_factory: method used to create a new connction object
             config: the configuration object
         """
+        self._recorder = recorder
         self.connection_factory = connection_factory
         self.config = config
         self.set_profile_modern()
@@ -534,7 +537,7 @@ class Client(object):
                 msg.extensions.append(ext.ExtSessionTicket(**kwargs))
 
             if tls.Version.TLS13 in self.versions:
-                if self.client_keys:
+                if self._recorder.inject(client_auth=(bool(self.client_keys))):
                     msg.extensions.append(ext.ExtPostHandshakeAuth())
 
                 self._key_share_objects = []
