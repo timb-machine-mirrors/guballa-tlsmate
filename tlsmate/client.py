@@ -99,38 +99,12 @@ class Client(object):
         self.trust_store = trust_store
         self.client_keys = []
         self.client_chains = []
-        self._read_client_files(config)
-        self._recorder_client_chain()
+        self._set_client_auth_config(config)
         self.server_endpoint = server_endpoint
         server_endpoint.configure(config["endpoint"])
 
-    def _read_client_files(self, config):
-        if config["client_key"] is not None:
-            for key_file in config["client_key"]:
-                with open(key_file, "rb") as fd:
-                    self.client_keys.append(
-                        serialization.load_pem_private_key(fd.read(), password=None)
-                    )
-
-        if config["client_chain"] is not None:
-            for chain_file in config["client_chain"]:
-                client_chain = CertChain()
-                pem_list = pem.parse_file(chain_file)
-                for pem_item in pem_list:
-                    client_chain.append_pem_cert(pem_item.as_bytes())
-
-                self.client_chains.append(client_chain)
-
-    def _recorder_client_chain(self):
-        if self._recorder.is_recording():
-            for chain in self.client_chains:
-                rec_chain = []
-                for cert in chain.certificates:
-                    rec_chain.append(cert.pem)
-
-                self._recorder.trace(client_chain=rec_chain)
-
-        elif self._recorder.is_injecting():
+    def _set_client_auth_config(self, config):
+        if self._recorder.is_injecting():
             while True:
                 rec_chain = self._recorder.inject(client_chain=None)
                 if not rec_chain:
@@ -141,6 +115,31 @@ class Client(object):
                     client_chain.append_pem_cert(cert)
 
                 self.client_chains.append(client_chain)
+
+        else:
+            if config["client_key"] is not None:
+                for key_file in config["client_key"]:
+                    with open(key_file, "rb") as fd:
+                        self.client_keys.append(
+                            serialization.load_pem_private_key(fd.read(), password=None)
+                        )
+
+            if config["client_chain"] is not None:
+                for chain_file in config["client_chain"]:
+                    client_chain = CertChain()
+                    pem_list = pem.parse_file(chain_file)
+                    for pem_item in pem_list:
+                        client_chain.append_pem_cert(pem_item.as_bytes())
+
+                    self.client_chains.append(client_chain)
+
+            if self._recorder.is_recording():
+                for chain in self.client_chains:
+                    rec_chain = []
+                    for cert in chain.certificates:
+                        rec_chain.append(cert.pem)
+
+                    self._recorder.trace(client_chain=rec_chain)
 
     def reset_profile(self):
         """Resets the client profile to a very basic state
