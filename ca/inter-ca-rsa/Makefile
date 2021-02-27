@@ -1,4 +1,4 @@
-all: rsa crl
+all: rsa
 
 OPENSSLPATH ?= /usr/bin
 
@@ -20,7 +20,7 @@ inter-ca-dirs:
 cert/inter-ca-rsa.crt: inter-ca-dirs
 	${OPENSSLPATH}/openssl genrsa -out private/inter-ca-rsa.key 2048
 	${OPENSSLPATH}/openssl req -new -batch -subj "/C=DE/O=The TlsMate Company/CN=localhost intermediate CA RSA" -key private/inter-ca-rsa.key -out ../root-ca-rsa/csr/inter-ca-rsa.csr
-	(cd ../root-ca-rsa && make inter-ca-rsa.csr)
+	(cd ../root-ca-rsa && $($(MAKE)) inter-ca-rsa.csr)
 	cp ../root-ca-rsa/certs/inter-ca-rsa.crt certs
 
 %-rsa.csr:
@@ -39,4 +39,4 @@ crl: crl/inter-ca-rsa.crl.pem
 
 revokation:
 	${OPENSSLPATH}/openssl ca -revoke ./certs/server-revoked-rsa.crt -config inter-ca.cnf -crl_reason superseded -keyfile private/inter-ca-rsa.key -cert certs/inter-ca-rsa.crt
-	make crl
+	$(MAKE) crl

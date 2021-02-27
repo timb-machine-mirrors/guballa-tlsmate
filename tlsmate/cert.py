@@ -328,20 +328,36 @@ class CrlManager(object):
     _crls = {}
 
     @classmethod
+    def add_crl(cls, url, der_crl=None, pem_crl=None):
+        crl = None
+        if der_crl is not None:
+            crl = x509.load_der_x509_crl(der_crl)
+
+        elif pem_crl is not None:
+            crl = x509.load_pem_x509_crl(pem_crl)
+
+        cls._crls[url] = crl
+
+    @classmethod
     def _get_crl_obj(cls, url, recorder):
         if url not in cls._crls:
             recorder.trace(crl_url=url)
             try:
                 if recorder.is_injecting():
                     bin_crl = recorder.inject(crl=None)
+
                 else:
                     with urllib.request.urlopen(url, timeout=5) as response:
                         bin_crl = response.read()
+
                     recorder.trace(crl=bin_crl)
+
             except Exception:
                 cls._crls[url] = None
+
             else:
-                cls._crls[url] = x509.load_der_x509_crl(bin_crl)
+                cls.add_crl(url, der_crl=bin_crl)
+
         return cls._crls[url]
 
     @classmethod
@@ -599,12 +615,12 @@ class Certificate(object):
                 self.tls13_signature_algorithms = [sig_scheme]
 
         elif isinstance(public_key, ed25519.Ed25519PublicKey):
-            self.tls12_signature_algorithms = [tls.Signature.ED25519]
-            self.tls13_signature_algorithms = [tls.Signature.ED25519]
+            self.tls12_signature_algorithms = [tls.SignatureScheme.ED25519]
+            self.tls13_signature_algorithms = [tls.SignatureScheme.ED25519]
 
         elif isinstance(public_key, ed448.Ed448PublicKey):
-            self.tls12_signature_algorithms = [tls.Signature.ED448]
-            self.tls13_signature_algorithms = [tls.Signature.ED448]
+            self.tls12_signature_algorithms = [tls.SignatureScheme.ED448]
+            self.tls13_signature_algorithms = [tls.SignatureScheme.ED448]
 
     def _parse(self):
         """Parse the certificate, so that all attributes are set.
@@ -703,69 +719,6 @@ class Certificate(object):
 
         """
         validate_signature(self, sig_scheme, data, signature)
-
-    def _profile_public_key(self):
-        pub_key = self.parsed.public_key()
-        key = SPPublicKey()
-        key.key_size = pub_key.key_size
-
-        if isinstance(pub_key, rsa.RSAPublicKey):
-            key.key_type = tls.SignatureAlgorithm.RSA
-            pub_numbers = pub_key.public_numbers()
-            key.key_exponent = pub_numbers.e
-            key.key = pub_numbers.n.to_bytes(int(pub_key.key_size / 8), "big")
-
-        elif isinstance(pub_key, dsa.DSAPublicKey):
-            key.key_type = tls.SignatureAlgorithm.DSA
-            pub_numbers = pub_key.public_numbers()
-            key.key = pub_numbers.y.to_bytes(int(pub_key.key_size / 8), "big")
-            key.key_p = utils.int_to_bytes(pub_numbers.parameter_numbers.p)
-            key.key_q = utils.int_to_bytes(pub_numbers.parameter_numbers.q)
-            key.key_g = utils.int_to_bytes(pub_numbers.parameter_numbers.g)
-
-        elif isinstance(pub_key, ec.EllipticCurvePublicKey):
-            key.key_type = tls.SignatureAlgorithm.ECDSA
-            group = mappings.curve_to_group.get(pub_key.curve.name)
-            if group is None:
-                raise ValueError("curve {pub_key.curve.name} unknown")
-            key.curve = group
-            key.key = pub_key.public_bytes(
-                Encoding.X962, PublicFormat.UncompressedPoint
-            )
-
-        elif isinstance(pub_key, ed25519.Ed25519PublicKey):
-            key.key_type = tls.SignatureAlgorithm.ED25519
-            key.key = pub_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
-
-        elif isinstance(pub_key, ed448.Ed448PublicKey):
-            key.key_type = tls.SignatureAlgorithm.ED448
-            key.key = pub_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
-
-        return key
-
-    def _gen_name(self, name):
-        gen_name = SPCertGeneralName()
-
-        if isinstance(name, x509.DirectoryName):
-            gen_name.value = name.value.rfc4514_string()
-
-        elif isinstance(name, x509.RegisteredID):
-            gen_name.oid = name.value.dotted_string
-
-            if name.value._name is not None:
-                gen_name.name = name.value._name
-
-        elif isinstance(name, x509.OtherName):
-            gen_name.bytes = name.value
-            gen_name.oid = name.type_id.dotted_string
-
-            if name.type_id._name is not None:
-                gen_name.name = name.name.type_id._name._name
-
-        else:
-            gen_name.value = name.value
-
-        return gen_name
 
 
 class CertChain(object):
@@ -890,7 +843,7 @@ class CertChain(object):
         )
         logging.debug(f'CRL status for certificate "{cert}": {cert.crl_status}')
         if cert.crl_status is not tls.CertCrlStatus.NOT_REVOKED:
-            issue = f'CRL status not ok for certificate "{cert}"'
+            issue = f'CRL status not ok for certificate "{cert}": {cert.crl_status}'
             self.issues.append(issue)
             if raise_on_failure:
                 raise CertChainValidationError(issue)

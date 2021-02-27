@@ -198,7 +198,9 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         utils.set_logging(self.config["logging"])
 
         if not is_replaying:
-            self._start_server()
+            if self.server_cmd is not None:
+                self._start_server()
+
             self.recorder.record()
 
         self.run(tlsmate, is_replaying)
@@ -206,6 +208,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         if not is_replaying:
             if self.recorder_yaml is not None:
                 self.recorder.serialize(self.get_yaml_file(self.recorder_yaml))
+
             if self.sp_out_yaml is not None:
                 self.serialize(profile.make_serializable(), self.sp_out_yaml)
 

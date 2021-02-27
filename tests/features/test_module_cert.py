@@ -1,47 +1,118 @@
 # -*- coding: utf-8 -*-
 """Implements a class to be used for unit testing.
 """
-import pathlib
 import datetime
-import pem
-from tlsmate.tlssuite import TlsSuiteTester
-from tlsmate.cert import CertChain
-from tlsmate.exception import CertChainValidationError
+from tlsmate.exception import CertChainValidationError, CertValidationError
+from tlsmate import tls
+import pytest
 
 
-class TestCert(TlsSuiteTester):
+def test_revoked_certificate(revoked_cert_chain, trust_store, rsa_crl):
 
-    server = "dummy"
-    port = 0
-    recorder_yaml = "recorder_module_cert"
-    path = pathlib.Path(__file__)
-
-    def prepare(self, tlsmate):
-        cert_dir = self.path.resolve().parent.parent.parent / "certs"
-        revoked_chain = cert_dir / "server-revoked-rsa-chain.pem"
-        recorder = tlsmate.recorder()
-        if recorder.is_injecting():
-            self.timestamp = recorder.inject(datetime=None)
-        else:
-            self.timestamp = datetime.datetime.now()
-            recorder.trace(datetime=self.timestamp)
-        self.cert_chain = CertChain()
-        self.cert_chain.set_recorder(recorder)
-        for cert in pem.parse_file(revoked_chain):
-            self.cert_chain.append_pem_cert(cert.as_bytes())
-
-    def run(self, tlsmate, is_replaying):
-        client = tlsmate.client()
-        self.prepare(tlsmate)
-        # certificate revoked
-        try:
-            self.cert_chain.validate(
-                self.timestamp, "revoked.localhost", client.trust_store, raise_on_failure=True
-            )
-            assert False
-        except CertChainValidationError as exc:
-            assert True
+    with pytest.raises(CertChainValidationError, match=f" {tls.CertCrlStatus.REVOKED}"):
+        revoked_cert_chain.validate(
+            datetime.datetime(2021, 2, 27),
+            "revoked.localhost",
+            trust_store,
+            raise_on_failure=True,
+        )
 
 
-if __name__ == "__main__":
-    TestCert().entry(is_replaying=False)
+def test_certificate_not_yet_valid(rsa_cert_chain, trust_store, rsa_crl):
+
+    with pytest.raises(CertValidationError, match=r"validity period.*not yet reached"):
+        rsa_cert_chain.validate(
+            datetime.datetime(2000, 2, 27),
+            "localhost",
+            trust_store,
+            raise_on_failure=True,
+        )
+
+
+def test_certificate_expired(rsa_cert_chain, trust_store, rsa_crl):
+
+    with pytest.raises(CertValidationError, match=r"validity period.*exceeded"):
+        rsa_cert_chain.validate(
+            datetime.datetime(2200, 2, 27),
+            "localhost",
+            trust_store,
+            raise_on_failure=True,
+        )
+
+
+def test_dsa_certificate(dsa_cert_chain, trust_store, rsa_crl):
+
+    dsa_cert_chain.validate(
+        datetime.datetime(2021, 2, 27), "localhost", trust_store, raise_on_failure=True,
+    )
+    assert True
+
+
+def test_ed25519_certificate(ed25519_cert_chain, trust_store, ecdsa_crl):
+
+    ed25519_cert_chain.validate(
+        datetime.datetime(2021, 2, 27), "localhost", trust_store, raise_on_failure=True,
+    )
+    assert True
+
+
+def test_ed448_certificate(ed448_cert_chain, trust_store, ecdsa_crl):
+
+    ed448_cert_chain.validate(
+        datetime.datetime(2021, 2, 27), "localhost", trust_store, raise_on_failure=True,
+    )
+    assert True
+
+
+def test_rsa_with_root_certificate(rsa_with_root_cert_chain, trust_store, rsa_crl):
+
+    rsa_with_root_cert_chain.validate(
+        datetime.datetime(2021, 2, 27), "localhost", trust_store, raise_on_failure=True,
+    )
+    assert True
+
+
+def test_wrong_sni(rsa_cert_chain, trust_store, rsa_crl):
+
+    with pytest.raises(CertValidationError, match="subject name does not match"):
+        rsa_cert_chain.validate(
+            datetime.datetime(2021, 2, 27),
+            "example.com",
+            trust_store,
+            raise_on_failure=True,
+        )
+
+
+def test_root_not_last_in_chain(root_not_last_in_chain, trust_store, rsa_crl):
+
+    with pytest.raises(CertChainValidationError, match="not the last one in the chain"):
+        root_not_last_in_chain.validate(
+            datetime.datetime(2021, 2, 27),
+            "localhost",
+            trust_store,
+            raise_on_failure=True,
+        )
+
+
+def test_issuer_mismatch(issuer_mismatch_chain, trust_store, rsa_crl):
+
+    with pytest.raises(CertChainValidationError, match="is not issuer of certificate"):
+        issuer_mismatch_chain.validate(
+            datetime.datetime(2021, 2, 27),
+            "localhost",
+            trust_store,
+            raise_on_failure=True,
+        )
+
+
+def test_signature_invalid_chain(signature_invalid_chain, trust_store, rsa_crl):
+
+    with pytest.raises(
+        CertChainValidationError, match="cannot be validated by issuer certificate"
+    ):
+        signature_invalid_chain.validate(
+            datetime.datetime(2021, 2, 28),
+            "localhost",
+            trust_store,
+            raise_on_failure=True,
+        )
