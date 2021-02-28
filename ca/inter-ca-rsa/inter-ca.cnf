@@ -57,12 +57,18 @@ authorityKeyIdentifier  = keyid:always
 authorityInfoAccess     = @issuer_info
 crlDistributionPoints   = @crl_info
 certificatePolicies	= 2.23.140.1.2.1
+subjectAltName = @alt_names
 
 [ server_ext ]
 basicConstraints        = critical,CA:FALSE
+subjectAltName          = @alt_names
 extendedKeyUsage        = serverAuth
 subjectKeyIdentifier    = hash
 authorityKeyIdentifier  = keyid:always
 authorityInfoAccess     = @issuer_info
 crlDistributionPoints   = @crl_info
 certificatePolicies	= 2.23.140.1.2.1
+
+[ alt_names ]
+DNS.1 = test.localhost
+DNS.2 = *.wildcard.localhost

@@ -20,14 +20,14 @@ inter-ca-dirs:
 cert/inter-ca-rsa.crt: inter-ca-dirs
 	${OPENSSLPATH}/openssl genrsa -out private/inter-ca-rsa.key 2048
 	${OPENSSLPATH}/openssl req -new -batch -subj "/C=DE/O=The TlsMate Company/CN=localhost intermediate CA RSA" -key private/inter-ca-rsa.key -out ../root-ca-rsa/csr/inter-ca-rsa.csr
-	(cd ../root-ca-rsa && $($(MAKE)) inter-ca-rsa.csr)
+	(cd ../root-ca-rsa && $(MAKE) inter-ca-rsa.csr)
 	cp ../root-ca-rsa/certs/inter-ca-rsa.crt certs
 
-%-rsa.csr:
-	${OPENSSLPATH}/openssl ca -batch -notext -config inter-ca.cnf -extensions client_ext -days 3000 -in csr/$*-rsa.csr -out certs/$*-rsa.crt -keyfile private/inter-ca-rsa.key -cert certs/inter-ca-rsa.crt
+client-%.csr:
+	${OPENSSLPATH}/openssl ca -batch -notext -config inter-ca.cnf -extensions client_ext -days 3000 -in csr/$@ -out certs/client-$*.crt -keyfile private/inter-ca-rsa.key -cert certs/inter-ca-rsa.crt
 
-%-dsa.csr:
-	${OPENSSLPATH}/openssl ca -batch -notext -config inter-ca.cnf -extensions $*_ext -days 3000 -in csr/$*-dsa.csr -out certs/$*-dsa.crt -keyfile private/inter-ca-rsa.key -cert certs/inter-ca-rsa.crt
+server-%.csr:
+	${OPENSSLPATH}/openssl ca -batch -notext -config inter-ca.cnf -extensions server_ext -days 3000 -in csr/$@ -out certs/server-$*.crt -keyfile private/inter-ca-rsa.key -cert certs/inter-ca-rsa.crt
 
 crl/inter-ca-rsa.crl.pem: certs/inter-ca-rsa.crt
 	${OPENSSLPATH}/openssl ca -config inter-ca.cnf -gencrl -keyfile private/inter-ca-rsa.key -cert certs/inter-ca-rsa.crt -out crl/inter-ca-rsa.crl.pem

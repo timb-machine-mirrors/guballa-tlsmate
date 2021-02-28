@@ -28,10 +28,12 @@ def fixturefiles_dir():
 @pytest.fixture
 def trust_store(tlsmate, fixturefiles_dir):
     trust_store = tlsmate.trust_store()
-    certs = pem.parse_file(fixturefiles_dir / "trust_store.pem")
-    for cert in certs:
-        trust_store._add_to_cache(Certificate(pem=cert.as_bytes()))
+    trust_store.set_ca_files([fixturefiles_dir / "trust_store.pem"])
     return trust_store
+
+@pytest.fixture
+def empty_trust_store(tlsmate):
+    return TlsMate().trust_store()
 
 @pytest.fixture
 def revoked_cert_chain(fixturefiles_dir):
@@ -40,6 +42,10 @@ def revoked_cert_chain(fixturefiles_dir):
 @pytest.fixture
 def rsa_cert_chain(fixturefiles_dir):
     return build_cert_chain(fixturefiles_dir / "rsa_cert_chain.pem")
+
+@pytest.fixture
+def rsa_san_cert_chain(fixturefiles_dir):
+    return build_cert_chain(fixturefiles_dir / "rsa_san_cert_chain.pem")
 
 @pytest.fixture
 def rsa_with_root_cert_chain(fixturefiles_dir):
