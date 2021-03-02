@@ -5,7 +5,6 @@
 import argparse
 import importlib
 import pkgutil
-import os
 
 # import own stuff
 from tlsmate.tlsmate import TlsMate
