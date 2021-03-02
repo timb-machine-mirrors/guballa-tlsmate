@@ -133,7 +133,8 @@ class ScanScratch(TlsSuite):
         # # client.support_session_id = True
         # # client.support_psk = True
         # # client.psk_key_exchange_modes = [tls.PskKeyExchangeMode.PSK_DHE_KE]
-        client.set_profile(tls.Profile.LEGACY)
+        client.set_profile(tls.Profile.MODERN)
+        client.cipher_suites = [tls.CipherSuite.TLS_RSA_WITH_AES_128_GCM_SHA256]
         # client.support_scsv_renegotiation = True
 
         with client.create_connection() as conn:

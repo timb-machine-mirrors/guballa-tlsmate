@@ -20,7 +20,7 @@ inter-ca-dirs:
 cert/inter-ca-ecdsa.crt: inter-ca-dirs
 	${OPENSSLPATH}/openssl ecparam -name prime256v1 -genkey -out private/inter-ca-ecdsa.key
 	${OPENSSLPATH}/openssl req -new -batch -subj "/C=DE/O=The TlsMate Company/CN=localhost intermediate CA ECDSA" -key private/inter-ca-ecdsa.key -out ../root-ca-ecdsa/csr/inter-ca-ecdsa.csr
-	(cd ../root-ca-ecdsa && make inter-ca-ecdsa.csr)
+	(cd ../root-ca-ecdsa && $(MAKE) inter-ca-ecdsa.csr)
 	cp ../root-ca-ecdsa/certs/inter-ca-ecdsa.crt certs
 
 %-ecdsa.csr:

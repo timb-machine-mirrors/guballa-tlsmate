@@ -62,9 +62,9 @@
 
 # TLS10
 ./start_openssl --port 44330 --prefix /opt/openssl1.0.2 --cert rsa --cert2 ecdsa --mode www
-    python tests/tls11/tests/tls10/test_tls10_TLS_DH_ANON_WITH_AES_128_CBC_SHA.py
-    python tests/tls11/tests/tls10/test_tls10_TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA.py
-    python tests/tls11/tests/tls11/test_tls11_TLS_RSA_WITH_RC4_128_SHA.py
+    python tests/tls10/test_tls10_TLS_DH_ANON_WITH_AES_128_CBC_SHA.py
+    python tests/tls10/test_tls10_TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA.py
+    python tests/tls11/test_tls11_TLS_RSA_WITH_RC4_128_SHA.py
     python tests/tls11/test_tls11_TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA.py
     python tests/tls11/test_tls11_TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA.py
     python tests/tls11/test_tls11_TLS_RSA_WITH_CAMELLIA_128_CBC_SHA.py
@@ -144,7 +144,7 @@
     python tests/tls12/test_tls12_Legacy_Renegotiation_Server.py
 
 # TLS1.3, CCM
-/start_openssl --port 44330 --prefix /opt/openssl1.1.1 --cert rsa --cert2 ecdsa --mode www -- -cipher ALL -ciphersuites TLS_AES_128_CCM_SHA256:TLS_AES_128_CCM_8_SHA256
+./start_openssl --port 44330 --prefix /opt/openssl1.1.1 --cert rsa --cert2 ecdsa --mode www -- -cipher ALL -ciphersuites TLS_AES_128_CCM_SHA256:TLS_AES_128_CCM_8_SHA256
     python tests/tls13/test_tls13_TLS_AES_128_CCM_SHA256.py
     python tests/tls13/test_tls13_TLS_AES_128_CCM_8_SHA256.py
 
