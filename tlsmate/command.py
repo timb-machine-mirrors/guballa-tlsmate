@@ -5,6 +5,7 @@
 import argparse
 import importlib
 import pkgutil
+import os
 
 # import own stuff
 from tlsmate.tlsmate import TlsMate
@@ -12,7 +13,6 @@ from tlsmate.suitemanager import SuiteManager
 from tlsmate.tlssuites.eval_cipher_suites import ScanCipherSuites
 from tlsmate.tlssuites.scanner_info import ScanStart, ScanEnd
 from tlsmate.tlssuites.supported_groups import ScanSupportedGroups
-from tlsmate.tlssuites.testsuite import ScanScratch
 from tlsmate.tlssuites.sig_algo import ScanSigAlgs
 from tlsmate.tlssuites.compression import ScanCompression
 from tlsmate.tlssuites.encrypt_then_mac import ScanEncryptThenMac
@@ -278,9 +278,6 @@ SuiteManager.register_cli(
         ScanRenegotiation,
         ScanEnd,
     ],
-)
-SuiteManager.register_cli(
-    "--scratch", cli_help="this is just a scratch scenario", classes=[ScanScratch]
 )
 
 # and now look for additional user provided plugins

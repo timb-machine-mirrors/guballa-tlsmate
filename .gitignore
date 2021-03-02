@@ -7,6 +7,8 @@ ca/*/crl
 ca/*/csr
 ca/*/db
 
+# directory for scratch plugins
+scratch_plugin/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
