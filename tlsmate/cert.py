@@ -10,10 +10,7 @@ import pem
 
 # import own stuff
 from tlsmate import tls
-from tlsmate import utils
-from tlsmate import mappings
 from tlsmate.exception import CertValidationError, CertChainValidationError
-from tlsmate.server_profile import SPPublicKey, SPCertGeneralName
 
 # import other stuff
 from cryptography import x509
@@ -28,7 +25,7 @@ from cryptography.hazmat.primitives.asymmetric import (
     ed448,
 )
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.exceptions import InvalidSignature
 
 
