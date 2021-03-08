@@ -14,7 +14,6 @@ from tlsmate import utils
 from tlsmate.config import Configuration
 
 # import other stuff
-import yaml
 
 
 class OpensslVersion(enum.Enum):

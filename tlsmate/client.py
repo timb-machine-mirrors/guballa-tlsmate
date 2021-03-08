@@ -81,12 +81,10 @@ class Client(object):
     """
 
     def __init__(self, tlsmate):
-        # TODO: Update
         """Initialize the client object
 
         Args:
-            connection_factory: method used to create a new connction object
-            config: the configuration object
+            tlsmate (:obj:`tlsmate.tlsmate.TlsMate`): the tlsmate application object.
         """
         self._tlsmate = tlsmate
         self.config = tlsmate.config

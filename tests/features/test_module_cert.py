@@ -46,7 +46,11 @@ def test_certificate_expired(rsa_cert_chain, trust_store, rsa_crl):
 def test_dsa_certificate(dsa_cert_chain, trust_store, rsa_crl):
 
     dsa_cert_chain.validate(
-        datetime.datetime(2021, 2, 27), "localhost", trust_store, rsa_crl, raise_on_failure=True,
+        datetime.datetime(2021, 2, 27),
+        "localhost",
+        trust_store,
+        rsa_crl,
+        raise_on_failure=True,
     )
     assert True
 
@@ -54,7 +58,11 @@ def test_dsa_certificate(dsa_cert_chain, trust_store, rsa_crl):
 def test_ed25519_certificate(ed25519_cert_chain, trust_store, ecdsa_crl):
 
     ed25519_cert_chain.validate(
-        datetime.datetime(2021, 2, 27), "localhost", trust_store, ecdsa_crl, raise_on_failure=True,
+        datetime.datetime(2021, 2, 27),
+        "localhost",
+        trust_store,
+        ecdsa_crl,
+        raise_on_failure=True,
     )
     assert True
 
@@ -62,7 +70,11 @@ def test_ed25519_certificate(ed25519_cert_chain, trust_store, ecdsa_crl):
 def test_ed448_certificate(ed448_cert_chain, trust_store, ecdsa_crl):
 
     ed448_cert_chain.validate(
-        datetime.datetime(2021, 2, 27), "localhost", trust_store, ecdsa_crl, raise_on_failure=True,
+        datetime.datetime(2021, 2, 27),
+        "localhost",
+        trust_store,
+        ecdsa_crl,
+        raise_on_failure=True,
     )
     assert True
 
@@ -70,7 +82,11 @@ def test_ed448_certificate(ed448_cert_chain, trust_store, ecdsa_crl):
 def test_rsa_with_root_certificate(rsa_with_root_cert_chain, trust_store, rsa_crl):
 
     rsa_with_root_cert_chain.validate(
-        datetime.datetime(2021, 2, 27), "localhost", trust_store, rsa_crl, raise_on_failure=True,
+        datetime.datetime(2021, 2, 27),
+        "localhost",
+        trust_store,
+        rsa_crl,
+        raise_on_failure=True,
     )
     assert True
 

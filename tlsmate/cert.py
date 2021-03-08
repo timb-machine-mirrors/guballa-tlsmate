@@ -516,7 +516,6 @@ class Certificate(object):
                 self._parsed = x509.load_der_x509_certificate(self._bytes)
                 self._parse()
 
-
         elif pem is not None:
             if isinstance(pem, str):
                 pem = pem.encode()
@@ -903,7 +902,9 @@ class CertChain(object):
                     self.issues.append(issue)
                     if raise_on_failure:
                         raise CertChainValidationError(issue)
-                self._validate_linked_certs(prev_cert, cert, crl_manager, raise_on_failure)
+                self._validate_linked_certs(
+                    prev_cert, cert, crl_manager, raise_on_failure
+                )
 
             logging.debug(f'certificate "{cert}" successfully validated')
             prev_cert = cert
@@ -923,7 +924,9 @@ class CertChain(object):
                 self.root_cert = cert
                 self.validate_cert(self.root_cert, timestamp)
 
-                self._validate_linked_certs(prev_cert, cert, crl_manager, raise_on_failure)
+                self._validate_linked_certs(
+                    prev_cert, cert, crl_manager, raise_on_failure
+                )
         else:
             if not trust_store.cert_in_trust_store(prev_cert):
                 issue = f'root certificate "{root_cert}" not found in trust store'
@@ -933,10 +936,20 @@ class CertChain(object):
         self.successful_validation = len(self.issues) == 0
 
     def serialize(self):
-        # TODO: docu
+        """Serialize the certificate chain
+
+        Returns:
+            list of str: A list of certificates which build the chain. The format is a
+            a str, representing the DER-format for each certificate.
+        """
         return [cert.bytes.hex() for cert in self.certificates]
 
     def deserialize(self, chain):
+        """Deserializes a certificate chain.
+
+        Arguments:
+            chain (list of str): The list of certificates of the chain. Each certificate
+            is represented in DER-format as a string.
+        """
         for cert in chain:
             self.append_bin_cert(bytes.fromhex(cert))
-

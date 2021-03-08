@@ -21,8 +21,11 @@ TLSMATE_DIR = pathlib.Path(__file__).parent.parent.resolve()
 
 
 class TlsMate(object):
-    # TODO: docu
     """Class defining all the dependencies
+
+    Arguments:
+        config (:obj:`tlsmate.config.Configuration`): an object representing tlsmate's
+            configuration.
     """
 
     def __init__(self, config=None):

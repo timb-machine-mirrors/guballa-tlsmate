@@ -283,8 +283,21 @@ class TlsConnection(object):
         self.cipher = None
         self._initial_handshake = None
 
-        # TODO: Move it
-        self.set_client(tlsmate.client)
+        self.client = tlsmate.client
+        self._secure_reneg_cl_data = None
+        self._secure_reneg_sv_data = None
+        self._secure_reneg_request = False
+        self._secure_reneg_flag = False
+        self._secure_reneg_ext = False
+        self._secure_reneg_scsv = False
+
+        if self.client.support_secure_renegotiation:
+            self._secure_reneg_request = True
+            self._secure_reneg_ext = True
+
+        if self.client.support_scsv_renegotiation:
+            self._secure_reneg_request = True
+            self._secure_reneg_scsv = True
 
     def __enter__(self):
         self.record_layer.open_socket()
@@ -314,31 +327,6 @@ class TlsConnection(object):
 
         self.record_layer.close_socket()
         return exc_type in [FatalAlert, TlsConnectionClosedError, TlsMsgTimeoutError]
-
-    def set_client(self, client):
-        # TODO: move to __init__
-        """Provide the connection object with the associated client
-
-        Arguments:
-            client (:obj:`tlsmate.client.Client`): the client object
-        """
-        self.client = client
-        self._secure_reneg_cl_data = None
-        self._secure_reneg_sv_data = None
-        self._secure_reneg_request = False
-        self._secure_reneg_flag = False
-        self._secure_reneg_ext = False
-        self._secure_reneg_scsv = False
-
-        if client.support_secure_renegotiation:
-            self._secure_reneg_request = True
-            self._secure_reneg_ext = True
-
-        if client.support_scsv_renegotiation:
-            self._secure_reneg_request = True
-            self._secure_reneg_scsv = True
-
-        return self
 
     def get_key_share(self, group):
         """Provide the key share for a given group.
@@ -618,13 +606,6 @@ class TlsConnection(object):
 
         msg.chain = None
         if self._clientauth_key_idx is not None:
-            # TODO: cleanup
-            #msg.chain = self.client.client_chains[self._clientauth_key_idx]
-            #if self.recorder.is_recording():
-            #    self.recorder.trace_client_auth(
-            #        self._clientauth_key_idx,
-            #        self._tlsmate.client_auth.get_auth(self._clientauth_key_idx),
-            #    )
             msg.chain = self._tlsmate.client_auth.get_chain(self._clientauth_key_idx)
 
         return msg
@@ -652,8 +633,6 @@ class TlsConnection(object):
         else:
             signature = self._sign_with_client_key(
                 self._tlsmate.client_auth.get_key(self._clientauth_key_idx),
-                # TODO: cleanup
-                # self.client.client_keys[self._clientauth_key_idx],
                 self._clientauth_sig_algo,
                 data,
             )
@@ -1133,23 +1112,6 @@ class TlsConnection(object):
                 self._clientauth_key_idx = idx
                 self._clientauth_sig_algo = algo
                 break
-
-
-
-            # TODO: cleanup
-            # for idx, chain in enumerate(self.client.client_chains):
-            #     if self.version is tls.Version.TLS13:
-            #         cert_algos = chain.certificates[0].tls13_signature_algorithms
-            #     else:
-            #         cert_algos = chain.certificates[0].tls12_signature_algorithms
-
-            #     if algo in cert_algos:
-            #         self._clientauth_key_idx = idx
-            #         self._clientauth_sig_algo = algo
-            #         end_loops = True
-            #         break
-            # if end_loops:
-            #     break
 
         if idx is None:
             logging.info("No suitable certificate found for client authentication")

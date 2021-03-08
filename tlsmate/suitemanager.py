@@ -60,11 +60,9 @@ class SuiteManager(object):
             self.prio_pool[cls.prio].append(cls)
 
     def run(self, tlsmate, selected_test_suite_args):
-        # TODO: adapt description
         """Function to actually start the test manager.
 
         Arguments:
-            TODO:
             tlsmate (:obj:`tlsmate.dependency_injection.Container`): The tlsmate
                 object used to inject the depencies into the test suite objects.
             selected_test_suite_args (list of str): The list of CLI options which

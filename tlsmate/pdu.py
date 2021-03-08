@@ -242,6 +242,7 @@ def dump(data, separator=" ", with_length=True):
         ret = ret + f" ({len(data)})"
     return ret
 
+
 def dump_short(data, separator=" ", with_length=True, start=10, end=10):
     """Like dump, but shorten the hexdump if it exeeds a certain limit.
 
@@ -271,6 +272,7 @@ def dump_short(data, separator=" ", with_length=True, start=10, end=10):
             ret += f" ({length})"
 
         return ret
+
 
 def string(data):
     """Simple version of dump, separating the data with a colon, and omit the length

@@ -34,8 +34,10 @@ class Socket(object):
         self._fragment_max_size = 16384
 
     def open_socket(self, endpoint):
-        # TODO: Upodate docu
         """Opens a socket.
+
+        Arguments:
+            endpoint: The L4-endpoint, consisting of the IP-address and the port.
         """
         endp = resolver.determine_transport_endpoint(endpoint)
         if endp.host_type is tls.HostType.HOST:

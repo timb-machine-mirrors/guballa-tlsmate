@@ -132,9 +132,6 @@ class Recorder(object):
                 data = data.hex()
 
             return [timeout, event_type.value, data]
-# TODO: docu
-#        elif val_type == "client_chain":
-#            return [cert.hex() for cert in val]
 
         return val
 
@@ -151,17 +148,18 @@ class Recorder(object):
         """
         if val_type is bytes:
             return bytes.fromhex(val)
+
         elif val_type is datetime.datetime:
             return datetime.datetime.fromtimestamp(val)
+
         elif val_type == "msg_recv":
             timout, event_type, data = val
             event_type = SocketEvent(event_type)
             if data is not None:
                 data = bytes.fromhex(data)
+
             val = (timout, event_type, data)
-# TODO: docu
-#        elif val_type == "client_chain":
-#            return [bytes.fromhex(cert) for cert in val]
+
         return val
 
     def _store_value(self, name, value):
@@ -205,13 +203,30 @@ class Recorder(object):
         return self._state is RecorderState.RECORDING
 
     def get_trust_store(self):
+        """Provide the data for the trust store
+
+        Returns:
+            list: A list of certificates in the trust store. These are strings
+                representing the certificates in DER-format.
+        """
         return self.data["trust_store"]
 
     def trace_client_auth(self, cl_auth):
+        """Add a set of client authentication data to the recorder.
+
+        Arguments:
+            cl_auth (list): the key and the certificate chain to add to the recorder.
+                Both must be provided as strings.
+        """
         if self._state is RecorderState.RECORDING:
             self.data["client_key_chain"].append(cl_auth)
 
     def get_client_auth(self):
+        """Provide access to a list of client authentication sets.
+
+        Returns:
+            list: A list of (key/cert-chain) pairs.
+        """
         return self.data["client_key_chain"]
 
     def trace_socket_recv(self, timeout, event_type, data=None):
