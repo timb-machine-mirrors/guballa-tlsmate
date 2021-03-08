@@ -21,6 +21,7 @@ from tlsmate import structs
 from tlsmate import key_exchange as kex
 from tlsmate import ext
 from tlsmate.kdf import Kdf
+from tlsmate.record_layer import RecordLayer
 
 # import other stuff
 from cryptography.hazmat.primitives.asymmetric import padding, ec
@@ -224,19 +225,20 @@ class TlsConnection(object):
 
     _cert_chain_digests = []
 
-    def __init__(self, connection_msgs, entity, record_layer, recorder, kdf):
-        self.msg = connection_msgs
-        self.defragmenter = TlsDefragmenter(record_layer)
+    def __init__(self, tlsmate, endpoint):
+        self._tlsmate = tlsmate
+        self.msg = TlsConnectionMsgs()
+        self.record_layer = RecordLayer(tlsmate, endpoint)
+        self.defragmenter = TlsDefragmenter(self.record_layer)
         self.received_data = bytearray()
         self.awaited_msg = None
         self.queued_msg = None
-        self.record_layer = record_layer
         self.record_layer_version = tls.Version.TLS10
         self._msg_hash = None
         self._msg_hash_queue = None
         self._msg_hash_active = False
-        self.recorder = recorder
-        self.kdf = kdf
+        self.recorder = tlsmate.recorder
+        self.kdf = Kdf()
         self._new_session_id = None
         self._finished_treated = False
         self.ticket_sent = False
@@ -251,7 +253,7 @@ class TlsConnection(object):
         self.ext_psk = None
 
         # general
-        self.entity = entity
+        self.entity = tls.Entity.CLIENT
         self.version = None
         self.client_version_sent = None
         self.cipher_suite = None
@@ -281,6 +283,9 @@ class TlsConnection(object):
         self.cipher = None
         self._initial_handshake = None
 
+        # TODO: Move it
+        self.set_client(tlsmate.client)
+
     def __enter__(self):
         self.record_layer.open_socket()
         return self
@@ -296,17 +301,22 @@ class TlsConnection(object):
             tb.print_exception(exc_type, exc_value, traceback, file=str_io)
             logging.debug(str_io.getvalue())
             self._send_alert(tls.AlertLevel.FATAL, exc_value.description)
+
         elif exc_type is TlsConnectionClosedError:
             logging.warning("connected closed, probably by peer")
+
         elif exc_type is TlsMsgTimeoutError:
             logging.warning(f"timeout occured while waiting for {self.awaited_msg}")
             self._send_alert(tls.AlertLevel.WARNING, tls.AlertDescription.CLOSE_NOTIFY)
+
         else:
             self._send_alert(tls.AlertLevel.WARNING, tls.AlertDescription.CLOSE_NOTIFY)
+
         self.record_layer.close_socket()
         return exc_type in [FatalAlert, TlsConnectionClosedError, TlsMsgTimeoutError]
 
     def set_client(self, client):
+        # TODO: move to __init__
         """Provide the connection object with the associated client
 
         Arguments:
@@ -608,7 +618,14 @@ class TlsConnection(object):
 
         msg.chain = None
         if self._clientauth_key_idx is not None:
-            msg.chain = self.client.client_chains[self._clientauth_key_idx]
+            # TODO: cleanup
+            #msg.chain = self.client.client_chains[self._clientauth_key_idx]
+            #if self.recorder.is_recording():
+            #    self.recorder.trace_client_auth(
+            #        self._clientauth_key_idx,
+            #        self._tlsmate.client_auth.get_auth(self._clientauth_key_idx),
+            #    )
+            msg.chain = self._tlsmate.client_auth.get_chain(self._clientauth_key_idx)
 
         return msg
 
@@ -634,7 +651,9 @@ class TlsConnection(object):
             signature = self.recorder.inject(signature=None)
         else:
             signature = self._sign_with_client_key(
-                self.client.client_keys[self._clientauth_key_idx],
+                self._tlsmate.client_auth.get_key(self._clientauth_key_idx),
+                # TODO: cleanup
+                # self.client.client_keys[self._clientauth_key_idx],
                 self._clientauth_sig_algo,
                 data,
             )
@@ -1090,7 +1109,8 @@ class TlsConnection(object):
             msg.chain.validate(
                 timestamp,
                 sni,
-                self.client.trust_store,
+                self._tlsmate.trust_store,
+                self._tlsmate.crl_manager,
                 self.client.alert_on_invalid_cert,
             )
 
@@ -1106,23 +1126,32 @@ class TlsConnection(object):
         else:
             algos = msg.supported_signature_algorithms
 
-        end_loops = False
+        idx = None
         for algo in algos:
-            for idx, chain in enumerate(self.client.client_chains):
-                if self.version is tls.Version.TLS13:
-                    cert_algos = chain.certificates[0].tls13_signature_algorithms
-                else:
-                    cert_algos = chain.certificates[0].tls12_signature_algorithms
-
-                if algo in cert_algos:
-                    self._clientauth_key_idx = idx
-                    self._clientauth_sig_algo = algo
-                    end_loops = True
-                    break
-            if end_loops:
+            idx = self._tlsmate.client_auth.find_algo(algo, self.version)
+            if idx is not None:
+                self._clientauth_key_idx = idx
+                self._clientauth_sig_algo = algo
                 break
 
-        if self._clientauth_key_idx is None:
+
+
+            # TODO: cleanup
+            # for idx, chain in enumerate(self.client.client_chains):
+            #     if self.version is tls.Version.TLS13:
+            #         cert_algos = chain.certificates[0].tls13_signature_algorithms
+            #     else:
+            #         cert_algos = chain.certificates[0].tls12_signature_algorithms
+
+            #     if algo in cert_algos:
+            #         self._clientauth_key_idx = idx
+            #         self._clientauth_sig_algo = algo
+            #         end_loops = True
+            #         break
+            # if end_loops:
+            #     break
+
+        if idx is None:
             logging.info("No suitable certificate found for client authentication")
 
     def _on_certificate_verify_received(self, msg):

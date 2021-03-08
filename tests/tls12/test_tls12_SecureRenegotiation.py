@@ -27,8 +27,8 @@ class TestCase(CipherSuiteTester):
     # adapt it to your needs.
     # version = tls.Version.TLS12
 
-    def run(self, container, is_replaying=False):
-        client = container.client()
+    def run(self, tlsmate, is_replaying=False):
+        client = tlsmate.client
 
         client.set_profile(tls.Profile.LEGACY)
         client.support_secure_renegotiation = True

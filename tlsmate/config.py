@@ -3,6 +3,7 @@
 """
 # import basic stuff
 import os
+import logging
 from pathlib import Path
 
 # import own stuff
@@ -21,6 +22,12 @@ def _str_to_strlist(string):
 
 def _str_to_int(string):
     return int(string)
+
+
+def _absolute_path(path, base_path):
+    if not path.startswith("/"):
+        path = str(base_path / path)
+    return path
 
 
 class Configuration(object):
@@ -70,7 +77,7 @@ class Configuration(object):
         "pytest_port": _str_to_int,
     }
 
-    def __init__(self, ini_file=None):
+    def __init__(self, ini_file=None, init_from_external=True):
         self.config = {
             "endpoint": "localhost",
             "logging": "error",
@@ -84,35 +91,64 @@ class Configuration(object):
             "tls11": False,
             "tls12": False,
             "tls13": False,
+            "profile_file": None,
+            "pytest_recorder_file": None,
+            "pytest_recorder_replaying": None,
             "pytest_port": None,
             "pytest_openssl_1_0_2": None,
             "pytest_openssl_1_1_1": None,
             "pytest_openssl_3_0_0": None,
         }
-        parser = configparser.ConfigParser(os.environ)
+        parser = configparser.ConfigParser()
         if ini_file is not None:
+            logging.debug(f"using config file {ini_file}")
             abs_path = Path(ini_file)
             if not abs_path.is_absolute():
                 abs_path = Path.cwd() / abs_path
+
             if not abs_path.is_file():
                 raise FileNotFoundError(abs_path)
-        else:
+
+        elif init_from_external:
             abs_path = Path.home() / ".tlsmate.ini"
 
-        parser.read(str(abs_path))
-        if parser.has_section("tlsmate"):
-            config = parser["tlsmate"]
         else:
-            config = {}
+            abs_path = None
+
+        config = {}
+        if abs_path:
+            parser.read(str(abs_path))
+            if parser.has_section("tlsmate"):
+                config = parser["tlsmate"]
+
         for option in self.config.keys():
-            val = os.environ.get("TLSMATE_" + option.upper())
+            val = None
+            if init_from_external:
+                val = os.environ.get("TLSMATE_" + option.upper())
+
             if val is None:
                 val = config.get(option)
+
             if val is not None:
                 func = self._format_option.get(option)
                 if func is not None:
                     val = func(val)
+
                 self.config[option] = val
+
+        if abs_path:
+            abs_dir = abs_path.parent
+            for conf_item in ["ca_certs", "client_key", "client_chain"]:
+                item = self.config.get(conf_item)
+                if item is not None:
+                    item = self.config[conf_item]
+                    if isinstance(item, list):
+                        item = [_absolute_path(x, abs_dir) for x in item]
+
+                    else:
+                        item = _absolute_path(item, abs_dir)
+
+                    self.config[conf_item] = item
 
     def __getitem__(self, key):
         return self.config.get(key)

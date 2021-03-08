@@ -11,6 +11,35 @@ from tlsmate import mappings
 from tlsmate import structs
 
 # import other stuff
+import yaml
+
+
+def serialize_yaml(obj, file_name):
+    """Dump the object to a yaml file.
+
+    Arguments:
+        obj (dict): the object to serialize
+        file_ name (:obj:`pathlib.Path`): the file name to write the serialized
+            object to.
+    """
+    if file_name.exists():
+        print(f"File {file_name} existing. Yaml file not generated")
+        return
+    with open(file_name, "w") as fd:
+        yaml.dump(obj, fd)
+
+
+def deserialize_yaml(file_name):
+    """Deserialize a yaml file.
+
+    Arguments:
+        file_name (:obj:`pathlib.Path`): the full file name
+
+    Returns:
+        object: the deserialized object
+    """
+    with open(file_name) as fd:
+        return yaml.safe_load(fd)
 
 
 def get_cipher_suite_details(cipher_suite):

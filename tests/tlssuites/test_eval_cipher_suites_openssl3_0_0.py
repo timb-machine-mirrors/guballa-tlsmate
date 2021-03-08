@@ -115,9 +115,9 @@ class TestCase(TlsSuiteTester):
         self.check_cert_chain(profile["cert_chains"])
         self.check_versions(profile["versions"])
 
-    def run(self, container, is_replaying):
-        server_profile = container.server_profile()
-        client = container.client()
+    def run(self, tlsmate, is_replaying):
+        server_profile = tlsmate.server_profile
+        client = tlsmate.client
         client.reset_profile()
         test_suite = ScanCipherSuites()
         test_suite._inject_dependencies(server_profile, client)

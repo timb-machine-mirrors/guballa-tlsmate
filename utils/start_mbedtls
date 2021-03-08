@@ -1,0 +1,61 @@
+#!/bin/bash
+
+usage() {
+    cat <<EOF
+Usage: start_gnutls <options>
+
+Starts a gnutls server.
+
+List of options:
+    -h, --help          Print this help
+    -p, --port <int>    The listening port for the mbedtls server
+    -c, --cert <str>    The type of the certificate to use. Valid values:
+                            rsa, ecdsa, dsa, x25519, x448
+                        The keys  and certificate must be located under
+                        the directory specified by the --certdir parameter.
+    -d, --cert2 <str>   An optional alternative to --cert allowing to offer
+                        different certificates by the mbedtls server.
+                        The same rules than for --cert apply.
+    --                  Indicates the end of the options for this script.
+                        All following options will be passed transparently
+                        to the mbedtls command.
+EOF
+    exit 1
+}
+
+mbedtls=/usr/local/bin/mbedtls_ssl_server2
+
+
+auth1=rsa
+port=44330
+server_dir=~/project/private-ca/server
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -h|--help) usage ;;
+        -p|--port) port="$2"; shift ;;
+        -c|--cert) auth1="$2"; shift ;;
+        -d|--cert2) auth2="$2"; shift ;;
+        --) shift; break ;;
+        *) echo "Unknown option $1"; usage; exit 1 ;;
+    esac
+    shift
+done
+
+key1=$server_dir/private/server-$auth1.key
+key2=$server_dir/private/server-$auth2.key
+cert1=$server_dir/certs/server-$auth1.crt
+cert2=$server_dir/certs/server-$auth2.crt
+#chain1=$server_dir/chains/server-$auth1.pem
+#chain2=$server_dir/chains/server-$auth2.pem
+cafile=$server_dir/../cafile.pem
+
+cert_params=" crt_file=$cert1 key_file=$key1"
+if [ -n "$auth2" ]; then
+    cert_params=$cert_params" crt_file2=$cert2 key_file2=$key2"
+fi
+
+kill `lsof -t -i :$port`
+
+cmd="$mbedtls $cert_params ca_file=$cafile server_port=$port $@"
+echo $cmd
+$cmd

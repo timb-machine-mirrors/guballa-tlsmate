@@ -1047,3 +1047,12 @@ class Profile(ExtendedEnum):
     INTEROPERABILITY = enum.auto()
     MODERN = enum.auto()
     TLS13 = enum.auto()
+
+
+class HostType(ExtendedEnum):
+    """Type of an IP-endpoint
+    """
+
+    HOST = enum.auto()
+    IPV4 = enum.auto()
+    IPV6 = enum.auto()

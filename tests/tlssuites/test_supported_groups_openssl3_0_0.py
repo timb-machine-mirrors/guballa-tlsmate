@@ -61,9 +61,9 @@ class TestCase(TlsSuiteTester):
         self.check_tls12(profile["versions"][0]["supported_groups"])
         self.check_tls13(profile["versions"][1]["supported_groups"])
 
-    def run(self, container, is_replaying):
-        server_profile = container.server_profile()
-        client = container.client()
+    def run(self, tlsmate, is_replaying):
+        server_profile = tlsmate.server_profile
+        client = tlsmate.client
         client.reset_profile()
         test_suite = ScanSupportedGroups()
         test_suite._inject_dependencies(server_profile, client)

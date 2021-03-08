@@ -27,10 +27,10 @@ class TestCase(CipherSuiteTester):
     # adapt it to your needs.
     # version = tls.Version.TLS12
 
-    def run(self, container, is_replaying=False):
+    def run(self, tlsmate, is_replaying=False):
         """The basic scenario to be recorded or replayed.
         """
-        client = container.client()
+        client = tlsmate.client
         client.reset_profile()
 
         client.versions = [self.version]

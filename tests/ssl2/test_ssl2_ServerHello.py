@@ -26,9 +26,9 @@ class TestCase(CipherSuiteTester):
     # adapt it to your needs.
     # version = tls.Version.TLS10
 
-    def run(self, container, is_replaying=False):
+    def run(self, tlsmate, is_replaying=False):
 
-        client = container.client()
+        client = tlsmate.client
         end_of_tc_reached = False
         with client.create_connection() as conn:
             ssl_client_hello = msg.SSL2ClientHello()

@@ -5,8 +5,10 @@
 import abc
 import math
 import struct
+import logging
 
 # import own stuff
+from tlsmate import pdu
 
 # import other stuff
 from cryptography.hazmat.primitives import hashes, hmac
@@ -264,6 +266,8 @@ class Kdf(object):
         """
         if not self._msg_digest_active:
             return
+
+        logging.debug(f"add to msg_digest: {pdu.dump_short(msg, start=20)}")
         self._all_msgs.extend(msg)
         if self._backend is None:
             if self._msg_digest_queue is None:

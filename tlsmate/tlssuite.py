@@ -11,6 +11,7 @@ import enum
 # import own stuff
 from tlsmate.tlsmate import TlsMate, TLSMATE_DIR
 from tlsmate import utils
+from tlsmate.config import Configuration
 
 # import other stuff
 import yaml
@@ -20,12 +21,6 @@ class OpensslVersion(enum.Enum):
     v1_0_2 = enum.auto()
     v1_1_1 = enum.auto()
     v3_0_0 = enum.auto()
-
-
-def _absolute_path(path):
-    if not path.startswith("/"):
-        path = str(TLSMATE_DIR / "tests" / path)
-    return path
 
 
 class TlsSuite(metaclass=abc.ABCMeta):
@@ -119,34 +114,10 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         Returns:
             :class:`pathlib.Path`: a Path object for the yaml file
         """
+        if name is None:
+            return None
+
         return self.path.resolve().parent / "recordings" / (name + ".yaml")
-
-    def serialize(self, obj, name):
-        """Dump the object to a yaml file.
-
-        Arguments:
-            obj (dict): the object to serialize
-            name (str): the file name (without directory and suffix) to write the
-                serialized object to
-        """
-        file_name = self.get_yaml_file(name)
-        if file_name.exists():
-            print(f"File {file_name} existing. Yaml file not generated")
-            return
-        with open(file_name, "w") as fd:
-            yaml.dump(obj, fd)
-
-    def deserialize(self, name):
-        """Deserialize a yaml file.
-
-        Arguments:
-            name (str): the full file name
-
-        Returns:
-            object: the deserialized object
-        """
-        with open(self.get_yaml_file(name)) as fd:
-            return yaml.safe_load(fd)
 
     def entry(self, is_replaying=False):
         """Entry point for a test case.
@@ -155,62 +126,48 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             is_replaying (bool): an indication if the test case is replayed or recorded.
                 Defaults to False.
         """
-        tlsmate = TlsMate()
-        self.recorder = tlsmate.recorder()
-        profile = tlsmate.server_profile()
-
-        if is_replaying and self.recorder_yaml is not None:
-            self.recorder.deserialize(self.get_yaml_file(self.recorder_yaml))
-            self.recorder.replay()
-
-        if self.sp_in_yaml is not None:
-            data = self.deserialize(self.sp_in_yaml)
-            profile.load(data)
-
-        ini_file = TLSMATE_DIR / "tests/tlsmate.ini"
-        if not ini_file.is_file():
+        if is_replaying:
             ini_file = None
 
-        self.config = tlsmate.config(ini_file=ini_file)
-        if self.config["ca_certs"] is not None:
-            self.config.set_config(
-                "ca_certs", [_absolute_path(path) for path in self.config["ca_certs"]],
-            )
+        else:
+            ini_file = TLSMATE_DIR / "tests/tlsmate.ini"
+            if not ini_file.is_file():
+                ini_file = None
 
-        if self.config["client_key"] is not None:
-            self.config.set_config(
-                "client_key",
-                [_absolute_path(path) for path in self.config["client_key"]],
-            )
-
-        if self.config["client_chain"] is not None:
-            self.config.set_config(
-                "client_chain",
-                [_absolute_path(path) for path in self.config["client_chain"]],
-            )
-
+        self.config = Configuration(
+            ini_file=ini_file, init_from_external=not is_replaying
+        )
         self.port = self.config["pytest_port"]
         if self.port is None:
             self.port = 44330
 
         self.config.set_config("endpoint", self.server + ":" + str(self.port))
         self.config.set_config("progress", False)
+        self.config.set_config("profile_file", self.get_yaml_file(self.sp_in_yaml))
+        self.config.set_config(
+            "pytest_recorder_file", self.get_yaml_file(self.recorder_yaml)
+        )
+        self.config.set_config("pytest_recorder_replaying", is_replaying)
         utils.set_logging(self.config["logging"])
+
+        self.tlsmate = TlsMate(self.config)
+        self.recorder = self.tlsmate.recorder
 
         if not is_replaying:
             if self.server_cmd is not None:
                 self._start_server()
 
-            self.recorder.record()
-
-        self.run(tlsmate, is_replaying)
+        self.run(self.tlsmate, is_replaying)
 
         if not is_replaying:
             if self.recorder_yaml is not None:
-                self.recorder.serialize(self.get_yaml_file(self.recorder_yaml))
+                self.tlsmate.recorder.serialize(self.get_yaml_file(self.recorder_yaml))
 
             if self.sp_out_yaml is not None:
-                self.serialize(profile.make_serializable(), self.sp_out_yaml)
+                utils.serialize_yaml(
+                    self.tlsmate.server_profile.make_serializable(),
+                    self.get_yaml_file(self.sp_out_yaml),
+                )
 
     def test_entry(self):
         """Entry point for pytest.

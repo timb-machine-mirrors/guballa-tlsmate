@@ -242,6 +242,43 @@ def dump(data, separator=" ", with_length=True):
         ret = ret + f" ({len(data)})"
     return ret
 
+def dump_short(data, separator=" ", with_length=True, start=10, end=10):
+    """Like dump, but shorten the hexdump if it exeeds a certain limit.
+
+        If the data is longer than start + end, then only a part of the data will
+        be returned, and the middle of the data is collapsed to " ... ".
+
+        data (bytes): The data to represent
+        separator (str): the separator character(s) between the bytes. Defaults to " ".
+        with_length (bool): indication, if the length shall be appended in brackets.
+        start (int): the first number of bytes to display
+        end (int): the last number of bytes to display.
+
+    Returns:
+        str: A human readable string, with a blank between each byte, and the
+        length of the string appended in brackets.
+    """
+    length = len(data)
+    if length <= start + end:
+        return dump(data, separator, with_length)
+
+    else:
+        ret = (
+            f"{dump(data[:start], separator=separator, with_length=False)} ... "
+            f"{dump(data[-end:], separator=separator, with_length=False)}"
+        )
+        if with_length:
+            ret += f" ({length})"
+
+        return ret
 
 def string(data):
+    """Simple version of dump, separating the data with a colon, and omit the length
+
+    Arguments:
+        data (bytes): The data to represent
+
+    Returns:
+        str: A human readable string, with a colon between each byte.
+    """
     return dump(data, separator=":", with_length=False)

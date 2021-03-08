@@ -7,9 +7,11 @@ import time
 import datetime
 
 # import own stuff
+from tlsmate import tls
 from tlsmate.tlssuite import TlsSuite
 from tlsmate.version import __version__
 from tlsmate.server_profile import SPServer
+from tlsmate import resolver
 
 # import other stuff
 import yaml
@@ -26,23 +28,25 @@ class ScanStart(TlsSuite):
         scan_info.version = __version__
         scan_info.start_timestamp = start_time
         scan_info.start_date = datetime.datetime.fromtimestamp(int(start_time))
-        srv = self.client.server_endpoint
-        srv.resolve_ip()
-        data = {"ip": srv.ip, "port": srv.port}
+        endp = resolver.determine_transport_endpoint(self.client.config["endpoint"])
+        data = {"port": endp.port}
+        if endp.host_type is tls.HostType.HOST:
+            data["name"] = endp.host
+            ips = resolver.resolve_hostname(endp.host)
+            if ips.ipv4_addresses:
+                data["ipv4_addresses"] = ips.ipv4_addresses
+
+            if ips.ipv6_addresses:
+                data["ipv6_addresses"] = ips.ipv6_addresses
+
+            endp = resolver.get_ip_endpoint(endp)
+
+        data["ip"] = endp.host
         try:
             data["sni"] = self.client.get_sni()
 
         except ValueError:
             pass
-
-        if srv.host_name is not None:
-            data["name"] = srv.host_name
-
-        if srv.ipv4_addresses is not None:
-            data["ipv4_addresses"] = srv.ipv4_addresses
-
-        if srv.ipv6_addresses is not None:
-            data["ipv6_addresses"] = srv.ipv6_addresses
 
         self.server_profile.server = SPServer(data=data)
 

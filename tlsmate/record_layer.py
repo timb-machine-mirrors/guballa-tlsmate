@@ -9,6 +9,7 @@ from tlsmate import tls
 from tlsmate import structs
 from tlsmate import pdu
 from tlsmate.record_layer_state import RecordLayerState
+from tlsmate.socket import Socket
 
 # import other stuff
 
@@ -17,15 +18,17 @@ class RecordLayer(object):
     """Class implementing the record layer.
     """
 
-    def __init__(self, socket, recorder):
+    def __init__(self, tlsmate, endpoint):
+        self.endpoint = endpoint
+        self._tlsmate = tlsmate
         self._send_buffer = bytearray()
         self._receive_buffer = bytearray()
         self._fragment_max_size = 4 * 4096
         self._write_state = None
         self._read_state = None
-        self._socket = socket
+        self._socket = Socket(tlsmate)
         self._flush_each_fragment = False
-        self._recorder = recorder
+        self._recorder = tlsmate.recorder
         self._ssl2 = False
 
     def _send_fragment(self, rl_msg):
@@ -100,7 +103,7 @@ class RecordLayer(object):
     def open_socket(self):
         """Opens the socket
         """
-        self._socket.open_socket()
+        self._socket.open_socket(self.endpoint)
 
     def close_socket(self):
         """Closes the socket. Obviously.
