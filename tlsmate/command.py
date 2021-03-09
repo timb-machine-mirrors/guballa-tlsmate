@@ -7,6 +7,7 @@ import importlib
 import pkgutil
 
 # import own stuff
+from tlsmate.config import Configuration
 from tlsmate.tlsmate import TlsMate
 from tlsmate.suitemanager import SuiteManager
 from tlsmate.tlssuites.eval_cipher_suites import ScanCipherSuites
@@ -221,15 +222,22 @@ def main():
     """The entry point for the command line interface
     """
 
-    tlsmate = TlsMate()
-
-    test_manager = tlsmate.test_manager()
     parser = build_parser()
 
     args = parser.parse_args()
     _args_consistency(args, parser)
 
-    config = tlsmate.config(ini_file=args.config_file)
+    plugin_cli_options = sorted(SuiteManager.test_suites.keys())
+    selected_plugins = []
+    for arg in plugin_cli_options:
+        if getattr(args, arg[2:]):
+            selected_plugins.append(arg)
+
+    if not selected_plugins:
+        options = " ".join(plugin_cli_options)
+        parser.error("specify at least one of the following options: " + options)
+
+    config = Configuration(ini_file=args.config_file)
 
     config.set_config("progress", args.progress)
     config.set_config("ca_certs", args.ca_certs)
@@ -248,16 +256,9 @@ def main():
 
     utils.set_logging(config["logging"])
 
-    plugin_cli_options = sorted(SuiteManager.test_suites.keys())
-    selected_plugins = []
-    for arg in plugin_cli_options:
-        if getattr(args, arg[2:]):
-            selected_plugins.append(arg)
+    tlsmate = TlsMate(config=config)
 
-    if not selected_plugins:
-        options = " ".join(plugin_cli_options)
-        parser.error("specify at least one of the following options: " + options)
-
+    test_manager = tlsmate.suite_manager
     test_manager.run(tlsmate, selected_plugins)
 
 

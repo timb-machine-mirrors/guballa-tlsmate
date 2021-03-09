@@ -49,7 +49,7 @@ class Recorder(object):
     are used. This way an EXACTLY clone of the connection(s) is/are executed. The
     replayed test case uses the same keying material as well, it is a "byte-to-byte""
     copy. Of course, all data sent over external interfaces are checked, and any
-    diviation with the previously recorded data will let the test case fail.
+    deviation with the previously recorded data will let the test case fail.
     Note, that even after some cryptographic operations the recorder is hooked in, this
     allows easier debugging in case a replayed test deviates from the recorded twin.
     """
@@ -94,7 +94,7 @@ class Recorder(object):
         "signature": bytes,
         "trust_store": str,
         "client_auth": bool,
-        "client_chain": "client_chain",
+        "client_key_chain": "client_key_chain",
     }
 
     def __init__(self):
@@ -133,9 +133,6 @@ class Recorder(object):
 
             return [timeout, event_type.value, data]
 
-        elif val_type == "client_chain":
-            return [cert.hex() for cert in val]
-
         return val
 
     @staticmethod
@@ -151,16 +148,18 @@ class Recorder(object):
         """
         if val_type is bytes:
             return bytes.fromhex(val)
+
         elif val_type is datetime.datetime:
             return datetime.datetime.fromtimestamp(val)
+
         elif val_type == "msg_recv":
             timout, event_type, data = val
             event_type = SocketEvent(event_type)
             if data is not None:
                 data = bytes.fromhex(data)
+
             val = (timout, event_type, data)
-        elif val_type == "client_chain":
-            return [bytes.fromhex(cert) for cert in val]
+
         return val
 
     def _store_value(self, name, value):
@@ -193,7 +192,7 @@ class Recorder(object):
         Returns:
             bool: True if the recorder is replaying
         """
-        return self._state == RecorderState.REPLAYING
+        return self._state is RecorderState.REPLAYING
 
     def is_recording(self):
         """Check if the recorder is currently recording.
@@ -201,10 +200,34 @@ class Recorder(object):
         Returns:
             bool: True, if the recorder is recording
         """
-        return self._state == RecorderState.RECORDING
+        return self._state is RecorderState.RECORDING
 
     def get_trust_store(self):
+        """Provide the data for the trust store
+
+        Returns:
+            list: A list of certificates in the trust store. These are strings
+                representing the certificates in DER-format.
+        """
         return self.data["trust_store"]
+
+    def trace_client_auth(self, cl_auth):
+        """Add a set of client authentication data to the recorder.
+
+        Arguments:
+            cl_auth (list): the key and the certificate chain to add to the recorder.
+                Both must be provided as strings.
+        """
+        if self._state is RecorderState.RECORDING:
+            self.data["client_key_chain"].append(cl_auth)
+
+    def get_client_auth(self):
+        """Provide access to a list of client authentication sets.
+
+        Returns:
+            list: A list of (key/cert-chain) pairs.
+        """
+        return self.data["client_key_chain"]
 
     def trace_socket_recv(self, timeout, event_type, data=None):
         """Trace a message received from a socket (if state is recording).
@@ -214,7 +237,7 @@ class Recorder(object):
             event_type (:obj:`SocketEvent`): the event that occured
             data (bytes): the message in raw format (if event_type is data)
         """
-        if self._state == RecorderState.RECORDING:
+        if self._state is RecorderState.RECORDING:
             if self._add_delay is not None:
                 timeout += self._add_delay
                 self._add_delay = None
@@ -227,7 +250,7 @@ class Recorder(object):
         Returns:
             bytes: the message previously recorded
         """
-        if self._state == RecorderState.REPLAYING:
+        if self._state is RecorderState.REPLAYING:
             timeout, event_type, data = self._unstore_value("msg_recv")
             time.sleep(timeout)
             if event_type is SocketEvent.CLOSURE:
@@ -258,7 +281,7 @@ class Recorder(object):
         Returns:
             bool: True, if the message is sent externally.
         """
-        if self._state == RecorderState.RECORDING:
+        if self._state is RecorderState.RECORDING:
             self._store_value("msg_sendall", msg)
         return self._state != RecorderState.REPLAYING
 
@@ -268,11 +291,11 @@ class Recorder(object):
         Arguments:
             **kwargs: the name and value to trace
         """
-        if self._state == RecorderState.INACTIVE:
+        if self._state is RecorderState.INACTIVE:
             return
         name, val = kwargs.popitem()
         if name in self._attr:
-            if self._state == RecorderState.REPLAYING:
+            if self._state is RecorderState.REPLAYING:
                 assert val == self._unstore_value(name)
             else:
                 self._store_value(name, val)
@@ -291,10 +314,10 @@ class Recorder(object):
                 data previously recorded.
         """
         name, val = kwargs.popitem()
-        if self._state == RecorderState.INACTIVE:
+        if self._state is RecorderState.INACTIVE:
             return val
         if name in self._attr:
-            if self._state == RecorderState.REPLAYING:
+            if self._state is RecorderState.REPLAYING:
                 val = self._unstore_value(name)
             else:
                 self._store_value(name, val)

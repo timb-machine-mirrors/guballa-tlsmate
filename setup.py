@@ -157,7 +157,6 @@ setup(
     install_requires=[
         'wheel',
         'cryptography>=3.3',
-        'dependency_injector',
         'pyyaml',
         'pathlib',
         'pem',

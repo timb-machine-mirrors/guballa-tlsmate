@@ -15,7 +15,6 @@ class TestCase(CipherSuiteTester):
     """
 
     path = pathlib.Path(__file__)
-    name = "ServerHello"
     cipher_suite = tls.CipherSuite.TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA
     server_cmd = (
         "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
@@ -27,9 +26,9 @@ class TestCase(CipherSuiteTester):
     # adapt it to your needs.
     version = tls.Version.SSL30
 
-    def run(self, container, is_replaying=False):
+    def run(self, tlsmate, is_replaying=False):
 
-        client = container.client()
+        client = tlsmate.client
         client.versions = [tls.Version.SSL30]
         client.cipher_suites = [tls.CipherSuite.TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA]
 

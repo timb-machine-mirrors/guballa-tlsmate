@@ -1,0 +1,51 @@
+#!/bin/bash
+
+usage() {
+    cat <<EOF
+Usage: start_servers <options>
+
+Starts a set of TLS servers.
+
+The following servers are started:
+
+Port 44330: openssl1.0.2, supporting rsa & ecdsa certificates
+Port 44331: openssl1.1.1f, supporting rsa & ecdsa certificates
+Port 44332: openssl3.0.0, supporting rsa & ecdsa certificates
+Port 44333: libressl, supporting rsa, ecdsa and dsa certificates
+Port 44334: tlslite-ng, supporting rsa, ecdsa and dsa certificates
+Port 44335: gnu-tls, supporting rsa, ecdsa, dsa, ed25519 and ed448 certificates
+Port 44336: mbedtls, supporting rsa and ecdsa certificates
+EOF
+    exit 1
+}
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -h|--help) usage ;;
+    esac
+    shift
+done
+
+
+# Start openssl1.0.2 on port 44330
+./start_openssl --port 44330 --prefix /opt/openssl1.0.2 --cert rsa --cert2 ecdsa --mode www &
+
+# Start openssl1.1.1f on port 44331
+./start_openssl --port 44331 --cert rsa --cert2 ecdsa --mode www &
+
+# Start openssl3.0.0 on port 44332
+./start_openssl --port 44332 --prefix /opt/openssl3.0.0 --cert rsa --cert2 ecdsa --mode www &
+
+## Start libressl on port 44333
+#./start_libressl --port 44333 --prefix /opt/libressl --cert rsa --cert2 dsa --cert3 ecdsa &
+#
+#
+#
+#cipherlist=chacha20-poly1305,aes256gcm,aes128gcm,aes256ccm,aes128ccm,aes256,aes128,3des,aes128ccm_8,aes256ccm_8,rc4
+## Start tlslite-ng on port 44334
+#./start_tlslite --port 44334 --cert rsa --cert2 ecdsa --cert3 dsa -- --cipherlist $cipherlist &
+#
+## Start gnu-tls on port 44335
+#./start_gnutls --port 44335 --cert rsa --cert2 ecdsa --cert3 dsa -- --disable-client-cert &
+#
+## Start mbedtls on port 44336
+#./start_mbedtls --port 44336 --cert rsa --cert2 ecdsa &

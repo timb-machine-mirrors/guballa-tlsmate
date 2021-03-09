@@ -10,8 +10,10 @@ import sys
 
 # import own stuff
 from tlsmate import utils
+from tlsmate import tls
 from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
 from tlsmate import recorder
+from tlsmate import resolver
 
 # import other stuff
 
@@ -25,22 +27,32 @@ class Socket(object):
         recorder (:obj:`tlsmate.recorder.Recorder`): The recorder object
     """
 
-    def __init__(self, config, recorder, server_endpoint):
+    def __init__(self, tlsmate):
         self._socket = None
-        self._config = config
-        self._recorder = recorder
-        self._server_endpoint = server_endpoint
+        self._config = tlsmate.config
+        self._recorder = tlsmate.recorder
         self._fragment_max_size = 16384
 
-    def open_socket(self):
+    def open_socket(self, endpoint):
         """Opens a socket.
+
+        Arguments:
+            endpoint: The L4-endpoint, consisting of the IP-address and the port.
         """
-        self._server_endpoint.resolve_ip()
+        endp = resolver.determine_transport_endpoint(endpoint)
+        if endp.host_type is tls.HostType.HOST:
+            endp = resolver.get_ip_endpoint(endp)
+
+        if endp.host_type is tls.HostType.IPV4:
+            family = socket.AF_INET
+        else:
+            family = socket.AF_INET6
+
         if self._recorder.is_injecting():
             return
 
-        self._socket = socket.socket(self._server_endpoint.family, socket.SOCK_STREAM)
-        self._socket.connect((self._server_endpoint.ip, self._server_endpoint.port))
+        self._socket = socket.socket(family, socket.SOCK_STREAM)
+        self._socket.connect((endp.host, endp.port))
         laddr, lport = self._socket.getsockname()
         raddr, rport = self._socket.getpeername()
         if self._config["progress"]:

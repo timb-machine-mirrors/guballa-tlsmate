@@ -5,12 +5,11 @@
 # import own stuff
 from tlsmate import tls
 from tlsmate import ext
+from tlsmate import resolver
 from tlsmate.msg import ClientHello
-from tlsmate.cert import CertChain
+from tlsmate.connection import TlsConnection
 
 # import other stuff
-import pem
-from cryptography.hazmat.primitives import serialization
 
 
 class Client(object):
@@ -81,65 +80,15 @@ class Client(object):
             the scan would be aborted otherwise.
     """
 
-    def __init__(
-        self, connection_factory, config, server_endpoint, trust_store, recorder
-    ):
+    def __init__(self, tlsmate):
         """Initialize the client object
 
         Args:
-            connection_factory: method used to create a new connction object
-            config: the configuration object
+            tlsmate (:obj:`tlsmate.tlsmate.TlsMate`): the tlsmate application object.
         """
-        self._recorder = recorder
-        self.connection_factory = connection_factory
-        self.config = config
+        self._tlsmate = tlsmate
+        self.config = tlsmate.config
         self.set_profile_modern()
-        ca_files = config["ca_certs"]
-        trust_store.set_ca_files(ca_files)
-        self.trust_store = trust_store
-        self.client_keys = []
-        self.client_chains = []
-        self._set_client_auth_config(config)
-        self.server_endpoint = server_endpoint
-        server_endpoint.configure(config["endpoint"])
-
-    def _set_client_auth_config(self, config):
-        if self._recorder.is_injecting():
-            while True:
-                rec_chain = self._recorder.inject(client_chain=None)
-                if not rec_chain:
-                    break
-
-                client_chain = CertChain()
-                for cert in rec_chain:
-                    client_chain.append_pem_cert(cert)
-
-                self.client_chains.append(client_chain)
-
-        else:
-            if config["client_key"] is not None:
-                for key_file in config["client_key"]:
-                    with open(key_file, "rb") as fd:
-                        self.client_keys.append(
-                            serialization.load_pem_private_key(fd.read(), password=None)
-                        )
-
-            if config["client_chain"] is not None:
-                for chain_file in config["client_chain"]:
-                    client_chain = CertChain()
-                    pem_list = pem.parse_file(chain_file)
-                    for pem_item in pem_list:
-                        client_chain.append_pem_cert(pem_item.as_bytes())
-
-                    self.client_chains.append(client_chain)
-
-            if self._recorder.is_recording():
-                for chain in self.client_chains:
-                    rec_chain = []
-                    for cert in chain.certificates:
-                        rec_chain.append(cert.pem)
-
-                    self._recorder.trace(client_chain=rec_chain)
 
     def reset_profile(self):
         """Resets the client profile to a very basic state
@@ -424,8 +373,7 @@ class Client(object):
         if server is None:
             server = self.config["endpoint"]
 
-        self.server_endpoint.configure(server)
-        return self.connection_factory().set_client(self)
+        return TlsConnection(self._tlsmate, server)
 
     def save_session_state_id(self, session_state):
         """Save a session state
@@ -485,8 +433,10 @@ class Client(object):
         elif self.config["sni"] is not None:
             return self.config["sni"]
 
-        elif self.server_endpoint.host_name is not None:
-            return self.server_endpoint.host_name
+        else:
+            endp = resolver.determine_transport_endpoint(self.config["endpoint"])
+            if endp.host_type is tls.HostType.HOST:
+                return endp.host
 
         raise ValueError("No SNI defined")
 
@@ -559,7 +509,9 @@ class Client(object):
                 msg.extensions.append(ext.ExtSessionTicket(**kwargs))
 
             if tls.Version.TLS13 in self.versions:
-                if self._recorder.inject(client_auth=(bool(self.client_keys))):
+                if self._tlsmate.recorder.inject(
+                    client_auth=self._tlsmate.client_auth.supported()
+                ):
                     msg.extensions.append(ext.ExtPostHandshakeAuth())
 
                 self._key_share_objects = []

@@ -183,3 +183,20 @@ class CertSigAlgo(NamedTuple):
 
     algo: hashes.SHA1 = None
     padd: padding.PKCS1v15 = None
+
+
+class TransportEndpoint(NamedTuple):
+    """Structure for host, type and port
+    """
+
+    host: str
+    port: int
+    host_type: tls.HostType
+
+
+class ResolvedHost(NamedTuple):
+    """Result of a DNS resolution
+    """
+
+    ipv4_addresses: list
+    ipv6_addresses: list

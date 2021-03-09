@@ -322,10 +322,10 @@ class CrlManager(object):
     """Handles all CRL related operations and acts as a cache as well
     """
 
-    _crls = {}
+    def __init__(self):
+        self._crls = {}
 
-    @classmethod
-    def add_crl(cls, url, der_crl=None, pem_crl=None):
+    def add_crl(self, url, der_crl=None, pem_crl=None):
         crl = None
         if der_crl is not None:
             crl = x509.load_der_x509_crl(der_crl)
@@ -333,11 +333,10 @@ class CrlManager(object):
         elif pem_crl is not None:
             crl = x509.load_pem_x509_crl(pem_crl)
 
-        cls._crls[url] = crl
+        self._crls[url] = crl
 
-    @classmethod
-    def _get_crl_obj(cls, url, recorder):
-        if url not in cls._crls:
+    def _get_crl_obj(self, url, recorder):
+        if url not in self._crls:
             recorder.trace(crl_url=url)
             try:
                 if recorder.is_injecting():
@@ -350,15 +349,14 @@ class CrlManager(object):
                     recorder.trace(crl=bin_crl)
 
             except Exception:
-                cls._crls[url] = None
+                self._crls[url] = None
 
             else:
-                cls.add_crl(url, der_crl=bin_crl)
+                self.add_crl(url, der_crl=bin_crl)
 
-        return cls._crls[url]
+        return self._crls[url]
 
-    @classmethod
-    def get_crl_status(cls, urls, serial_nbr, issuer, issuer_cert, recorder):
+    def get_crl_status(self, urls, serial_nbr, issuer, issuer_cert, recorder):
         """Determines the CRL revokation status for a given cert/urls.
 
         Downloads the CRL (if a download fails, the next url is tried), if not yet
@@ -379,7 +377,7 @@ class CrlManager(object):
         status = None
         for url in urls:
             logging.debug(f"downloading CRL from {url}")
-            crl = cls._get_crl_obj(url, recorder)
+            crl = self._get_crl_obj(url, recorder)
             if crl is None:
                 status = tls.CertCrlStatus.CRL_DOWNLOAD_FAILED
                 continue
@@ -409,15 +407,15 @@ class TrustStore(object):
         self._ca_files = None
         self._cert_cache = []
         self._fingerprint_cache = []
-        if recorder.is_injecting():
-            for cert in recorder.get_trust_store():
-                self._add_to_cache(Certificate(pem=cert))
 
     def set_ca_files(self, ca_files):
         """Store the CA files containing certs in PEM format
         """
 
-        self._ca_files = ca_files
+        if ca_files:
+            for ca_file in ca_files:
+                logging.debug(f"using {ca_file} as trust store")
+            self._ca_files = ca_files
 
     def __iter__(self):
 
@@ -432,12 +430,16 @@ class TrustStore(object):
                         continue
                     yield Certificate(pem=pem_item.as_bytes())
 
-    def _add_to_cache(self, cert):
+    def add_cert(self, cert):
         if cert.fingerprint_sha256 not in self._fingerprint_cache:
+            logging.debug(
+                f'adding certificate "{cert.parsed.subject.rfc4514_string()}" '
+                f"to trust store cache"
+            )
             self._fingerprint_cache.append(cert.fingerprint_sha256)
             self._cert_cache.append(cert)
             if self._recorder.is_recording():
-                cert_pem = cert.parsed.public_bytes(Encoding.PEM).decode()
+                cert_pem = cert.parsed.public_bytes(Encoding.DER).hex()
                 self._recorder.trace(trust_store=cert_pem)
 
     def cert_in_trust_store(self, cert):
@@ -454,7 +456,7 @@ class TrustStore(object):
 
         for cert2 in self:
             if cert2 == cert:
-                self._add_to_cache(cert2)
+                self.add_cert(cert2)
                 return True
 
         return False
@@ -473,7 +475,7 @@ class TrustStore(object):
             # TODO: Optimize this, as the issuer_name is string_prepped with
             # always the same result in the loop
             if equal_names(cert.parsed.subject, issuer_name):
-                self._add_to_cache(cert)
+                self.add_cert(cert)
                 return cert
 
         return None
@@ -489,7 +491,7 @@ class Certificate(object):
         pem (bytes): the certificate in PEM-format
     """
 
-    def __init__(self, der=None, pem=None):
+    def __init__(self, der=None, pem=None, parse=False):
 
         if der is None and pem is None:
             raise ValueError("der or pem must be given")
@@ -510,9 +512,14 @@ class Certificate(object):
 
         if der is not None:
             self._bytes = der
+            if parse:
+                self._parsed = x509.load_der_x509_certificate(self._bytes)
+                self._parse()
+
         elif pem is not None:
             if isinstance(pem, str):
                 pem = pem.encode()
+
             self._pem = pem
             self._parsed = x509.load_pem_x509_certificate(pem)
             self._parse()
@@ -749,7 +756,7 @@ class CertChain(object):
         Arguments:
             bin_cert (bytes): the certificate to append in raw format
         """
-        self.certificates.append(Certificate(der=bin_cert))
+        self.certificates.append(Certificate(der=bin_cert, parse=True))
         self._digest.update(bin_cert)
 
     def append_pem_cert(self, pem_cert):
@@ -798,7 +805,7 @@ class CertChain(object):
             if self._raise_on_failure:
                 raise
 
-    def _validate_linked_certs(self, cert, issuer_cert, raise_on_failure):
+    def _validate_linked_certs(self, cert, issuer_cert, crl_manager, raise_on_failure):
 
         try:
             issuer_cert.validate_signature(
@@ -831,7 +838,7 @@ class CertChain(object):
             elif dist_point.relative_me is not None:
                 raise NotImplementedError
 
-        cert.crl_status = CrlManager.get_crl_status(
+        cert.crl_status = crl_manager.get_crl_status(
             crl_urls,
             cert.parsed.serial_number,
             cert.parsed.issuer,
@@ -845,7 +852,9 @@ class CertChain(object):
             if raise_on_failure:
                 raise CertChainValidationError(issue)
 
-    def validate(self, timestamp, domain_name, trust_store, raise_on_failure):
+    def validate(
+        self, timestamp, domain_name, trust_store, crl_manager, raise_on_failure
+    ):
         """Only the minimal checks are supported.
 
         If a discrepancy is found, an exception is raised.
@@ -893,7 +902,9 @@ class CertChain(object):
                     self.issues.append(issue)
                     if raise_on_failure:
                         raise CertChainValidationError(issue)
-                self._validate_linked_certs(prev_cert, cert, raise_on_failure)
+                self._validate_linked_certs(
+                    prev_cert, cert, crl_manager, raise_on_failure
+                )
 
             logging.debug(f'certificate "{cert}" successfully validated')
             prev_cert = cert
@@ -913,7 +924,9 @@ class CertChain(object):
                 self.root_cert = cert
                 self.validate_cert(self.root_cert, timestamp)
 
-                self._validate_linked_certs(prev_cert, cert, raise_on_failure)
+                self._validate_linked_certs(
+                    prev_cert, cert, crl_manager, raise_on_failure
+                )
         else:
             if not trust_store.cert_in_trust_store(prev_cert):
                 issue = f'root certificate "{root_cert}" not found in trust store'
@@ -921,3 +934,22 @@ class CertChain(object):
                 if raise_on_failure:
                     raise CertChainValidationError(issue)
         self.successful_validation = len(self.issues) == 0
+
+    def serialize(self):
+        """Serialize the certificate chain
+
+        Returns:
+            list of str: A list of certificates which build the chain. The format is a
+            a str, representing the DER-format for each certificate.
+        """
+        return [cert.bytes.hex() for cert in self.certificates]
+
+    def deserialize(self, chain):
+        """Deserializes a certificate chain.
+
+        Arguments:
+            chain (list of str): The list of certificates of the chain. Each certificate
+            is represented in DER-format as a string.
+        """
+        for cert in chain:
+            self.append_bin_cert(bytes.fromhex(cert))

@@ -6,9 +6,14 @@ import pathlib
 import pem
 
 from tlsmate.tlsmate import TlsMate
+from tlsmate.config import Configuration
 from tlsmate.cert import CertChain, CrlManager
 
-global_tlsmate = TlsMate()
+
+@pytest.fixture
+def config_no_trust():
+    config_file = pathlib.Path(__file__).parent.resolve() / "tlsmate_no_trust.ini"
+    return Configuration(ini_file=config_file)
 
 
 def build_cert_chain(pem_file):
@@ -21,7 +26,7 @@ def build_cert_chain(pem_file):
 
 @pytest.fixture
 def tlsmate():
-    return global_tlsmate
+    return TlsMate()
 
 
 @pytest.fixture
@@ -31,14 +36,14 @@ def fixturefiles_dir():
 
 @pytest.fixture
 def trust_store(tlsmate, fixturefiles_dir):
-    trust_store = tlsmate.trust_store()
+    trust_store = tlsmate.trust_store
     trust_store.set_ca_files([fixturefiles_dir / "trust_store.pem"])
     return trust_store
 
 
 @pytest.fixture
-def empty_trust_store(tlsmate):
-    return TlsMate().trust_store()
+def empty_trust_store(tlsmate, config_no_trust):
+    return TlsMate(config=config_no_trust).trust_store
 
 
 @pytest.fixture
@@ -95,13 +100,15 @@ def signature_invalid_chain(fixturefiles_dir):
 def rsa_crl(fixturefiles_dir):
     with open(fixturefiles_dir / "inter-ca-rsa.crl.pem", "rb") as fd:
         crl = fd.read()
-    CrlManager.add_crl("http://crl.localhost/inter-ca-rsa.crl", pem_crl=crl)
-    return None
+    crl_manager = CrlManager()
+    crl_manager.add_crl("http://crl.localhost/inter-ca-rsa.crl", pem_crl=crl)
+    return crl_manager
 
 
 @pytest.fixture
 def ecdsa_crl(fixturefiles_dir):
     with open(fixturefiles_dir / "inter-ca-ecdsa.crl.pem", "rb") as fd:
         crl = fd.read()
-    CrlManager.add_crl("http://crl.localhost/inter-ca-ecdsa.crl", pem_crl=crl)
-    return None
+    crl_manager = CrlManager()
+    crl_manager.add_crl("http://crl.localhost/inter-ca-ecdsa.crl", pem_crl=crl)
+    return crl_manager

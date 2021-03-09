@@ -46,10 +46,10 @@ class TestCase(TlsSuiteTester):
         for a, b in zip(sig_algs, prof["signature_algorithms"]["algorithms"]):
             assert a == b["name"]
 
-    def run(self, container, is_replaying):
-        server_profile = container.server_profile()
+    def run(self, tlsmate, is_replaying):
+        server_profile = tlsmate.server_profile
         test_suite = ScanSigAlgs()
-        test_suite._inject_dependencies(server_profile, container.client())
+        test_suite._inject_dependencies(server_profile, tlsmate.client)
         test_suite.run()
 
         self.check_profile(server_profile.make_serializable())

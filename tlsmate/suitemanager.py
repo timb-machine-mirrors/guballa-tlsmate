@@ -59,11 +59,11 @@ class SuiteManager(object):
             self.prio_pool.setdefault(cls.prio, [])
             self.prio_pool[cls.prio].append(cls)
 
-    def run(self, container, selected_test_suite_args):
+    def run(self, tlsmate, selected_test_suite_args):
         """Function to actually start the test manager.
 
         Arguments:
-            container (:obj:`tlsmate.dependency_injection.Container`): The container
+            tlsmate (:obj:`tlsmate.dependency_injection.Container`): The tlsmate
                 object used to inject the depencies into the test suite objects.
             selected_test_suite_args (list of str): The list of CLI options which
                 were given on the CLI to select a set of plugins.
@@ -77,8 +77,6 @@ class SuiteManager(object):
             for cls in sorted(self.prio_pool[prio_list], key=lambda cls: cls.name):
                 logging.debug(f"starting test suite {cls.name}")
                 test_suite = cls()
-                test_suite._inject_dependencies(
-                    container.server_profile(), container.client()
-                )
+                test_suite._inject_dependencies(tlsmate.server_profile, tlsmate.client)
                 test_suite.run()
                 logging.debug(f"test suite {cls.name} finished")
