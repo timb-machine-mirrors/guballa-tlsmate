@@ -185,6 +185,28 @@ def build_parser():
     )
 
     parser.add_argument(
+        "--read-profile",
+        type=str,
+        help="JSON/Yaml file to read the server profile from",
+    )
+
+    parser.add_argument(
+        "--write-profile",
+        type=str,
+        help=(
+            "file to write the server profile to. By default the format of the file "
+            "is Yaml. If this option is not given the profile is printed to STDOUT."
+        ),
+    )
+
+    parser.add_argument(
+        "--json",
+        help="use the JSON-format for outputting the server profile",
+        action="store_const",
+        const=True,
+    )
+
+    parser.add_argument(
         "host",
         help=(
             "the host to scan. May optionally have the port number appended, "
@@ -253,6 +275,9 @@ def main():
     config.set_config("client_chain", args.client_chain)
     config.set_config("endpoint", args.host)
     config.set_config("sni", args.sni)
+    config.set_config("json", args.json)
+    config.set_config("read_profile", args.read_profile)
+    config.set_config("write_profile", args.write_profile)
 
     utils.set_logging(config["logging"])
 

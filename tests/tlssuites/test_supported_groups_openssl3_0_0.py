@@ -65,9 +65,7 @@ class TestCase(TlsSuiteTester):
         server_profile = tlsmate.server_profile
         client = tlsmate.client
         client.reset_profile()
-        test_suite = ScanSupportedGroups()
-        test_suite._inject_dependencies(server_profile, client)
-        test_suite.run()
+        ScanSupportedGroups(tlsmate).run()
 
         self.check_profile(server_profile.make_serializable())
 

@@ -8,9 +8,9 @@ import time
 
 # import own stuff
 from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
+from tlsmate import utils
 
 # import other stuff
-import yaml
 
 
 class RecorderState(enum.Enum):
@@ -330,12 +330,7 @@ class Recorder(object):
             filename (pathlib.Path): the file name to store the data in
         """
 
-        if filename.exists():
-            print(f"File {filename} existing. Yaml file not generated")
-            return
-
-        with open(filename, "w") as fd:
-            yaml.dump(self.data, fd, indent=4)
+        utils.serialize_data(self.data, file_name=filename, replace=False, indent=2)
 
     def deserialize(self, filename):
         """Deserialize the recorded data from a file
@@ -344,5 +339,4 @@ class Recorder(object):
             filename (str): the file name to deserialize the data from
         """
 
-        with open(filename) as fd:
-            self.data = yaml.safe_load(fd)
+        self.data = utils.deserialize_data(filename)

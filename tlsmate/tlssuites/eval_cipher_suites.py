@@ -189,7 +189,7 @@ class ScanCipherSuites(TlsSuite):
             "tls13": tls.Version.TLS13,
         }
 
-        config = self.client.config
+        config = self.config
         versions = [mapping[vers] for vers in mapping.keys() if config[vers] is True]
 
         if versions:

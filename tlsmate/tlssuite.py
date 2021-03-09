@@ -34,9 +34,10 @@ class TlsSuite(metaclass=abc.ABCMeta):
 
     prio = 100
 
-    def __init__(self, server_profile=None, client=None):
-        self.server_profile = server_profile
-        self.client = client
+    def __init__(self, tlsmate):
+        self.server_profile = tlsmate.server_profile
+        self.client = tlsmate.client
+        self.config = tlsmate.config
 
     def _inject_dependencies(self, server_profile, client):
         """Method to inject the server profile and the client into the object
@@ -142,7 +143,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
 
         self.config.set_config("endpoint", self.server + ":" + str(self.port))
         self.config.set_config("progress", False)
-        self.config.set_config("profile_file", self.get_yaml_file(self.sp_in_yaml))
+        self.config.set_config("read_profile", self.get_yaml_file(self.sp_in_yaml))
         self.config.set_config(
             "pytest_recorder_file", self.get_yaml_file(self.recorder_yaml)
         )
@@ -163,9 +164,11 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
                 self.tlsmate.recorder.serialize(self.get_yaml_file(self.recorder_yaml))
 
             if self.sp_out_yaml is not None:
-                utils.serialize_yaml(
+                utils.serialize_data(
                     self.tlsmate.server_profile.make_serializable(),
-                    self.get_yaml_file(self.sp_out_yaml),
+                    file_name=self.get_yaml_file(self.sp_out_yaml),
+                    replace=False,
+                    indent=2,
                 )
 
     def test_entry(self):

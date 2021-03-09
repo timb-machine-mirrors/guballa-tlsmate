@@ -4,6 +4,7 @@
 # import basic stuff
 import time
 import logging
+import json
 
 # import own stuff
 from tlsmate import tls
@@ -12,28 +13,47 @@ from tlsmate import structs
 
 # import other stuff
 import yaml
+import pathlib
 
 
-def serialize_yaml(obj, file_name):
-    """Dump the object to a yaml file.
+def serialize_data(data, file_name=None, replace=True, use_json=False, indent=4):
+    """Serialize the data object to JSON or yaml.
 
     Arguments:
-        obj (dict): the object to serialize
-        file_ name (:obj:`pathlib.Path`): the file name to write the serialized
-            object to.
+        data: the serializable data structure
+        file_name (str or :obj:`pathlib.Path`): the file to write the serialized
+            data to. If not given, the serialized object is printed on STDOUT.
+        replace (bool): If True, allow overwriting an existing file. Defaults to True.
+            This argument is only evaluated if a file_name is given.
+        json (bool): If True, use JSON, else use Yaml.
+        indent (int): The indentation to apply.
     """
-    if file_name.exists():
-        print(f"File {file_name} existing. Yaml file not generated")
-        return
-    with open(file_name, "w") as fd:
-        yaml.dump(obj, fd)
+
+    if file_name is not None:
+        if not replace and pathlib.Path(file_name).exists():
+            form = "JSON" if json else "Yaml"
+            print(f"File {file_name} existing. {form}-file not generated")
+            return
+
+        with open(file_name, "w") as fd:
+            if use_json:
+                json.dump(data, fd, indent=indent, sort_keys=True)
+
+            else:
+                yaml.dump(data, fd, indent=indent)
+    else:
+        if use_json:
+            print(json.dumps(data, indent=indent, sort_keys=True))
+
+        else:
+            print(yaml.dumps(data, indent=indent))
 
 
-def deserialize_yaml(file_name):
-    """Deserialize a yaml file.
+def deserialize_data(file_name):
+    """Deserialize from a file.
 
     Arguments:
-        file_name (:obj:`pathlib.Path`): the full file name
+        file_name (str or :obj:`pathlib.Path`): the full file name
 
     Returns:
         object: the deserialized object
