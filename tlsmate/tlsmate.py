@@ -42,9 +42,9 @@ class TlsMate(object):
         self.client_auth = ClientAuth(tlsmate=self)
         self.crl_manager = CrlManager()
 
-        if config["profile_file"]:
-            data = utils.deserialize_yaml(config["profile_file"])
-            self.server_profile.load(data)
+        if config["read_profile"]:
+            self.server_profile.load(utils.deserialize_data(config["read_profile"]))
+
         recorder_replaying = config["pytest_recorder_replaying"]
         if recorder_replaying is not True:
             # "Normal" init of trust store and client auth from configuration

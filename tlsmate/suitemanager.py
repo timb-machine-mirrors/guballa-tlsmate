@@ -76,7 +76,5 @@ class SuiteManager(object):
         for prio_list in sorted(self.prio_pool.keys()):
             for cls in sorted(self.prio_pool[prio_list], key=lambda cls: cls.name):
                 logging.debug(f"starting test suite {cls.name}")
-                test_suite = cls()
-                test_suite._inject_dependencies(tlsmate.server_profile, tlsmate.client)
-                test_suite.run()
+                cls(tlsmate).run()
                 logging.debug(f"test suite {cls.name} finished")

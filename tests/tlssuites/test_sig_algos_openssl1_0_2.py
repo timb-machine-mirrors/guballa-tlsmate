@@ -48,9 +48,7 @@ class TestCase(TlsSuiteTester):
 
     def run(self, tlsmate, is_replaying):
         server_profile = tlsmate.server_profile
-        test_suite = ScanSigAlgs()
-        test_suite._inject_dependencies(server_profile, tlsmate.client)
-        test_suite.run()
+        ScanSigAlgs(tlsmate).run()
 
         self.check_profile(server_profile.make_serializable())
 
