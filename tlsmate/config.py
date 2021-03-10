@@ -56,11 +56,6 @@ class Configuration(object):
         [tlsmate]
         logging = debug
 
-    The configuration options can be retrieved by using the object like a dict:
-
-    >>> config = Configuration()
-    >>> config["endpoint"]
-    'localhost'
     """
 
     _format_option = {
@@ -78,7 +73,8 @@ class Configuration(object):
     }
 
     def __init__(self, ini_file=None, init_from_external=True):
-        self.config = {
+        self._plugins = {}
+        self._config = {
             "endpoint": "localhost",
             "logging": "error",
             "progress": False,
@@ -123,7 +119,7 @@ class Configuration(object):
             if parser.has_section("tlsmate"):
                 config = parser["tlsmate"]
 
-        for option in self.config.keys():
+        for option in self._config.keys():
             val = None
             if init_from_external:
                 val = os.environ.get("TLSMATE_" + option.upper())
@@ -136,34 +132,73 @@ class Configuration(object):
                 if func is not None:
                     val = func(val)
 
-                self.config[option] = val
+                self._config[option] = val
 
         if abs_path:
             abs_dir = abs_path.parent
             for conf_item in ["ca_certs", "client_key", "client_chain"]:
-                item = self.config.get(conf_item)
+                item = self._config.get(conf_item)
                 if item is not None:
-                    item = self.config[conf_item]
+                    item = self._config[conf_item]
                     if isinstance(item, list):
                         item = [_absolute_path(x, abs_dir) for x in item]
 
                     else:
                         item = _absolute_path(item, abs_dir)
 
-                    self.config[conf_item] = item
+                    self._config[conf_item] = item
 
-    def __getitem__(self, key):
-        return self.config.get(key)
+    def items(self, plugin=None):
+        """Return the items for a configuration section.
 
-    def set_config(self, key, val):
+        Arguments:
+
+            plugin (str or None): the name of the plugin section. if not given, the
+                basic configuration will be used.
+        """
+        if plugin:
+            return self._plugins[plugin].items()
+
+        else:
+            return self._config.items()
+
+    def get(self, key, plugin=None, default=None):
+        """Get a configuration item.
+
+        Arguments:
+            key (str): the name of the configuration item
+            plugin (str or None): the name of the plugin section. if not given, the
+                basic configuration will be used.
+            default: the default value to return in case the configuration item is
+                not existing. Defaults to None.
+        """
+        if plugin is None:
+            return self._config.get(key, default)
+
+        else:
+            return self._plugins[plugin].get(key, default)
+
+    def set(self, key, val, plugin=None, keep_existing=True):
         """Add a configuration option.
-
-        If the given configuration is already defined, it will be overwritten by
-        the given input.
 
         Arguments:
             key (str): the name of the option
             val: the value of the option
+            plugin (str or None): the name of the plugin section. If not given, the
+                basic configuration will be used.
+            keep_existing (bool): if set to True and the value is None, an existing
+                configuration will not be overwritten. Defaults to True
         """
-        if val is not None:
-            self.config[key] = val
+        if plugin is None:
+            config = self._config
+
+        else:
+            if plugin not in self._plugins:
+                self._plugins[plugin] = {}
+
+            config = self._plugins[plugin]
+
+        if key in config and val is None and keep_existing:
+            return
+
+        config[key] = val

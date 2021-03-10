@@ -46,11 +46,11 @@ def serialize_data(data, file_name=None, replace=True, use_json=False, indent=4)
             print(json.dumps(data, indent=indent, sort_keys=True))
 
         else:
-            print(yaml.dumps(data, indent=indent))
+            print(yaml.dump(data, indent=indent))
 
 
 def deserialize_data(file_name):
-    """Deserialize from a file.
+    """Deserialize from a JSON- or Yaml-file.
 
     Arguments:
         file_name (str or :obj:`pathlib.Path`): the full file name

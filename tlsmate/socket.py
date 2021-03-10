@@ -55,7 +55,7 @@ class Socket(object):
         self._socket.connect((endp.host, endp.port))
         laddr, lport = self._socket.getsockname()
         raddr, rport = self._socket.getpeername()
-        if self._config["progress"]:
+        if self._config.get("progress"):
             sys.stderr.write(".")
             sys.stderr.flush()
         logging.info(f"{utils.Log.time()}: Socket opened")
