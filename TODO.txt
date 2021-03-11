@@ -2,8 +2,6 @@
 High prio
 
 Medium prio
-    - implement makefile for test cases generation, where the openssl-server is started with
-      the correct parameters.
 
 Low prio
     - more command line options, e.g. to scan only via IPv4 or IPv6
@@ -21,6 +19,9 @@ Nice to have
     - consistently use "verify" or "validate" when checking sigatures and certificates
     - cleanups for certificate parsing required:
         - implement quite a lot of missing stuff, e.g. proper handling of cert policies, etc.
+
+
+Commands to build the openssl version used for unit tests:
 
 git clone --depth 1 --branch OpenSSL_1_1_1j https://github.com/openssl/openssl.git
 cd openssl

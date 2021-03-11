@@ -175,8 +175,11 @@ class Configuration(object):
         if plugin is None:
             return self._config.get(key, default)
 
-        else:
+        elif plugin in self._plugins:
             return self._plugins[plugin].get(key, default)
+
+        else:
+            return None
 
     def set(self, key, val, plugin=None, keep_existing=True):
         """Add a configuration option.

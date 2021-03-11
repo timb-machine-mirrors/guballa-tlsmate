@@ -7,14 +7,14 @@ import logging
 # import own stuff
 from tlsmate import msg
 from tlsmate import tls
-from tlsmate.tlssuite import TlsSuite
+from tlsmate.plugin import Worker
 from tlsmate import utils
 from tlsmate.server_profile import SPVersion
 
 # import other stuff
 
 
-class ScanCipherSuites(TlsSuite):
+class ScanCipherSuites(Worker):
     name = "basic"
     prio = 10
 
@@ -191,7 +191,9 @@ class ScanCipherSuites(TlsSuite):
 
         config = self.config
         versions = [
-            mapping[vers] for vers in mapping.keys() if config.get(vers) is True
+            mapping[vers]
+            for vers in mapping.keys()
+            if config.get(vers, plugin="scan") is True
         ]
 
         if versions:

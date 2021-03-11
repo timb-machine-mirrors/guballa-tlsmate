@@ -9,18 +9,10 @@ import pkgutil
 # import own stuff
 from tlsmate.config import Configuration
 from tlsmate.tlsmate import TlsMate
-from tlsmate.suitemanager import SuiteManager
-from tlsmate.tlssuites.eval_cipher_suites import ScanCipherSuites
-from tlsmate.tlssuites.scanner_info import ScanStart, ScanEnd
-from tlsmate.tlssuites.supported_groups import ScanSupportedGroups
-from tlsmate.tlssuites.sig_algo import ScanSigAlgs
-from tlsmate.tlssuites.compression import ScanCompression
-from tlsmate.tlssuites.encrypt_then_mac import ScanEncryptThenMac
-from tlsmate.tlssuites.master_secret import ScanExtendedMasterSecret
-from tlsmate.tlssuites.resumption import ScanResumption
-from tlsmate.tlssuites.renegotiation import ScanRenegotiation
+from tlsmate.plugin import PluginManager
 from tlsmate import utils
 from tlsmate.version import __version__
+from tlsmate.plugins.scan import ScanPlugin
 
 # import other stuff
 
@@ -41,74 +33,6 @@ def args_version(subparsers):
         "version", help="print the version of the tool"
     )
     parser_version.set_defaults(subparser=parser_version)
-
-
-def add_plugins_to_parser(parser):
-    """Generate the CLI options for the plugins
-
-    Arguments:
-        parsers: parsers object
-    """
-
-    plugin_cli_options = SuiteManager.test_suites.keys()
-    for arg in plugin_cli_options:
-        parser.add_argument(
-            arg, help=SuiteManager.cli_help[arg], action="store_true", default=False
-        )
-
-
-def add_tls_versions(parser):
-    """Define command line options to filter on specific protocol versions.
-
-    Arguments:
-        parser (:obj:`argparse.ArgumentParser`): the parser object
-    """
-
-    group = parser.add_argument_group(
-        "TLS protocol versions",
-        (
-            "Perform the scan for the given TLS protocol versions. "
-            "If no version is given, then the default applies which means to scan "
-            "for all versions."
-        ),
-    )
-
-    group.add_argument(
-        "--sslv2",
-        help="scan for protocol version SSLv2",
-        action="store_const",
-        const=True,
-    )
-    group.add_argument(
-        "--sslv3",
-        help="scan for protocol version SSLv3",
-        action="store_const",
-        const=True,
-    )
-    group.add_argument(
-        "--tls10",
-        help="scan for protocol version TLS1.0",
-        action="store_const",
-        const=True,
-    )
-    group.add_argument(
-        "--tls11",
-        help="scan for protocol version TLS1.1",
-        action="store_const",
-        const=True,
-    )
-    group.add_argument(
-        "--tls12",
-        help="scan for protocol version TLS1.2",
-        action="store_const",
-        const=True,
-    )
-    group.add_argument(
-        "--tls13",
-        help="scan for protocol version TLS1.3",
-        action="store_const",
-        const=True,
-    )
 
 
 def build_parser():
@@ -171,8 +95,6 @@ def build_parser():
         ),
     )
 
-    add_tls_versions(parser)
-
     parser.add_argument(
         "--sni",
         type=str,
@@ -215,7 +137,7 @@ def build_parser():
         type=str,
     )
 
-    add_plugins_to_parser(parser)
+    PluginManager.add_args(parser)
 
     return parser
 
@@ -249,27 +171,21 @@ def main():
     args = parser.parse_args()
     _args_consistency(args, parser)
 
-    plugin_cli_options = sorted(SuiteManager.test_suites.keys())
-    selected_plugins = []
-    for arg in plugin_cli_options:
-        if getattr(args, arg[2:]):
-            selected_plugins.append(arg)
-
-    if not selected_plugins:
-        options = " ".join(plugin_cli_options)
-        parser.error("specify at least one of the following options: " + options)
+    #    plugin_cli_options = sorted(SuiteManager.test_suites.keys())
+    #    selected_plugins = []
+    #    for arg in plugin_cli_options:
+    #        if getattr(args, arg[2:]):
+    #            selected_plugins.append(arg)
+    #
+    #    if not selected_plugins:
+    #        options = " ".join(plugin_cli_options)
+    #        parser.error("specify at least one of the following options: " + options)
 
     config = Configuration(ini_file=args.config_file)
 
     config.set("progress", args.progress)
     config.set("ca_certs", args.ca_certs)
     config.set("logging", args.logging)
-    config.set("sslv2", args.sslv2)
-    config.set("sslv3", args.sslv3)
-    config.set("tls10", args.tls10)
-    config.set("tls11", args.tls11)
-    config.set("tls12", args.tls12)
-    config.set("tls13", args.tls13)
 
     config.set("client_key", args.client_key)
     config.set("client_chain", args.client_chain)
@@ -281,29 +197,13 @@ def main():
 
     utils.set_logging(config.get("logging"))
 
+    PluginManager.args_parsed(args, config)
+
     tlsmate = TlsMate(config=config)
-
-    test_manager = tlsmate.suite_manager
-    test_manager.run(tlsmate, selected_plugins)
+    tlsmate.work_manager.run(tlsmate)
 
 
-# always register the basic cli plugins provided with tlsmate
-SuiteManager.register_cli(
-    "--scan",
-    cli_help="performs a basic scan",
-    classes=[
-        ScanStart,
-        ScanCipherSuites,
-        ScanSupportedGroups,
-        ScanSigAlgs,
-        ScanCompression,
-        ScanEncryptThenMac,
-        ScanExtendedMasterSecret,
-        ScanResumption,
-        ScanRenegotiation,
-        ScanEnd,
-    ],
-)
+PluginManager.register(ScanPlugin)
 
 # and now look for additional user provided plugins
 discovered_plugins = {

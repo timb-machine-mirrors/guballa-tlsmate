@@ -2,7 +2,7 @@
 """Implements a class to be used for unit testing.
 """
 import pathlib
-from tlsmate.tlssuites.sig_algo import ScanSigAlgs
+from tlsmate.workers.sig_algo import ScanSigAlgs
 from tlsmate.tlssuite import TlsSuiteTester
 from tlsmate.tlssuite import OpensslVersion
 

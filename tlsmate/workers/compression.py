@@ -6,12 +6,12 @@
 # import own stuff
 from tlsmate import msg
 from tlsmate import tls
-from tlsmate.tlssuite import TlsSuite
+from tlsmate.plugin import Worker
 
 # import other stuff
 
 
-class ScanCompression(TlsSuite):
+class ScanCompression(Worker):
     name = "compression"
     descr = "check for compression support"
     prio = 30
