@@ -67,9 +67,9 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
 
     def _start_server(self):
         openssl_prefix = {
-            OpensslVersion.v1_0_2: self.config["pytest_openssl_1_0_2"],
-            OpensslVersion.v1_1_1: self.config["pytest_openssl_1_1_1"],
-            OpensslVersion.v3_0_0: self.config["pytest_openssl_3_0_0"],
+            OpensslVersion.v1_0_2: self.config.get("pytest_openssl_1_0_2"),
+            OpensslVersion.v1_1_1: self.config.get("pytest_openssl_1_1_1"),
+            OpensslVersion.v3_0_0: self.config.get("pytest_openssl_3_0_0"),
         }[self.openssl_version]
 
         cmd = (
@@ -137,18 +137,16 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         self.config = Configuration(
             ini_file=ini_file, init_from_external=not is_replaying
         )
-        self.port = self.config["pytest_port"]
+        self.port = self.config.get("pytest_port")
         if self.port is None:
             self.port = 44330
 
-        self.config.set_config("endpoint", self.server + ":" + str(self.port))
-        self.config.set_config("progress", False)
-        self.config.set_config("read_profile", self.get_yaml_file(self.sp_in_yaml))
-        self.config.set_config(
-            "pytest_recorder_file", self.get_yaml_file(self.recorder_yaml)
-        )
-        self.config.set_config("pytest_recorder_replaying", is_replaying)
-        utils.set_logging(self.config["logging"])
+        self.config.set("endpoint", self.server + ":" + str(self.port))
+        self.config.set("progress", False)
+        self.config.set("read_profile", self.get_yaml_file(self.sp_in_yaml))
+        self.config.set("pytest_recorder_file", self.get_yaml_file(self.recorder_yaml))
+        self.config.set("pytest_recorder_replaying", is_replaying)
+        utils.set_logging(self.config.get("logging"))
 
         self.tlsmate = TlsMate(self.config)
         self.recorder = self.tlsmate.recorder

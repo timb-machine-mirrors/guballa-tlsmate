@@ -46,7 +46,7 @@ class Client(object):
             an indication if the SNI extension is supported
         sni (str):
             the SNI to use in the ClientHello. If None, the value will be taken from
-            the configuration (config["sni"]). If this is None as well, it will be
+            the configuration ("sni"). If this is None as well, it will be
             the host_name of the server.
         support_extended_master_secret (bool): an indication if the client supports
             the extensions EXTENDED_MASTER_SECRET
@@ -371,7 +371,7 @@ class Client(object):
             :obj:`TlsConnection`: the created connection object
         """
         if server is None:
-            server = self.config["endpoint"]
+            server = self.config.get("endpoint")
 
         return TlsConnection(self._tlsmate, server)
 
@@ -430,13 +430,17 @@ class Client(object):
         if self.sni is not None:
             return self.sni
 
-        elif self.config["sni"] is not None:
-            return self.config["sni"]
-
         else:
-            endp = resolver.determine_transport_endpoint(self.config["endpoint"])
-            if endp.host_type is tls.HostType.HOST:
-                return endp.host
+            sni = self.config.get("sni")
+            if sni is not None:
+                return sni
+
+            else:
+                endp = resolver.determine_transport_endpoint(
+                    self.config.get("endpoint")
+                )
+                if endp.host_type is tls.HostType.HOST:
+                    return endp.host
 
         raise ValueError("No SNI defined")
 

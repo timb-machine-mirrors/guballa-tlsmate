@@ -32,7 +32,7 @@ class TlsMate(object):
         if config is None:
             config = Configuration()
 
-        for key, val in config.config.items():
+        for key, val in config.items():
             logging.debug(f"using config {key}={val}")
 
         self.config = config
@@ -42,24 +42,26 @@ class TlsMate(object):
         self.client_auth = ClientAuth(tlsmate=self)
         self.crl_manager = CrlManager()
 
-        if config["read_profile"]:
-            self.server_profile.load(utils.deserialize_data(config["read_profile"]))
+        read_profile = config.get("read_profile")
+        if read_profile:
+            self.server_profile.load(utils.deserialize_data(read_profile))
 
-        recorder_replaying = config["pytest_recorder_replaying"]
+        recorder_replaying = config.get("pytest_recorder_replaying")
         if recorder_replaying is not True:
             # "Normal" init of trust store and client auth from configuration
             if recorder_replaying is False:
                 self.recorder.record()
 
-            self.trust_store.set_ca_files(config["ca_certs"])
-            if config["client_key"]:
+            self.trust_store.set_ca_files(config.get("ca_certs"))
+            if config.get("client_key"):
                 for key_file, chain_file in zip(
-                    config["client_key"], config["client_chain"]
+                    config.get("client_key"), config.get("client_chain")
                 ):
                     self.client_auth.add_auth_files(key_file, chain_file)
         else:
-            if config["pytest_recorder_file"]:
-                self.recorder.deserialize(config["pytest_recorder_file"])
+            pytest_recorder_file = config.get("pytest_recorder_file")
+            if pytest_recorder_file:
+                self.recorder.deserialize(pytest_recorder_file)
 
             self.recorder.replay()
             # Init trust store and client auth from recorded data

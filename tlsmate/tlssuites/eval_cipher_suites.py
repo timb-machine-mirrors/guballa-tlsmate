@@ -190,7 +190,9 @@ class ScanCipherSuites(TlsSuite):
         }
 
         config = self.config
-        versions = [mapping[vers] for vers in mapping.keys() if config[vers] is True]
+        versions = [
+            mapping[vers] for vers in mapping.keys() if config.get(vers) is True
+        ]
 
         if versions:
             versions.sort()
