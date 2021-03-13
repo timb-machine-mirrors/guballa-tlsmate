@@ -4,9 +4,9 @@
 # import basic stuff
 
 # import own stuff
-from tlsmate.plugin import Plugin, WorkManager
+from tlsmate.plugin import Plugin, WorkManager, PluginManager
 from tlsmate.workers.eval_cipher_suites import ScanCipherSuites
-from tlsmate.workers.scanner_info import ScanStart, ScanEnd
+from tlsmate.workers.scanner_info import ScanStart, ScanEnd, ProfileDumper
 from tlsmate.workers.supported_groups import ScanSupportedGroups
 from tlsmate.workers.sig_algo import ScanSigAlgs
 from tlsmate.workers.compression import ScanCompression
@@ -18,7 +18,10 @@ from tlsmate.workers.renegotiation import ScanRenegotiation
 # import other stuff
 
 
+@PluginManager.register
 class ScanPlugin(Plugin):
+    """Plugin to perform a scan against a TLS server.
+    """
     name = "scan"
     cli_name = "--scan"
     cli_help = "performs a basic scan"
@@ -37,7 +40,6 @@ class ScanPlugin(Plugin):
                 "will be scanned."
             ),
         )
-
         group.add_argument(
             "--sslv2",
             help="scan for protocol version SSLv2",
@@ -93,10 +95,11 @@ class ScanPlugin(Plugin):
             WorkManager.register(ScanResumption)
             WorkManager.register(ScanRenegotiation)
             WorkManager.register(ScanEnd)
+            WorkManager.register(ProfileDumper)
 
-            config.set("sslv2", args.sslv2, plugin=self.name)
-            config.set("sslv3", args.sslv3, plugin=self.name)
-            config.set("tls10", args.tls10, plugin=self.name)
-            config.set("tls11", args.tls11, plugin=self.name)
-            config.set("tls12", args.tls12, plugin=self.name)
-            config.set("tls13", args.tls13, plugin=self.name)
+            config.set("sslv2", args.sslv2)
+            config.set("sslv3", args.sslv3)
+            config.set("tls10", args.tls10)
+            config.set("tls11", args.tls11)
+            config.set("tls12", args.tls12)
+            config.set("tls13", args.tls13)

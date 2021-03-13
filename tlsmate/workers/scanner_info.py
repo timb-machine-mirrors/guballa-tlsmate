@@ -18,10 +18,14 @@ from tlsmate import utils
 
 
 class ScanStart(Worker):
+    """Provide basic infos without actually really scanning against the server.
+    """
     name = "scanstart"
     prio = 0
 
     def run(self):
+        """The entry point for the worker.
+        """
         scan_info = self.server_profile.scan_info
         start_time = time.time()
         scan_info.command = " ".join(sys.argv)
@@ -52,10 +56,14 @@ class ScanStart(Worker):
 
 
 class ScanEnd(Worker):
+    """Complement the info after the scan is finished.
+    """
     name = "scanend"
     prio = 1000
 
     def run(self):
+        """The entry point for the worker.
+        """
         scan_info = self.server_profile.scan_info
         start_time = scan_info.start_timestamp
         stop_time = time.time()
@@ -65,6 +73,16 @@ class ScanEnd(Worker):
         if self.config.get("progress"):
             sys.stderr.write("\n")
 
+
+class ProfileDumper(Worker):
+    """Do whatever is needed to dump the server profile after the scan is finished.
+    """
+    name = "profile_dumper"
+    prio = 1001
+
+    def run(self):
+        """The entry point for the worker.
+        """
         utils.serialize_data(
             self.server_profile.make_serializable(),
             file_name=self.config.get("write_profile"),

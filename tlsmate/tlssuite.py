@@ -102,9 +102,13 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             if not ini_file.is_file():
                 ini_file = None
 
-        self.config = Configuration(
-            ini_file=ini_file, init_from_external=not is_replaying
-        )
+        # self.config = Configuration(
+        #    ini_file=ini_file, init_from_external=not is_replaying
+        # )
+        self.config = Configuration()
+        if not is_replaying:
+            self.config.init_from_external(ini_file)
+
         self.port = self.config.get("pytest_port")
         if self.port is None:
             self.port = 44330

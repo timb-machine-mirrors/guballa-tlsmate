@@ -12,7 +12,6 @@ from tlsmate.tlsmate import TlsMate
 from tlsmate.plugin import PluginManager
 from tlsmate import utils
 from tlsmate.version import __version__
-from tlsmate.plugins.scan import ScanPlugin
 
 # import other stuff
 
@@ -60,6 +59,7 @@ def build_parser():
         "--logging",
         choices=["critical", "error", "warning", "info", "debug"],
         help="sets the loggin level. Default is error.",
+        default="error",
     )
     parser.add_argument(
         "--progress",
@@ -107,28 +107,6 @@ def build_parser():
     )
 
     parser.add_argument(
-        "--read-profile",
-        type=str,
-        help="JSON/Yaml file to read the server profile from",
-    )
-
-    parser.add_argument(
-        "--write-profile",
-        type=str,
-        help=(
-            "file to write the server profile to. By default the format of the file "
-            "is Yaml. If this option is not given the profile is printed to STDOUT."
-        ),
-    )
-
-    parser.add_argument(
-        "--json",
-        help="use the JSON-format for outputting the server profile",
-        action="store_const",
-        const=True,
-    )
-
-    parser.add_argument(
         "host",
         help=(
             "the host to scan. May optionally have the port number appended, "
@@ -142,7 +120,7 @@ def build_parser():
     return parser
 
 
-def _args_consistency(args, parser):
+def args_consistency(args, parser):
     """Check the consistency of the given args which cannot be checked by argparse.
 
     Arguments:
@@ -169,19 +147,16 @@ def main():
     parser = build_parser()
 
     args = parser.parse_args()
-    _args_consistency(args, parser)
+    args_consistency(args, parser)
 
-    #    plugin_cli_options = sorted(SuiteManager.test_suites.keys())
-    #    selected_plugins = []
-    #    for arg in plugin_cli_options:
-    #        if getattr(args, arg[2:]):
-    #            selected_plugins.append(arg)
-    #
-    #    if not selected_plugins:
-    #        options = " ".join(plugin_cli_options)
-    #        parser.error("specify at least one of the following options: " + options)
+    # logging must be setup before the first log is generated.
+    utils.set_logging(args.logging)
 
-    config = Configuration(ini_file=args.config_file)
+    config = Configuration()
+
+    PluginManager.extend_config(config)
+
+    config.init_from_external(args.config_file)
 
     config.set("progress", args.progress)
     config.set("ca_certs", args.ca_certs)
@@ -191,11 +166,6 @@ def main():
     config.set("client_chain", args.client_chain)
     config.set("endpoint", args.host)
     config.set("sni", args.sni)
-    config.set("json", args.json)
-    config.set("read_profile", args.read_profile)
-    config.set("write_profile", args.write_profile)
-
-    utils.set_logging(config.get("logging"))
 
     PluginManager.args_parsed(args, config)
 
@@ -203,9 +173,10 @@ def main():
     tlsmate.work_manager.run(tlsmate)
 
 
-PluginManager.register(ScanPlugin)
+# And now load the plugins which are shipped by default with tlsmate...
+from tlsmate.plugins import server_profile, scan  # NOQA
 
-# and now look for additional user provided plugins
+# And now look for additional user provided plugins
 discovered_plugins = {
     name: importlib.import_module(name)
     for finder, name, ispkg in pkgutil.iter_modules()

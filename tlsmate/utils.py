@@ -31,7 +31,7 @@ def serialize_data(data, file_name=None, replace=True, use_json=False, indent=4)
 
     if file_name is not None:
         if not replace and pathlib.Path(file_name).exists():
-            form = "JSON" if json else "Yaml"
+            form = "JSON" if use_json else "Yaml"
             print(f"File {file_name} existing. {form}-file not generated")
             return
 
