@@ -22,6 +22,7 @@ from tlsmate.workers.renegotiation import ScanRenegotiation
 class ScanPlugin(Plugin):
     """Plugin to perform a scan against a TLS server.
     """
+
     name = "scan"
     cli_name = "--scan"
     cli_help = "performs a basic scan"

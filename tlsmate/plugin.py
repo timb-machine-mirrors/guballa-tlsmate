@@ -96,7 +96,7 @@ class PluginManager(object):
         """Extend the configuration by all registered plugins.
 
         Arguments:
-            config (:obj:`tlsmate.config.Configuration`): The configuration that is to 
+            config (:obj:`tlsmate.config.Configuration`): The configuration that is to
             be extended.
         """
         for plugin in cls._objects:

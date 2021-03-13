@@ -19,6 +19,7 @@ class ScanCipherSuites(Worker):
 
     The results are stored in the server profile.
     """
+
     name = "basic"
     prio = 10
 

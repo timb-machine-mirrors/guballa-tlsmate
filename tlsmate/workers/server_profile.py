@@ -13,6 +13,7 @@ from tlsmate import utils
 class ReadProfileWorker(Worker):
     """Worker class which deserializes a server profile in Yaml format
     """
+
     name = "profile_reader"
     prio = 1
 
@@ -25,6 +26,7 @@ class ReadProfileWorker(Worker):
 class DumpProfileWorker(Worker):
     """Worker class which serializes a server profile.
     """
+
     name = "profile_dumper"
     prio = 1001
 

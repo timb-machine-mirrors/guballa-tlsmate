@@ -14,6 +14,7 @@ from tlsmate.workers.server_profile import ReadProfileWorker, DumpProfileWorker
 class ServerProfilePlugin(Plugin):
     """Plugin for deserializing and serializing the server profile.
     """
+
     name = "server_profile"
 
     config = {
