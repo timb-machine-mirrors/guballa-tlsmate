@@ -7,18 +7,34 @@ import logging
 # import own stuff
 from tlsmate import msg
 from tlsmate import tls
-from tlsmate.tlssuite import TlsSuite
+from tlsmate.plugin import Worker
 from tlsmate import utils
 from tlsmate.server_profile import SPVersion
 
 # import other stuff
 
 
-class ScanCipherSuites(TlsSuite):
+class ScanCipherSuites(Worker):
+    """Scans for the supported versions, cipher suites and certificate chains.
+
+    The results are stored in the server profile.
+    """
+
     name = "basic"
     prio = 10
 
-    def get_server_cs_and_cert(self, version):
+    def _get_server_cs_and_cert(self, version):
+        """Performs a handshake and retieves the cipher suite and certificate chain.
+
+        The certificate chain received from the server is added to the server profile.
+
+        Arguments:
+            version (:obj:`tlsmate.tls.Version`): The TLS version
+
+        Returns:
+            :obj:`tlsmate.tls.CipherSuite`: the cipher suite selected by the server.
+                None, if no SeverHello was received.
+        """
         with self.client.create_connection() as conn:
             conn.send(msg.ClientHello)
             server_hello = conn.wait(msg.ServerHello)
@@ -39,7 +55,13 @@ class ScanCipherSuites(TlsSuite):
             return server_hello.cipher_suite
         return None
 
-    def get_server_cs(self):
+    def _get_server_cs(self):
+        """Performs a handshake and returns the ciper suite selected by the server.
+
+        Returns:
+            :obj:`tlsmate.tls.CipherSuite`: the cipher suite selected by the server.
+                None, if no SeverHello was received.
+        """
         with self.client.create_connection() as conn:
             conn.send(msg.ClientHello)
             server_hello = conn.wait(msg.Any)
@@ -48,16 +70,35 @@ class ScanCipherSuites(TlsSuite):
         except AttributeError:
             return None
 
-    def get_server_preference(self, cipher_suites):
+    def _get_server_preference(self, cipher_suites):
+        """Determine the server preference order of supported cipher suites.
+
+        Arguments:
+            cipher_suites (list of :obj:`tlsmate.tls.CipherSuite`): the list of
+                cipher suites support by the server in arbitrary order.
+
+        Returns:
+            list of :obj:`tlsmate.tls.CipherSuite`: the cipher suites supported by
+                the server in the order of preference.
+        """
         self.client.cipher_suites = cipher_suites
         server_pref = []
         while self.client.cipher_suites:
-            server_cs = self.get_server_cs()
+            server_cs = self._get_server_cs()
             server_pref.append(server_cs)
             self.client.cipher_suites.remove(server_cs)
         return server_pref
 
-    def tls_enum_version(self, version):
+    def _tls_enum_version(self, version):
+        """Determines the supported cipher suites and other stuff for a given version.
+
+        Determines the supported cipher suites, if the server enforces the priority
+        (and if so, determines the order of cipher suites according to their priority)
+        and extracts the certificate chains and stores them in the server profile.
+
+        Arguments:
+            version (:obj:`tlsmate.tls.Version`): The TLS version to enumerate.
+        """
         cipher_suites = utils.filter_cipher_suites(
             tls.CipherSuite.all(), version=version
         )
@@ -74,7 +115,7 @@ class ScanCipherSuites(TlsSuite):
 
             while sub_set:
                 self.client.cipher_suites = sub_set
-                cipher_suite = self.get_server_cs_and_cert(version)
+                cipher_suite = self._get_server_cs_and_cert(version)
                 if cipher_suite is not None:
                     sub_set.remove(cipher_suite)
                     supported_cs.append(cipher_suite)
@@ -88,16 +129,16 @@ class ScanCipherSuites(TlsSuite):
                 server_prio = tls.SPBool.C_FALSE
                 # check if server enforce the cipher suite prio
                 self.client.cipher_suites = supported_cs
-                if self.get_server_cs() != supported_cs[0]:
+                if self._get_server_cs() != supported_cs[0]:
                     server_prio = tls.SPBool.C_TRUE
                 else:
                     supported_cs.append(supported_cs.pop(0))
-                    if self.get_server_cs() != supported_cs[0]:
+                    if self._get_server_cs() != supported_cs[0]:
                         server_prio = tls.SPBool.C_TRUE
 
                 # determine the order of cipher suites on server side, if applicable
                 if server_prio == tls.SPBool.C_TRUE:
-                    supported_cs = self.get_server_preference(supported_cs)
+                    supported_cs = self._get_server_preference(supported_cs)
                 else:
                     # esthetical: restore original order, which means the cipher suites
                     # are ordered according to the binary representation
@@ -113,7 +154,9 @@ class ScanCipherSuites(TlsSuite):
 
         logging.info(f"enumeration for {version} finished")
 
-    def ssl2_enum_version(self):
+    def _ssl2_enum_version(self):
+        """Minimal support to determine if SSLv2 is supported.
+        """
         with self.client.create_connection() as conn:
             conn.send(msg.SSL2ClientHello)
             server_hello = conn.wait(msg.SSL2ServerHello)
@@ -130,13 +173,20 @@ class ScanCipherSuites(TlsSuite):
                 prof_version.version = tls.Version.SSL20
                 self.server_profile.versions.append(prof_version)
 
-    def enum_version(self, version):
+    def _enum_version(self, version):
+        """Scan a specific TLS version.
+
+        Arguments:
+            version (:obj:`tlsmate.tls.Version`): The TLS version to enumerate.
+        """
         if version is tls.Version.SSL20:
-            self.ssl2_enum_version()
+            self._ssl2_enum_version()
         else:
-            self.tls_enum_version(version)
+            self._tls_enum_version(version)
 
     def run(self):
+        """The entry point for the worker.
+        """
 
         self.client.alert_on_invalid_cert = False
         self.client.versions = [tls.Version.TLS12]
@@ -200,4 +250,4 @@ class ScanCipherSuites(TlsSuite):
             versions = tls.Version.all()
 
         for version in versions:
-            self.enum_version(version)
+            self._enum_version(version)

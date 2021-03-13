@@ -12,24 +12,6 @@ from pathlib import Path
 import configparser
 
 
-def _str_to_bool(string):
-    return string.lower() not in ["0", "off", "no", "false"]
-
-
-def _str_to_strlist(string):
-    return [val.strip() for val in string.split(",")]
-
-
-def _str_to_int(string):
-    return int(string)
-
-
-def _absolute_path(path, base_path):
-    if not path.startswith("/"):
-        path = str(base_path / path)
-    return path
-
-
 class Configuration(object):
     """Class representing the configuration for tlsmate.
 
@@ -37,9 +19,11 @@ class Configuration(object):
     according to the priority, first item has the least priority):
 
     * The hard coded default values
-    * The file .tlsmate.ini in the user's home directory
-    * Environment variables
-    * From the ini file as specified on the command line interface
+    * From the ini-file, if present. If the ini-file is not specified via the
+      CLI option, the file .tlsmate.ini in the user's home directory will be used,
+      if present.
+    * Environment variables. They need to be given in upper cases and must start with
+      TLSMATE_ followed by the name of the setting.
     * From the command line interface parameters
 
     Example:
@@ -58,22 +42,7 @@ class Configuration(object):
 
     """
 
-    _format_option = {
-        "progress": _str_to_bool,
-        "ca_certs": _str_to_strlist,
-        "client_key": _str_to_strlist,
-        "client_chain": _str_to_strlist,
-        "sslv2": _str_to_bool,
-        "sslv3": _str_to_bool,
-        "tls10": _str_to_bool,
-        "tls11": _str_to_bool,
-        "tls12": _str_to_bool,
-        "tls13": _str_to_bool,
-        "pytest_port": _str_to_int,
-    }
-
-    def __init__(self, ini_file=None, init_from_external=True):
-        self._plugins = {}
+    def __init__(self):
         self._config = {
             "endpoint": "localhost",
             "logging": "error",
@@ -87,9 +56,6 @@ class Configuration(object):
             "tls11": False,
             "tls12": False,
             "tls13": False,
-            "json": False,
-            "write_profile": None,
-            "read_profile": None,
             "pytest_recorder_file": None,
             "pytest_recorder_replaying": None,
             "pytest_port": None,
@@ -97,108 +63,126 @@ class Configuration(object):
             "pytest_openssl_1_1_1": None,
             "pytest_openssl_3_0_0": None,
         }
-        parser = configparser.ConfigParser()
-        if ini_file is not None:
-            logging.debug(f"using config file {ini_file}")
-            abs_path = Path(ini_file)
-            if not abs_path.is_absolute():
-                abs_path = Path.cwd() / abs_path
 
-            if not abs_path.is_file():
-                raise FileNotFoundError(abs_path)
+    def _str_to_bool(self, string):
+        return string.lower() not in ["0", "off", "no", "false"]
 
-        elif init_from_external:
-            abs_path = Path.home() / ".tlsmate.ini"
+    def _str_to_filelist(self, string):
+        ret = []
+        for val in string.split(","):
+            val = val.strip()
+            if not val.startswith("/"):
+                val = str(self._config_dir / val)
+            ret.append(val)
+        return ret
+
+    def _str_to_int(self, string):
+        return int(string)
+
+    _format_option = {
+        "progress": _str_to_bool,
+        "ca_certs": _str_to_filelist,
+        "client_key": _str_to_filelist,
+        "client_chain": _str_to_filelist,
+        "sslv2": _str_to_bool,
+        "sslv3": _str_to_bool,
+        "tls10": _str_to_bool,
+        "tls11": _str_to_bool,
+        "tls12": _str_to_bool,
+        "tls13": _str_to_bool,
+        "pytest_port": _str_to_int,
+    }
+
+    def _init_from_ini_file(self, ini_file):
+        if ini_file is None:
+            ini_file = Path.home() / ".tlsmate.ini"
 
         else:
-            abs_path = None
+            ini_file = Path(ini_file)
+            if not ini_file.is_absolute():
+                ini_file = Path.cwd() / ini_file
 
-        config = {}
-        if abs_path:
-            parser.read(str(abs_path))
-            if parser.has_section("tlsmate"):
-                config = parser["tlsmate"]
+        if not ini_file.is_file():
+            raise FileNotFoundError(ini_file)
 
-        for option in self._config.keys():
-            val = None
-            if init_from_external:
-                val = os.environ.get("TLSMATE_" + option.upper())
+        logging.debug(f"using config file {str(ini_file)}")
+        self._config_dir = ini_file.parent
+        parser = configparser.ConfigParser()
+        parser.read(str(ini_file))
+        if parser.has_section("tlsmate"):
+            config = parser["tlsmate"]
+            for item in self._config:
+                val = config.get(item)
+                if val is not None:
+                    self._config[item] = self._cast_item(item, val)
 
-            if val is None:
-                val = config.get(option)
-
+    def _init_from_environment(self):
+        for item in self._config:
+            val = os.environ.get("TLSMATE_" + item.upper())
             if val is not None:
-                func = self._format_option.get(option)
-                if func is not None:
-                    val = func(val)
+                self._config[item] = self._cast_item(item, val)
 
-                self._config[option] = val
+    def _cast_item(self, item, val):
+        if item in self._format_option:
+            val = self._format_option[item](self, val)
+        return val
 
-        if abs_path:
-            abs_dir = abs_path.parent
-            for conf_item in ["ca_certs", "client_key", "client_chain"]:
-                item = self._config.get(conf_item)
-                if item is not None:
-                    item = self._config[conf_item]
-                    if isinstance(item, list):
-                        item = [_absolute_path(x, abs_dir) for x in item]
-
-                    else:
-                        item = _absolute_path(item, abs_dir)
-
-                    self._config[conf_item] = item
-
-    def items(self, plugin=None):
-        """Return the items for a configuration section.
+    def init_from_external(self, ini_file):
+        """Take the configuration from the ini file and from the environment variables.
 
         Arguments:
-
-            plugin (str or None): the name of the plugin section. if not given, the
-                basic configuration will be used.
+            ini_file (str): the path to the ini file
         """
-        if plugin:
-            return self._plugins[plugin].items()
+        self._init_from_ini_file(ini_file)
+        self._init_from_environment()
 
-        else:
-            return self._config.items()
+    def extend(self, config):
+        """Extends the base configuration by additional configuration options.
 
-    def get(self, key, plugin=None, default=None):
+        Used by plugins to register additional configuration options.
+
+        Arguments:
+            config (dict): A dict mapping the name of new configuration options
+                to their default value.
+
+        Raises:
+            ValueError: If the name of the configuration option is already present.
+                Used to avoid double use of the same option name by different plugins.
+        """
+        if config is not None:
+            for key, val in config.items():
+                if key in self._config:
+                    raise ValueError(f'configuration "{key}" defined twice')
+
+                self._config[key] = val
+
+    def items(self):
+        """Return the items for a configuration section.
+
+        """
+        return self._config.items()
+
+    def get(self, key, default=None):
         """Get a configuration item.
 
         Arguments:
             key (str): the name of the configuration item
-            plugin (str or None): the name of the plugin section. if not given, the
-                basic configuration will be used.
             default: the default value to return in case the configuration item is
                 not existing. Defaults to None.
         """
-        if plugin is None:
-            return self._config.get(key, default)
+        return self._config.get(key, default)
 
-        else:
-            return self._plugins[plugin].get(key, default)
-
-    def set(self, key, val, plugin=None, keep_existing=True):
+    def set(self, key, val, keep_existing=True):
         """Add a configuration option.
 
         Arguments:
             key (str): the name of the option
             val: the value of the option
-            plugin (str or None): the name of the plugin section. If not given, the
-                basic configuration will be used.
             keep_existing (bool): if set to True and the value is None, an existing
                 configuration will not be overwritten. Defaults to True
         """
-        if plugin is None:
-            config = self._config
 
-        else:
-            if plugin not in self._plugins:
-                self._plugins[plugin] = {}
-
-            config = self._plugins[plugin]
-
-        if key in config and val is None and keep_existing:
+        if key in self._config and val is None and keep_existing:
             return
 
-        config[key] = val
+        self._config[key] = val

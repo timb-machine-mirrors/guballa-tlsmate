@@ -5,12 +5,12 @@
 
 # import own stuff
 from tlsmate import tls
-from tlsmate.tlssuite import TlsSuite
+from tlsmate.plugin import Worker
 
 # import other stuff
 
 
-class ScanExtendedMasterSecret(TlsSuite):
+class ScanExtendedMasterSecret(Worker):
     name = "master_secret"
     descr = "check if the extension extended_master_secret is supported"
     prio = 30

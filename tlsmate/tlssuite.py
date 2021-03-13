@@ -22,38 +22,6 @@ class OpensslVersion(enum.Enum):
     v3_0_0 = enum.auto()
 
 
-class TlsSuite(metaclass=abc.ABCMeta):
-    """Provides a base class for the implementation of test suites.
-
-    Attributes:
-        server_profile (:obj:`tlsmate.server_profile.ServerProfile`): The server
-            profile instance. Can be used to get data from it (e.g. which cipher
-            suites are supported for which TLS versions), or to extend it.
-        client (:obj:`tlsmate.client.Client`): The client object.
-    """
-
-    prio = 100
-
-    def __init__(self, tlsmate):
-        self.server_profile = tlsmate.server_profile
-        self.client = tlsmate.client
-        self.config = tlsmate.config
-
-    def _inject_dependencies(self, server_profile, client):
-        """Method to inject the server profile and the client into the object
-        """
-        self.server_profile = server_profile
-        self.client = client
-
-    @abc.abstractmethod
-    def run(self):
-        """Entry point for the test suite.
-
-        The test manager will call this method which will implement the test suite.
-        """
-        raise NotImplementedError
-
-
 class TlsSuiteTester(metaclass=abc.ABCMeta):
     """Base class to define unit tests
     """
@@ -134,9 +102,13 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             if not ini_file.is_file():
                 ini_file = None
 
-        self.config = Configuration(
-            ini_file=ini_file, init_from_external=not is_replaying
-        )
+        # self.config = Configuration(
+        #    ini_file=ini_file, init_from_external=not is_replaying
+        # )
+        self.config = Configuration()
+        if not is_replaying:
+            self.config.init_from_external(ini_file)
+
         self.port = self.config.get("pytest_port")
         if self.port is None:
             self.port = 44330

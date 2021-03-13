@@ -13,7 +13,9 @@ from tlsmate.cert import CertChain, CrlManager
 @pytest.fixture
 def config_no_trust():
     config_file = pathlib.Path(__file__).parent.resolve() / "tlsmate_no_trust.ini"
-    return Configuration(ini_file=config_file)
+    config = Configuration()
+    config.init_from_external(config_file)
+    return config
 
 
 def build_cert_chain(pem_file):
