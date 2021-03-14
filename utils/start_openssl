@@ -27,6 +27,7 @@ List of options:
                         Defaults to "$server_dir".
     --mode <str>        Can be "www" or "early_data".
     --sslv2             Used for SSLv2
+    --ccs-inject        Used for openssl1.0.1g (vulnerable to CCS-injection)
     --                  Indicates the end of the options for this script.
                         All following options will be passed transparently
                         to the openssl command.
@@ -51,6 +52,7 @@ while [[ "$#" -gt 0 ]]; do
         -d|--cert2) auth2="$2"; shift ;;
         -e|--cert3) auth3="$2"; shift ;;
         --sslv2) build_chain=""; sslv2="-ssl2";;
+        --ccs-inject) build_chain="";;
         --certdir) server_dir="$2"; shift ;;
         --mode) mode=-"$2"; shift ;;
         --) shift; break ;;

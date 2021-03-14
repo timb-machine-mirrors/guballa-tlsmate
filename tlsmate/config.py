@@ -59,6 +59,7 @@ class Configuration(object):
             "pytest_recorder_file": None,
             "pytest_recorder_replaying": None,
             "pytest_port": None,
+            "pytest_openssl_1_0_1g": None,
             "pytest_openssl_1_0_2": None,
             "pytest_openssl_1_1_1": None,
             "pytest_openssl_3_0_0": None,
