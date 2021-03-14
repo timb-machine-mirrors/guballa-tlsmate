@@ -1339,6 +1339,17 @@ class ServerProfile(SPObject):
             if vers_sig is not None:
                 sig_algos.extend([algo for algo in vers_sig if algo not in sig_algos])
 
+            # Add the signature algorithms used in the certificate chains as well, if
+            # not yet present.
+            for chain in self.cert_chains:
+                for cert in chain.cert_chain:
+                    if cert.signature_algorithm not in sig_algos:
+                        sig_algos.append(cert.signature_algorithm)
+
+                if hasattr(chain, "root_certificate"):
+                    if chain.root_certificate.signature_algorithm not in sig_algos:
+                        sig_algos.append(chain.root_certificate.signature_algorithm)
+
             vers_group = self.get_supported_groups(version)
             if vers_group is not None:
                 groups.extend([group for group in vers_group if group not in groups])
