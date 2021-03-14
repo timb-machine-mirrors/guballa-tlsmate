@@ -16,7 +16,7 @@ class ScanEncryptThenMac(Worker):
     descr = "check if the extension encrypt_then_mac is supported"
     prio = 30
 
-    def encrypt_then_mac(self):
+    def run(self):
         state = tls.SPBool.C_UNDETERMINED
         versions = [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]
 
@@ -29,11 +29,8 @@ class ScanEncryptThenMac(Worker):
             # no CBC cipher suite supported
             state = tls.SPBool.C_NA
         else:
-            self.client.reset_profile()
-            self.client.versions = versions
+            self.client.init_profile(profile_values=prof_values)
             self.client.cipher_suites = cipher_suites
-            self.client.supported_groups = prof_values.supported_groups
-            self.client.signature_algorithms = prof_values.signature_algorithms
             self.client.support_encrypt_then_mac = True
             with self.client.create_connection() as conn:
                 conn.handshake()
@@ -43,6 +40,3 @@ class ScanEncryptThenMac(Worker):
                 else:
                     state = tls.SPBool.C_FALSE
         self.server_profile.features.encrypt_then_mac = state
-
-    def run(self):
-        self.encrypt_then_mac()

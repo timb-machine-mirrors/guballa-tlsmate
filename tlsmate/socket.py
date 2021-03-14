@@ -79,7 +79,7 @@ class Socket(object):
         cont = self._recorder.trace_socket_sendall(data)
         if cont:
             if self._socket is None:
-                self.open_socket()
+                return
             self._socket.sendall(data)
 
     def recv_data(self, timeout=5):

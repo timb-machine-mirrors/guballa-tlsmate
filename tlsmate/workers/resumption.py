@@ -22,11 +22,7 @@ class ScanResumption(Worker):
             state = tls.SPBool.C_UNDETERMINED
         else:
             state = tls.SPBool.C_FALSE
-            self.client.reset_profile()
-            self.client.versions = prof_vals.versions
-            self.client.cipher_suites = prof_vals.cipher_suites
-            self.client.supported_groups = prof_vals.supported_groups
-            self.client.signature_algorithms = prof_vals.signature_algorithms
+            self.client.init_profile(profile_values=prof_vals)
             if session_ticket:
                 self.client.support_session_ticket = True
             else:
@@ -74,11 +70,7 @@ class ScanResumption(Worker):
             [tls.Version.TLS13], full_hs=True
         )
         if prof_vals.versions:
-            self.client.reset_profile()
-            self.client.versions = prof_vals.versions
-            self.client.cipher_suites = prof_vals.cipher_suites
-            self.client.supported_groups = prof_vals.supported_groups
-            self.client.signature_algorithms = prof_vals.signature_algorithms
+            self.client.init_profile(profile_values=prof_vals)
             self.client.support_psk = True
             self.client.psk_key_exchange_modes = [
                 tls.PskKeyExchangeMode.PSK_DHE_KE,

@@ -1195,6 +1195,19 @@ class SPVersionSchema(ProfileSchema):
     version = fields.Nested(SPVersionEnumSchema)
 
 
+class SPVulnerabilities(SPObject):
+    """Data class for vulnerabilities
+    """
+
+
+class SPVulnerabilitiesSchema(ProfileSchema):
+    """Schema for vulnerabilities
+    """
+
+    __profile_class__ = SPVulnerabilities
+    ccs_injection = FieldsEnumString(enum_class=tls.SPBool)
+
+
 class ServerProfile(SPObject):
     """Data class for the server profile.
     """
@@ -1207,6 +1220,7 @@ class ServerProfile(SPObject):
         self.scan_info = SPScanInfo()
         self.server = SPServer()
         self.versions = []
+        self.vulnerabilities = SPVulnerabilities()
 
     def append_unique_cert_chain(self, chain):
         """Append a chain only, if not yet present.
@@ -1361,6 +1375,7 @@ class ServerProfileSchema(ProfileSchema):
     scan_info = fields.Nested(SPScanInfoSchema)
     server = fields.Nested(SPServerSchema)
     versions = fields.List(fields.Nested(SPVersionSchema))
+    vulnerabilities = fields.Nested(SPVulnerabilitiesSchema)
 
     def __init__(self, profile=None, **kwargs):
         self._profile = profile

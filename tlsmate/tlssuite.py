@@ -17,6 +17,7 @@ from tlsmate.config import Configuration
 
 
 class OpensslVersion(enum.Enum):
+    v1_0_1g = enum.auto()
     v1_0_2 = enum.auto()
     v1_1_1 = enum.auto()
     v3_0_0 = enum.auto()
@@ -35,6 +36,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
 
     def _start_server(self):
         openssl_prefix = {
+            OpensslVersion.v1_0_1g: self.config.get("pytest_openssl_1_0_1g"),
             OpensslVersion.v1_0_2: self.config.get("pytest_openssl_1_0_2"),
             OpensslVersion.v1_1_1: self.config.get("pytest_openssl_1_1_1"),
             OpensslVersion.v3_0_0: self.config.get("pytest_openssl_3_0_0"),

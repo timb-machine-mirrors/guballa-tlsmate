@@ -15,18 +15,14 @@ class ScanExtendedMasterSecret(Worker):
     descr = "check if the extension extended_master_secret is supported"
     prio = 30
 
-    def extended_master_secret(self):
+    def run(self):
         state = tls.SPBool.C_UNDETERMINED
         versions = [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]
         prof_values = self.server_profile.get_profile_values(versions, full_hs=True)
         if not prof_values.versions:
             state = tls.SPBool.C_NA
         else:
-            self.client.reset_profile()
-            self.client.versions = prof_values.versions
-            self.client.cipher_suites = prof_values.cipher_suites
-            self.client.supported_groups = prof_values.supported_groups
-            self.client.signature_algorithms = prof_values.signature_algorithms
+            self.client.init_profile(profile_values=prof_values)
             self.client.support_extended_master_secret = True
             with self.client.create_connection() as conn:
                 conn.handshake()
@@ -38,6 +34,3 @@ class ScanExtendedMasterSecret(Worker):
                 else:
                     state = tls.SPBool.C_FALSE
         self.server_profile.features.extended_master_secret = state
-
-    def run(self):
-        self.extended_master_secret()

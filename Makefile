@@ -2,6 +2,8 @@
 	test-all dist install install-dev uninstall tags certs
 .DEFAULT_GOAL := help
 
+COVERAGE= --cov=tlsmate --cov=tlsmate/workers --cov=tlsmate/plugins
+
 SHELL := /bin/bash
 
 define PRINT_HELP_PYSCRIPT
@@ -64,10 +66,10 @@ tags: ## generate ctags
 	ctags -R --languages=python  -f ./tags tlsmate/ tests/
 
 test-cov: ## generate coverage statistics
-	py.test --cov=tlsmate
+	py.test $(COVERAGE)
 
 test-cov-report: ## generate coverage report for each file
-	py.test --cov-report annotate:cov_annotate --cov=tlsmate/
+	py.test --cov-report annotate:cov_annotate $(COVERAGE)
 
 test-all: ## run tests on every Python version with tox
 	tox
