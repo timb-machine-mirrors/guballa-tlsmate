@@ -118,7 +118,7 @@ class TestCase(TlsSuiteTester):
     def run(self, tlsmate, is_replaying):
         server_profile = tlsmate.server_profile
         client = tlsmate.client
-        client.reset_profile()
+        client.init_profile()
         ScanCipherSuites(tlsmate).run()
 
         self.check_profile(server_profile.make_serializable())

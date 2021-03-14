@@ -20,17 +20,8 @@ class ScanCompression(Worker):
         features = self.server_profile.features
         if not hasattr(features, "compression"):
             features.compression = []
-        self.client.reset_profile()
-        self.client.versions = [version]
         values = self.server_profile.get_profile_values([version])
-
-        self.client.cipher_suites = values.cipher_suites
-        if values.supported_groups:
-            self.client.supported_groups = values.supported_groups
-            self.client.supported_groups = values.supported_groups
-        if values.signature_algorithms:
-            self.client.signature_algorithms = values.signature_algorithms
-
+        self.client.init_profile(profile_values=values)
         comp_methods = tls.CompressionMethod.all()
 
         while comp_methods:

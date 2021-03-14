@@ -90,7 +90,7 @@ class Client(object):
         self.config = tlsmate.config
         self.set_profile_modern()
 
-    def reset_profile(self):
+    def init_profile(self, profile_values=None):
         """Resets the client profile to a very basic state
 
         :note:
@@ -99,6 +99,10 @@ class Client(object):
 
         Compression methods is set to [tls.CompressionMethod.NULL], and by default
         the sni extention is enabled. Everything else is empty or disabled.
+
+        Arguments:
+            profile_values (:obj:`tlsmate.structs.ProfileValues): the profile
+                values to additionally use to initialize the client profile
         """
         self.versions = []
         self.cipher_suites = []
@@ -133,6 +137,12 @@ class Client(object):
         self.support_secure_renegotiation = False
         self.support_scsv_renegotiation = False
 
+        if profile_values is not None:
+            self.versions = profile_values.versions[:]
+            self.cipher_suites = profile_values.cipher_suites[:]
+            self.supported_groups = profile_values.supported_groups[:]
+            self.signature_algorithms = profile_values.signature_algorithms[:]
+
     def set_profile_interoperability(self):
         """Define profile for interoperability, like used in modern browsers
 
@@ -144,7 +154,7 @@ class Client(object):
           - Resumption, encrypt-then-mac, extended-mastersecret
           - pskmode psk_dhe
         """
-        self.reset_profile()
+        self.init_profile()
         self.versions = [
             tls.Version.TLS10,
             tls.Version.TLS11,
@@ -210,7 +220,7 @@ class Client(object):
           - Signature algorithms: ECDSA+SHA1, RSA PKCS1+SHA1 as last resort
           - Resumption, encrypt-then-mac, extended-mastersecret
         """
-        self.reset_profile()
+        self.init_profile()
         self.versions = [
             tls.Version.TLS10,
             tls.Version.TLS11,
@@ -278,7 +288,7 @@ class Client(object):
           - Resumption, encrypt-then-mac, extended-mastersecret
           - pskmode psk_dhe
         """
-        self.reset_profile()
+        self.init_profile()
         self.versions = [tls.Version.TLS12, tls.Version.TLS13]
         self.cipher_suites = [
             tls.CipherSuite.TLS_AES_128_GCM_SHA256,
@@ -322,7 +332,7 @@ class Client(object):
           - AESGCM + CHACHA_POLY
           - pskmode psk_dhe
         """
-        self.reset_profile()
+        self.init_profile()
         self.versions = [tls.Version.TLS13]
         self.cipher_suites = [
             tls.CipherSuite.TLS_AES_128_GCM_SHA256,
