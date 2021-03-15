@@ -19,7 +19,7 @@ Nice to have
     - consistently use "verify" or "validate" when checking sigatures and certificates
     - cleanups for certificate parsing required:
         - implement quite a lot of missing stuff, e.g. proper handling of cert policies, etc.
-
+    - scan for adfg.de fails with invalid signature
 
 Commands to build the openssl version used for unit tests:
 

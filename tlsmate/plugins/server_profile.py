@@ -66,7 +66,6 @@ class ServerProfilePlugin(Plugin):
             config (:obj:`tlsmate.config.Configuration`): the configuration object
         """
         config.set("json", args.json)
-        config.set("read_profile", args.read_profile)
         config.set("write_profile", args.profile)
 
         if args.read_profile is not None:

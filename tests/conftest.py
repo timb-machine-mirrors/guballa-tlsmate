@@ -37,6 +37,11 @@ def fixturefiles_dir():
 
 
 @pytest.fixture
+def server_profile(fixturefiles_dir):
+    return fixturefiles_dir / "server_profile.yaml"
+
+
+@pytest.fixture
 def trust_store(tlsmate, fixturefiles_dir):
     trust_store = tlsmate.trust_store
     trust_store.set_ca_files([fixturefiles_dir / "trust_store.pem"])
