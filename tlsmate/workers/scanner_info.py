@@ -12,7 +12,6 @@ from tlsmate.version import __version__
 from tlsmate.plugin import Worker
 from tlsmate.server_profile import SPServer
 from tlsmate import resolver
-from tlsmate import utils
 
 # import other stuff
 
@@ -74,22 +73,3 @@ class ScanEnd(Worker):
         scan_info.run_time = float(f"{stop_time - start_time:.3f}")
         if self.config.get("progress"):
             sys.stderr.write("\n")
-
-
-class ProfileDumper(Worker):
-    """Do whatever is needed to dump the server profile after the scan is finished.
-    """
-
-    name = "profile_dumper"
-    prio = 1001
-
-    def run(self):
-        """The entry point for the worker.
-        """
-        utils.serialize_data(
-            self.server_profile.make_serializable(),
-            file_name=self.config.get("write_profile"),
-            replace=True,
-            use_json=bool(self.config.get("json")),
-            indent=4,
-        )

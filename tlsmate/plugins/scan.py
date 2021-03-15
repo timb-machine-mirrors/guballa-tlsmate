@@ -6,7 +6,7 @@
 # import own stuff
 from tlsmate.plugin import Plugin, WorkManager, PluginManager
 from tlsmate.workers.eval_cipher_suites import ScanCipherSuites
-from tlsmate.workers.scanner_info import ScanStart, ScanEnd, ProfileDumper
+from tlsmate.workers.scanner_info import ScanStart, ScanEnd
 from tlsmate.workers.supported_groups import ScanSupportedGroups
 from tlsmate.workers.sig_algo import ScanSigAlgs
 from tlsmate.workers.compression import ScanCompression
@@ -98,7 +98,6 @@ class ScanPlugin(Plugin):
             WorkManager.register(ScanRenegotiation)
             WorkManager.register(ScanCcsInjection)
             WorkManager.register(ScanEnd)
-            WorkManager.register(ProfileDumper)
 
             config.set("sslv2", args.sslv2)
             config.set("sslv3", args.sslv3)
