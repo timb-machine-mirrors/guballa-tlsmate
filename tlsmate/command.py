@@ -11,6 +11,7 @@ from tlsmate.config import Configuration
 from tlsmate.tlsmate import TlsMate
 from tlsmate.plugin import PluginManager
 from tlsmate import utils
+from tlsmate.key_logging import KeyLogger
 from tlsmate.version import __version__
 
 # import other stuff
@@ -96,6 +97,12 @@ def build_parser():
     )
 
     parser.add_argument(
+        "--key-log-file",
+        default=None,
+        help="key log file which can be used by wireshark to decode encrypted traffic.",
+    )
+
+    parser.add_argument(
         "--sni",
         type=str,
         help=(
@@ -166,11 +173,16 @@ def main():
     config.set("client_chain", args.client_chain)
     config.set("endpoint", args.host)
     config.set("sni", args.sni)
+    if args.key_log_file:
+        KeyLogger.open_file(args.key_log_file)
 
     PluginManager.args_parsed(args, config)
 
     tlsmate = TlsMate(config=config)
     tlsmate.work_manager.run(tlsmate)
+
+    if args.key_log_file:
+        KeyLogger.close()
 
 
 # And now load the plugins which are shipped by default with tlsmate...

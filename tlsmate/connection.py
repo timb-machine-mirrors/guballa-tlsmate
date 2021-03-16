@@ -22,6 +22,7 @@ from tlsmate import key_exchange as kex
 from tlsmate import ext
 from tlsmate.kdf import Kdf
 from tlsmate.record_layer import RecordLayer
+from tlsmate.key_logging import KeyLogger
 
 # import other stuff
 from cryptography.hazmat.primitives.asymmetric import padding, ec
@@ -527,6 +528,7 @@ class TlsConnection(object):
                 hash_val,
                 self.early_data.mac_len,
             )
+            KeyLogger.client_early_tr_secret(self.client_random, early_tr_secret)
             logging.debug(f"early traffic secret: {pdu.dump(early_tr_secret)}")
             cs_details = utils.get_cipher_suite_details(
                 self.ext_psk.psks[0].cipher_suite
@@ -701,6 +703,7 @@ class TlsConnection(object):
             self.server_finished_digest,
             self.cs_details.mac_struct.key_len,
         )
+        KeyLogger.client_tr_secret_0(self.client_random, self.c_app_tr_secret)
         logging.debug(f"c_app_tr_secret: {pdu.dump(self.c_app_tr_secret)}")
         c_enc = self.kdf.hkdf_expand_label(
             self.c_app_tr_secret, "key", b"", ciph.key_len
@@ -856,6 +859,7 @@ class TlsConnection(object):
                 else:
                     self.master_secret = self.client.session_state_id.master_secret
                 logging.debug(f"master_secret: {pdu.dump(self.master_secret)}")
+                KeyLogger.master_secret(self.client_random, self.master_secret)
                 self._key_derivation()
             else:
                 self._new_session_id = msg.session_id
@@ -981,6 +985,7 @@ class TlsConnection(object):
                 self.server_finished_digest,
                 self.cs_details.mac_struct.key_len,
             )
+            KeyLogger.server_tr_secret_0(self.client_random, s_app_tr_secret)
             logging.debug(f"s_app_tr_secret: {pdu.dump(s_app_tr_secret)}")
             s_enc = self.kdf.hkdf_expand_label(
                 s_app_tr_secret, "key", b"", ciph.key_len
@@ -1299,6 +1304,7 @@ class TlsConnection(object):
                 48,
             )
 
+        KeyLogger.master_secret(self.client_random, self.master_secret)
         logging.debug(f"master_secret: {pdu.dump(self.master_secret)}")
         self.recorder.trace(master_secret=self.master_secret)
         if self._new_session_id is not None:
@@ -1330,11 +1336,13 @@ class TlsConnection(object):
         c_hs_tr_secret = self.kdf.hkdf_expand_label(
             handshake_secret, "c hs traffic", hello_digest, mac.key_len
         )
+        KeyLogger.client_hs_tr_secret(self.client_random, c_hs_tr_secret)
         c_enc = self.kdf.hkdf_expand_label(c_hs_tr_secret, "key", b"", ciph.key_len)
         c_iv = self.kdf.hkdf_expand_label(c_hs_tr_secret, "iv", b"", ciph.iv_len)
         s_hs_tr_secret = self.kdf.hkdf_expand_label(
             handshake_secret, "s hs traffic", hello_digest, mac.key_len
         )
+        KeyLogger.server_hs_tr_secret(self.client_random, s_hs_tr_secret)
         s_enc = self.kdf.hkdf_expand_label(s_hs_tr_secret, "key", b"", ciph.key_len)
         s_iv = self.kdf.hkdf_expand_label(s_hs_tr_secret, "iv", b"", ciph.iv_len)
         logging.debug(f"client hs traffic secret: {pdu.dump(c_hs_tr_secret)}")
