@@ -50,6 +50,7 @@ class Configuration(object):
             "ca_certs": None,
             "client_key": None,
             "client_chain": None,
+            "key_log_file": None,
             "sslv2": False,
             "sslv3": False,
             "tls10": False,

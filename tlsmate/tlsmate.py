@@ -13,6 +13,7 @@ from tlsmate.recorder import Recorder
 from tlsmate.config import Configuration
 from tlsmate.cert import TrustStore, Certificate, CrlManager
 from tlsmate.plugin import WorkManager
+from tlsmate.key_logging import KeyLogger
 from tlsmate import utils
 
 # import other stuff
@@ -41,6 +42,9 @@ class TlsMate(object):
         self.trust_store = TrustStore(recorder=self.recorder)
         self.client_auth = ClientAuth(tlsmate=self)
         self.crl_manager = CrlManager()
+        key_log_file = config.get("key_log_file")
+        if key_log_file:
+            KeyLogger.open_file(key_log_file)
 
         read_profile = config.get("read_profile")
         if read_profile:
@@ -58,6 +62,11 @@ class TlsMate(object):
                     config.get("client_key"), config.get("client_chain")
                 ):
                     self.client_auth.add_auth_files(key_file, chain_file)
+
+            key_log_file = config.get("key_log_file")
+            if key_log_file:
+                KeyLogger.open_file(key_log_file)
+
         else:
             pytest_recorder_file = config.get("pytest_recorder_file")
             if pytest_recorder_file:
