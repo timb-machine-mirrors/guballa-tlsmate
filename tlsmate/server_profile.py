@@ -181,7 +181,8 @@ class SPObject(metaclass=abc.ABCMeta):
 
     def _init_from_dict(self, data):
         for key, val in data.items():
-            setattr(self, key, val)
+            if val is not None:
+                setattr(self, key, val)
 
     def _init_from_args(self, **kwargs):
         """Specific method to initialize the instance from an object
@@ -1160,6 +1161,23 @@ class SPCipherSuiteSchema(ProfileEnumSchema):
     __profile_class__ = tls.CipherSuite
 
 
+class SPDhGroup(SPObject):
+    """Data class for DH groups
+    """
+
+
+class SPDhGroupSchema(ProfileSchema):
+    """Schema for DH groups
+    """
+
+    __profile_class__ = SPDhGroup
+    name = fields.String()
+    size = fields.Integer()
+    g_value = fields.Integer()
+    p_value = FieldsBytes()
+    cipher_suites = fields.List(fields.Nested(SPCipherSuiteSchema))
+
+
 class SPServer(SPObject):
     """Data class for the servers' information
     """
@@ -1189,6 +1207,7 @@ class SPVersionSchema(ProfileSchema):
 
     __profile_class__ = SPVersion
     cipher_suites = fields.List(fields.Nested(SPCipherSuiteSchema))
+    dh_groups = fields.List(fields.Nested(SPDhGroupSchema))
     server_preference = FieldsEnumString(enum_class=tls.SPBool)
     supported_groups = fields.Nested(SPSupportedGroupsSchema)
     signature_algorithms = fields.Nested(SPSignatureAlgorithmsSchema)

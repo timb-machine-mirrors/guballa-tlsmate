@@ -15,6 +15,7 @@ from tlsmate.workers.master_secret import ScanExtendedMasterSecret
 from tlsmate.workers.resumption import ScanResumption
 from tlsmate.workers.renegotiation import ScanRenegotiation
 from tlsmate.workers.ccs_injection import ScanCcsInjection
+from tlsmate.workers.dh_params import ScanDhGroups
 
 # import other stuff
 
@@ -91,6 +92,7 @@ class ScanPlugin(Plugin):
             WorkManager.register(ScanCipherSuites)
             WorkManager.register(ScanSupportedGroups)
             WorkManager.register(ScanSigAlgs)
+            WorkManager.register(ScanDhGroups)
             WorkManager.register(ScanCompression)
             WorkManager.register(ScanEncryptThenMac)
             WorkManager.register(ScanExtendedMasterSecret)

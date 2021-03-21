@@ -1,5 +1,17 @@
 
 High prio
+    list of errornomous hosts:
+        - google.de
+            -exception
+        - bsi.de
+            - Certificate extensions IssuerAltName not implemented
+            - exception
+        - bunte.de, cdef.de
+            - no connection at all
+        - flechter.de
+            - cryptography.exceptions.InvalidSignature raised
+            => should not happen during a scan
+
 
 Medium prio
 

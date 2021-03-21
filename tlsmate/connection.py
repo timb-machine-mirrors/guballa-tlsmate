@@ -947,6 +947,7 @@ class TlsConnection(object):
                     self.version,
                 )
                 logging.debug("signed dh parameters successfully verified")
+            logging.debug(f"DH group size: {len(dh.p_val) * 8}")
             self.key_exchange = kex.DhKeyExchange(self, self.recorder)
             self.key_exchange.set_remote_key(
                 dh.public_key, g_val=dh.g_val, p_val=dh.p_val
