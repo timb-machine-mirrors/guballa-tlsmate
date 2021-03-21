@@ -18,6 +18,7 @@ from tlsmate.server_profile import SPDhGroup
 class _DhGroupEntry(NamedTuple):
     """A struct to store the cipher suites used with the DH group.
     """
+
     group: DHNumbers
     cipher_suites: list
 

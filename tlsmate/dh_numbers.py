@@ -389,12 +389,15 @@ well_known_dh_params = [
     ),
 ]
 
+
 def dh_number_digest(g_val, p_val):
     return hash((g_val, p_val))
+
 
 class KnownDhGroups(object):
     """Class to give access to known groups
     """
+
     _groups = {}
 
     @classmethod

@@ -9,6 +9,7 @@ Reference: https://developer.mozilla.org/en-US/docs/Mozilla/Projects/NSS/Key_Log
 
 # import other stuff
 
+
 class KeyLogger(object):
     """Class to log to a key log file
     """
