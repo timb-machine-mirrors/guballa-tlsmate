@@ -16,11 +16,15 @@ class DHNumbers(NamedTuple):
 
     g_val: int
     p_val: bytes
+    name: str = None
+    size: int = None
 
 
 # RFC7919
 dh_numbers = {
     tls.SupportedGroups.FFDHE2048: DHNumbers(
+        name="RFC7919: FFDHE2048",
+        size=2048,
         g_val=2,
         p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF ADF85458 A2BB4A9A AFDC5620 273D3CF1"
@@ -37,6 +41,8 @@ dh_numbers = {
         ),
     ),
     tls.SupportedGroups.FFDHE3072: DHNumbers(
+        name="RFC7919: FFDHE3072",
+        size=3072,
         g_val=2,
         p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF ADF85458 A2BB4A9A AFDC5620 273D3CF1"
@@ -58,6 +64,8 @@ dh_numbers = {
         ),
     ),
     tls.SupportedGroups.FFDHE4096: DHNumbers(
+        name="RFC7919: FFDHE4096",
+        size=4096,
         g_val=2,
         p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF ADF85458 A2BB4A9A AFDC5620 273D3CF1"
@@ -85,6 +93,8 @@ dh_numbers = {
         ),
     ),
     tls.SupportedGroups.FFDHE6144: DHNumbers(
+        name="RFC7919: FFDHE6114",
+        size=6144,
         g_val=2,
         p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF ADF85458 A2BB4A9A AFDC5620 273D3CF1"
@@ -122,6 +132,8 @@ dh_numbers = {
         ),
     ),
     tls.SupportedGroups.FFDHE8192: DHNumbers(
+        name="RFC7919: FFDHE8192",
+        size=8192,
         g_val=2,
         p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF ADF85458 A2BB4A9A AFDC5620 273D3CF1"
@@ -175,6 +187,8 @@ dh_numbers = {
 well_known_dh_params = [
     # RFC2409, First Oakley Default Group, 768 bits
     DHNumbers(
+        name="RFC2409: 1st Oakley Group",
+        size=768,
         g_val=2,
         p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF C90FDAA2 2168C234 C4C6628B 80DC1CD1"
@@ -185,6 +199,8 @@ well_known_dh_params = [
     ),
     # RFC2409, Second Oakley Group, 1024 bits
     DHNumbers(
+        name="RFC2409: 2nd Oakley Group",
+        size=1024,
         g_val=2,
         p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF C90FDAA2 2168C234 C4C6628B 80DC1CD1"
@@ -197,6 +213,8 @@ well_known_dh_params = [
     ),
     # RFC3526 1536-bit MODP Group
     DHNumbers(
+        name="RFC3526: 1536-bit MODP Group",
+        size=1536,
         g_val=2,
         p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF C90FDAA2 2168C234 C4C6628B 80DC1CD1"
@@ -211,6 +229,8 @@ well_known_dh_params = [
     ),
     # RFC3526 2048-bit MODP Group
     DHNumbers(
+        name="RFC3526: 2048-bit MODP Group",
+        size=2048,
         g_val=2,
         p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF C90FDAA2 2168C234 C4C6628B 80DC1CD1"
@@ -228,6 +248,8 @@ well_known_dh_params = [
     ),
     # RFC3526 3072-bit MODP Group
     DHNumbers(
+        name="RFC3526: 3072-bit MODP Group",
+        size=3072,
         g_val=2,
         p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF C90FDAA2 2168C234 C4C6628B 80DC1CD1"
@@ -250,6 +272,8 @@ well_known_dh_params = [
     ),
     # RFC3526 4096-bit MODP Group
     DHNumbers(
+        name="RFC3526: 4096-bit MODP Group",
+        size=4096,
         g_val=2,
         p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF C90FDAA2 2168C234 C4C6628B 80DC1CD1"
@@ -278,6 +302,8 @@ well_known_dh_params = [
     ),
     # RFC3526 6144-bit MODP Group
     DHNumbers(
+        name="RFC3526: 6144-bit MODP Group",
+        size=6144,
         g_val=2,
         p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF C90FDAA2 2168C234 C4C6628B 80DC1CD1 29024E08"
@@ -312,6 +338,8 @@ well_known_dh_params = [
     ),
     # RFC3526 8192-bit MODP Group
     DHNumbers(
+        name="RFC3526: 8192-bit MODP Group",
+        size=8192,
         g_val=2,
         p_val=bytes.fromhex(
             "FFFFFFFF FFFFFFFF C90FDAA2 2168C234 C4C6628B 80DC1CD1"
@@ -360,3 +388,40 @@ well_known_dh_params = [
         ),
     ),
 ]
+
+def dh_number_digest(g_val, p_val):
+    return hash((g_val, p_val))
+
+class KnownDhGroups(object):
+    """Class to give access to known groups
+    """
+    _groups = {}
+
+    @classmethod
+    def add_known_dh_number(cls, dh_number):
+        """Add a known DH number to the class
+
+        Arguments:
+            dh_number (:obj:`DHNumbers`): the named tuple to add
+        """
+        cls._groups[dh_number_digest(dh_number.g_val, dh_number.p_val)] = dh_number
+
+    @classmethod
+    def get_known_group(cls, g_val, p_val):
+        """Check, if given DH parameters are a known group
+
+        Arguments:
+            g_val (int): the g value (generator) of the parameter
+            p_val (bytes): the p value (prime) of the paramter
+
+        Returns:
+            :obj:`DHNumbers`: The found known group or None.
+        """
+        return cls._groups.get(dh_number_digest(g_val, p_val))
+
+
+for dh in dh_numbers.values():
+    KnownDhGroups.add_known_dh_number(dh)
+
+for dh in well_known_dh_params:
+    KnownDhGroups.add_known_dh_number(dh)

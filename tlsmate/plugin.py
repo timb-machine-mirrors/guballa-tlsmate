@@ -51,6 +51,13 @@ class PluginManager(object):
     _objects = []
 
     @classmethod
+    def reset(cls):
+        """Method to cleanly initialize this class
+        """
+        cls._plugins = {}
+        cls._objects = []
+
+    @classmethod
     def register(cls, plugin):
         """Register a class as a plugin.
 
