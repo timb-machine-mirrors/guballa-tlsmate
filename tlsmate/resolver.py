@@ -85,6 +85,11 @@ def resolve_hostname(host_name):
         _resolved[host_name] = structs.ResolvedHost(
             ipv4_addresses=ipv4_addresses, ipv6_addresses=ipv6_addresses
         )
+        for ipv4 in ipv4_addresses:
+            logging.debug(f"IPv4 address: {ipv4}")
+
+        for ipv6 in ipv6_addresses:
+            logging.debug(f"IPv6 address: {ipv6}")
 
     return _resolved[host_name]
 

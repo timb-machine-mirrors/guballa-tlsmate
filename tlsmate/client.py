@@ -2,6 +2,8 @@
 """Module containing the class for the client client
 """
 # import basic stuff
+import time
+
 # import own stuff
 from tlsmate import tls
 from tlsmate import ext
@@ -382,6 +384,10 @@ class Client(object):
         """
         if server is None:
             server = self.config.get("endpoint")
+
+        interval = self.config.get("interval")
+        if interval:
+            time.sleep(interval / 1000)
 
         return TlsConnection(self._tlsmate, server)
 

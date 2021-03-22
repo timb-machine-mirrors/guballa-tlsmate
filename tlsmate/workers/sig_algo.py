@@ -91,18 +91,11 @@ class ScanSigAlgs(Worker):
             sig_alg_supported.insert(0, sig_alg_supported.pop())
 
             if sig_alg is ref_sig_algo:
-                status = tls.SPBool.C_TRUE
+                prof_sig_algo.server_preference = tls.SPBool.C_TRUE
             else:
-                status = tls.SPBool.C_FALSE
+                prof_sig_algo.server_preference = tls.SPBool.C_FALSE
         else:
             prof_sig_algo.server_preference = tls.SPBool.C_NA
-
-        if (
-            prof_sig_algo.server_preference is tls.SPBool.C_UNDETERMINED
-            or prof_sig_algo.server_preference is tls.SPBool.C_NA
-            or status is not tls.SPBool.C_NA
-        ):
-            prof_sig_algo.server_preference = status
 
         for sig_algo in sig_alg_supported:
             prof_sig_algo.algorithms.append(sig_algo)
