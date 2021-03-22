@@ -52,7 +52,9 @@ class Socket(object):
             return
 
         self._socket = socket.socket(family, socket.SOCK_STREAM)
+        self._socket.settimeout(5.0)
         self._socket.connect((endp.host, endp.port))
+        self._socket.settimeout(None)
         laddr, lport = self._socket.getsockname()
         raddr, rport = self._socket.getpeername()
         if self._config.get("progress"):
