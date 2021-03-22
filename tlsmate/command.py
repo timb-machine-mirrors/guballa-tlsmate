@@ -96,6 +96,13 @@ def build_parser():
     )
 
     parser.add_argument(
+        "--no-crl",
+        help="do not download the CRL",
+        action="store_const",
+        const=True,
+    )
+
+    parser.add_argument(
         "--key-log-file",
         default=None,
         help="key log file which can be used by wireshark to decode encrypted traffic.",
@@ -178,6 +185,7 @@ def main():
 
     config.set("client_key", args.client_key)
     config.set("client_chain", args.client_chain)
+    config.set("no_crl", args.no_crl)
     config.set("endpoint", args.host)
     config.set("sni", args.sni)
     config.set("key_log_file", args.key_log_file)

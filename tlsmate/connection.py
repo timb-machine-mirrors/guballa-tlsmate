@@ -1097,6 +1097,7 @@ class TlsConnection(object):
                 self._tlsmate.trust_store,
                 self._tlsmate.crl_manager,
                 self.client.alert_on_invalid_cert,
+                not self._tlsmate.config.get("no_crl")
             )
 
     def _on_certificate_request_received(self, msg):
