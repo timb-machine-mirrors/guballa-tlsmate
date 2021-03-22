@@ -102,6 +102,13 @@ def build_parser():
     )
 
     parser.add_argument(
+        "--interval",
+        default=0,
+        help="the interval in milliseconds between two handshakes.",
+        type=int
+    )
+
+    parser.add_argument(
         "--sni",
         type=str,
         help=(
@@ -167,6 +174,7 @@ def main():
     config.set("progress", args.progress)
     config.set("ca_certs", args.ca_certs)
     config.set("logging", args.logging)
+    config.set("interval", args.interval)
 
     config.set("client_key", args.client_key)
     config.set("client_chain", args.client_chain)
