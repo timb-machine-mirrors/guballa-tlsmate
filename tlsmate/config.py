@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 
 # import own stuff
+from tlsmate.structs import ConfigItem
 
 # import other stuff
 import configparser
@@ -43,29 +44,23 @@ class Configuration(object):
     """
 
     def __init__(self):
-        self._config = {
-            "endpoint": "localhost",
-            "logging": "error",
-            "progress": False,
-            "ca_certs": None,
-            "client_key": None,
-            "client_chain": None,
-            "no_crl": False,
-            "key_log_file": None,
-            "sslv2": False,
-            "sslv3": False,
-            "tls10": False,
-            "tls11": False,
-            "tls12": False,
-            "tls13": False,
-            "pytest_recorder_file": None,
-            "pytest_recorder_replaying": None,
-            "pytest_port": None,
-            "pytest_openssl_1_0_1g": None,
-            "pytest_openssl_1_0_2": None,
-            "pytest_openssl_1_1_1": None,
-            "pytest_openssl_3_0_0": None,
-        }
+        self._config = {}
+        self._descr = {}
+        self.register(ConfigItem("endpoint", type=str, default="localhost"))
+        self.register(ConfigItem("logging", type=str, default="error"))
+        self.register(ConfigItem("progress", type=bool, default=False))
+        self.register(ConfigItem("ca_certs", type="file_list"))
+        self.register(ConfigItem("client_key", type="file_list"))
+        self.register(ConfigItem("client_chain", type="file_list"))
+        self.register(ConfigItem("no_crl", type=bool, default=False))
+        self.register(ConfigItem("key_log_file", type=str))
+        self.register(ConfigItem("pytest_recorder_file", type=str))
+        self.register(ConfigItem("pytest_recorder_replaying", type=str))
+        self.register(ConfigItem("pytest_port", type=int))
+        self.register(ConfigItem("pytest_openssl_1_0_1g", type=str))
+        self.register(ConfigItem("pytest_openssl_1_0_2", type=str))
+        self.register(ConfigItem("pytest_openssl_1_1_1", type=str))
+        self.register(ConfigItem("pytest_openssl_3_0_0", type=str))
 
     def _str_to_bool(self, string):
         return string.lower() not in ["0", "off", "no", "false"]
@@ -83,18 +78,9 @@ class Configuration(object):
         return int(string)
 
     _format_option = {
-        "progress": _str_to_bool,
-        "ca_certs": _str_to_filelist,
-        "client_key": _str_to_filelist,
-        "client_chain": _str_to_filelist,
-        "no_crl": _str_to_bool,
-        "sslv2": _str_to_bool,
-        "sslv3": _str_to_bool,
-        "tls10": _str_to_bool,
-        "tls11": _str_to_bool,
-        "tls12": _str_to_bool,
-        "tls13": _str_to_bool,
-        "pytest_port": _str_to_int,
+        bool: _str_to_bool,
+        int: _str_to_int,
+        "file_list": _str_to_filelist,
     }
 
     def _init_from_ini_file(self, ini_file):
@@ -127,8 +113,9 @@ class Configuration(object):
                 self._config[item] = self._cast_item(item, val)
 
     def _cast_item(self, item, val):
-        if item in self._format_option:
-            val = self._format_option[item](self, val)
+        item_type = self._descr[item].type
+        if item_type in self._format_option:
+            val = self._format_option[item_type](self, val)
         return val
 
     def init_from_external(self, ini_file):
@@ -139,26 +126,6 @@ class Configuration(object):
         """
         self._init_from_ini_file(ini_file)
         self._init_from_environment()
-
-    def extend(self, config):
-        """Extends the base configuration by additional configuration options.
-
-        Used by plugins to register additional configuration options.
-
-        Arguments:
-            config (dict): A dict mapping the name of new configuration options
-                to their default value.
-
-        Raises:
-            ValueError: If the name of the configuration option is already present.
-                Used to avoid double use of the same option name by different plugins.
-        """
-        if config is not None:
-            for key, val in config.items():
-                if key in self._config:
-                    raise ValueError(f'configuration "{key}" defined twice')
-
-                self._config[key] = val
 
     def items(self):
         """Return the items for a configuration section.
@@ -190,3 +157,19 @@ class Configuration(object):
             return
 
         self._config[key] = val
+
+    def register(self, config_item):
+        """Add a new item to the configuration
+
+        Arguments:
+            config_item (:obj:`tlsmate.structs.ConfigItem`): the configuration
+                item to register
+
+        Raises:
+            ValueError: if a configuration item with the same name is already existing
+        """
+        name = config_item.name
+        if name in self._descr:
+            raise ValueError(f'configuration setting "{name}" already defined')
+        self._descr[name] = config_item
+        self._config[name] = config_item.default

@@ -19,6 +19,15 @@ class Plugin(metaclass=abc.ABCMeta):
     cli_help = None
     config = None
 
+    def register_config(self, config):
+        """Register configs for this plugin
+
+        Arguments:
+            config (:obj:`tlsmate.config.Configuration`): the configuration object
+        """
+
+        return
+
     def add_args(self, parser):
         """Adds arguments to the CLI parser object.
 
@@ -99,7 +108,7 @@ class PluginManager(object):
             plugin.add_args(parser)
 
     @classmethod
-    def extend_config(cls, config):
+    def register_config(cls, config):
         """Extend the configuration by all registered plugins.
 
         Arguments:
@@ -107,7 +116,7 @@ class PluginManager(object):
             be extended.
         """
         for plugin in cls._objects:
-            config.extend(plugin.config)
+            plugin.register_config(config)
 
     @classmethod
     def args_parsed(cls, args, config):

@@ -116,6 +116,8 @@ class TestCase(TlsSuiteTester):
         self.check_versions(profile["versions"])
 
     def run(self, tlsmate, is_replaying):
+        for vers in ["sslv2", "sslv3", "tls10", "tls11", "tls12", "tls13"]:
+            tlsmate.config.set(vers, True)
         server_profile = tlsmate.server_profile
         client = tlsmate.client
         client.init_profile()

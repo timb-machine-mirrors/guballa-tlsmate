@@ -174,7 +174,7 @@ def main():
 
     config = Configuration()
 
-    PluginManager.extend_config(config)
+    PluginManager.register_config(config)
 
     config.init_from_external(args.config_file)
 

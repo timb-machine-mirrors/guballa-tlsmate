@@ -2,7 +2,7 @@
 """Module defining various structures
 """
 # import basic stuff
-from typing import NamedTuple
+from typing import NamedTuple, Any
 
 # import own stuff
 from tlsmate import tls
@@ -200,3 +200,12 @@ class ResolvedHost(NamedTuple):
 
     ipv4_addresses: list
     ipv6_addresses: list
+
+
+class ConfigItem(NamedTuple):
+    """A configuratio setting
+    """
+
+    name: str
+    default: Any = None
+    type: Any = str
