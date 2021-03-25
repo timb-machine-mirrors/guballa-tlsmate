@@ -26,9 +26,8 @@ class ScanPlugin(Plugin):
     """Plugin to perform a scan against a TLS server.
     """
 
+    prio = 20
     name = "scan"
-    cli_name = "--scan"
-    cli_help = "performs a basic scan"
 
     _versions = ["sslv2", "sslv3", "tls10", "tls11", "tls12", "tls13"]
     _features = [
@@ -55,10 +54,10 @@ class ScanPlugin(Plugin):
 
     def _add_args_tls_versions(self, parser):
         group = parser.add_argument_group(
-            'additional options in case "--scan" is given',
-            (
-                "If none of the options is given then by default all protocol versions "
-                "will be scanned."
+            description=(
+                "The following options specify the TLS protocol versions to scan. "
+                "If none of the versions is given then by default all protocol "
+                "versions will be scanned."
             ),
         )
         group.add_argument(
@@ -98,23 +97,26 @@ class ScanPlugin(Plugin):
             const=True,
         )
 
-    def _add_args_workers(self, parser):
+    def _add_args_features(self, parser):
         group = parser.add_argument_group(
-            'additional options in case "--scan" is given',
-            (
-                "If none of the options is given then by default all features "
-                "will be scanned."
+            title=None,
+            description=(
+                "The following options specify which features to include in the scan. "
+                "If none of the features is given then by default all features "
+                "will be included. Note: TLS protocol versions, cipher suites, "
+                "supported groups, signature algorithms and certificates will always "
+                "be included in the scan."
             ),
-        )
-        group.add_argument(
-            "--dh-groups",
-            help="scan for finite field DH groups (only TL1.0 - TLS1.2)",
-            action="store_const",
-            const=True,
         )
         group.add_argument(
             "--compression",
             help="scan for compression support",
+            action="store_const",
+            const=True,
+        )
+        group.add_argument(
+            "--dh-groups",
+            help="scan for finite field DH groups (only TL1.0 - TLS1.2)",
             action="store_const",
             const=True,
         )
@@ -138,9 +140,22 @@ class ScanPlugin(Plugin):
         )
         group.add_argument(
             "--resumption",
-            help="scan for resumption support (SSL30 - TLS1.3)",
+            help=(
+                "scan for resumption support (SSL30 - TLS1.2) and for PSK support "
+                "(TLS1.3)"
+            ),
             action="store_const",
             const=True,
+        )
+
+    def _add_args_vulenerabilities(self, parser):
+        group = parser.add_argument_group(
+            title=None,
+            description=(
+                "The following options specify which vulnerabilities to scan for. "
+                "If none of the vulnerabilities is given then by default all "
+                "vulnerabilities will be scanned."
+            ),
         )
         group.add_argument(
             "--ccs-injection",
@@ -155,8 +170,18 @@ class ScanPlugin(Plugin):
         Arguments:
             parser (:obj:`argparse.Parser`): the CLI parser object
         """
+
+        group = parser.add_argument_group(title="TLS server scanning")
+
+        group.add_argument(
+            "--scan",
+            help="performs a scan against a TLS server",
+            action="store_true",
+            default=False,
+        )
         self._add_args_tls_versions(parser)
-        self._add_args_workers(parser)
+        self._add_args_features(parser)
+        self._add_args_vulenerabilities(parser)
 
     def args_parsed(self, args, config):
         """Called after the arguments have been parsed.
@@ -204,3 +229,6 @@ class ScanPlugin(Plugin):
             if not any([config.get(feature) for feature in self._features]):
                 for feature in self._features:
                     config.set(feature, True)
+
+            if config.get("write_profile") is None:
+                config.set("write_profile", True)

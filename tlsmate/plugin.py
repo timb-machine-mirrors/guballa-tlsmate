@@ -15,9 +15,7 @@ class Plugin(metaclass=abc.ABCMeta):
     """
 
     name = None
-    cli_name = None
-    cli_help = None
-    config = None
+    prio = 50
 
     def register_config(self, config):
         """Register configs for this plugin
@@ -94,14 +92,7 @@ class PluginManager(object):
         Arguments:
             parser: the parser object to add the arguments to.
         """
-        for name, plugin in sorted(cls._plugins.items()):
-            if plugin.cli_name is not None:
-                parser.add_argument(
-                    plugin.cli_name,
-                    help=plugin.cli_help,
-                    action="store_true",
-                    default=False,
-                )
+        for plugin in sorted(cls._plugins.values(), key=lambda x: x.prio):
             cls._objects.append(plugin())
 
         for plugin in cls._objects:

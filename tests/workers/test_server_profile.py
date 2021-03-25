@@ -11,16 +11,10 @@ def test_server_profile(server_profile, capsys):
     with open(server_profile) as fd:
         server_file = fd.read()
 
-    conf = {
-        "write_profile": None,
-        "read_profile": None,
-        "json": False,
-    }
-
     config = Configuration()
     config.register(ConfigItem("write_profile"))
     config.register(ConfigItem("read_profile"))
-    config.register(ConfigItem("json", type=bool, default=False))
+    config.register(ConfigItem("format", type=str, default="yaml"))
     config.set("read_profile", str(server_profile))
     tlsmate = TlsMate(config)
     ReadProfileWorker(tlsmate).run()
