@@ -19,7 +19,7 @@ class ReadProfileWorker(Worker):
 
     def run(self):
         read_profile = self.config.get("read_profile")
-        if read_profile:
+        if read_profile is not None:
             self.server_profile.load(utils.deserialize_data(read_profile))
 
 
@@ -35,6 +35,6 @@ class DumpProfileWorker(Worker):
             self.server_profile.make_serializable(),
             file_name=self.config.get("write_profile"),
             replace=True,
-            use_json=bool(self.config.get("json")),
+            use_json=(self.config.get("format") == "json"),
             indent=4,
         )

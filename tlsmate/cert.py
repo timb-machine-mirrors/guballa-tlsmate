@@ -805,7 +805,9 @@ class CertChain(object):
             if self._raise_on_failure:
                 raise
 
-    def _validate_linked_certs(self, cert, issuer_cert, crl_manager, raise_on_failure):
+    def _validate_linked_certs(
+        self, cert, issuer_cert, crl_manager, raise_on_failure, check_crl
+    ):
 
         try:
             issuer_cert.validate_signature(
@@ -821,6 +823,10 @@ class CertChain(object):
             self.issues.append(issue)
             if raise_on_failure:
                 raise CertChainValidationError(issue)
+
+        if not check_crl:
+            cert.crl_status = tls.CertCrlStatus.UNDETERMINED
+            return
 
         try:
             dist_points = cert.parsed.extensions.get_extension_for_oid(
@@ -853,7 +859,13 @@ class CertChain(object):
                 raise CertChainValidationError(issue)
 
     def validate(
-        self, timestamp, domain_name, trust_store, crl_manager, raise_on_failure
+        self,
+        timestamp,
+        domain_name,
+        trust_store,
+        crl_manager,
+        raise_on_failure,
+        check_crl=True,
     ):
         """Only the minimal checks are supported.
 
@@ -903,7 +915,7 @@ class CertChain(object):
                     if raise_on_failure:
                         raise CertChainValidationError(issue)
                 self._validate_linked_certs(
-                    prev_cert, cert, crl_manager, raise_on_failure
+                    prev_cert, cert, crl_manager, raise_on_failure, check_crl
                 )
 
             logging.debug(f'certificate "{cert}" successfully validated')
@@ -925,7 +937,7 @@ class CertChain(object):
                 self.validate_cert(self.root_cert, timestamp)
 
                 self._validate_linked_certs(
-                    prev_cert, cert, crl_manager, raise_on_failure
+                    prev_cert, cert, crl_manager, raise_on_failure, check_crl
                 )
         else:
             if not trust_store.cert_in_trust_store(prev_cert):

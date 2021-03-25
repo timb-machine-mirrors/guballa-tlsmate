@@ -4,20 +4,17 @@
 from tlsmate.workers.server_profile import ReadProfileWorker, DumpProfileWorker
 from tlsmate.config import Configuration
 from tlsmate.tlsmate import TlsMate
+from tlsmate.structs import ConfigItem
 
 
 def test_server_profile(server_profile, capsys):
     with open(server_profile) as fd:
         server_file = fd.read()
 
-    conf = {
-        "write_profile": None,
-        "read_profile": None,
-        "json": False,
-    }
-
     config = Configuration()
-    config.extend(conf)
+    config.register(ConfigItem("write_profile"))
+    config.register(ConfigItem("read_profile"))
+    config.register(ConfigItem("format", type=str, default="yaml"))
     config.set("read_profile", str(server_profile))
     tlsmate = TlsMate(config)
     ReadProfileWorker(tlsmate).run()

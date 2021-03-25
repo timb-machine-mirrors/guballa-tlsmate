@@ -231,23 +231,14 @@ class ScanCipherSuites(Worker):
         ]
 
         mapping = {
-            "sslv2": tls.Version.SSL20,
-            "sslv3": tls.Version.SSL30,
-            "tls10": tls.Version.TLS10,
-            "tls11": tls.Version.TLS11,
-            "tls12": tls.Version.TLS12,
-            "tls13": tls.Version.TLS13,
+            tls.Version.SSL20: "sslv2",
+            tls.Version.SSL30: "sslv3",
+            tls.Version.TLS10: "tls10",
+            tls.Version.TLS11: "tls11",
+            tls.Version.TLS12: "tls12",
+            tls.Version.TLS13: "tls13",
         }
 
-        config = self.config
-        versions = [
-            mapping[vers] for vers in mapping.keys() if config.get(vers) is True
-        ]
-
-        if versions:
-            versions.sort()
-        else:
-            versions = tls.Version.all()
-
-        for version in versions:
-            self._enum_version(version)
+        for version in tls.Version.all():
+            if self.config.get(mapping[version]):
+                self._enum_version(version)

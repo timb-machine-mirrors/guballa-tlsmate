@@ -22,16 +22,50 @@ def print_version():
     print(__version__)
 
 
-def args_version(subparsers):
-    """Defines the arguments for the subcommand "version"
-
-    Arguments:
-        subparsers: subparsers object to extend with the subcommand
+def args_authentication(parser):
+    """Defines the arguments for authentication via certificates
     """
-    parser_version = subparsers.add_parser(
-        "version", help="print the version of the tool"
+    group = parser.add_argument_group(title="X509 certificates options")
+    group.add_argument(
+        "--ca-certs",
+        nargs="*",
+        type=str,
+        help=(
+            "list of root-ca certificate files. Each file may contain multiple root-CA "
+            "certificates in PEM format. Certificate chains received from the server "
+            "will be validated against this set of root certificates."
+        ),
     )
-    parser_version.set_defaults(subparser=parser_version)
+
+    group.add_argument(
+        "--client-key",
+        type=str,
+        nargs="*",
+        help=(
+            "a list of files containing the client private keys in PEM format. Used "
+            "for client authentication."
+        ),
+    )
+    group.add_argument(
+        "--client-chain",
+        type=str,
+        nargs="*",
+        help=(
+            "a list of files containing the certificate chain used for client "
+            "authentication in PEM format. The number of given files must be the same "
+            "than the number of given client key files. This first given chain file "
+            "corresponds to the first given client key file, and so on."
+        ),
+    )
+
+    group.add_argument(
+        "--no-crl",
+        help=(
+            "do not download the CRL to check for the certificate revokation status."
+        ),
+        action="store_const",
+        const=True,
+    )
 
 
 def build_parser():
@@ -40,7 +74,13 @@ def build_parser():
     Returns:
         :obj:`argparse.ArgumentParser`: the parser object as created with argparse
     """
-    parser = argparse.ArgumentParser(description="tlsmate")
+    parser = argparse.ArgumentParser(
+        description=(
+            "tlsmate is an application for testing and analyzing TLS servers. "
+            "Test scenarios can be defined in a simple way with great flexibility. "
+            "A TLS server configuration and vulnarability scan is built in."
+        )
+    )
 
     parser.add_argument(
         "--version",
@@ -55,12 +95,30 @@ def build_parser():
         default=None,
         help="ini-file to read the configuration from.",
     )
+
+    parser.add_argument(
+        "--interval",
+        default=0,
+        help="the interval in milliseconds between two handshakes.",
+        type=int,
+    )
+
+    parser.add_argument(
+        "--key-log-file",
+        default=None,
+        help=(
+            "write to a key log file which can be used by wireshark to decode "
+            "encrypted traffic."
+        ),
+    )
+
     parser.add_argument(
         "--logging",
         choices=["critical", "error", "warning", "info", "debug"],
-        help="sets the loggin level. Default is error.",
+        help="sets the logging level. Default is error.",
         default="error",
     )
+
     parser.add_argument(
         "--progress",
         help="provides a kind of progress indicator",
@@ -69,51 +127,11 @@ def build_parser():
     )
 
     parser.add_argument(
-        "--ca-certs",
-        nargs="*",
-        type=str,
-        help=(
-            "list of root-ca cert files. Each file may contain multiple root-CA "
-            "certificates in PEM format."
-        ),
-    )
-
-    parser.add_argument(
-        "--client-key",
-        type=str,
-        nargs="*",
-        help="a file containing the client private key in PEM format",
-    )
-
-    parser.add_argument(
-        "--client-chain",
-        type=str,
-        nargs="*",
-        help=(
-            "a file containing the certificate chain used for client authentication "
-            "in PEM format"
-        ),
-    )
-
-    parser.add_argument(
-        "--key-log-file",
-        default=None,
-        help="key log file which can be used by wireshark to decode encrypted traffic.",
-    )
-
-    parser.add_argument(
-        "--interval",
-        default=0,
-        help="the interval in milliseconds between two handshakes.",
-        type=int
-    )
-
-    parser.add_argument(
         "--sni",
         type=str,
         help=(
             "the server name indication, i.e., the domain name of for the server to "
-            "to contact. If not given, the value will be taken from the host parameter "
+            "contact. If not given, the value will be taken from the host parameter "
             "(after stripping of the port number, if present). This parameter is "
             "useful, if the host is given as an IP address."
         ),
@@ -127,6 +145,8 @@ def build_parser():
         ),
         type=str,
     )
+
+    args_authentication(parser)
 
     PluginManager.add_args(parser)
 
@@ -167,7 +187,7 @@ def main():
 
     config = Configuration()
 
-    PluginManager.extend_config(config)
+    PluginManager.register_config(config)
 
     config.init_from_external(args.config_file)
 
@@ -178,6 +198,7 @@ def main():
 
     config.set("client_key", args.client_key)
     config.set("client_chain", args.client_chain)
+    config.set("no_crl", args.no_crl)
     config.set("endpoint", args.host)
     config.set("sni", args.sni)
     config.set("key_log_file", args.key_log_file)
