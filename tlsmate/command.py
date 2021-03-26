@@ -203,7 +203,7 @@ def main():
     config.set("sni", args.sni)
     config.set("key_log_file", args.key_log_file)
 
-    PluginManager.args_parsed(args, config)
+    PluginManager.args_parsed(args, parser, config)
 
     tlsmate = TlsMate(config=config)
     tlsmate.work_manager.run(tlsmate)

@@ -16,6 +16,8 @@ class Plugin(metaclass=abc.ABCMeta):
 
     name = None
     prio = 50
+    cli_name = None
+    cli_help = None
 
     def register_config(self, config):
         """Register configs for this plugin
@@ -35,11 +37,13 @@ class Plugin(metaclass=abc.ABCMeta):
 
         return
 
-    def args_parsed(self, args, config):
+    def args_parsed(self, args, parser, config):
         """Called after the arguments have been parsed.
 
         Arguments:
             args: the object holding the parsed CLI arguments
+            parser (:obj:`argparse.Parser`): the parser object, can be used to issue
+                consistency errors
             config (:obj:`tlsmate.config.Configuration`): the configuration object
         """
 
@@ -56,6 +60,7 @@ class PluginManager(object):
 
     _plugins = {}
     _objects = []
+    _cli_names = []
 
     @classmethod
     def reset(cls):
@@ -90,9 +95,19 @@ class PluginManager(object):
         At this point the plugin classes are instantiated as well.
 
         Arguments:
-            parser: the parser object to add the arguments to.
+            parser (:obj:`argparse.Parser`): the parser object to add the arguments to.
         """
+
+        group = parser.add_argument_group(title="available plugins")
         for plugin in sorted(cls._plugins.values(), key=lambda x: x.prio):
+            if plugin.cli_name is not None:
+                cls._cli_names.append(plugin.cli_name[2:])
+                group.add_argument(
+                    plugin.cli_name,
+                    help=plugin.cli_help,
+                    action="store_true",
+                    default=False,
+                )
             cls._objects.append(plugin())
 
         for plugin in cls._objects:
@@ -104,26 +119,40 @@ class PluginManager(object):
 
         Arguments:
             config (:obj:`tlsmate.config.Configuration`): The configuration that is to
-            be extended.
+                be extended.
         """
         for plugin in cls._objects:
             plugin.register_config(config)
 
     @classmethod
-    def args_parsed(cls, args, config):
+    def args_parsed(cls, args, parser, config):
         """Call the callbacks for all registered plugins.
 
         This method will be called after the CLI arguments have been parsed. Now
-        the plugins can e.g. decide which workers are to be registered.
+        the plugins can perform consistency checks on their CLI options, and they can
+        decide which workers are to be registered.
+
+        Arguments:
+            args: the object holding the parsed CLI arguments
+            parser (:obj:`argparse.Parser`): the CLI parser object
+            config (:obj:`tlsmate.config.Configuration`): the configuration object
         """
+
+        if not any([getattr(args, name) for name in cls._cli_names]):
+            cli_names = ",".join(["--" + name for name in cls._cli_names])
+            parser.error(f"specify at least one of the following options: {cli_names}")
+
         for plugin in cls._objects:
-            plugin.args_parsed(args, config)
+            plugin.args_parsed(args, parser, config)
 
 
 def register_plugin(plugin):
     """Alternative decorator to register plugins.
 
     Might be removed in the future.
+
+    Arguments:
+        plugin (:cls:`Plugin`): The class to register
     """
     PluginManager.register(plugin)
     return plugin
@@ -192,7 +221,7 @@ class WorkManager(object):
 
         Arguments:
             tlsmate (:obj:`tlsmate.tlsmate.TlsMate`): The tlsmate object which is passed
-            to the run methods of the workers.
+                to the run methods of the workers.
         """
 
         for prio_list in sorted(self.prio_pool.keys()):
@@ -206,6 +235,9 @@ def register_worker(worker_class):
     """Alternative decorator to register workers.
 
     Might be removed in the future.
+
+    Arguments:
+        worker_class (:cls:`Worker`): A worker class to be registered.
     """
     WorkManager.register(worker_class)
     return worker_class

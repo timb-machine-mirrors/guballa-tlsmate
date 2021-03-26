@@ -28,17 +28,19 @@ class ScanPlugin(Plugin):
 
     prio = 20
     name = "scan"
+    cli_name = "--scan"
+    cli_help = "scan for TLS server configurations, features and vulnerabilities"
 
     _versions = ["sslv2", "sslv3", "tls10", "tls11", "tls12", "tls13"]
-    _features = [
-        "dh_groups",
-        "compression",
-        "encrypt_then_mac",
-        "ext_master_secret",
-        "renegotiation",
-        "resumption",
-        "ccs_injection",
-    ]
+    _feature_workers = {
+        "dh_groups": ScanDhGroups,
+        "compression": ScanCompression,
+        "encrypt_then_mac": ScanEncryptThenMac,
+        "ext_master_secret": ScanExtendedMasterSecret,
+        "renegotiation": ScanRenegotiation,
+        "resumption": ScanResumption,
+        "ccs_injection": ScanCcsInjection,
+    }
 
     def register_config(self, config):
         """Register configs for this plugin
@@ -49,11 +51,12 @@ class ScanPlugin(Plugin):
         for version in self._versions:
             config.register(ConfigItem(version, type=bool, default=False))
 
-        for feature in self._features:
+        for feature in self._feature_workers.keys():
             config.register(ConfigItem(feature, type=bool, default=False))
 
     def _add_args_tls_versions(self, parser):
         group = parser.add_argument_group(
+            title='TLS protocol versions for the "--scan" option',
             description=(
                 "The following options specify the TLS protocol versions to scan. "
                 "If none of the versions is given then by default all protocol "
@@ -99,7 +102,7 @@ class ScanPlugin(Plugin):
 
     def _add_args_features(self, parser):
         group = parser.add_argument_group(
-            title=None,
+            title='Feature to include for the "--scan" option',
             description=(
                 "The following options specify which features to include in the scan. "
                 "If none of the features is given then by default all features "
@@ -150,7 +153,7 @@ class ScanPlugin(Plugin):
 
     def _add_args_vulenerabilities(self, parser):
         group = parser.add_argument_group(
-            title=None,
+            title='Vulnerabilities to include for the "--scan" option',
             description=(
                 "The following options specify which vulnerabilities to scan for. "
                 "If none of the vulnerabilities is given then by default all "
@@ -171,23 +174,16 @@ class ScanPlugin(Plugin):
             parser (:obj:`argparse.Parser`): the CLI parser object
         """
 
-        group = parser.add_argument_group(title="TLS server scanning")
-
-        group.add_argument(
-            "--scan",
-            help="performs a scan against a TLS server",
-            action="store_true",
-            default=False,
-        )
         self._add_args_tls_versions(parser)
         self._add_args_features(parser)
         self._add_args_vulenerabilities(parser)
 
-    def args_parsed(self, args, config):
+    def args_parsed(self, args, parser, config):
         """Called after the arguments have been parsed.
 
         Arguments:
             args: the object holding the parsed CLI arguments
+            parser: the parser object, can be used to issue consistency errors
             config (:obj:`tlsmate.config.Configuration`): the configuration object
         """
 
@@ -196,39 +192,26 @@ class ScanPlugin(Plugin):
             WorkManager.register(ScanCipherSuites)
             WorkManager.register(ScanSupportedGroups)
             WorkManager.register(ScanSigAlgs)
-            WorkManager.register(ScanDhGroups)
-            WorkManager.register(ScanCompression)
-            WorkManager.register(ScanEncryptThenMac)
-            WorkManager.register(ScanExtendedMasterSecret)
-            WorkManager.register(ScanResumption)
-            WorkManager.register(ScanRenegotiation)
-            WorkManager.register(ScanCcsInjection)
             WorkManager.register(ScanEnd)
 
-            config.set("sslv2", args.sslv2)
-            config.set("sslv3", args.sslv3)
-            config.set("tls10", args.tls10)
-            config.set("tls11", args.tls11)
-            config.set("tls12", args.tls12)
-            config.set("tls13", args.tls13)
+            for version in self._versions:
+                config.set(version, getattr(args, version))
 
             # if no version is given at all: scan all versions by default
             if not any([config.get(version) for version in self._versions]):
                 for version in self._versions:
                     config.set(version, True)
 
-            config.set("dh_groups", args.dh_groups)
-            config.set("compression", args.compression)
-            config.set("encrypt_then_mac", args.encrypt_then_mac)
-            config.set("ext_master_secret", args.ext_master_secret)
-            config.set("renegotiation", args.renegotiation)
-            config.set("resumption", args.resumption)
-            config.set("ccs_injection", args.ccs_injection)
+            for feature in self._feature_workers.keys():
+                config.set(feature, getattr(args, feature))
 
             # if no feature is given at all: scan all features by default
-            if not any([config.get(feature) for feature in self._features]):
-                for feature in self._features:
+            if not any(
+                [config.get(feature) for feature in self._feature_workers.keys()]
+            ):
+                for feature in self._feature_workers.keys():
                     config.set(feature, True)
 
-            if config.get("write_profile") is None:
-                config.set("write_profile", True)
+            for feature, worker in self._feature_workers.items():
+                if config.get(feature):
+                    WorkManager.register(worker)

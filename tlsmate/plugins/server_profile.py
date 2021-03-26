@@ -67,11 +67,12 @@ class ServerProfilePlugin(Plugin):
             default="yaml",
         )
 
-    def args_parsed(self, args, config):
+    def args_parsed(self, args, parser, config):
         """Called after the arguments have been parsed.
 
         Arguments:
             args: the object holding the parsed CLI arguments
+            parser: the parser object, can be used to issue consistency errors
             config (:obj:`tlsmate.config.Configuration`): the configuration object
         """
         config.set("format", args.format)
