@@ -1,44 +1,34 @@
-
+# You can override the included template(s) by including variable overrides
+# See https://docs.gitlab.com/ee/user/application_security/sast/#customizing-the-sast-settings
+# Note that environment variables can be set in several places
+# See https://docs.gitlab.com/ee/ci/variables/#priority-of-environment-variables
 stages:
-  - test
-#  - deploy
-
+- test
 test/python36:
   stage: test
   image: python:3.6-slim
   script:
-    - apt update --yes && apt upgrade --yes
-    - apt install --yes build-essential libssl-dev libffi-dev python-dev
-    - pip install tox
-    - tox -e py36
-
+  - apt update --yes && apt upgrade --yes
+  - apt install --yes build-essential libssl-dev libffi-dev python-dev
+  - pip install tox
+  - tox -e py36
 test/python37:
   stage: test
   image: python:3.7-slim
   script:
-    - apt update --yes && apt upgrade --yes
-    - apt install --yes build-essential libssl-dev libffi-dev python-dev
-    - pip install tox
-    - tox -e py37
-
+  - apt update --yes && apt upgrade --yes
+  - apt install --yes build-essential libssl-dev libffi-dev python-dev
+  - pip install tox
+  - tox -e py37
 test/python38:
   stage: test
   image: python:3.8-slim
   script:
-    - apt update --yes && apt upgrade --yes
-    - apt install --yes build-essential libssl-dev libffi-dev python-dev
-    - pip install tox
-    - tox -e py38
-
-# pages:
-#   stage: deploy
-#   image: python:3.7-alpine
-#   script:
-#   - pip install sphinx sphinx-argparse sphinx_rtd_theme
-#   - sphinx-build docs/ docs/_build/html
-#   - mv docs/_build/html public
-#   artifacts:
-#     paths:
-#     - public
-#   only:
-#   - development
+  - apt update --yes && apt upgrade --yes
+  - apt install --yes build-essential libssl-dev libffi-dev python-dev
+  - pip install tox
+  - tox -e py38
+sast:
+  stage: test
+include:
+- template: Security/SAST.gitlab-ci.yml
