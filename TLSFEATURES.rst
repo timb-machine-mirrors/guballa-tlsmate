@@ -50,6 +50,9 @@ For the other protocol versions the following messages are supported:
 * CertificateVerify
 * ClientKeyExchange
 * Finished
+* ChangeCipherSpec
+* Alert
+* ApplicationData
 
 Cipher suites
 =============
@@ -76,9 +79,9 @@ For TLS1.3 the following cipher suites are supported:
 For all other protocol versions the cipher suites `registered at IANA`_ are supported,
 but not all of them can be used for a successful handshake completion.
 
-.. note::
-   The signalling cipher suite values `TLS_EMPTY_RENEGOTIATION_INFO_SCSV` and
-   `TLS_FALLBACK_SCSV` are supported as well.
+.. note:: The signalling cipher suite values
+   `TLS_EMPTY_RENEGOTIATION_INFO_SCSV` and `TLS_FALLBACK_SCSV` are supported as
+   well.
 
 A cipher suite can be used for a successful handshake completion,
 if the key exchange method, the symmetric cipher and the HMAC are supported as
@@ -144,78 +147,78 @@ The following TLS extensions are supported:
 * SERVER_NAME
 * SUPPORTED_GROUPS
 
-    All supported groups can be negotiated, but only the following ones can be
-    used for a successful handshake completion:
+  All supported groups can be negotiated, but only the following ones can be
+  used for a successful handshake completion:
 
-    * SECP192R1
-    * SECP224R1
-    * SECP256K1
-    * SECP256R1
-    * SECP384R1
-    * SECP521R1
-    * SECT163K1
-    * SECT163R2
-    * SECT233K1
-    * SECT233R1
-    * SECT283K1
-    * SECT283R1
-    * SECT409K1
-    * SECT409R1
-    * SECT571K1
-    * SECT571R1
-    * BRAINPOOLP256R1
-    * BRAINPOOLP384R1
-    * BRAINPOOLP512R1
-    * FFDHE2048
-    * FFDHE3072
-    * FFDHE4096
-    * FFDHE6144
-    * FFDHE8192
+  * SECP192R1
+  * SECP224R1
+  * SECP256K1
+  * SECP256R1
+  * SECP384R1
+  * SECP521R1
+  * SECT163K1
+  * SECT163R2
+  * SECT233K1
+  * SECT233R1
+  * SECT283K1
+  * SECT283R1
+  * SECT409K1
+  * SECT409R1
+  * SECT571K1
+  * SECT571R1
+  * BRAINPOOLP256R1
+  * BRAINPOOLP384R1
+  * BRAINPOOLP512R1
+  * FFDHE2048
+  * FFDHE3072
+  * FFDHE4096
+  * FFDHE6144
+  * FFDHE8192
 
 * EC_POINT_FORMATS
 
-    All EC point formats can be negotiated, but only the following one can be
-    used for a successful handshake completion:
+  All EC point formats can be negotiated, but only the following one can be
+  used for a successful handshake completion:
 
-    * UNCOMPRESSED
+  * UNCOMPRESSED
 
 * SIGNATURE_ALGORITHMS
 
-    All signature algorithms can be negotiated, but only the following one can be
-    used for signing or signature validation:
+  All signature algorithms can be negotiated, but only the following one can be
+  used for signing or signature validation:
 
-    * DSA_MD5
-    * DSA_SHA1
-    * DSA_SHA224
-    * DSA_SHA256
-    * DSA_SHA384
-    * DSA_SHA512
-    * ECDSA_SECP224R1_SHA224
-    * ECDSA_SECP256R1_SHA256
-    * ECDSA_SECP384R1_SHA384
-    * ECDSA_SECP521R1_SHA512
-    * ECDSA_SHA1
-    * ED25519
-    * ED448
-    * RSA_PKCS1_MD5
-    * RSA_PKCS1_SHA1
-    * RSA_PKCS1_SHA224
-    * RSA_PKCS1_SHA256
-    * RSA_PKCS1_SHA384
-    * RSA_PKCS1_SHA512
-    * RSA_PSS_RSAE_SHA256
-    * RSA_PSS_RSAE_SHA384
-    * RSA_PSS_RSAE_SHA512
+  * DSA_MD5
+  * DSA_SHA1
+  * DSA_SHA224
+  * DSA_SHA256
+  * DSA_SHA384
+  * DSA_SHA512
+  * ECDSA_SECP224R1_SHA224
+  * ECDSA_SECP256R1_SHA256
+  * ECDSA_SECP384R1_SHA384
+  * ECDSA_SECP521R1_SHA512
+  * ECDSA_SHA1
+  * ED25519
+  * ED448
+  * RSA_PKCS1_MD5
+  * RSA_PKCS1_SHA1
+  * RSA_PKCS1_SHA224
+  * RSA_PKCS1_SHA256
+  * RSA_PKCS1_SHA384
+  * RSA_PKCS1_SHA512
+  * RSA_PSS_RSAE_SHA256
+  * RSA_PSS_RSAE_SHA384
+  * RSA_PSS_RSAE_SHA512
 
 * ENCRYPT_THEN_MAC
 * EXTENDED_MASTER_SECRET
 * SESSION_TICKET
 * PRE_SHARED_KEY
 
-    All pre shared key exchange modes are supported:
+  All pre shared key exchange modes are supported:
 
-    * PSK_KE
-    * PSK_DHE_KE
+  * PSK_KE
+  * PSK_DHE_KE
 
 * EARLY_DATA
 * SUPPORTED_VERSIONS
@@ -226,18 +229,18 @@ The following TLS extensions are supported:
 * POST_HANDSHAKE_AUTH
 * KEY_SHARE
 
-    All TLS1.3 named groups are supported:
+  All TLS1.3 named groups are supported:
 
-    * ECDSA_SECP256R1_SHA256
-    * ECDSA_SECP384R1_SHA384
-    * ECDSA_SECP521R1_SHA512
-    * ED25519
-    * ED448
-    * FFDHE2048
-    * FFDHE3072
-    * FFDHE4096
-    * FFDHE6144
-    * FFDHE8192
+  * ECDSA_SECP256R1_SHA256
+  * ECDSA_SECP384R1_SHA384
+  * ECDSA_SECP521R1_SHA512
+  * ED25519
+  * ED448
+  * FFDHE2048
+  * FFDHE3072
+  * FFDHE4096
+  * FFDHE6144
+  * FFDHE8192
 
 * RENEGOTIATION_INFO
 
@@ -259,8 +262,8 @@ the validation will only be done once. The following checks are currently implem
 * the root certificate of the chain must be present in the trust store. Note, that root
   certificates are not required to be sent by the server.
 
-.. note::
-   Revocation check using OCSP is currently not implemented but will be added in the future.
+.. note:: Revocation check using OCSP is currently not implemented but will be
+   added in the future.
 
 Received certificate chains from the server are stored in the server profile, but not
 all certificate extensions are supported (yet).
