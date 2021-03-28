@@ -80,13 +80,9 @@ transmit sensitive data! Here are some reasons:
 
 * secret keying material isn't appropriately protected, e.g., it is not deleted
   when not used anymore. Such sensitive data are even logged for debugging purpose.
-
 * quite a lot of checks are missing which are essential for productive use cases.
-
 * side channels? Probably there are some.
-
 * Extensive tests and proven in practice? No!
-
 * etc.
 
 Features
@@ -101,7 +97,7 @@ The following basic features are supported:
 * arbitrary L4-ports are supported
 * customized trust store for root certificates
 * client authentication
-* certificate revokation check by CRL
+* certificate revocation check by CRL
 * scan result is provided as JSON/Yaml format to simplify tool-based post-processing
 * plugin concept for either proprietary test cases or for extending the scanner plugin
 * writing keying material to a key logging file to allow wireshark to decode encrypted packets

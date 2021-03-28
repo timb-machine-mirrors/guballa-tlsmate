@@ -8,9 +8,8 @@ integrate the same scenario into tlsmate using the plugin interface.
 As an appetizer let's create an application which performs a TLS handshake and
 prints the cipher suite selected by the server.
 
-.. note::
-   The example code uses the domain `mytlsmatedomain.net`, which is currently not
-   registered. Replace it with your own domain.
+.. note:: The example code uses the domain `mytlsmatedomain.net`, which is
+   currently not registered. Replace it with your own domain.
 
 .. code-block:: python
 
