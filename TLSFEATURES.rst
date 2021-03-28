@@ -223,7 +223,7 @@ The following TLS extensions are supported:
 * EARLY_DATA
 * SUPPORTED_VERSIONS
 
-    All supported versions are supported.
+  All supported versions are supported.
 
 * CERTIFICATE_AUTHORITIES
 * POST_HANDSHAKE_AUTH
