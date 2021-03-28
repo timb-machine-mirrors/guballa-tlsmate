@@ -117,6 +117,7 @@ class Client(object):
 
         self.support_sni = True
         self.sni = None
+        self._server = None
 
         self.support_extended_master_secret = False
 
@@ -382,14 +383,14 @@ class Client(object):
         Returns:
             :obj:`TlsConnection`: the created connection object
         """
-        if server is None:
-            server = self.config.get("endpoint")
+
+        self._server = server if server is not None else self.config.get("endpoint")
 
         interval = self.config.get("interval")
         if interval:
             time.sleep(interval / 1000)
 
-        return TlsConnection(self._tlsmate, server)
+        return TlsConnection(self._tlsmate, self._server)
 
     def save_session_state_id(self, session_state):
         """Save a session state
@@ -452,9 +453,10 @@ class Client(object):
                 return sni
 
             else:
-                endp = resolver.determine_transport_endpoint(
-                    self.config.get("endpoint")
-                )
+                server = self._server
+                if server is None:
+                    server = self.config.get("endpoint")
+                endp = resolver.determine_transport_endpoint(server)
                 if endp.host_type is tls.HostType.HOST:
                     return endp.host
 

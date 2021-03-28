@@ -57,13 +57,13 @@ Cipher suites
 For SSLv2 the following cipher kinds are supported (i.e, they can be sent and received
 in a ClientHello/ServerHello message), but a full handshake cannot be completed:
 
-* SSL_CK_RC4_128_WITH_MD5 (incomplete handshake)
-* SSL_CK_RC4_128_EXPORT40_WITH_MD5 (incomplete handshake)
-* SSL_CK_RC2_128_CBC_WITH_MD5 (incomplete handshake)
-* SSL_CK_RC2_128_CBC_EXPORT40_WITH_MD5 (incomplete handshake)
-* SSL_CK_IDEA_128_CBC_WITH_MD5 (incomplete handshake)
-* SSL_CK_DES_64_CBC_WITH_MD5 (incomplete handshake)
-* SSL_CK_DES_192_EDE3_CBC_WITH_MD5 (incomplete handshake)
+* SSL_CK_RC4_128_WITH_MD5
+* SSL_CK_RC4_128_EXPORT40_WITH_MD5
+* SSL_CK_RC2_128_CBC_WITH_MD5
+* SSL_CK_RC2_128_CBC_EXPORT40_WITH_MD5
+* SSL_CK_IDEA_128_CBC_WITH_MD5
+* SSL_CK_DES_64_CBC_WITH_MD5
+* SSL_CK_DES_192_EDE3_CBC_WITH_MD5
 
 For TLS1.3 the following cipher suites are supported:
 
@@ -134,7 +134,7 @@ All cipher suite HMACs `registered at IANA`_ are supported:
 * SHA512
 * MD5
 
-.. ref:: Extensions
+.. :ref: Extensions
 
 Extensions
 ==========
@@ -179,7 +179,6 @@ The following TLS extensions are supported:
 
     * UNCOMPRESSED
 
-
 * SIGNATURE_ALGORITHMS
 
     All signature algorithms can be negotiated, but only the following one can be
@@ -207,8 +206,6 @@ The following TLS extensions are supported:
     * RSA_PSS_RSAE_SHA256
     * RSA_PSS_RSAE_SHA384
     * RSA_PSS_RSAE_SHA512
-
-
 
 * ENCRYPT_THEN_MAC
 * EXTENDED_MASTER_SECRET
@@ -253,17 +250,17 @@ the validation will only be done once. The following checks are currently implem
 
 * for the server certificate the domain name must match the subject common name or
   one of the SANs (Subject Alternate Names). Wildcard domain names are supported.
-* for each certificate from the chain the validity period is checked.
+* for each certificate of the chain the validity period is checked.
 * for each certificate the issuer's certificate must be in the chain or in the trust store.
 * for each certificate the issuer's signature is validated
-* for each certificate its associated CRL (if defined) is downloaded to check the revokation 
+* for each certificate its associated CRL (if defined) is downloaded to check the revocation
   status. CRLs are cached. This check can be disabled, as it adds additional delay to a
   TLS handshake.
 * the root certificate of the chain must be present in the trust store. Note, that root
   certificates are not required to be sent by the server.
 
 .. note::
-   Revokation check using OCSP is currently not implemented but will be added in the future.
+   Revocation check using OCSP is currently not implemented but will be added in the future.
 
 Received certificate chains from the server are stored in the server profile, but not
 all certificate extensions are supported (yet).
@@ -275,7 +272,7 @@ This section describes features or procedures supported by `tlsmate`.
 
 * resumption via session_id (TLS1.0 - TLS1.2)
 * resumption via session tickets (TLS1.0 - TLS1.2)
-* PSK (TLS1.3)
+* resumption via PSK (TLS1.3)
 * 0-RTT or early data (TLS1.3)
 * secure and insecure renegotiation, client or server initiated (SSLv3 - TLS1.2)
 * client authentication (during handshake or post-handshake, SSLv3 - TLS1.3)
