@@ -1931,9 +1931,6 @@ supported_ciphers = {
     tls.SymmetricCipher.NULL: structs.Cipher(
         primitive=tls.CipherPrimitive.NULL, c_type=tls.CipherType.NULL
     ),
-    tls.SymmetricCipher.NULL: structs.Cipher(
-        primitive=tls.CipherPrimitive.NULL, c_type=tls.CipherType.NULL
-    ),
     tls.SymmetricCipher.RC2_CBC_40: structs.Cipher(
         primitive=tls.CipherPrimitive.RC2, c_type=tls.CipherType.BLOCK
     ),

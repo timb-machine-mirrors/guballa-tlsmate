@@ -4,7 +4,10 @@ High prio
         - flechter.de
             - cryptography.exceptions.InvalidSignature raised
             => should not happen during a scan
-
+        - iber.com
+            - TLS1.3 config contains empty sig_algs. To be checked.
+        - assa.com
+            - exception: signature scheme None not supported
 
 Medium prio
 
