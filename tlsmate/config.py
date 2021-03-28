@@ -118,7 +118,7 @@ class Configuration(object):
             val = self._format_option[item_type](self, val)
         return val
 
-    def init_from_external(self, ini_file):
+    def init_from_external(self, ini_file=None):
         """Take the configuration from the ini file and from the environment variables.
 
         Arguments:
