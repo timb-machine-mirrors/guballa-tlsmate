@@ -145,6 +145,7 @@ class Client(object):
             self.cipher_suites = profile_values.cipher_suites[:]
             self.supported_groups = profile_values.supported_groups[:]
             self.signature_algorithms = profile_values.signature_algorithms[:]
+            self.key_shares = profile_values.key_shares[:]
 
     def set_profile_interoperability(self):
         """Define profile for interoperability, like used in modern browsers
@@ -539,15 +540,14 @@ class Client(object):
                 self._key_share_objects = []
                 msg.extensions.append(ext.ExtSupportedVersions(versions=self.versions))
                 # TLS13 key shares: enforce the same sequence as in supported groups
-                key_shares = []
-                if not self.key_shares:
-                    self.key_shares = self.supported_groups
+                if self.key_shares:
+                    key_shares = []
+                    for group in self.supported_groups:
+                        if group in self.key_shares:
+                            key_shares.append(group)
 
-                for group in self.supported_groups:
-                    if group in self.key_shares:
-                        key_shares.append(group)
+                    msg.extensions.append(ext.ExtKeyShare(key_shares=key_shares))
 
-                msg.extensions.append(ext.ExtKeyShare(key_shares=key_shares))
                 if self.early_data is not None:
                     msg.extensions.append(ext.ExtEarlyData())
 

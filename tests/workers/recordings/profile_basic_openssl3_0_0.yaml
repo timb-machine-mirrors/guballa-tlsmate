@@ -530,3 +530,4 @@ versions:
   version:
     id: 772
     name: TLS13
+vulnerabilities: {}

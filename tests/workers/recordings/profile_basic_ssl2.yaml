@@ -16,3 +16,4 @@ versions:
   version:
     id: 512
     name: SSL20
+vulnerabilities: {}

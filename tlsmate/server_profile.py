@@ -1342,6 +1342,7 @@ class ServerProfile(SPObject):
         cipher_suites = []
         sig_algos = []
         groups = []
+        key_shares = []
 
         # We want to treat higer protocol versions first, so that the result
         # provides the most desirable preference
@@ -1373,6 +1374,9 @@ class ServerProfile(SPObject):
             if vers_group is not None:
                 groups.extend([group for group in vers_group if group not in groups])
 
+            if version is tls.Version.TLS13:
+                key_shares = vers_group
+
         if full_hs:
             cipher_suites = utils.filter_cipher_suites(cipher_suites, full_hs=True)
 
@@ -1381,6 +1385,7 @@ class ServerProfile(SPObject):
             cipher_suites=cipher_suites,
             supported_groups=groups,
             signature_algorithms=sig_algos,
+            key_shares=key_shares,
         )
 
     def make_serializable(self):

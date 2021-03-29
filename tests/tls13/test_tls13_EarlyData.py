@@ -44,6 +44,7 @@ class TestCase(CipherSuiteTester):
             tls.SupportedGroups.X25519,
             tls.SupportedGroups.X448,
         ]
+        client.key_shares = self.supported_groups
         client.signature_algorithms = [
             tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
             tls.SignatureScheme.RSA_PKCS1_SHA256,
