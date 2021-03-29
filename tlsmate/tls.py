@@ -695,6 +695,26 @@ class SupportedGroups(ExtendedEnum):
     ARBITRARY_EXPLICIT_PRIME_CURVES = 65281
     ARBITRARY_EXPLICIT_CHAR2_CURVES = 65282
 
+    @classmethod
+    def all_tls13(cls):
+        """Get all supported groups defined for TLS1.3 (RFC8446, 4.2.7)
+
+        Returns:
+            list (:obj:`SupportedGroups`): list of TLS1.3 supported groups
+        """
+        return [
+            cls.SECP256R1,
+            cls.SECP384R1,
+            cls.SECP521R1,
+            cls.X25519,
+            cls.X448,
+            cls.FFDHE2048,
+            cls.FFDHE3072,
+            cls.FFDHE4096,
+            cls.FFDHE6144,
+            cls.FFDHE8192,
+        ]
+
 
 class SignatureAlgorithm(ExtendedEnum):
     """Enum representing the signature algorithms.

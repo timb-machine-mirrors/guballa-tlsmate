@@ -170,7 +170,7 @@ class ScanSigAlgs(Worker):
         prof_sig_algo = prof_version.signature_algorithms
         self.client.support_supported_groups = True
         self.client.supported_groups = prof_version.supported_groups.groups
-        self.client.key_shares = prof_version.supported_groups.groups
+        self.client.key_shares = tls.SupportedGroups.all_tls13()
         self.client.versions = [tls.Version.TLS13]
 
         self.scan_auth_method(
