@@ -214,6 +214,7 @@ class ScanCipherSuites(Worker):
             tls.SupportedGroups.FFDHE2048,
             tls.SupportedGroups.FFDHE4096,
         ]
+        self.client.key_shares = self.client.supported_groups
         self.client.signature_algorithms = [
             tls.SignatureScheme.ED25519,
             tls.SignatureScheme.ED448,

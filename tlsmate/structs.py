@@ -175,6 +175,7 @@ class ProfileValues(NamedTuple):
     cipher_suites: list = []
     supported_groups: list = []
     signature_algorithms: list = []
+    key_shares: list = []
 
 
 class CertSigAlgo(NamedTuple):

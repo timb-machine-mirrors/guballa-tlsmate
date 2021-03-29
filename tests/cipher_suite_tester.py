@@ -76,6 +76,7 @@ class CipherSuiteTester(TlsSuiteTester):
         client.versions = [self.version]
         client.cipher_suites = [self.cipher_suite]
         client.supported_groups = self.supported_groups
+        client.key_shares = self.supported_groups
         client.signature_algorithms = self.signature_algorithms
         self.update_client(client)
 
