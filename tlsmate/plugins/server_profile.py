@@ -38,7 +38,7 @@ class ServerProfilePlugin(Plugin):
         """
 
         group = parser.add_argument_group(
-            title="server profile options", description=None
+            title="Server profile options", description=None
         )
         group.add_argument(
             "--read-profile",

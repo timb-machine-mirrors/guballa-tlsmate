@@ -6,25 +6,30 @@ Python API Reference Documentation
     :maxdepth: 2
 
     py_cert
+    py_client_auth
     py_client
     py_command
     py_config
     py_connection
-    py_constants
-    py_dependency_injection
     py_dh_numbers
     py_exception
-    py_extensions
+    py_ext
     py_kdf
     py_key_exchange
-    py_messages
+    py_key_logging
+    py_mappings
+    py_msg
     py_pdu
+    py_plugin
     py_recorder
     py_record_layer
     py_record_layer_state
+    py_resolver
     py_server_profile
     py_socket
-    py_structures
-    py_suitemanager
+    py_structs
+    py_tlsmate
+    py_tls
     py_tlssuite
     py_utils
+

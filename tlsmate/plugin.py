@@ -74,7 +74,7 @@ class PluginManager(object):
         """Register a class as a plugin.
 
         Arguments:
-            plugin (:cls:`Plugin`): The class to register
+            plugin (:class:`Plugin`): The class to register
 
         Raises:
             ValueError: If there is already another plugin registered under the
@@ -98,7 +98,7 @@ class PluginManager(object):
             parser (:obj:`argparse.Parser`): the parser object to add the arguments to.
         """
 
-        group = parser.add_argument_group(title="available plugins")
+        group = parser.add_argument_group(title="Available plugins")
         for plugin in sorted(cls._plugins.values(), key=lambda x: x.prio):
             if plugin.cli_name is not None:
                 cls._cli_names.append(plugin.cli_name[2:])
@@ -152,7 +152,7 @@ def register_plugin(plugin):
     Might be removed in the future.
 
     Arguments:
-        plugin (:cls:`Plugin`): The class to register
+        plugin (:class:`Plugin`): The class to register
     """
     PluginManager.register(plugin)
     return plugin
@@ -208,7 +208,7 @@ class WorkManager(object):
         Can be used as a decorator.
 
         Arguments:
-            worker_class (:cls:`Worker`): A worker class to be registered.
+            worker_class (:class:`Worker`): A worker class to be registered.
         """
         self.prio_pool.setdefault(worker_class.prio, [])
         self.prio_pool[worker_class.prio].append(worker_class)
@@ -237,7 +237,7 @@ def register_worker(worker_class):
     Might be removed in the future.
 
     Arguments:
-        worker_class (:cls:`Worker`): A worker class to be registered.
+        worker_class (:class:`Worker`): A worker class to be registered.
     """
     WorkManager.register(worker_class)
     return worker_class

@@ -24,7 +24,7 @@ class Configuration(object):
       CLI option, the file .tlsmate.ini in the user's home directory will be used,
       if present.
     * Environment variables. They need to be given in upper cases and must start with
-      TLSMATE_ followed by the name of the setting.
+      `TLSMATE_` followed by the name of the setting.
     * From the command line interface parameters
 
     Example:

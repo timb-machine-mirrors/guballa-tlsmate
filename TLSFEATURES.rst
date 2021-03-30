@@ -166,6 +166,8 @@ The following TLS extensions are supported:
   * SECT409R1
   * SECT571K1
   * SECT571R1
+  * X25519
+  * X448
   * BRAINPOOLP256R1
   * BRAINPOOLP384R1
   * BRAINPOOLP512R1
