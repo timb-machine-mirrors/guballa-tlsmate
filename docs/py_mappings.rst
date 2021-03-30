@@ -1,7 +1,7 @@
-Module messages
+Module mappings
 ---------------
 
-.. automodule:: tlsmate.messages
+.. automodule:: tlsmate.mappings
    :members:
    :undoc-members:
    :show-inheritance:

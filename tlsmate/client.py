@@ -103,7 +103,7 @@ class Client(object):
         the sni extention is enabled. Everything else is empty or disabled.
 
         Arguments:
-            profile_values (:obj:`tlsmate.structs.ProfileValues): the profile
+            profile_values (:obj:`tlsmate.structs.ProfileValues`): the profile
                 values to additionally use to initialize the client profile
         """
         self.versions = []
