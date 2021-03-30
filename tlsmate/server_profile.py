@@ -580,7 +580,7 @@ class SPCertExtension(SPObject):
         self.subj_alt_names = [subj_alt_name.value for subj_alt_name in value]
 
     def _ext_issuer_alt_name(self, value):
-        logging.error("Certificate extensions IssuerAltName not implemented")
+        self.issuer_alt_name = [issuer_alt_name.value for issuer_alt_name in value]
 
     def _ext_precert_sign_cert_timestamps(self, value):
         self.signed_certificate_timestamps = [
@@ -796,6 +796,7 @@ class SPCertExtIssuerAlternativeNameSchema(ProfileSchema):
     name = fields.String()
     oid = fields.String()
     criticality = FieldsEnumString(enum_class=tls.SPBool)
+    issuer_alt_name = fields.List(fields.String())
 
 
 class SPCertExtPrecertSignedCertTimestampsSchema(ProfileSchema):
