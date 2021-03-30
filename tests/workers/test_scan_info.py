@@ -46,8 +46,10 @@ class TestCase(TlsSuiteTester):
 
         assert profile["server"]["ip"] == "127.0.0.1"
         assert profile["server"]["sni"] == "localhost"
-        assert profile["server"]["name"] == "localhost"
         assert profile["server"]["port"] == self.port
+        assert profile["server"]["name_resolution"]["domain_name"] == "localhost"
+        assert len(profile["server"]["name_resolution"]["ipv4_addresses"]) == 1
+        assert profile["server"]["name_resolution"]["ipv4_addresses"][0] == "127.0.0.1"
 
 
 if __name__ == "__main__":

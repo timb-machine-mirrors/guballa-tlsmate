@@ -1178,6 +1178,21 @@ class SPDhGroupSchema(ProfileSchema):
     cipher_suites = fields.List(fields.Nested(SPCipherSuiteSchema))
 
 
+class SPNameResolution(SPObject):
+    """Data class for name resolution infos
+    """
+
+
+class SPNameResolutionSchema(ProfileSchema):
+    """Schema for name resolution infos
+    """
+
+    __profile_class__ = SPNameResolution
+    domain_name = fields.String()
+    ipv4_addresses = fields.List(fields.String())
+    ipv6_addresses = fields.List(fields.String())
+
+
 class SPServer(SPObject):
     """Data class for the servers' information
     """
@@ -1188,12 +1203,10 @@ class SPServerSchema(ProfileSchema):
     """
 
     __profile_class__ = SPServer
-    name = fields.String()
     ip = fields.String()
+    name_resolution = fields.Nested(SPNameResolutionSchema)
     port = fields.Integer()
     sni = fields.String()
-    ipv4_addresses = fields.List(fields.String())
-    ipv6_addresses = fields.List(fields.String())
 
 
 class SPVersion(SPObject):

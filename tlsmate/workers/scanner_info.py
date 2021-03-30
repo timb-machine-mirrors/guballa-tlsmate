@@ -10,7 +10,7 @@ import datetime
 from tlsmate import tls
 from tlsmate.version import __version__
 from tlsmate.plugin import Worker
-from tlsmate.server_profile import SPServer
+from tlsmate.server_profile import SPServer, SPNameResolution
 from tlsmate import resolver
 
 # import other stuff
@@ -35,15 +35,16 @@ class ScanStart(Worker):
         endp = resolver.determine_transport_endpoint(self.config.get("endpoint"))
         data = {"port": endp.port}
         if endp.host_type is tls.HostType.HOST:
-            data["name"] = endp.host
+            name_res_data = {"domain_name": endp.host}
             ips = resolver.resolve_hostname(endp.host)
             if ips.ipv4_addresses:
-                data["ipv4_addresses"] = ips.ipv4_addresses
+                name_res_data["ipv4_addresses"] = ips.ipv4_addresses
 
             if ips.ipv6_addresses:
-                data["ipv6_addresses"] = ips.ipv6_addresses
+                name_res_data["ipv6_addresses"] = ips.ipv6_addresses
 
             endp = resolver.get_ip_endpoint(endp)
+            data["name_resolution"] = SPNameResolution(data=name_res_data)
 
         data["ip"] = endp.host
         try:
