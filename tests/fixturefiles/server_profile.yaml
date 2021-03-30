@@ -418,10 +418,11 @@ scan_info:
     version: 0.0.1
 server:
     ip: 127.0.0.1
-    ipv4_addresses:
-    - 127.0.0.1
-    name: localhost
-    port: 44332
+    name_resolution:
+        domain_name: localhost
+        ipv4_addresses:
+        - 127.0.0.1
+    port: 44330
     sni: localhost
 versions:
 -   cipher_suites:
