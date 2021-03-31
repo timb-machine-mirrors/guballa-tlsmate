@@ -839,8 +839,9 @@ class CertChain(object):
         for dist_point in dist_points.value:
             if dist_point.full_name is not None:
                 for gen_name in dist_point.full_name:
-                    if gen_name.value.startswith("http://"):
-                        crl_urls.append(gen_name.value)
+                    if isinstance(gen_name, x509.UniformResourceIdentifier):
+                        if gen_name.value.startswith("http://"):
+                            crl_urls.append(gen_name.value)
             elif dist_point.relative_me is not None:
                 raise NotImplementedError
 

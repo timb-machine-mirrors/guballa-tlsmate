@@ -9,6 +9,8 @@ High prio
         - assa.com
             - exception: signature scheme None not supported
 
+    Ellipsis in resumption plugin.
+
 Medium prio
 
 Low prio
