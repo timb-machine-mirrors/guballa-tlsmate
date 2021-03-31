@@ -86,6 +86,8 @@ class Configuration(object):
     def _init_from_ini_file(self, ini_file):
         if ini_file is None:
             ini_file = Path.home() / ".tlsmate.ini"
+            if not ini_file.is_file():
+                return
 
         else:
             ini_file = Path(ini_file)
