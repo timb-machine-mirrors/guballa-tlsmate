@@ -376,6 +376,8 @@ class SPCertGeneralNameSchema(ProfileSchema):
     uri = fields.String()
     ip_address = fields.String()
     registered_id = fields.String()
+
+
 # TODO: implement other name
 #    other_name = fields.Nested(SpCertOtherNameSchema)
 
