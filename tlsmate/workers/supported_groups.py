@@ -72,6 +72,7 @@ class _Scan(metaclass=abc.ABCMeta):
                     status = tls.SPBool.C_TRUE
                 else:
                     status = tls.SPBool.C_FALSE
+            groups.insert(0, groups.pop())
         else:
             status = tls.SPBool.C_NA
         if status is not None:

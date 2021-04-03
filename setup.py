@@ -163,6 +163,7 @@ setup(
         'configparser',
         'marshmallow',
         'marshmallow_oneofschema',
+        'colorama',
     ],
 
     # List additional groups of dependencies here (e.g. development
