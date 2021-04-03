@@ -7,9 +7,10 @@ from tlsmate.tlssuite import TlsSuiteTester
 from tlsmate.tlssuite import OpensslVersion
 
 
-groups_tls12 = ["SECP384R1", "SECP521R1", "X25519", "X448", "SECP256R1"]
+groups_tls12 = ["SECP256R1", "SECP384R1", "SECP521R1", "X25519", "X448"]
 
 groups_tls13 = [
+    "SECP256R1",
     "SECP384R1",
     "SECP521R1",
     "X25519",
@@ -19,7 +20,6 @@ groups_tls13 = [
     "FFDHE4096",
     "FFDHE6144",
     "FFDHE8192",
-    "SECP256R1",
 ]
 
 

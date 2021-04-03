@@ -931,6 +931,8 @@ versions:
   supported_groups:
     extension_supported: C_TRUE
     groups:
+    - id: 23
+      name: SECP256R1
     - id: 24
       name: SECP384R1
     - id: 25
@@ -939,8 +941,6 @@ versions:
       name: X25519
     - id: 30
       name: X448
-    - id: 23
-      name: SECP256R1
     groups_advertised: C_NA
     server_preference: C_FALSE
   version:
@@ -968,6 +968,8 @@ versions:
   supported_groups:
     extension_supported: C_TRUE
     groups:
+    - id: 23
+      name: SECP256R1
     - id: 24
       name: SECP384R1
     - id: 25
@@ -986,10 +988,9 @@ versions:
       name: FFDHE6144
     - id: 260
       name: FFDHE8192
-    - id: 23
-      name: SECP256R1
     groups_advertised: C_TRUE
     server_preference: C_FALSE
   version:
     id: 772
     name: TLS13
+vulnerabilities: {}
