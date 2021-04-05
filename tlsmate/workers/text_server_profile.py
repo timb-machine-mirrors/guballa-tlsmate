@@ -934,9 +934,6 @@ class TextProfileWorker(Worker):
             print(f"  {head_line} {valid_txt}")
             if hasattr(cert_chain, "issues"):
                 print("    Issues:")
-                import pudb
-
-                pudb.set_trace()
                 for issue in cert_chain.issues:
                     issue_lines = []
                     words = issue.split()
