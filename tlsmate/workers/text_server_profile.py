@@ -189,10 +189,10 @@ _supported_groups = {
     "advertised_mood": {
         tls.Version.SSL20: (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL),
         tls.Version.SSL30: (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL),
-        tls.Version.TLS10: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS11: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS12: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS13: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
+        tls.Version.TLS10: (Mood.SOSO, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
+        tls.Version.TLS11: (Mood.SOSO, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
+        tls.Version.TLS12: (Mood.SOSO, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
+        tls.Version.TLS13: (Mood.SOSO, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
     },
     "groups": {
         tls.SupportedGroups.SECT163K1: Mood.BAD,
@@ -298,11 +298,11 @@ _dh_group_sizes = {3072: Mood.GOOD, 2048: Mood.SOSO, 0: Mood.BAD}
 
 _features = {
     "text": ("not supported", "supported", "not applicable", "undetermined"),
-    "scsv_renegotiation": (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
+    "scsv_renegotiation": (Mood.SOSO, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
     "encrypt_then_mac": (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
     "extended_master_secret": (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
     "insecure_renegotiation": (Mood.GOOD, Mood.BAD, Mood.NEUTRAL, Mood.SOSO),
-    "secure_renegotiation": (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
+    "secure_renegotiation": (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.SOSO),
     "session_id": (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL),
     "session_ticket": (Mood.GOOD, Mood.SOSO, Mood.NEUTRAL, Mood.SOSO),
     "resumption_psk": (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL),
@@ -397,7 +397,12 @@ class TextProfileWorker(Worker):
             txt = _cipher_order["text"][order]
             mood = _cipher_order["mood"][version][order.value]
             mood_txt = apply_mood(txt, mood)
-            hashed = hash((mood_txt, tuple(version_prof.cipher_suites)))
+            if version is tls.Version.SSL20:
+                cipher_list = version_prof.cipher_kinds
+            else:
+                cipher_list = version_prof.cipher_suites
+
+            hashed = hash((mood_txt, tuple(cipher_list)))
             if hashed in cipher_hash:
                 cipher_hash[hashed]["versions"].append(str(version))
 
@@ -407,15 +412,26 @@ class TextProfileWorker(Worker):
                     "lines": [],
                     "preference": mood_txt,
                 }
-                for cs in version_prof.cipher_suites:
-                    det = utils.get_cipher_suite_details(cs)
-                    key_mood = _supported_key_exchange[det.key_algo]
-                    cipher_mood = _supported_ciphers[det.cipher]
-                    mac_mood = _supported_macs[det.mac]
-                    mood = merge_moods([key_mood, cipher_mood, mac_mood])
-                    cipher_hash[hashed]["lines"].append(
-                        f"    0x{cs.value:04x} {apply_mood(cs, mood)}"
-                    )
+                all_good = True
+                for cs in cipher_list:
+                    if version is tls.Version.SSL20:
+                        cipher_hash[hashed]["lines"].append(
+                            f"    0x{cs.value:06x} {apply_mood(cs, Mood.BAD)}"
+                        )
+                    else:
+                        det = utils.get_cipher_suite_details(cs)
+                        key_mood = _supported_key_exchange[det.key_algo]
+                        cipher_mood = _supported_ciphers[det.cipher]
+                        mac_mood = _supported_macs[det.mac]
+                        mood = merge_moods([key_mood, cipher_mood, mac_mood])
+                        if mood is not Mood.GOOD:
+                            all_good = False
+                        cipher_hash[hashed]["lines"].append(
+                            f"    0x{cs.value:04x} {apply_mood(cs, mood)}"
+                        )
+
+                if all_good:
+                    cipher_hash[hashed]["preference"] = apply_mood(txt, Mood.NEUTRAL)
 
         for values in cipher_hash.values():
             versions = apply_mood(", ".join(values["versions"]), Mood.BOLD)
@@ -430,10 +446,13 @@ class TextProfileWorker(Worker):
         print(apply_mood("Supported groups", Mood.HEADLINE))
         for version in self._prof_values.versions:
             version_prof = self.server_profile.get_version_profile(version)
-            if not hasattr(version_prof, "supported_groups"):
+            group_prof = getattr(version_prof, "supported_groups", None)
+            if group_prof is None:
                 continue
 
-            group_prof = version_prof.supported_groups
+            if not hasattr(group_prof,"groups"):
+                continue
+
             supported = getattr(group_prof, "extension_supported", None)
             if supported is None:
                 supp_txt = None
@@ -453,9 +472,19 @@ class TextProfileWorker(Worker):
             else:
                 pref_txt = _supported_groups["preference_txt"][preference]
                 if pref_txt is not None:
-                    pref_mood = _supported_groups["preference_mood"][version][
-                        preference.value
-                    ]
+                    if all(
+                        [
+                            _supported_groups["groups"][grp] is Mood.GOOD
+                            for grp in group_prof.groups
+                        ]
+                    ):
+                        pref_mood = Mood.NEUTRAL
+
+                    else:
+                        pref_mood = _supported_groups["preference_mood"][version][
+                            preference.value
+                        ]
+
                     pref_txt = apply_mood(pref_txt, pref_mood)
 
             advertised = getattr(group_prof, "groups_advertised", None)
@@ -482,6 +511,7 @@ class TextProfileWorker(Worker):
             versions = ", ".join(group["versions"])
             print(f"\n  {apply_mood(versions, Mood.BOLD)}:")
             supp_txt, pref_txt, ad_txt, groups = group["combined"]
+
             if supp_txt is not None:
                 print(f"    {supp_txt}")
 
@@ -514,7 +544,17 @@ class TextProfileWorker(Worker):
             else:
                 pref_txt = _sig_algo["preference_txt"][preference]
                 if pref_txt is not None:
-                    pref_mood = _sig_algo["preference_mood"][version][preference.value]
+                    if all(
+                        [
+                            _sig_algo["algos"][algo] is Mood.GOOD
+                            for algo in algo_prof.algorithms
+                        ]
+                    ):
+                        pref_mood = Mood.NEUTRAL
+
+                    else:
+                        pref_mood = _sig_algo["preference_mood"][version][preference.value]
+
                     pref_txt = apply_mood(pref_txt, pref_mood)
 
             combined = (pref_txt, tuple(algo_prof.algorithms))

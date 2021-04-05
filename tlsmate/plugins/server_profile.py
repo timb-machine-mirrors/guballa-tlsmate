@@ -29,7 +29,7 @@ class ServerProfilePlugin(Plugin):
 
         config.register(ConfigItem("write_profile", type=str, default=None))
         config.register(ConfigItem("read_profile", type=str, default=None))
-        config.register(ConfigItem("format", type=str, default="yaml"))
+        config.register(ConfigItem("format", type=str, default=None))
         config.register(ConfigItem("no_color", type=bool, default=False))
 
     def add_args(self, parser):
@@ -63,10 +63,10 @@ class ServerProfilePlugin(Plugin):
             "--format",
             choices=["text", "json", "yaml", "none"],
             help=(
-                'the output format of the server profile. Defaults to "text". "none" '
-                "can be used to disable the output to STDOUT."
+                'the output format of the server profile. Defaults to "none", '
+                "which disables the output."
             ),
-            default="text",
+            default=None,
         )
         group.add_argument(
             "--no-color",
@@ -82,6 +82,7 @@ class ServerProfilePlugin(Plugin):
             parser: the parser object, can be used to issue consistency errors
             config (:obj:`tlsmate.config.Configuration`): the configuration object
         """
+
         config.set("format", args.format)
         config.set("write_profile", args.write_profile)
         config.set("read_profile", args.read_profile)
@@ -93,5 +94,5 @@ class ServerProfilePlugin(Plugin):
         if args.format == "text":
             WorkManager.register(TextProfileWorker)
 
-        elif args.format != "none":
+        elif args.format in ["json", "yaml"]:
             WorkManager.register(DumpProfileWorker)

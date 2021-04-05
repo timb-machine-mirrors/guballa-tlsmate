@@ -17,6 +17,7 @@ from tlsmate.workers.resumption import ScanResumption
 from tlsmate.workers.renegotiation import ScanRenegotiation
 from tlsmate.workers.ccs_injection import ScanCcsInjection
 from tlsmate.workers.dh_params import ScanDhGroups
+from tlsmate.workers.text_server_profile import TextProfileWorker
 
 # import other stuff
 
@@ -215,3 +216,6 @@ class ScanPlugin(Plugin):
             for feature, worker in self._feature_workers.items():
                 if config.get(feature):
                     WorkManager.register(worker)
+
+            if config.get("format") is None:
+                WorkManager.register(TextProfileWorker)
