@@ -1152,6 +1152,7 @@ class SPSignatureAlgorithmsSchema(ProfileSchema):
 
     __profile_class__ = SPSignatureAlgorithms
     algorithms = fields.List(fields.Nested(SPSigAlgoEnumSchema))
+    info = fields.List(fields.String)
     server_preference = FieldsEnumString(enum_class=tls.SPBool)
 
 

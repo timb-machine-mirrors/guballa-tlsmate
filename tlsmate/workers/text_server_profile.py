@@ -8,6 +8,7 @@
 from tlsmate.plugin import Worker
 from tlsmate import tls
 from tlsmate import utils
+from tlsmate import pdu
 from tlsmate.version import __version__
 
 # import other stuff
@@ -24,6 +25,27 @@ class Mood(object):
     RESET = Style.RESET_ALL
 
 
+class Table(object):
+    def __init__(self, indent=0, sep=": "):
+        self._indent = indent
+        self._sep = sep
+        self._nbr_columns = 0
+        self._rows = []
+
+    def row(self, *args):
+        self._nbr_columns = max(self._nbr_columns, len(args))
+        self._rows.append(args)
+
+    def dump(self):
+        cols = [0] * self._nbr_columns
+        for row in self._rows:
+            for idx, col in enumerate(row):
+                cols[idx] = max(cols[idx], len(col))
+        for row in self._rows:
+            print(" " * self._indent, end="")
+            print(self._sep.join([f"{col:{cols[idx]}}" for idx, col in enumerate(row)]))
+
+
 def apply_mood(txt, mood):
     if mood == "":
         return str(txt)
@@ -37,6 +59,17 @@ def merge_moods(moods):
             return mood
 
     raise ValueError("cannot merge moods")
+
+
+def get_cert_ext(cert, name):
+    if not hasattr(cert, "extensions"):
+        return None
+
+    for ext in cert.extensions:
+        if ext.name == name:
+            return ext
+
+    return None
 
 
 _versions = {
@@ -294,7 +327,8 @@ _sig_algo = {
     },
 }
 
-_dh_group_sizes = {3072: Mood.GOOD, 2048: Mood.SOSO, 0: Mood.BAD}
+_assym_key_sizes = {3072: Mood.GOOD, 2048: Mood.SOSO, 0: Mood.BAD}
+_assym_ec_key_sizes = {256: Mood.GOOD, 0: Mood.BAD}
 
 _features = {
     "text": ("not supported", "supported", "not applicable", "undetermined"),
@@ -308,6 +342,35 @@ _features = {
     "resumption_psk": (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL),
     "early_data": (Mood.GOOD, Mood.BAD, Mood.NEUTRAL, Mood.SOSO),
 }
+
+_cert = {
+    "chain_valid": {
+        tls.SPBool.C_FALSE: ("validation failed", Mood.BAD),
+        tls.SPBool.C_TRUE: ("successfully validated", Mood.GOOD),
+        tls.SPBool.C_NA: ("", Mood.NEUTRAL),
+        tls.SPBool.C_UNDETERMINED: ("validation status undetermined", Mood.SOSO),
+    },
+    "root_transmitted": {
+        False: ("root certificate was not provided by the server", Mood.GOOD),
+        True: ("root certificate was provided by the server", Mood.SOSO),
+    },
+    "subject_matches": {
+        tls.SPBool.C_FALSE: ("no, URI not matched against subject/SAN", Mood.BAD),
+        tls.SPBool.C_TRUE: ("yes, URI matches subject/SAN", Mood.GOOD),
+        tls.SPBool.C_NA: ("", Mood.NEUTRAL),
+        tls.SPBool.C_UNDETERMINED: ("validation status undetermined", Mood.SOSO),
+    },
+    "crl_status": {
+        tls.CertCrlStatus.UNDETERMINED: ("unknown", Mood.SOSO),
+        tls.CertCrlStatus.NOT_REVOKED: ("certificate not revoked", Mood.GOOD),
+        tls.CertCrlStatus.REVOKED: ("certificate revoked", Mood.BAD),
+        tls.CertCrlStatus.CRL_DOWNLOAD_FAILED: ("CRL download failed", Mood.BAD),
+        tls.CertCrlStatus.WRONG_CRL_ISSUER: ("wrong CRL issuer", Mood.BAD),
+        tls.CertCrlStatus.CRL_SIGNATURE_INVALID: ("CRL signature invalid", Mood.BAD),
+    },
+}
+
+_cert_sig_algo = {}
 
 _vulnerabilities = {
     tls.SPBool.C_FALSE: ("not vulnerable", Mood.GOOD),
@@ -345,6 +408,7 @@ class TextProfileWorker(Worker):
 
     def _print_scan_info(self):
         scan_info = self.server_profile.scan_info
+        self._start_date = scan_info.start_date
         print(apply_mood("Basic scan information", Mood.HEADLINE))
         print()
         print(f"  Command: {scan_info.command}")
@@ -359,6 +423,7 @@ class TextProfileWorker(Worker):
         host_info = self.server_profile.server
         print(apply_mood("Scanned host", Mood.HEADLINE))
         print()
+        table = Table(indent=2, sep="  ")
         name_resolution = hasattr(host_info, "name_resolution")
         if name_resolution:
             host = host_info.name_resolution.domain_name
@@ -366,17 +431,18 @@ class TextProfileWorker(Worker):
         else:
             host = host_info.ip
 
-        print(f"  Host: {host}, port: {host_info.port}")
-        print(f"  SNI: {host_info.sni}")
+        table.row("Host", f"{host}, port: {host_info.port}")
+        table.row("SNI", host_info.sni)
         if name_resolution:
             if hasattr(host_info.name_resolution, "ipv4_addresses"):
                 addresses = ", ".join(host_info.name_resolution.ipv4_addresses)
-                print(f"  IPv4 addresses: {addresses}")
+                table.row("IPv4 addresses", addresses)
 
             if hasattr(host_info.name_resolution, "ipv6_addresses"):
                 addresses = ", ".join(host_info.name_resolution.ipv6_addresses)
-                print(f"  IPv6 addresses: {addresses}")
+                table.row("IPv6 addresses", addresses)
 
+        table.dump()
         print()
 
     def _print_versions(self):
@@ -450,7 +516,7 @@ class TextProfileWorker(Worker):
             if group_prof is None:
                 continue
 
-            if not hasattr(group_prof,"groups"):
+            if not hasattr(group_prof, "groups"):
                 continue
 
             supported = getattr(group_prof, "extension_supported", None)
@@ -553,7 +619,9 @@ class TextProfileWorker(Worker):
                         pref_mood = Mood.NEUTRAL
 
                     else:
-                        pref_mood = _sig_algo["preference_mood"][version][preference.value]
+                        pref_mood = _sig_algo["preference_mood"][version][
+                            preference.value
+                        ]
 
                     pref_txt = apply_mood(pref_txt, pref_mood)
 
@@ -608,7 +676,7 @@ class TextProfileWorker(Worker):
                 if name is None:
                     name = "unknown group"
                 txt = f"{name} ({size} bits)"
-                for val, mood in _dh_group_sizes.items():
+                for val, mood in _assym_key_sizes.items():
                     if size >= val:
                         break
                 print(f"    {apply_mood(txt, mood)}")
@@ -617,6 +685,7 @@ class TextProfileWorker(Worker):
 
     def _print_features_tls12(self, feat_prof):
         print(f'  {apply_mood("Features for TLS1.2 and below", Mood.BOLD)}')
+        table = Table(indent=4, sep="  ")
         if hasattr(feat_prof, "compression"):
             if (len(feat_prof.compression) == 1) and feat_prof.compression[
                 0
@@ -626,43 +695,43 @@ class TextProfileWorker(Worker):
             else:
                 txt = apply_mood("supported", Mood.BAD)
 
-            print(f"    compression: {txt}")
+            table.row("compression", txt)
 
         scsv = getattr(feat_prof, "scsv_renegotiation", None)
         if scsv is not None:
             txt = _features["text"][scsv.value]
             mood = _features["scsv_renegotiation"][scsv.value]
-            print(f"    SCSV-renegotiation: {apply_mood(txt, mood)}")
+            table.row("SCSV-renegotiation", apply_mood(txt, mood))
 
         etm = getattr(feat_prof, "encrypt_then_mac", None)
         if etm is not None:
             txt = _features["text"][etm.value]
             mood = _features["encrypt_then_mac"][etm.value]
-            print(f"    encrypt-then-mac: {apply_mood(txt, mood)}")
+            table.row("encrypt-then-mac", apply_mood(txt, mood))
 
         ems = getattr(feat_prof, "extended_master_secret", None)
         if ems is not None:
             txt = _features["text"][ems.value]
             mood = _features["extended_master_secret"][ems.value]
-            print(f"    extended master secret: {apply_mood(txt, mood)}")
+            table.row("extended master secret", apply_mood(txt, mood))
 
         insec_reneg = getattr(feat_prof, "insecure_renegotiation", None)
         if insec_reneg is not None:
             txt = _features["text"][insec_reneg.value]
             mood = _features["insecure_renegotiation"][insec_reneg.value]
-            print(f"    insecure renegotiation: {apply_mood(txt, mood)}")
+            table.row("insecure renegotiation", apply_mood(txt, mood))
 
         sec_reneg = getattr(feat_prof, "secure_renegotation", None)
         if sec_reneg is not None:
             txt = _features["text"][sec_reneg.value]
             mood = _features["secure_renegotiation"][sec_reneg.value]
-            print(f"    secure renegotiation: {apply_mood(txt, mood)}")
+            table.row("secure renegotiation", apply_mood(txt, mood))
 
         session_id = getattr(feat_prof, "session_id", None)
         if session_id is not None:
             txt = _features["text"][session_id.value]
             mood = _features["session_id"][session_id.value]
-            print(f"    resumption with session_id: {apply_mood(txt, mood)}")
+            table.row("resumption with session_id", apply_mood(txt, mood))
 
         session_ticket = getattr(feat_prof, "session_ticket", None)
         if session_ticket is not None:
@@ -673,11 +742,10 @@ class TextProfileWorker(Worker):
                 add_txt = ""
             else:
                 add_txt = f", life time: {feat_prof.session_ticket_lifetime} seconds"
-            print(
-                f"    resumption with session ticket (RFC5077): "
-                f"{apply_mood(txt, mood)}{add_txt}"
+            table.row(
+                "resumption with session ticket", f"{apply_mood(txt, mood)}{add_txt}"
             )
-
+        table.dump()
         print()
 
     def _print_features_tls13(self, feat_prof):
@@ -723,6 +791,184 @@ class TextProfileWorker(Worker):
         if tls.Version.TLS13 in versions:
             self._print_features_tls13(feat_prof)
 
+    def _print_cert(self, cert, idx):
+        items = [str(getattr(cert, "version", ""))]
+        self_signed = getattr(cert, "self_signed", None)
+        if self_signed is tls.SPBool.C_TRUE:
+            items.append("self-signed")
+
+        print(f'  Certificate #{idx}: {", ".join(items)}')
+        table = Table(indent=4, sep="  ")
+
+        table.row("Serial number", f"{cert.serial_number_int} (integer)")
+        table.row("", f"{pdu.string(cert.serial_number_bytes)} (hex)")
+        table.row("Subject", cert.subject)
+        san_ext = get_cert_ext(cert, "SubjectAlternativeName")
+        if san_ext is not None:
+            txt = "SubjectAltName (SAN)"
+            line = []
+            length = 0
+            for san in san_ext.subj_alt_names:
+                san_len = len(san)
+                if san_len + length > 80:
+                    table.row(txt, " ".join(line))
+                    line = [san]
+                    length = san_len
+                    txt = ""
+                else:
+                    line.append(san)
+                    length += san_len + 1
+            if line:
+                table.row(txt, " ".join(line))
+
+        if hasattr(cert, "subject_matches"):
+            txt, mood = _cert["subject_matches"][cert.subject_matches]
+            table.row("URI matches", apply_mood(txt, mood))
+        table.row("Issuer", cert.issuer)
+
+        sig_algo = getattr(cert, "signature_algorithm", None)
+        if sig_algo is not None:
+            mood = _sig_algo["algos"][sig_algo]
+            table.row("Signature algorithm", apply_mood(str(sig_algo), mood))
+
+        pub_key = getattr(cert, "public_key", None)
+        if pub_key is not None:
+            key_size = pub_key.key_size
+            if pub_key.key_type in [
+                tls.SignatureAlgorithm.RSA,
+                tls.SignatureAlgorithm.DSA,
+            ]:
+                mood_reference = _assym_key_sizes
+
+            else:
+                mood_reference = _assym_ec_key_sizes
+
+            for val, mood in mood_reference.items():
+                if key_size >= val:
+                    break
+
+            table.row(
+                "Public key",
+                f'{pub_key.key_type}, {apply_mood(f"{key_size} bits", mood)}',
+            )
+
+        key_usage_ext = get_cert_ext(cert, "KeyUsage")
+        if key_usage_ext is not None:
+            usage_txt = ", ".join([str(usage) for usage in key_usage_ext.key_usage])
+            table.row("Key usage", usage_txt)
+
+        ext_key_usage_ext = get_cert_ext(cert, "ExtendedKeyUsage")
+        if ext_key_usage_ext is not None:
+            usage_txt = ", ".join(
+                [str(usage) for usage in ext_key_usage_ext.extended_key_usage]
+            )
+            table.row("Extended key usage", usage_txt)
+
+        if hasattr(cert, "not_valid_before"):
+            valid = True
+            mood = Mood.GOOD
+            if cert.not_valid_before > self._start_date:
+                valid = False
+                mood = Mood.BAD
+
+            from_txt = apply_mood(cert.not_valid_before, mood)
+            mood = Mood.GOOD
+            if cert.not_valid_after < self._start_date:
+                valid = False
+                mood = Mood.BAD
+            to_txt = apply_mood(cert.not_valid_after, mood)
+
+            if valid:
+                valid_txt = apply_mood("valid period", Mood.GOOD)
+
+            else:
+                valid_txt = apply_mood("invalid period", Mood.BAD)
+
+            table.row(
+                "Validity period",
+                (
+                    f"{from_txt} - {to_txt} ({cert.validity_period_days} days), "
+                    f"{valid_txt}"
+                ),
+            )
+
+        crl_distr = get_cert_ext(cert, "CRLDistributionPoints")
+        if crl_distr is not None:
+            crls = []
+            for distr_schema in crl_distr.distribution_points:
+                crls.extend(distr_schema.full_name)
+            table.row("CRLs", crls.pop(0))
+            for crl in crls:
+                table.row("", crl)
+
+        crl_status = getattr(cert, "crl_revokation_status", None)
+        if crl_status is not None:
+            txt, mood = _cert["crl_status"][crl_status]
+            table.row("CRL revocation status", apply_mood(txt, mood))
+
+        if hasattr(cert, "fingerprint_sha1"):
+            table.row("Fingerprint SHA1", pdu.string(cert.fingerprint_sha1))
+
+        if hasattr(cert, "fingerprint_sha256"):
+            table.row("Fingerprint SHA256", pdu.string(cert.fingerprint_sha256))
+
+        table.dump()
+        print()
+
+    def _print_certificates(self):
+        cert_chains = getattr(self.server_profile, "cert_chains", None)
+        if cert_chains is None:
+            return
+
+        print(apply_mood("Certificate chains", Mood.HEADLINE))
+        for cert_chain in cert_chains:
+            print()
+            if hasattr(cert_chain, "successful_validation"):
+                txt, mood = _cert["chain_valid"][cert_chain.successful_validation]
+                valid_txt = apply_mood(txt, mood)
+
+            else:
+                valid_txt = ""
+
+            head_line = apply_mood(f"Certificate chain #{cert_chain.id}:", Mood.BOLD)
+            print(f"  {head_line} {valid_txt}")
+            if hasattr(cert_chain, "issues"):
+                print("    Issues:")
+                import pudb
+
+                pudb.set_trace()
+                for issue in cert_chain.issues:
+                    issue_lines = []
+                    words = issue.split()
+                    line = ["    -"]
+                    length = 1
+                    for word in words:
+                        word_len = len(word)
+                        if word_len + length > 100:
+                            issue_lines.append(" ".join(line))
+                            line = [" ", word]
+                            length = word_len
+                        else:
+                            line.append(word)
+                            length += word_len + 1
+                    if line:
+                        issue_lines.append(" ".join(line))
+                    print(apply_mood("\n    ".join(issue_lines), Mood.BAD))
+
+                    # print(f"      {apply_mood(issue, Mood.BAD)}")
+
+            root_transmitted = not hasattr(cert_chain, "root_certificate")
+            txt, mood = _cert["root_transmitted"][root_transmitted]
+            print(f"    {apply_mood(txt, mood)}")
+
+            for idx, cert in enumerate(cert_chain.cert_chain, start=1):
+                self._print_cert(cert, idx)
+
+            if not root_transmitted:
+                self._print_cert(
+                    cert_chain.root_certificate, len(cert_chain.cert_chain) + 1
+                )
+
     def _print_vulnerabilities(self):
         vuln_prof = getattr(self.server_profile, "vulnerabilities", None)
         if vuln_prof is None:
@@ -749,4 +995,5 @@ class TextProfileWorker(Worker):
         self._print_sig_algos()
         self._print_dh_groups()
         self._print_features()
+        self._print_certificates()
         self._print_vulnerabilities()
