@@ -448,20 +448,16 @@ class Client(object):
         if self.sni is not None:
             return self.sni
 
-        else:
-            sni = self.config.get("sni")
-            if sni is not None:
-                return sni
+        sni = self.config.get("sni")
+        if sni is not None:
+            return sni
 
-            else:
-                server = self._server
-                if server is None:
-                    server = self.config.get("endpoint")
-                endp = resolver.determine_transport_endpoint(server)
-                if endp.host_type is tls.HostType.HOST:
-                    return endp.host
+        server = self._server
+        if server is None:
+            server = self.config.get("endpoint")
+        endp = resolver.determine_transport_endpoint(server)
 
-        raise ValueError("No SNI defined")
+        return endp.host
 
     def client_hello(self):
         """Populate a ClientHello message according to the current client profile
