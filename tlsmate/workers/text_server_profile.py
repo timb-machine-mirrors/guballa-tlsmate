@@ -25,27 +25,6 @@ class Mood(object):
     RESET = Style.RESET_ALL
 
 
-class Table(object):
-    def __init__(self, indent=0, sep=": "):
-        self._indent = indent
-        self._sep = sep
-        self._nbr_columns = 0
-        self._rows = []
-
-    def row(self, *args):
-        self._nbr_columns = max(self._nbr_columns, len(args))
-        self._rows.append(args)
-
-    def dump(self):
-        cols = [0] * self._nbr_columns
-        for row in self._rows:
-            for idx, col in enumerate(row):
-                cols[idx] = max(cols[idx], len(col))
-        for row in self._rows:
-            print(" " * self._indent, end="")
-            print(self._sep.join([f"{col:{cols[idx]}}" for idx, col in enumerate(row)]))
-
-
 def apply_mood(txt, mood):
     if mood == "":
         return str(txt)
@@ -423,7 +402,7 @@ class TextProfileWorker(Worker):
         host_info = self.server_profile.server
         print(apply_mood("Scanned host", Mood.HEADLINE))
         print()
-        table = Table(indent=2, sep="  ")
+        table = utils.Table(indent=2, sep="  ")
         name_resolution = hasattr(host_info, "name_resolution")
         if name_resolution:
             host = host_info.name_resolution.domain_name
@@ -685,7 +664,7 @@ class TextProfileWorker(Worker):
 
     def _print_features_tls12(self, feat_prof):
         print(f'  {apply_mood("Features for TLS1.2 and below", Mood.BOLD)}')
-        table = Table(indent=4, sep="  ")
+        table = utils.Table(indent=4, sep="  ")
         if hasattr(feat_prof, "compression"):
             if (len(feat_prof.compression) == 1) and feat_prof.compression[
                 0
@@ -798,33 +777,33 @@ class TextProfileWorker(Worker):
             items.append("self-signed")
 
         print(f'  Certificate #{idx}: {", ".join(items)}')
-        table = Table(indent=4, sep="  ")
+        table = utils.Table(indent=4, sep="  ")
 
         table.row("Serial number", f"{cert.serial_number_int} (integer)")
         table.row("", f"{pdu.string(cert.serial_number_bytes)} (hex)")
-        table.row("Subject", cert.subject)
+        # table.row("Subject", cert.subject)
+        lines = utils.fold_string(cert.subject, max_length=100, sep=",")
+        table.row("Subject", lines.pop(0))
+        for line in lines:
+            table.row("", line)
+
         san_ext = get_cert_ext(cert, "SubjectAlternativeName")
         if san_ext is not None:
-            txt = "SubjectAltName (SAN)"
-            line = []
-            length = 0
-            for san in san_ext.subj_alt_names:
-                san_len = len(san)
-                if san_len + length > 80:
-                    table.row(txt, " ".join(line))
-                    line = [san]
-                    length = san_len
-                    txt = ""
-                else:
-                    line.append(san)
-                    length += san_len + 1
-            if line:
-                table.row(txt, " ".join(line))
+            sans = " ".join(san_ext.subj_alt_names)
+            lines = utils.fold_string(sans, max_length=80)
+            table.row("SubjectAltName (SAN)", lines.pop(0))
+            for line in lines:
+                table.row("", line)
 
         if hasattr(cert, "subject_matches"):
             txt, mood = _cert["subject_matches"][cert.subject_matches]
             table.row("URI matches", apply_mood(txt, mood))
-        table.row("Issuer", cert.issuer)
+
+        #table.row("Issuer", cert.issuer)
+        lines = utils.fold_string(cert.issuer, max_length=100, sep=",")
+        table.row("Issuer", lines.pop(0))
+        for line in lines:
+            table.row("", line)
 
         sig_algo = getattr(cert, "signature_algorithm", None)
         if sig_algo is not None:
@@ -935,24 +914,9 @@ class TextProfileWorker(Worker):
             if hasattr(cert_chain, "issues"):
                 print("    Issues:")
                 for issue in cert_chain.issues:
-                    issue_lines = []
-                    words = issue.split()
-                    line = ["    -"]
-                    length = 1
-                    for word in words:
-                        word_len = len(word)
-                        if word_len + length > 100:
-                            issue_lines.append(" ".join(line))
-                            line = [" ", word]
-                            length = word_len
-                        else:
-                            line.append(word)
-                            length += word_len + 1
-                    if line:
-                        issue_lines.append(" ".join(line))
-                    print(apply_mood("\n    ".join(issue_lines), Mood.BAD))
-
-                    # print(f"      {apply_mood(issue, Mood.BAD)}")
+                    lines = utils.fold_string(issue, max_length=100)
+                    txt = "    - " + "\n      ".join(lines)
+                    print(apply_mood(txt, Mood.BAD))
 
             root_transmitted = not hasattr(cert_chain, "root_certificate")
             txt, mood = _cert["root_transmitted"][root_transmitted]
