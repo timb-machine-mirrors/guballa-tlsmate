@@ -71,7 +71,7 @@ _cipher_order = {
 
 _supported_key_exchange = {
     tls.KeyExchangeAlgorithm.DHE_DSS: Mood.SOSO,
-    tls.KeyExchangeAlgorithm.DHE_RSA: Mood.GOOD,
+    tls.KeyExchangeAlgorithm.DHE_RSA: Mood.SOSO,
     tls.KeyExchangeAlgorithm.DH_ANON: Mood.BAD,
     tls.KeyExchangeAlgorithm.RSA: Mood.SOSO,
     tls.KeyExchangeAlgorithm.DH_DSS: Mood.BAD,
@@ -82,7 +82,7 @@ _supported_key_exchange = {
     tls.KeyExchangeAlgorithm.ECDHE_RSA: Mood.GOOD,
     tls.KeyExchangeAlgorithm.TLS13_KEY_SHARE: Mood.GOOD,
     tls.KeyExchangeAlgorithm.DHE_DSS_EXPORT: Mood.BAD,
-    tls.KeyExchangeAlgorithm.DHE_PSK: Mood.NEUTRAL,
+    tls.KeyExchangeAlgorithm.DHE_PSK: Mood.SOSO,
     tls.KeyExchangeAlgorithm.DHE_RSA_EXPORT: Mood.BAD,
     tls.KeyExchangeAlgorithm.DH_ANON_EXPORT: Mood.BAD,
     tls.KeyExchangeAlgorithm.DH_DSS_EXPORT: Mood.BAD,
@@ -94,7 +94,7 @@ _supported_key_exchange = {
     tls.KeyExchangeAlgorithm.KRB5_EXPORT: Mood.BAD,
     tls.KeyExchangeAlgorithm.NULL: Mood.BAD,
     tls.KeyExchangeAlgorithm.PSK: Mood.BAD,
-    tls.KeyExchangeAlgorithm.PSK_DHE: Mood.NEUTRAL,
+    tls.KeyExchangeAlgorithm.PSK_DHE: Mood.SOSO,
     tls.KeyExchangeAlgorithm.RSA_EXPORT: Mood.BAD,
     tls.KeyExchangeAlgorithm.RSA_PSK: Mood.NEUTRAL,
     tls.KeyExchangeAlgorithm.SRP_SHA: Mood.BAD,
