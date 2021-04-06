@@ -361,6 +361,9 @@ class SPCertGeneralName(SPObject):
         elif isinstance(name, x509.UniformResourceIdentifier):
             self.uri = name.value
 
+        elif isinstance(name, x509.IPAddress):
+            self.ip_address = name.value
+
         else:
             logging.error(f"certificate extension: general name {name} not supported")
 
@@ -566,7 +569,12 @@ class SPCertExtension(SPObject):
         self.tls_features = [tls.Extension(feature.value) for feature in value]
 
     def _ext_name_constraints(self, value):
-        logging.error("Certificate extensions NameContraints not implemented")
+        self.permitted_subtrees = [
+            SPCertGeneralName(name=name) for name in value.permitted_subtrees
+        ]
+        self.excluded_subtrees = [
+            SPCertGeneralName(name=name) for name in value.excluded_subtrees
+        ]
 
     def _ext_authority_key_id(self, value):
         self.key_identifier = value.key_identifier
@@ -754,6 +762,8 @@ class SPCertExtNameConstraintsSchema(ProfileSchema):
     name = fields.String()
     oid = fields.String()
     criticality = FieldsEnumString(enum_class=tls.SPBool)
+    permitted_subtrees = fields.List(fields.Nested(SPCertGeneralNameSchema))
+    excluded_subtrees = fields.List(fields.Nested(SPCertGeneralNameSchema))
 
 
 class SPCertExtAuthorityKeyIdentifierSchema(ProfileSchema):
