@@ -1152,6 +1152,7 @@ class SPSignatureAlgorithmsSchema(ProfileSchema):
 
     __profile_class__ = SPSignatureAlgorithms
     algorithms = fields.List(fields.Nested(SPSigAlgoEnumSchema))
+    info = fields.List(fields.String)
     server_preference = FieldsEnumString(enum_class=tls.SPBool)
 
 
@@ -1160,6 +1161,13 @@ class SPCipherSuiteSchema(ProfileEnumSchema):
     """
 
     __profile_class__ = tls.CipherSuite
+
+
+class SPCipherKindSchema(ProfileEnumSchema):
+    """Schema for an SSL2 cipher kind (enum).
+    """
+
+    __profile_class__ = tls.SSLCipherKind
 
 
 class SPDhGroup(SPObject):
@@ -1220,6 +1228,7 @@ class SPVersionSchema(ProfileSchema):
     """
 
     __profile_class__ = SPVersion
+    cipher_kinds = fields.List(fields.Nested(SPCipherKindSchema))
     cipher_suites = fields.List(fields.Nested(SPCipherSuiteSchema))
     dh_groups = fields.List(fields.Nested(SPDhGroupSchema))
     server_preference = FieldsEnumString(enum_class=tls.SPBool)
@@ -1304,7 +1313,10 @@ class ServerProfile(SPObject):
         """
         version_prof = self.get_version_profile(version)
         if version_prof is not None:
-            return version_prof.cipher_suites
+            if version is tls.Version.SSL20:
+                return version_prof.cipher_kinds
+            else:
+                return version_prof.cipher_suites
         return None
 
     def get_supported_groups(self, version):

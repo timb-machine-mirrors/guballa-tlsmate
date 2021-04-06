@@ -168,7 +168,7 @@ class ScanCipherSuites(Worker):
                     """"""
 
                 prof_version = SPVersion()
-                prof_version.cipher_suites = server_hello.cipher_specs
+                prof_version.cipher_kinds = server_hello.cipher_specs
                 prof_version.server_preference = tls.SPBool.C_UNDETERMINED
                 prof_version.version = tls.Version.SSL20
                 self.server_profile.versions.append(prof_version)

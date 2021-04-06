@@ -72,6 +72,7 @@ class _Scan(metaclass=abc.ABCMeta):
                     status = tls.SPBool.C_TRUE
                 else:
                     status = tls.SPBool.C_FALSE
+            groups.insert(0, groups.pop())
         else:
             status = tls.SPBool.C_NA
         if status is not None:
@@ -236,10 +237,7 @@ class ScanSupportedGroups(Worker):
 
     def run(self):
 
-        versions = self.server_profile.get_versions()
-        if tls.Version.SSL20 in versions:
-            versions.remove(tls.Version.SSL20)
-
+        versions = self.server_profile.get_versions(exclude=[tls.Version.SSL20])
         self.client.alert_on_invalid_cert = False
         for version in versions:
             vers_prof = self.server_profile.get_version_profile(version)

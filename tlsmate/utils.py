@@ -62,6 +62,45 @@ def deserialize_data(file_name):
         return yaml.safe_load(fd)
 
 
+def fold_string(text, max_length, sep=" "):
+    """Splits a string into lines of the given length.
+
+    Arguments:
+        text (str): the string to split
+        length (int): the maximum length of the line
+        sep (str): the separator where splitting the text is allowed
+
+    Returns:
+        list: the list of strings
+    """
+    ret_lines = []
+    tokens = []
+    length = 0
+    sep_len = len(sep)
+
+    for token in text.split(sep):
+        token_len = len(token)
+        if length + token_len + sep_len > max_length:
+            if tokens:
+                ret_lines.append(sep.join(tokens) + sep)
+                tokens = [token]
+                length = token_len
+
+            else:
+                ret_lines.append(token + sep)
+                tokens = []
+                length = 0
+
+        else:
+            tokens.append(token)
+            length += token_len + sep_len
+
+    if tokens:
+        ret_lines.append(sep.join(tokens))
+
+    return ret_lines
+
+
 def get_cipher_suite_details(cipher_suite):
     """Get details for a given cipher suite
 
@@ -271,3 +310,39 @@ class Log(object):
             cls.start_time = timestamp
         diff = timestamp - cls.start_time
         return f"Timestamp {diff:.3f}"
+
+
+class Table(object):
+    """Helper class for printing text in a table
+
+    Attributes:
+        indent (int): the indentation level, i.e. how many blanks shall be added
+            on the left side of the table
+        sep (str): the seperator to print between adjacent columns within a row
+    """
+    def __init__(self, indent=0, sep=": "):
+        self._indent = indent
+        self._sep = sep
+        self._nbr_columns = 0
+        self._rows = []
+
+    def row(self, *args):
+        """Register a row
+
+        Arguments:
+            args (str): a complete row, one string for each column
+        """
+        self._nbr_columns = max(self._nbr_columns, len(args))
+        self._rows.append(args)
+
+    def dump(self):
+        """Print the table
+        """
+        cols = [0] * self._nbr_columns
+        for row in self._rows:
+            for idx, col in enumerate(row):
+                cols[idx] = max(cols[idx], len(col))
+        cols[-1] = 1
+        for row in self._rows:
+            print(" " * self._indent, end="")
+            print(self._sep.join([f"{col:{cols[idx]}}" for idx, col in enumerate(row)]))

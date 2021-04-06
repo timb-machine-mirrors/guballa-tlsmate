@@ -6,6 +6,7 @@
 # import own stuff
 from tlsmate.plugin import Plugin, WorkManager, PluginManager
 from tlsmate.workers.server_profile import ReadProfileWorker, DumpProfileWorker
+from tlsmate.workers.text_server_profile import TextProfileWorker
 from tlsmate.structs import ConfigItem
 
 # import other stuff
@@ -28,7 +29,8 @@ class ServerProfilePlugin(Plugin):
 
         config.register(ConfigItem("write_profile", type=str, default=None))
         config.register(ConfigItem("read_profile", type=str, default=None))
-        config.register(ConfigItem("format", type=str, default="yaml"))
+        config.register(ConfigItem("format", type=str, default=None))
+        config.register(ConfigItem("no_color", type=bool, default=False))
 
     def add_args(self, parser):
         """Adds arguments to the CLI parser object.
@@ -59,12 +61,17 @@ class ServerProfilePlugin(Plugin):
         )
         group.add_argument(
             "--format",
-            choices=["json", "yaml", "none"],
+            choices=["text", "json", "yaml", "none"],
             help=(
-                'the output format of the server profile. Defaults to "yaml". "none" '
-                "can be used to disable the output to STDOUT."
+                'the output format of the server profile. Defaults to "none", '
+                "which disables the output."
             ),
-            default="yaml",
+            default=None,
+        )
+        group.add_argument(
+            "--no-color",
+            help="disable colored console output. Only used if --format=text is given.",
+            action="store_true",
         )
 
     def args_parsed(self, args, parser, config):
@@ -75,12 +82,17 @@ class ServerProfilePlugin(Plugin):
             parser: the parser object, can be used to issue consistency errors
             config (:obj:`tlsmate.config.Configuration`): the configuration object
         """
+
         config.set("format", args.format)
         config.set("write_profile", args.write_profile)
         config.set("read_profile", args.read_profile)
+        config.set("no_color", args.no_color)
 
         if args.read_profile is not None:
             WorkManager.register(ReadProfileWorker)
 
-        if args.format != "none":
+        if args.format == "text":
+            WorkManager.register(TextProfileWorker)
+
+        elif args.format in ["json", "yaml"]:
             WorkManager.register(DumpProfileWorker)
