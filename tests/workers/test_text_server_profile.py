@@ -9,9 +9,6 @@ from tlsmate.structs import ConfigItem
 
 
 def test_server_profile(server_profile):
-    with open(server_profile) as fd:
-        server_file = fd.read()
-
     config = Configuration()
     config.register(ConfigItem("write_profile"))
     config.register(ConfigItem("read_profile"))
@@ -23,9 +20,6 @@ def test_server_profile(server_profile):
 
 
 def test_text_server_profile(text_server_profile):
-    with open(text_server_profile) as fd:
-        server_file = fd.read()
-
     config = Configuration()
     config.register(ConfigItem("write_profile"))
     config.register(ConfigItem("read_profile"))

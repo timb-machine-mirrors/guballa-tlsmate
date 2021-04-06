@@ -349,24 +349,23 @@ class SPCertGeneralName(SPObject):
     """
 
     def _init_from_args(self, name):
-        if isinstance(name, x509.DirectoryName):
-            self.value = name.value.rfc4514_string()
+        if isinstance(name, x509.RFC822Name):
+            self.rfc822_name = name.value
 
-        elif isinstance(name, x509.RegisteredID):
-            self.oid = name.value.dotted_string
+        elif isinstance(name, x509.DNSName):
+            self.dns_name = name.value
 
-            if name.value._name is not None:
-                self.name = name.value._name
+        elif isinstance(name, x509.DirectoryName):
+            self.directory_name = name.value.rfc4514_string()
 
-        elif isinstance(name, x509.OtherName):
-            self.bytes = name.value
-            self.oid = name.type_id.dotted_string
+        elif isinstance(name, x509.UniformResourceIdentifier):
+            self.uri = name.value
 
-            if name.type_id._name is not None:
-                self.name = name.name.type_id._name._name
+        elif isinstance(name, x509.IPAddress):
+            self.ip_address = name.value
 
         else:
-            self.value = name.value
+            logging.error(f"certificate extension: general name {name} not supported")
 
 
 class SPCertGeneralNameSchema(ProfileSchema):
@@ -374,10 +373,16 @@ class SPCertGeneralNameSchema(ProfileSchema):
     """
 
     __profile_class__ = SPCertGeneralName
-    value = fields.String()
-    oid = fields.String()
-    name = fields.String()
-    bytes = FieldsBytes()
+    rfc822_name = fields.String()
+    dns_name = fields.String()
+    directory_name = fields.String()
+    uri = fields.String()
+    ip_address = fields.String()
+    registered_id = fields.String()
+
+
+# TODO: implement other name
+#    other_name = fields.Nested(SpCertOtherNameSchema)
 
 
 class SPCertNoticeReference(SPObject):
@@ -429,7 +434,7 @@ class SPDistrPoint(SPObject):
 
     def _init_from_args(self, point):
         if point.full_name is not None:
-            self.full_name = [name.value for name in point.full_name]
+            self.full_name = [SPCertGeneralName(name=name) for name in point.full_name]
 
         if point.relative_name is not None:
             logging.error(
@@ -451,7 +456,7 @@ class SPDistrPointSchema(ProfileSchema):
     """
 
     __profile_class__ = SPDistrPoint
-    full_name = fields.List(fields.String())
+    full_name = fields.List(fields.Nested(SPCertGeneralNameSchema))
 
 
 class SPCertPolicyInfo(SPObject):
@@ -564,7 +569,12 @@ class SPCertExtension(SPObject):
         self.tls_features = [tls.Extension(feature.value) for feature in value]
 
     def _ext_name_constraints(self, value):
-        logging.error("Certificate extensions NameContraints not implemented")
+        self.permitted_subtrees = [
+            SPCertGeneralName(name=name) for name in value.permitted_subtrees
+        ]
+        self.excluded_subtrees = [
+            SPCertGeneralName(name=name) for name in value.excluded_subtrees
+        ]
 
     def _ext_authority_key_id(self, value):
         self.key_identifier = value.key_identifier
@@ -752,6 +762,8 @@ class SPCertExtNameConstraintsSchema(ProfileSchema):
     name = fields.String()
     oid = fields.String()
     criticality = FieldsEnumString(enum_class=tls.SPBool)
+    permitted_subtrees = fields.List(fields.Nested(SPCertGeneralNameSchema))
+    excluded_subtrees = fields.List(fields.Nested(SPCertGeneralNameSchema))
 
 
 class SPCertExtAuthorityKeyIdentifierSchema(ProfileSchema):

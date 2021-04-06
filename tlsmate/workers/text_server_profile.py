@@ -781,7 +781,6 @@ class TextProfileWorker(Worker):
 
         table.row("Serial number", f"{cert.serial_number_int} (integer)")
         table.row("", f"{pdu.string(cert.serial_number_bytes)} (hex)")
-        # table.row("Subject", cert.subject)
         lines = utils.fold_string(cert.subject, max_length=100, sep=",")
         table.row("Subject", lines.pop(0))
         for line in lines:
@@ -799,7 +798,6 @@ class TextProfileWorker(Worker):
             txt, mood = _cert["subject_matches"][cert.subject_matches]
             table.row("URI matches", apply_mood(txt, mood))
 
-        #table.row("Issuer", cert.issuer)
         lines = utils.fold_string(cert.issuer, max_length=100, sep=",")
         table.row("Issuer", lines.pop(0))
         for line in lines:
@@ -875,7 +873,10 @@ class TextProfileWorker(Worker):
         if crl_distr is not None:
             crls = []
             for distr_schema in crl_distr.distribution_points:
-                crls.extend(distr_schema.full_name)
+                for gen_name in distr_schema.full_name:
+                    if hasattr(gen_name, "uri"):
+                        crls.append(gen_name.uri)
+
             table.row("CRLs", crls.pop(0))
             for crl in crls:
                 table.row("", crl)

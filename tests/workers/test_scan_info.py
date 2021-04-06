@@ -17,7 +17,7 @@ class TestCase(TlsSuiteTester):
     """
 
     sp_in_yaml = "profile_sig_algos_openssl3_0_0"
-    recorder_yaml = "recorder_resumption"
+    recorder_yaml = "scan_info"
     path = pathlib.Path(__file__)
     server_cmd = (
         "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "

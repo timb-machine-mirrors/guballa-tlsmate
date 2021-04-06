@@ -36,7 +36,7 @@ cert_chains:
     - criticality: C_FALSE
       distribution_points:
       - full_name:
-        - http://crl.localhost/inter-ca-rsa.crl
+        - uri: http://crl.localhost/inter-ca-rsa.crl
       name: CRLDistributionPoints
       oid: 2.5.29.31
     - cert_policies:
@@ -242,7 +242,7 @@ cert_chains:
     - criticality: C_FALSE
       distribution_points:
       - full_name:
-        - http://crl.localhost/inter-ca-ecdsa.crl
+        - uri: http://crl.localhost/inter-ca-ecdsa.crl
       name: CRLDistributionPoints
       oid: 2.5.29.31
     - cert_policies:
@@ -794,3 +794,4 @@ versions:
   version:
     id: 771
     name: TLS12
+vulnerabilities: {}

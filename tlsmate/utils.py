@@ -320,6 +320,7 @@ class Table(object):
             on the left side of the table
         sep (str): the seperator to print between adjacent columns within a row
     """
+
     def __init__(self, indent=0, sep=": "):
         self._indent = indent
         self._sep = sep

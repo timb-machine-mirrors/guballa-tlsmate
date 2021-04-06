@@ -85,3 +85,10 @@ class CertChainValidationError(TlsmateException):
 
     def __init__(self, issue):
         self.issue = issue
+
+
+class ServerParmsSignatureInvalid(TlsmateException):
+    """More user friendly exception than cryptography.exception.InvalidSignature
+    """
+
+    pass

@@ -12,7 +12,12 @@ import time
 import datetime
 
 # import own stuff
-from tlsmate.exception import FatalAlert, TlsConnectionClosedError, TlsMsgTimeoutError
+from tlsmate.exception import (
+    FatalAlert,
+    TlsConnectionClosedError,
+    TlsMsgTimeoutError,
+    ServerParmsSignatureInvalid,
+)
 from tlsmate import msg
 from tlsmate import tls
 from tlsmate import pdu
@@ -27,6 +32,7 @@ from tlsmate.key_logging import KeyLogger
 # import other stuff
 from cryptography.hazmat.primitives.asymmetric import padding, ec
 from cryptography.hazmat.primitives import hashes
+import cryptography.exceptions as crypto_exc
 
 
 def get_random_value():
@@ -923,13 +929,18 @@ class TlsConnection(object):
     def _on_server_key_exchange_received(self, msg):
         if msg.ec is not None:
             if msg.ec.signed_params is not None:
-                kex.verify_signed_params(
-                    msg.ec,
-                    self.msg,
-                    self.cs_details.key_algo_struct.default_sig_scheme,
-                    self.version,
-                )
-                logging.debug("signed ec parameters successfully verified")
+                try:
+                    kex.verify_signed_params(
+                        msg.ec,
+                        self.msg,
+                        self.cs_details.key_algo_struct.default_sig_scheme,
+                        self.version,
+                    )
+                    logging.debug("signed ec parameters successfully verified")
+                except crypto_exc.InvalidSignature:
+                    raise ServerParmsSignatureInvalid(
+                        "signature for server's EC parameters is invalid"
+                    )
 
             if msg.ec.named_curve is not None:
                 logging.debug(f"named curve: {msg.ec.named_curve}")
@@ -940,13 +951,19 @@ class TlsConnection(object):
         elif msg.dh is not None:
             dh = msg.dh
             if dh.signed_params is not None:
-                kex.verify_signed_params(
-                    msg.dh,
-                    self.msg,
-                    self.cs_details.key_algo_struct.default_sig_scheme,
-                    self.version,
-                )
-                logging.debug("signed dh parameters successfully verified")
+                try:
+                    kex.verify_signed_params(
+                        msg.dh,
+                        self.msg,
+                        self.cs_details.key_algo_struct.default_sig_scheme,
+                        self.version,
+                    )
+                    logging.debug("signed dh parameters successfully verified")
+                except crypto_exc.InvalidSignature:
+                    raise ServerParmsSignatureInvalid(
+                        "signature for server's DH parameters is invalid"
+                    )
+
             logging.debug(f"DH group size: {len(dh.p_val) * 8}")
             self.key_exchange = kex.DhKeyExchange(self, self.recorder)
             self.key_exchange.set_remote_key(
