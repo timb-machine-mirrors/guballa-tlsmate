@@ -1076,3 +1076,14 @@ class HostType(ExtendedEnum):
     HOST = enum.auto()
     IPV4 = enum.auto()
     IPV6 = enum.auto()
+
+
+class RobotVulnerability(ExtendedEnum):
+    """Status for the ROBOT vulnerability
+    """
+    NOT_APPLICABLE = enum.auto()
+    UNDETERMINED = enum.auto()
+    INCONSITENT_RESULTS = enum.auto()
+    WEAK_ORACLE = enum.auto()
+    STRONG_ORACLE = enum.auto()
+    NOT_VULNERABLE = enum.auto()

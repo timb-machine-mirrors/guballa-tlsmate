@@ -20,6 +20,11 @@ Low prio
       - ECDH_ANON is supported as well, but we need a test case
     - HelloRetryRequest
     - more scan results
+    - ROBOT:
+        www.fassilnet.com.bo (weak)
+        shopapi.gzypysm.cn (weak)
+        fsco-arctics.fsco.gov.on.ca (weak, 142.46.20.134)
+        timetracker.ctepl.com (strong)
 
 Nice to have
     - more checks on server_hello: have the stuff selected by the server

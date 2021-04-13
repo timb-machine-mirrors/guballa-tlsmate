@@ -358,6 +358,15 @@ _vulnerabilities = {
     tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
 }
 
+_robot = {
+    tls.RobotVulnerability.NOT_APPLICABLE: ("not applicable", Mood.NEUTRAL),
+    tls.RobotVulnerability.UNDETERMINED: ("undetermined", Mood.NEUTRAL),
+    tls.RobotVulnerability.INCONSITENT_RESULTS: ("inconsistent results", Mood.BAD),
+    tls.RobotVulnerability.WEAK_ORACLE: ("vulnerable, weak oracle", Mood.BAD),
+    tls.RobotVulnerability.STRONG_ORACLE: ("vulnerable, strong oracle", Mood.BAD),
+    tls.RobotVulnerability.NOT_VULNERABLE: ("not vulnerable", Mood.GOOD),
+}
+
 
 def _check_version(version, reference):
     support = version in reference
@@ -788,7 +797,7 @@ class TextProfileWorker(Worker):
 
         san_ext = get_cert_ext(cert, "SubjectAlternativeName")
         if san_ext is not None:
-            sans = " ".join(san_ext.subj_alt_names)
+            sans = " ".join([str(name) for name in san_ext.subj_alt_names])
             lines = utils.fold_string(sans, max_length=80)
             table.row("SubjectAltName (SAN)", lines.pop(0))
             for line in lines:
@@ -936,13 +945,20 @@ class TextProfileWorker(Worker):
         if vuln_prof is None:
             return
 
+        table = utils.Table(indent=2, sep="  ")
         print(apply_mood("Vulnerabilities", Mood.HEADLINE))
         print()
         ccs = getattr(vuln_prof, "ccs_injection", None)
         if ccs is not None:
             txt, mood = _vulnerabilities[ccs]
-            print(f"  CCS injection (CVE-2014-0224): {apply_mood(txt, mood)}")
+            table.row("CCS injection (CVE-2014-0224)", apply_mood(txt, mood))
 
+        robot = getattr(vuln_prof, "robot", None)
+        if robot is not None:
+            txt, mood = _robot[robot]
+            table.row("ROBOT vulnerability (CVE-2017-13099, ...)", apply_mood(txt, mood))
+
+        table.dump()
         print()
 
     def run(self):

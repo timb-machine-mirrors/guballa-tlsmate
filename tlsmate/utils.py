@@ -339,6 +339,9 @@ class Table(object):
     def dump(self):
         """Print the table
         """
+        if not self._nbr_columns:
+            return
+
         cols = [0] * self._nbr_columns
         for row in self._rows:
             for idx, col in enumerate(row):
