@@ -239,7 +239,8 @@ class TlsConnection(object):
         self.defragmenter = TlsDefragmenter(self.record_layer)
         self.received_data = bytearray()
         self.awaited_msg = None
-        self.queued_msg = None
+        self._queued_msg = None
+        self._queued_bytes = None
         self.record_layer_version = tls.Version.TLS10
         self._msg_hash = None
         self._msg_hash_queue = None
@@ -322,7 +323,7 @@ class TlsConnection(object):
             logging.debug(str_io.getvalue())
             self._send_alert(tls.AlertLevel.FATAL, exc_value.description)
 
-        elif exc_type is TlsConnectionClosedError:
+        elif exc_type in (TlsConnectionClosedError, BrokenPipeError):
             logging.warning("connected closed, probably by peer")
 
         elif exc_type is TlsMsgTimeoutError:
@@ -333,7 +334,12 @@ class TlsConnection(object):
             self._send_alert(tls.AlertLevel.WARNING, tls.AlertDescription.CLOSE_NOTIFY)
 
         self.record_layer.close_socket()
-        return exc_type in [FatalAlert, TlsConnectionClosedError, TlsMsgTimeoutError]
+        return exc_type in [
+            FatalAlert,
+            TlsConnectionClosedError,
+            TlsMsgTimeoutError,
+            BrokenPipeError,
+        ]
 
     def get_key_share(self, group):
         """Provide the key share for a given group.
@@ -787,7 +793,7 @@ class TlsConnection(object):
         if method is not None:
             method(self)
 
-    def send(self, *messages):
+    def send(self, *messages, pre_serialization=None):
         """Interface to send messages.
 
         Each message given here will be sent in a separate record layer record, but
@@ -803,6 +809,8 @@ class TlsConnection(object):
                 message = self._generate_outgoing_msg(message)
                 if message is None:
                     continue
+            if pre_serialization is not None:
+                pre_serialization(message)
             logging.info(f"{utils.Log.time()}: ==> {message.msg_type}")
             self._pre_serialization_hook(message)
             self._msg_logging(message)
@@ -1188,7 +1196,7 @@ class TlsConnection(object):
     def _wait_message(self, timeout=5000):
         mb = self.defragmenter.get_message(timeout)
         if mb is None:
-            return None
+            return None, None
         if mb.content_type is tls.ContentType.HANDSHAKE:
             message = msg.HandshakeMessage.deserialize(mb.msg, self)
             if message.msg_type is tls.HandshakeType.FINISHED:
@@ -1217,9 +1225,76 @@ class TlsConnection(object):
         logging.info(f"{utils.Log.time()}: <== {message.msg_type}")
         self._msg_logging(message)
         self.msg.store_msg(message, received=True)
-        return message
+        return message, mb.msg
 
-    def wait(self, msg_class, optional=False, max_nbr=1, timeout=5000):
+    def wait_msg_bytes(self, msg_class, optional=False, max_nbr=1, timeout=5000):
+        """Interface to wait for a message from the peer.
+
+        Arguments:
+            msg_class (:class:`tlsmate.messages.TlsMessage`): the class of the awaited
+                message
+            optional (bool): an indication if the message is optional. Defaults to False
+            max_nbr (int): the number of identical message types to wait for. Well
+                suitable for NewSessionTicket messages. Defaults to 1.
+            timeout (int): the message timeout in milli seconds
+
+        Returns:
+            tuple: (obj:`tlsmate.messages.TlsMessage`, bytearray).
+                the message received and the message as bytes. In case of a timeout
+                (None, None) is returned.
+
+        Raise:
+            FatalAlert: In case an unexpected message is received
+        """
+        ultimo = time.time() + (timeout / 1000)
+        min_nbr = 0 if optional else 1
+        cnt = 0
+        self.awaited_msg = msg_class
+        expected_msg = None
+        expected_bytes = None
+        while True:
+            if self._queued_msg:
+                message = self._queued_msg
+                msg_bytes = self._queued_bytes
+                self._queued_msg = None
+            else:
+                try:
+                    message, msg_bytes = self._wait_message(ultimo - time.time())
+                except TlsMsgTimeoutError as exc:
+                    if msg_class is msg.Timeout:
+                        return msg.Timeout(), None
+                    elif cnt >= min_nbr:
+                        return expected_msg, expected_bytes
+                    else:
+                        raise exc
+            if (msg_class == msg.Any) or isinstance(message, msg_class):
+                self._on_msg_received(message)
+                cnt += 1
+                if cnt == max_nbr:
+                    return message, msg_bytes
+                else:
+                    expected_msg = message
+                    expected_bytes = msg_bytes
+
+            elif message.msg_type in self.auto_handler:
+                self._on_msg_received(message)
+                self._auto_responder(message)
+            else:
+                if cnt >= min_nbr:
+                    self._queued_msg = message
+                    self._queued_bytes = msg_bytes
+                    return expected_msg, expected_bytes
+                else:
+                    logging.warning("unexpected message received")
+                    raise FatalAlert(
+                        (
+                            f"Unexpected message received: {message.msg_type}, "
+                            f"expected: {msg_class.msg_type}"
+                        ),
+                        tls.AlertDescription.UNEXPECTED_MESSAGE,
+                    )
+
+    def wait(self, msg_class, **kwargs):
         """Interface to wait for a message from the peer.
 
         Arguments:
@@ -1237,48 +1312,8 @@ class TlsConnection(object):
         Raise:
             FatalAlert: In case an unexpected message is received
         """
-        ultimo = time.time() + (timeout / 1000)
-        min_nbr = 0 if optional else 1
-        cnt = 0
-        self.awaited_msg = msg_class
-        expected_msg = None
-        while True:
-            if self.queued_msg:
-                message = self.queued_msg
-                self.queued_msg = None
-            else:
-                try:
-                    message = self._wait_message(ultimo - time.time())
-                except TlsMsgTimeoutError as exc:
-                    if msg_class is msg.Timeout:
-                        return msg.Timeout()
-                    elif cnt >= min_nbr:
-                        return expected_msg
-                    else:
-                        raise exc
-            if (msg_class == msg.Any) or isinstance(message, msg_class):
-                self._on_msg_received(message)
-                cnt += 1
-                if cnt == max_nbr:
-                    return message
-                else:
-                    expected_msg = message
-            elif message.msg_type in self.auto_handler:
-                self._on_msg_received(message)
-                self._auto_responder(message)
-            else:
-                if cnt >= min_nbr:
-                    self.queued_msg = message
-                    return expected_msg
-                else:
-                    logging.warning("unexpected message received")
-                    raise FatalAlert(
-                        (
-                            f"Unexpected message received: {message.msg_type}, "
-                            f"expected: {msg_class.msg_type}"
-                        ),
-                        tls.AlertDescription.UNEXPECTED_MESSAGE,
-                    )
+
+        return self.wait_msg_bytes(msg_class, **kwargs)[0]
 
     def _update_write_state(self):
         state = self._get_pending_write_state(self.entity)

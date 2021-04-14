@@ -91,6 +91,7 @@ class Client(object):
         self._tlsmate = tlsmate
         self.config = tlsmate.config
         self.set_profile_modern()
+        self.alert_on_invalid_cert = True
 
     def init_profile(self, profile_values=None):
         """Resets the client profile to a very basic state
@@ -136,7 +137,6 @@ class Client(object):
         self.early_data = None
 
         self.support_encrypt_then_mac = False
-        self.alert_on_invalid_cert = True
         self.support_secure_renegotiation = False
         self.support_scsv_renegotiation = False
 

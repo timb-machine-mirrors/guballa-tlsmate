@@ -776,6 +776,7 @@ class SPCertExtAuthorityKeyIdentifierSchema(ProfileSchema):
     criticality = FieldsEnumString(enum_class=tls.SPBool)
     key_identifier = FieldsBytes()
     authority_cert_issuer = fields.List(fields.Nested(SPCertGeneralNameSchema))
+    authority_cert_serial_number = fields.Integer()
 
 
 class SPCertExtSubjectKeyIdentifierSchema(ProfileSchema):
@@ -1260,6 +1261,7 @@ class SPVulnerabilitiesSchema(ProfileSchema):
 
     __profile_class__ = SPVulnerabilities
     ccs_injection = FieldsEnumString(enum_class=tls.SPBool)
+    robot = FieldsEnumString(enum_class=tls.RobotVulnerability)
 
 
 class ServerProfile(SPObject):

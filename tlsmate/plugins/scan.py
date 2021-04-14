@@ -16,6 +16,7 @@ from tlsmate.workers.master_secret import ScanExtendedMasterSecret
 from tlsmate.workers.resumption import ScanResumption
 from tlsmate.workers.renegotiation import ScanRenegotiation
 from tlsmate.workers.ccs_injection import ScanCcsInjection
+from tlsmate.workers.robot import ScanRobot
 from tlsmate.workers.dh_params import ScanDhGroups
 from tlsmate.workers.text_server_profile import TextProfileWorker
 
@@ -41,6 +42,7 @@ class ScanPlugin(Plugin):
         "renegotiation": ScanRenegotiation,
         "resumption": ScanResumption,
         "ccs_injection": ScanCcsInjection,
+        "robot": ScanRobot,
     }
 
     def register_config(self, config):
@@ -164,6 +166,15 @@ class ScanPlugin(Plugin):
         group.add_argument(
             "--ccs-injection",
             help="scan for vulnerability CCS-injection (only TL1.0 - TLS1.2)",
+            action="store_const",
+            const=True,
+        )
+        group.add_argument(
+            "--robot",
+            help=(
+                "scan for ROBOT vulnerability CVE-2017-13099, etc. (only TL1.0 "
+                "- TLS1.2)"
+            ),
             action="store_const",
             const=True,
         )

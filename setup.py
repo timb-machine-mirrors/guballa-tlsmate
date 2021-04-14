@@ -164,6 +164,7 @@ setup(
         'marshmallow',
         'marshmallow_oneofschema',
         'colorama',
+        'gmpy2',
     ],
 
     # List additional groups of dependencies here (e.g. development

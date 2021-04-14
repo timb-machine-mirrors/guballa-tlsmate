@@ -673,7 +673,7 @@ class Certificate(object):
         if datetime > self.parsed.not_valid_after:
             raise CertValidationError(f'validity period for "{self}" exceeded')
 
-    def validate_subject(self, domain):
+    def validate_subject(self, domain, raise_on_failure=True):
         """Validate if the certificate matches the given domain
 
         It takes the subject and the subject alternatetive name into account, and
@@ -706,7 +706,8 @@ class Certificate(object):
             pass
 
         self.subject_matches = False
-        raise CertValidationError(f'subject name does not match for "{self}"')
+        if raise_on_failure:
+            raise CertValidationError(f'subject name does not match for "{self}"')
 
     def validate_signature(self, sig_scheme, data, signature):
         """Validate a signature using the public key from the certificate.
@@ -785,7 +786,7 @@ class CertChain(object):
             domain_name (str): the domain name to validate the host certificate against
         """
         try:
-            cert.validate_subject(domain_name)
+            cert.validate_subject(domain_name, self._raise_on_failure)
         except CertValidationError as exc:
             self.issues.append(exc.issue)
             if self._raise_on_failure:
