@@ -323,7 +323,7 @@ class TlsConnection(object):
             logging.debug(str_io.getvalue())
             self._send_alert(tls.AlertLevel.FATAL, exc_value.description)
 
-        elif exc_type is TlsConnectionClosedError:
+        elif exc_type in (TlsConnectionClosedError, BrokenPipeError):
             logging.warning("connected closed, probably by peer")
 
         elif exc_type is TlsMsgTimeoutError:
@@ -334,7 +334,12 @@ class TlsConnection(object):
             self._send_alert(tls.AlertLevel.WARNING, tls.AlertDescription.CLOSE_NOTIFY)
 
         self.record_layer.close_socket()
-        return exc_type in [FatalAlert, TlsConnectionClosedError, TlsMsgTimeoutError]
+        return exc_type in [
+            FatalAlert,
+            TlsConnectionClosedError,
+            TlsMsgTimeoutError,
+            BrokenPipeError,
+        ]
 
     def get_key_share(self, group):
         """Provide the key share for a given group.
@@ -1289,7 +1294,6 @@ class TlsConnection(object):
                         tls.AlertDescription.UNEXPECTED_MESSAGE,
                     )
 
-
     def wait(self, msg_class, **kwargs):
         """Interface to wait for a message from the peer.
 
@@ -1310,7 +1314,6 @@ class TlsConnection(object):
         """
 
         return self.wait_msg_bytes(msg_class, **kwargs)[0]
-
 
     def _update_write_state(self):
         state = self._get_pending_write_state(self.entity)

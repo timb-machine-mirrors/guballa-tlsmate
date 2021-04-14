@@ -171,7 +171,10 @@ class ScanPlugin(Plugin):
         )
         group.add_argument(
             "--robot",
-            help="scan for ROBOT vulnerability CVE-2017-13099, etc. (only TL1.0 - TLS1.2)",
+            help=(
+                "scan for ROBOT vulnerability CVE-2017-13099, etc. (only TL1.0 "
+                "- TLS1.2)"
+            ),
             action="store_const",
             const=True,
         )

@@ -28,7 +28,6 @@ class ScanRobot(Worker):
     prio = 41
 
     def get_oracle_results(self, with_ccs):
-
         def cke_pre_serialization(message):
             message.rsa_encrypted_pms = self.enc_pms
 
@@ -87,40 +86,40 @@ class ScanRobot(Worker):
                 conn.handshake()
 
             if not conn.handshake_completed:
-                return tls.SPBool.C_UNDETERMINED
+                status = tls.RobotVulnerability.UNDETERMINED
 
-            cert = conn.msg.server_certificate.chain.certificates[0]
-            pub_nbrs = cert.parsed.public_key().public_numbers()
-            modulus_bits = int(math.ceil(math.log(pub_nbrs.n, 2)))
-            modulus_bytes = (modulus_bits + 7) // 8
-            pad_len = (modulus_bytes - 48 - 3) * 2
-            rnd_pad = ("abcd" * (pad_len // 2 + 1))[:pad_len]
-            self.rnd_pms = (
-                "aa11223344556677889911223344556677889911223344"
-                "5566778899112233445566778899112233445566778899"
-            )
-            pms_good_in = int("0002" + rnd_pad + "00" + "0303" + self.rnd_pms, 16)
-            # wrong first two bytes
-            pms_bad_in1 = int("4117" + rnd_pad + "00" + "0303" + self.rnd_pms, 16)
-            # 0x00 on a wrong position, also trigger older JSSE bug
-            pms_bad_in2 = int("0002" + rnd_pad + "11" + self.rnd_pms + "0011", 16)
-            # no 0x00 in the middle
-            pms_bad_in3 = int("0002" + rnd_pad + "11" + "1111" + self.rnd_pms, 16)
-            # wrong version number (according to Klima / Pokorny / Rosa paper)
-            pms_bad_in4 = int("0002" + rnd_pad + "00" + "0202" + self.rnd_pms, 16)
+            else:
+                cert = conn.msg.server_certificate.chain.certificates[0]
+                pub_nbrs = cert.parsed.public_key().public_numbers()
+                modulus_bits = int(math.ceil(math.log(pub_nbrs.n, 2)))
+                modulus_bytes = (modulus_bits + 7) // 8
+                pad_len = (modulus_bytes - 48 - 3) * 2
+                rnd_pad = ("abcd" * (pad_len // 2 + 1))[:pad_len]
+                self.rnd_pms = (
+                    "aa11223344556677889911223344556677889911223344"
+                    "5566778899112233445566778899112233445566778899"
+                )
+                pms_good_in = int("0002" + rnd_pad + "00" + "0303" + self.rnd_pms, 16)
+                # wrong first two bytes
+                pms_bad_in1 = int("4117" + rnd_pad + "00" + "0303" + self.rnd_pms, 16)
+                # 0x00 on a wrong position, also trigger older JSSE bug
+                pms_bad_in2 = int("0002" + rnd_pad + "11" + self.rnd_pms + "0011", 16)
+                # no 0x00 in the middle
+                pms_bad_in3 = int("0002" + rnd_pad + "11" + "1111" + self.rnd_pms, 16)
+                # wrong version number (according to Klima / Pokorny / Rosa paper)
+                pms_bad_in4 = int("0002" + rnd_pad + "00" + "0202" + self.rnd_pms, 16)
 
-            self._rsa_encrypted_pms = [
-                _rsa_encrypt(pms, pub_nbrs.e, pub_nbrs.n, modulus_bytes)
-                for pms in [
-                    pms_good_in,
-                    pms_bad_in1,
-                    pms_bad_in2,
-                    pms_bad_in3,
-                    pms_bad_in4,
+                self._rsa_encrypted_pms = [
+                    _rsa_encrypt(pms, pub_nbrs.e, pub_nbrs.n, modulus_bytes)
+                    for pms in [
+                        pms_good_in,
+                        pms_bad_in1,
+                        pms_bad_in2,
+                        pms_bad_in3,
+                        pms_bad_in4,
+                    ]
                 ]
-            ]
-
-            status = self.determine_status()
+                status = self.determine_status()
 
         else:
             status = tls.RobotVulnerability.NOT_APPLICABLE

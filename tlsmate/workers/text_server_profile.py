@@ -956,7 +956,9 @@ class TextProfileWorker(Worker):
         robot = getattr(vuln_prof, "robot", None)
         if robot is not None:
             txt, mood = _robot[robot]
-            table.row("ROBOT vulnerability (CVE-2017-13099, ...)", apply_mood(txt, mood))
+            table.row(
+                "ROBOT vulnerability (CVE-2017-13099, ...)", apply_mood(txt, mood)
+            )
 
         table.dump()
         print()

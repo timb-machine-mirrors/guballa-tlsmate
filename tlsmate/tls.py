@@ -1081,6 +1081,7 @@ class HostType(ExtendedEnum):
 class RobotVulnerability(ExtendedEnum):
     """Status for the ROBOT vulnerability
     """
+
     NOT_APPLICABLE = enum.auto()
     UNDETERMINED = enum.auto()
     INCONSITENT_RESULTS = enum.auto()

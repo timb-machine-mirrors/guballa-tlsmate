@@ -776,6 +776,7 @@ class SPCertExtAuthorityKeyIdentifierSchema(ProfileSchema):
     criticality = FieldsEnumString(enum_class=tls.SPBool)
     key_identifier = FieldsBytes()
     authority_cert_issuer = fields.List(fields.Nested(SPCertGeneralNameSchema))
+    authority_cert_serial_number = fields.Integer()
 
 
 class SPCertExtSubjectKeyIdentifierSchema(ProfileSchema):
