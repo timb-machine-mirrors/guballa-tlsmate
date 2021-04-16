@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Module containing the class for the client client
+"""Module containing the class for the client
 """
 # import basic stuff
 import time

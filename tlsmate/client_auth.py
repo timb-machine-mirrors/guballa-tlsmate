@@ -32,7 +32,7 @@ class ClientAuth(object):
         """Add a client auth set to this object.
 
         Arguments:
-            key (:obj:`private key object of cryptography`): the private key
+            key (private key object of cryptography): the private key
             chain (list of :obj:`tlsmate.cert.Certificate`): the associated certificate
                 chain.
         """
@@ -43,6 +43,10 @@ class ClientAuth(object):
 
         A set consists of a file in PEM-format containing the private key, and a file
         containing the certificate chain presented to the server in PEM-format.
+
+        Arguments:
+            key_file (str): the name of the key file
+            chain_file (str): the name of the certificate chain file
         """
         with open(key_file, "rb") as fd:
             key = serialization.load_pem_private_key(fd.read(), password=None)
@@ -70,8 +74,8 @@ class ClientAuth(object):
             version (:obj:`tlsmate.tls.Version`): the TLS version of the connection
 
         Returns:
-            int: a reference to the client certificate/key which suppports the given
-                signature algorithm. Returns None if no suitable certificate is found.
+            int: a reference to the client certificate/key which supports the given
+            signature algorithm. Returns None if no suitable certificate is found.
         """
         for idx, key_chain in enumerate(self._auth):
             cert = key_chain[1].certificates[0]
@@ -91,14 +95,14 @@ class ClientAuth(object):
         return None
 
     def serialize_key_chain(self, idx):
-        """Serialite the set of (key, chain) for a given reference.
+        """Serialize the set of (key, chain) for a given reference.
 
         Arguments:
             idx (int): the reference to the set of (key, certificate chain)
 
         Returns:
-            list: A list, where the first element represents the serialized key, and
-                the seconds element represents the serialized certificate chain.
+            tuple: A tuple, where the first element represents the serialized key, and
+            the seconds element represents the serialized certificate chain.
         """
         key, chain = self._auth[idx]
         key_bytes = key.private_bytes(
@@ -106,7 +110,7 @@ class ClientAuth(object):
             format=serialization.PrivateFormat.PKCS8,
             encryption_algorithm=serialization.NoEncryption(),
         )
-        return [key_bytes.hex(), chain.serialize()]
+        return (key_bytes.hex(), chain.serialize())
 
     def deserialize_key_chain(self, key_chain):
         """Deserializes the pair of the given key/cert-chain.
