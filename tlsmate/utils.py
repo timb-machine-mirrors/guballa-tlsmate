@@ -5,11 +5,13 @@
 import time
 import logging
 import json
+import os
 
 # import own stuff
 from tlsmate import tls
 from tlsmate import mappings
 from tlsmate import structs
+from tlsmate import pdu
 
 # import other stuff
 import yaml
@@ -350,3 +352,26 @@ class Table(object):
         for row in self._rows:
             print(" " * self._indent, end="")
             print(self._sep.join([f"{col:{cols[idx]}}" for idx, col in enumerate(row)]))
+
+
+def get_random_value():
+    """Get a value suitable for a ClientHello or ServerHello
+
+    Returns:
+        bytes: 32 bytes of almost random data
+    """
+    random = bytearray()
+    random.extend(pdu.pack_uint32(int(time.time())))
+    random.extend(os.urandom(28))
+    return random
+
+
+def log_extensions(extensions):
+    """Log extensions
+
+    Arguments:
+        extensions: the list of extensions to iterate over
+    """
+    for extension in extensions:
+        extension = extension.extension_id
+        logging.debug(f"extension {extension.value} {extension}")

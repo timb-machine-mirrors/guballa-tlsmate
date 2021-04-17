@@ -60,6 +60,7 @@ class Socket(object):
         if self._config.get("progress"):
             sys.stderr.write(".")
             sys.stderr.flush()
+
         logging.info(f"{utils.Log.time()}: Socket opened")
         logging.info(f"local address: {laddr}:{lport}")
         logging.info(f"remote address: {raddr}:{rport}")

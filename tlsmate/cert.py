@@ -127,7 +127,7 @@ def subject_matches(subject, full_domain, name_no_subdomain):
 
     Returns:
         bool: True, if the subject matches either the full domain or the
-            name_no_subdomain
+        name_no_subdomain
     """
     subject = string_prep(subject)
     if subject.startswith("*"):
@@ -224,22 +224,32 @@ _pss_sig_alg = {
 
 
 def _verify_rsa_pkcs(cert, signature, data, hash_algo):
+    """Verify RSA PKCSv15 signatures
+    """
     cert.parsed.public_key().verify(signature, data, padding.PKCS1v15(), hash_algo())
 
 
 def _verify_dsa(cert, signature, data, hash_algo):
+    """Verify DSA signatures
+    """
     cert.parsed.public_key().verify(signature, data, hash_algo())
 
 
 def _verify_ecdsa(cert, signature, data, hash_algo):
+    """Verify ECDSA signatures
+    """
     cert.parsed.public_key().verify(signature, data, ec.ECDSA(hash_algo()))
 
 
 def _verify_xcurve(cert, signature, data, hash_algo):
+    """Verify X25519 and X488 signatures
+    """
     cert.parsed.public_key().verify(signature, data)
 
 
 def _verify_rsae_pss(cert, signature, data, hash_algo):
+    """Verify RSA-PSS signatures
+    """
     cert.parsed.public_key().verify(
         signature,
         data,
@@ -346,6 +356,8 @@ class CrlManager(object):
         self._crls[url] = crl
 
     def _get_crl_obj(self, url, recorder):
+        """Get the plain CRL object for a given URL.
+        """
         if url not in self._crls:
             recorder.trace(crl_url=url)
             try:
@@ -428,6 +440,8 @@ class TrustStore(object):
             self._ca_files = ca_files
 
     def __iter__(self):
+        """Iterator over all certificates
+        """
 
         for cert in self._cert_cache:
             yield cert
@@ -581,6 +595,8 @@ class Certificate(object):
         return self._pem
 
     def _determine_signature_algorithms(self, public_key):
+        """For a given public key provide the compatible signature algorithms.
+        """
         if isinstance(public_key, rsa.RSAPublicKey):
             self.tls12_signature_algorithms = [
                 tls.SignatureScheme.RSA_PKCS1_SHA1,
@@ -663,6 +679,11 @@ class Certificate(object):
             self._determine_signature_algorithms(self._parsed.public_key())
 
     def _common_name(self, name):
+        """From a given name, extract the common name
+
+        Note, that there might be multiple common names present, in this case
+        simple the first one is returned.
+        """
         cns = name.get_attributes_for_oid(NameOID.COMMON_NAME)
         if not cns:
             raise CertValidationError(f'no common name for "{self}"')
@@ -831,6 +852,8 @@ class CertChain(object):
     def _validate_linked_certs(
         self, cert, issuer_cert, crl_manager, raise_on_failure, check_crl
     ):
+        """Validate a certificate against the issuer certificate.
+        """
 
         try:
             issuer_cert.validate_signature(

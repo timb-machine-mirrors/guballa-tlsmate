@@ -16,13 +16,7 @@ from tlsmate.version import __version__
 # import other stuff
 
 
-def print_version():
-    """Prints the version.
-    """
-    print(__version__)
-
-
-def args_authentication(parser):
+def _args_authentication(parser):
     """Defines the arguments for authentication via certificates
     """
     group = parser.add_argument_group(title="X509 certificates options")
@@ -146,14 +140,14 @@ def build_parser():
         type=str,
     )
 
-    args_authentication(parser)
+    _args_authentication(parser)
 
     PluginManager.add_args(parser)
 
     return parser
 
 
-def args_consistency(args, parser):
+def _args_consistency(args, parser):
     """Check the consistency of the given args which cannot be checked by argparse.
 
     Arguments:
@@ -180,7 +174,7 @@ def main():
     parser = build_parser()
 
     args = parser.parse_args()
-    args_consistency(args, parser)
+    _args_consistency(args, parser)
 
     # logging must be setup before the first log is generated.
     utils.set_logging(args.logging)
