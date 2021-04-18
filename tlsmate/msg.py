@@ -19,23 +19,25 @@ def _get_extension(extensions, ext_id):
     """Helper function to search for an extension
 
     Arguments:
-        extensions (list of :obj:`tlsmate.constants.Extensions`): the list
+        extensions (list of :obj:`tlsmate.tls.Extensions`): the list
             to search for the extension
-        ext_id (:obj:`tlsmate.constants.Extensions): the extension to to look for
+        ext_id (:obj:`tlsmate.tls.Extensions): the extension to to look for
 
     Returns:
-        :obj:`tlsmate.constants.Extensions`: The extension if present, or None
+        :obj:`tlsmate.tls.Extensions`: The extension if present, or None
             otherwise.
     """
+
     if extensions is not None:
         for extension in extensions:
             if extension.extension_id == ext_id:
                 return extension
+
     return None
 
 
 def _deserialize_extensions(extensions, fragment, offset):
-    """Helper function to deserialite extensions
+    """Helper function to deserialize extensions
 
     Arguments:
         extensions (list): the list where to store the deserialized extensions
@@ -45,6 +47,7 @@ def _deserialize_extensions(extensions, fragment, offset):
     Returns:
         int: the offset on the byte following the extensions
     """
+
     if offset < len(fragment):
         # extensions present
         ext_len, offset = pdu.unpack_uint16(fragment, offset)
@@ -52,6 +55,7 @@ def _deserialize_extensions(extensions, fragment, offset):
         while offset < ext_end:
             extension, offset = ext.Extension.deserialize(fragment, offset)
             extensions.append(extension)
+
     return offset
 
 
@@ -62,11 +66,13 @@ def _get_version(msg):
         msg (:obj:`HandshakeMessage`): the message
 
     Returns:
-        :class:`tls.Version`: The higest version
+        :class:`tls.Version`: The highest version
     """
+
     supported_versions = msg.get_extension(tls.Extension.SUPPORTED_VERSIONS)
     if supported_versions is not None:
         return supported_versions.versions[0]
+
     return msg.version
 
 
@@ -89,6 +95,7 @@ class TlsMessage(metaclass=abc.ABCMeta):
             :obj:`TlsMessage`:
                 The deserialized message represented in a python object.
         """
+
         pass
 
     @abc.abstractmethod
@@ -103,6 +110,7 @@ class TlsMessage(metaclass=abc.ABCMeta):
         Returns:
             bytearray: The bytes of the message in network order (big endian).
         """
+
         pass
 
 
@@ -125,11 +133,11 @@ class HandshakeMessage(TlsMessage):
     """
 
     content_type = tls.ContentType.HANDSHAKE
-    """ :obj:`tlsmate.constants.ContentType.HANDSHAKE`
+    """ :obj:`tlsmate.tls.ContentType.HANDSHAKE`
     """
 
     msg_type = None
-    """ :obj:`tlsmate.constants.HandshakeType`: The type of the handshake message.
+    """ :obj:`tlsmate.tls.HandshakeType`: The type of the handshake message.
     """
 
     @classmethod
@@ -142,6 +150,7 @@ class HandshakeMessage(TlsMessage):
                 "Length of {} incorrect".format(msg_type),
                 tls.AlertDescription.DECODE_ERROR,
             )
+
         cls_name = _hs_deserialization_map[msg_type]
         msg = cls_name()._deserialize_msg_body(fragment, offset, conn)
         return msg
@@ -151,7 +160,7 @@ class HandshakeMessage(TlsMessage):
         """Method to deserialize a handshake message.
 
         Arguments:
-            msg_body (bytearray): The bytes which contain the serialized handhshake
+            msg_body (bytearray): The bytes which contain the serialized handshake
                 message.
             offset (int): The offset within the bytes where the handshake message
                 starts.
@@ -162,6 +171,7 @@ class HandshakeMessage(TlsMessage):
         Returns:
             :obj:`HandshakeMessage`: the deserialized message object, i.e. self.
         """
+
         pass
 
     @abc.abstractmethod
@@ -170,6 +180,7 @@ class HandshakeMessage(TlsMessage):
 
         I.e., the message body only is serialized, without the common handshake header.
         """
+
         pass
 
     def serialize(self, conn):
@@ -183,11 +194,11 @@ class HandshakeMessage(TlsMessage):
 
 
 class HelloRequest(HandshakeMessage):
-    """This class respresents a HelloRequest message.
+    """This class represents a HelloRequest message.
     """
 
     msg_type = tls.HandshakeType.HELLO_REQUEST
-    """:obj:`tlsmate.constants.HandshakeType.HELLO_REQUEST`
+    """:obj:`tlsmate.tls.HandshakeType.HELLO_REQUEST`
     """
 
     def __init__(self):
@@ -202,29 +213,30 @@ class HelloRequest(HandshakeMessage):
                 f"Message length error for {self.msg_type}",
                 tls.AlertDescription.DECODE_ERROR,
             )
+
         return self
 
 
 class ClientHello(HandshakeMessage):
-    """This class respresents a ClientHello message.
+    """This class represents a ClientHello message.
 
     Attributes:
-        version (:obj:`tlsmate.constants.Version`):
+        version (:obj:`tlsmate.tls.Version`):
             The version the client offers to the server.
         random (bytes): The random value.
         session_id (bytes): The session id.
-        cipher_suites (list of :obj:`tlsmate.constants.CipherSuite`): The list
+        cipher_suites (list of :obj:`tlsmate.tls.CipherSuite`): The list
             of cipher suites offered to the server
-        compression_methods (list of :obj:`tlsmate.constants.CompressionMethod`):
+        compression_methods (list of :obj:`tlsmate.tls.CompressionMethod`):
             The list of compression methods offered to the server.
-        extensions (list of :obj:`tlsmate.constants.Extensions`): The list of
+        extensions (list of :obj:`tlsmate.ext.Extension`): The list of
             extensions offered to the server. It can be a class (in this case the
             content of the extension is filled according to the client profile), or
             an instance, which leaves the user the full control of the contents.
     """
 
     msg_type = tls.HandshakeType.CLIENT_HELLO
-    """:obj:`tlsmate.constants.HandshakeType.CLIENT_HELLO`
+    """:obj:`tlsmate.tls.HandshakeType.CLIENT_HELLO`
     """
 
     def __init__(self):
@@ -243,6 +255,7 @@ class ClientHello(HandshakeMessage):
         version = self.version
         if type(version) == tls.Version:
             version = version.value
+
         msg.extend(pdu.pack_uint16(version))
 
         # random
@@ -257,6 +270,7 @@ class ClientHello(HandshakeMessage):
         for cipher_suite in self.cipher_suites:
             if type(cipher_suite) == int:
                 msg.extend(pdu.pack_uint16(cipher_suite))
+
             else:
                 msg.extend(pdu.pack_uint16(cipher_suite.value))
 
@@ -265,6 +279,7 @@ class ClientHello(HandshakeMessage):
         for comp_meth in self.compression_methods:
             if type(comp_meth) == tls.CompressionMethod:
                 comp_meth = comp_meth.value
+
             msg.extend(pdu.pack_uint8(comp_meth))
 
         # extensions
@@ -275,6 +290,7 @@ class ClientHello(HandshakeMessage):
                 ext_bytes.extend(extension.serialize(conn))
                 if extension.extension_id is tls.Extension.PRE_SHARED_KEY:
                     psk_end_offset = len(ext_bytes)
+
             msg.extend(pdu.pack_uint16(len(ext_bytes)))
             msg.extend(ext_bytes)
             self._bytes_after_psk_ext = len(ext_bytes) - psk_end_offset
@@ -288,40 +304,45 @@ class ClientHello(HandshakeMessage):
         """Method to extract a specific extension.
 
         Arguments:
-            ext_id (:obj:`tlsmate.constants.Extensions`): The extension id to
+            ext_id (:obj:`tlsmate.tls.Extension`): The extension id to
                 look for.
 
         Returns:
-            :obj:`tlsmate.extensions.Extension`:
+            :obj:`tlsmate.ext.Extension`:
                 The extension object or None if not present.
         """
+
         return _get_extension(self.extensions, ext_id)
 
     def get_version(self):
         """Get the highest TLS version from the message.
 
+        Takes the version parameter into account as well as the extension
+        SUPPORTED_VERSIONS (if present).
+
         Returns:
-            :class:`tlsmate.constants.Version`: The highest TLS version offered.
+            :class:`tlsmate.tls.Version`: The highest TLS version offered.
         """
+
         return _get_version(self)
 
 
 class ServerHello(HandshakeMessage):
-    """This class respresents a ServerHello message.
+    """This class represents a ServerHello message.
 
     Attributes:
-        version (:obj:`tlsmate.constants.Version`): The version selected by
+        version (:obj:`tlsmate.tls.Version`): The version selected by
             the server.
         random (bytes): The random value from the server.
         session_id (bytes): The session id from the server.
-        compression_method (:obj:`tlsmate.constants.CompressionMethod`): The
+        compression_method (:obj:`tlsmate.tls.CompressionMethod`): The
             selected compression method by the server.
-        extensions (list of :obj:`tlsmate.constants.Extensions`): The list of
+        extensions (list of :obj:`tlsmate.ext.Extension`): The list of
             extensions as returned from the server.
     """
 
     msg_type = tls.HandshakeType.SERVER_HELLO
-    """:obj:`tlsmate.constants.HandshakeType.SERVER_HELLO`
+    """:obj:`tlsmate.tls.HandshakeType.SERVER_HELLO`
     """
 
     def __init__(self):
@@ -358,19 +379,24 @@ class ServerHello(HandshakeMessage):
         """Get an extension from the message
 
         Arguments:
-            ext_id: (:class:`tlsmate.constants`): The extensions to look for
+            ext_id: (:class:`tlsmate.tls`): The extensions to look for
 
         Returns:
-            :obj:`tlsmate.extensions.Extension`: The extension or None if not present.
+            :obj:`tlsmate.ext.Extension`: The extension or None if not present.
         """
+
         return _get_extension(self.extensions, ext_id)
 
     def get_version(self):
         """Get the negotiated TLS version from the message.
 
+        Takes the version parameter into account as well as the extension
+        SUPPORTED_VERSIONS (if present).
+
         Returns:
-            :class:`tlsmate.constants.Version`: The negotitated TLS version.
+            :class:`tlsmate.tls.Version`: The negotiated TLS version.
         """
+
         return _get_version(self)
 
 
@@ -378,7 +404,7 @@ ServerHello.get_extension.__doc__ = ClientHello.get_extension.__doc__
 
 
 class Certificate(HandshakeMessage):
-    """This class respresents a Certificate message.
+    """This class represents a Certificate message.
 
     The TLS1.3 format is not yet 100% implemented, but the basic certificate
     chain (as for TLS1.2 and below) is supported.
@@ -392,7 +418,7 @@ class Certificate(HandshakeMessage):
     """
 
     msg_type = tls.HandshakeType.CERTIFICATE
-    """:obj:`tlsmate.constants.HandshakeType.CERTIFICATE`
+    """:obj:`tlsmate.tls.HandshakeType.CERTIFICATE`
     """
 
     def __init__(self):
@@ -429,6 +455,7 @@ class Certificate(HandshakeMessage):
                 self.request_context, offset = pdu.unpack_bytes(
                     fragment, offset, length
                 )
+
         list_len, offset = pdu.unpack_uint24(fragment, offset)
         while offset < len(fragment):
             cert_len, offset = pdu.unpack_uint24(fragment, offset)
@@ -439,20 +466,21 @@ class Certificate(HandshakeMessage):
                 ext_len, offset = pdu.unpack_uint16(fragment, offset)
                 if ext_len:
                     extensions, offset = pdu.unpack_bytes(fragment, ext_len)
+
         return self
 
 
 class CertificateVerify(HandshakeMessage):
-    """This class respresents a CertificateVerify message.
+    """This class represents a CertificateVerify message.
 
     Attributes:
-        signature_scheme (:obj:`tlsmate.constants.SignatureScheme`): The scheme
+        signature_scheme (:obj:`tlsmate.tls.SignatureScheme`): The scheme
             used for the signature
         signature (bytes): The signature.
     """
 
     msg_type = tls.HandshakeType.CERTIFICATE_VERIFY
-    """:obj:`tlsmate.constants.HandshakeType.CERTIFICATE_VERIFY`
+    """:obj:`tlsmate.tls.HandshakeType.CERTIFICATE_VERIFY`
     """
 
     def __init__(self):
@@ -480,11 +508,11 @@ class KeyExchangeEC(object):
     Currently only named curves are supported.
 
     Attributes:
-        curve_type (:obj:`tlsmate.constants.EcCurveType`): The type of the curve.
-        named_curve: (:obj:`tlsmate.constants.SupportedGroups`): The curve name, as
+        curve_type (:obj:`tlsmate.tls.EcCurveType`): The type of the curve.
+        named_curve (:obj:`tlsmate.tls.SupportedGroups`): The curve name, as
             defined by the supported groups.
         public (bytes): The public key from the peer.
-        sig_scheme (:obj:`tlsmate.constants.SignatureScheme`): The scheme of the
+        sig_scheme (:obj:`tlsmate.tls.SignatureScheme`): The scheme of the
             signature, if present.
         signature (bytes): The signature.
         signed_params (bytes): The part of the message which has been signed.
@@ -499,7 +527,7 @@ class KeyExchangeEC(object):
         self.signed_params = None
 
     def _deserialize_ECParameters(self, fragment, offset, conn):
-        """Deserializes the EC-paramters.
+        """Deserializes the EC-parameters.
 
         Arguments:
             fragment (bytes): A PDU buffer as received from the network.
@@ -508,16 +536,18 @@ class KeyExchangeEC(object):
         Returns:
             int: The new offset after unpacking the EC-parameters.
         """
+
         curve_type, offset = pdu.unpack_uint8(fragment, offset)
         self.curve_type = tls.EcCurveType.val2enum(curve_type)
         if self.curve_type is tls.EcCurveType.NAMED_CURVE:
             named_curve, offset = pdu.unpack_uint16(fragment, offset)
             self.named_curve = tls.SupportedGroups.val2enum(named_curve)
+
         # TODO: add other curve types
         return offset
 
     def _deserialize_ServerECDHParams(self, fragment, offset, conn):
-        """Deserializes the ECDH-paramters.
+        """Deserializes the ECDH-parameters.
 
         Arguments:
             fragment (bytes): A PDU buffer as received from the network.
@@ -526,6 +556,7 @@ class KeyExchangeEC(object):
         Returns:
             int: The new offset after unpacking the EC-parameters.
         """
+
         # ECParameters    curve_params;
         offset = self._deserialize_ECParameters(fragment, offset, conn)
         # ECPoint         public;
@@ -535,7 +566,7 @@ class KeyExchangeEC(object):
         return offset
 
     def _deserialize_msg_body(self, fragment, offset, conn):
-        """Deserializes the EC-paramters.
+        """Deserializes the EC-parameters.
 
         Arguments:
             fragment (bytes): A PDU buffer as received from the network.
@@ -544,6 +575,7 @@ class KeyExchangeEC(object):
         Returns:
             :obj:`KeyExchangeEC`: The object representing the EC parameters, i.e. self.
         """
+
         signed_params_start = offset
         # ServerECDHParams    params;
         offset = self._deserialize_ServerECDHParams(fragment, offset, conn)
@@ -553,8 +585,10 @@ class KeyExchangeEC(object):
             if conn.version is tls.Version.TLS12:
                 sig_scheme, offset = pdu.unpack_uint16(fragment, offset)
                 self.sig_scheme = tls.SignatureScheme.val2enum(sig_scheme)
+
             signature_len, offset = pdu.unpack_uint16(fragment, offset)
             self.signature, offset = pdu.unpack_bytes(fragment, offset, signature_len)
+
         return self
 
 
@@ -565,7 +599,7 @@ class KeyExchangeDH(object):
         p_val (bytes): The modulo p used for the DH-key exchange.
         g_val (int): The generator g used for the DH.key exchange.
         public_key (bytes): The public key of the peer.
-        sig_scheme (:obj:`tlsmate.constants.SignatureScheme`): the signature
+        sig_scheme (:obj:`tlsmate.tls.SignatureScheme`): the signature
             scheme use in the signature. Only used for authenticated DH, set to None
             for anonymous key exchange.
         signature (bytes): The signature. Only used for authenticated DH, set to None
@@ -594,13 +628,15 @@ class KeyExchangeDH(object):
             if conn.version is tls.Version.TLS12:
                 sig_scheme, offset = pdu.unpack_uint16(fragment, offset)
                 self.sig_scheme = tls.SignatureScheme.val2enum(sig_scheme)
+
             sig_length, offset = pdu.unpack_uint16(fragment, offset)
             self.signature, offset = pdu.unpack_bytes(fragment, offset, sig_length)
+
         return self
 
 
 class ServerKeyExchange(HandshakeMessage):
-    """This class respresents a ServerKeyExchange message.
+    """This class represents a ServerKeyExchange message.
 
     The available attributes depend on the key exchange type. If they are not
     applicable, they are set to None.
@@ -613,7 +649,7 @@ class ServerKeyExchange(HandshakeMessage):
     """
 
     msg_type = tls.HandshakeType.SERVER_KEY_EXCHANGE
-    """:obj:`tlsmate.constants.HandshakeType.SERVER_KEY_EXCHANGE`
+    """:obj:`tlsmate.tls.HandshakeType.SERVER_KEY_EXCHANGE`
     """
 
     def __init__(self):
@@ -630,6 +666,7 @@ class ServerKeyExchange(HandshakeMessage):
         if conn.cs_details.key_algo_struct.key_ex_type is tls.KeyExchangeType.ECDH:
             # RFC 4492
             self.ec = KeyExchangeEC()._deserialize_msg_body(fragment, offset, conn)
+
         elif conn.cs_details.key_algo_struct.key_ex_type is tls.KeyExchangeType.DH:
             # RFC5246
             self.dh = KeyExchangeDH()._deserialize_msg_body(
@@ -641,6 +678,7 @@ class ServerKeyExchange(HandshakeMessage):
                     is not tls.KeyAuthentication.NONE
                 ),
             )
+
         else:
             raise FatalAlert(
                 (
@@ -650,15 +688,16 @@ class ServerKeyExchange(HandshakeMessage):
                 ),
                 tls.AlertDescription.UNEXPECTED_MESSAGE,
             )
+
         return self
 
 
 class ServerHelloDone(HandshakeMessage):
-    """This class respresents a ServerHelloDone message.
+    """This class represents a ServerHelloDone message.
     """
 
     msg_type = tls.HandshakeType.SERVER_HELLO_DONE
-    """:obj:`tlsmate.constants.HandshakeType.SERVER_HELLO_DONE`
+    """:obj:`tlsmate.tls.HandshakeType.SERVER_HELLO_DONE`
     """
 
     def __init__(self):
@@ -674,11 +713,12 @@ class ServerHelloDone(HandshakeMessage):
                 f"Message length error for {self.msg_type}",
                 tls.AlertDescription.DECODE_ERROR,
             )
+
         return self
 
 
 class ClientKeyExchange(HandshakeMessage):
-    """This class respresents a ClientKeyExchange message.
+    """This class represents a ClientKeyExchange message.
 
     The attributes depend on the key exchange type.
 
@@ -692,7 +732,7 @@ class ClientKeyExchange(HandshakeMessage):
     """
 
     msg_type = tls.HandshakeType.CLIENT_KEY_EXCHANGE
-    """:obj:`tlsmate.constants.HandshakeType.CLIENT_KEY_EXCHANGE`
+    """:obj:`tlsmate.tls.HandshakeType.CLIENT_KEY_EXCHANGE`
     """
 
     def __init__(self):
@@ -705,9 +745,11 @@ class ClientKeyExchange(HandshakeMessage):
         if self.rsa_encrypted_pms is not None:
             msg.extend(pdu.pack_uint16(len(self.rsa_encrypted_pms)))
             msg.extend(self.rsa_encrypted_pms)
+
         elif self.dh_public is not None:
             msg.extend(pdu.pack_uint16(len(self.dh_public)))
             msg.extend(self.dh_public)
+
         elif self.ecdh_public is not None:
             msg.extend(pdu.pack_uint8(len(self.ecdh_public)))
             msg.extend(self.ecdh_public)
@@ -719,14 +761,14 @@ class ClientKeyExchange(HandshakeMessage):
 
 
 class Finished(HandshakeMessage):
-    """This class respresents a Finished message.
+    """This class represents a Finished message.
 
     Attributes:
         verify_data (bytes): The verify data item.
     """
 
     msg_type = tls.HandshakeType.FINISHED
-    """:obj:`tlsmate.constants.HandshakeType.FINISHED`
+    """:obj:`tlsmate.tls.HandshakeType.FINISHED`
     """
 
     def __init__(self):
@@ -741,11 +783,11 @@ class Finished(HandshakeMessage):
 
 
 class EndOfEarlyData(HandshakeMessage):
-    """This class respresents an EndOfEarlyData message.
+    """This class represents an EndOfEarlyData message.
     """
 
     msg_type = tls.HandshakeType.END_OF_EARLY_DATA
-    """:obj:`tlsmate.constants.HandshakeType.END_OF_EARLY_DATA`
+    """:obj:`tlsmate.tls.HandshakeType.END_OF_EARLY_DATA`
     """
 
     def __init__(self):
@@ -760,23 +802,24 @@ class EndOfEarlyData(HandshakeMessage):
                 f"Message length error for {self.msg_type}",
                 tls.AlertDescription.DECODE_ERROR,
             )
+
         return self
 
 
 class NewSessionTicket(HandshakeMessage):
-    """This class respresents a NewSessionTicket message.
+    """This class represents a NewSessionTicket message.
 
     Attributes:
         lifetime (int): The lifetime hint for the ticket in seconds.
         age_add (int): The age_add parameter (only TLS1.3)
-        nonce (bytes): The nounce (only TLS1.3)
+        nonce (bytes): The nonce (only TLS1.3)
         ticket (bytes): The ticket.
-        extensions (list of :obj:`tlsmate.constants.Extension`): The list of
+        extensions (list of :obj:`tlsmate.tls.Extension`): The list of
             TLS extensions (only TLS1.3).
     """
 
     msg_type = tls.HandshakeType.NEW_SESSION_TICKET
-    """:obj:`tlsmate.constants.HandshakeType.NEW_SESSION_TICKET`
+    """:obj:`tlsmate.tls.HandshakeType.NEW_SESSION_TICKET`
     """
 
     def __init__(self):
@@ -800,11 +843,12 @@ class NewSessionTicket(HandshakeMessage):
             self.ticket, offset = pdu.unpack_bytes(fragment, offset, length)
             _deserialize_extensions(self.extensions, fragment, offset)
             return self
+
         else:
             self.lifetime, offset = pdu.unpack_uint32(fragment, offset)
             length, offset = pdu.unpack_uint16(fragment, offset)
             self.ticket, offset = pdu.unpack_bytes(fragment, offset, length)
-        return self
+            return self
 
     def get_extension(self, ext_id):
         return _get_extension(self.extensions, ext_id)
@@ -814,19 +858,23 @@ NewSessionTicket.get_extension.__doc__ = ClientHello.get_extension.__doc__
 
 
 class CertificateRequest(HandshakeMessage):
-    """This class respresents a CertificateRequest message.
+    """This class represents a CertificateRequest message.
 
     Attributes:
-        lifetime (int): The lifetime hint for the ticket in seconds.
-        age_add (int): The age_add parameter (only TLS1.3)
-        nonce (bytes): The nounce (only TLS1.3)
-        ticket (bytes): The ticket.
-        extensions (list of :obj:`tlsmate.constants.Extension`): The list of
+        certificate_types (list of :obj:`tlsmate.tls.CertType`): the list of certificate
+            types the client may offer. Only used for TLS1.2 and below.
+        supported_signature_algorithms (list of :obj:`tlsmate.tls.SignatureScheme`):
+            the list of signature algorithms supported by the server. Only used
+            for TLS1.2 and below.
+        certificate_authorities (list of bytes): the list of acceptable authorities.
+            Currently, only byte strings are provided. Only used for TLS1.2 and below.
+        certificate_request_context (bytes): an opaque string (only TLS1.3).
+        extensions (list of :obj:`tlsmate.tls.Extension`): The list of
             TLS extensions (only TLS1.3).
     """
 
     msg_type = tls.HandshakeType.CERTIFICATE_REQUEST
-    """:obj:`tlsmate.constants.HandshakeType.CERTIFICATE_REQUEST`
+    """:obj:`tlsmate.tls.HandshakeType.CERTIFICATE_REQUEST`
     """
 
     def __init__(self):
@@ -878,6 +926,7 @@ class CertificateRequest(HandshakeMessage):
     def get_extension(self, ext_id):
         if not hasattr(self, "extensions"):
             return None
+
         return _get_extension(self.extensions, ext_id)
 
 
@@ -885,10 +934,10 @@ CertificateRequest.get_extension.__doc__ = ClientHello.get_extension.__doc__
 
 
 class EncryptedExtensions(HandshakeMessage):
-    """This class respresents an EncryptedExtensions message.
+    """This class represents an EncryptedExtensions message.
 
     Attributes:
-        extensions (list of :obj:`tlsmate.constants.Extensions`): The list of
+        extensions (list of :obj:`tlsmate.ext.Extension`): The list of
             extensions.
     """
 
@@ -919,11 +968,11 @@ class ChangeCipherSpecMessage(TlsMessage):
     """
 
     content_type = tls.ContentType.CHANGE_CIPHER_SPEC
-    """ :obj:`tlsmate.constants.ContentType.CHANGE_CIPHER_SPEC`
+    """ :obj:`tlsmate.tls.ContentType.CHANGE_CIPHER_SPEC`
     """
 
     msg_type = None
-    """ :obj:`tlsmate.constants.CCSType`: The type of the CCS message.
+    """ :obj:`tlsmate.tls.CCSType`: The type of the CCS message.
     """
 
     @classmethod
@@ -933,6 +982,7 @@ class ChangeCipherSpecMessage(TlsMessage):
                 "Received ChangeCipherSpec has unexpected length",
                 tls.AlertDescription.DECODE_ERROR,
             )
+
         msg_type, offset = pdu.unpack_uint8(fragment, 0)
         msg_type = tls.CCSType.val2enum(msg_type, alert_on_failure=True)
         cls_name = _ccs_deserialization_map[msg_type]
@@ -951,7 +1001,7 @@ class ChangeCipherSpecMessage(TlsMessage):
         """Method to deserialize a CCS message.
 
         Arguments:
-            msg_body (bytearray): The bytes which contain the serialized handhshake
+            msg_body (bytearray): The bytes which contain the serialized handshake
                 message.
             offset (int): The offset within the bytes where the handshake message
                 starts.
@@ -962,6 +1012,7 @@ class ChangeCipherSpecMessage(TlsMessage):
         Returns:
             :obj:`ChangeCipherSpecMessage`: the deserialized message object.
         """
+
         pass
 
     @abc.abstractmethod
@@ -970,15 +1021,16 @@ class ChangeCipherSpecMessage(TlsMessage):
 
         I.e., the message body only is serialized, without the common handshake header.
         """
+
         pass
 
 
 class ChangeCipherSpec(ChangeCipherSpecMessage):
-    """This class respresents a ChangeCipherSpecMessage message.
+    """This class represents a ChangeCipherSpecMessage message.
     """
 
     msg_type = tls.CCSType.CHANGE_CIPHER_SPEC
-    """:obj:`tlsmate.constants.CCSType.CHANGE_CIPHER_SPEC`
+    """:obj:`tlsmate.tls.CCSType.CHANGE_CIPHER_SPEC`
     """
 
     def __init__(self):
@@ -992,11 +1044,11 @@ class ChangeCipherSpec(ChangeCipherSpecMessage):
 
 
 class Alert(TlsMessage):
-    """This class respresents an Alert message.
+    """This class represents an Alert message.
 
     Attributes:
-        level (:obj:`tlsmate.constants.AlertLevel`): The level of the alert.
-        description(:obj:`tlsmate.AlertDescription`): The description of the alert.
+        level (:obj:`tlsmate.tls.AlertLevel`): The level of the alert.
+        description(:obj:`tlsmate.tls.AlertDescription`): The description of the alert.
     """
 
     content_type = tls.ContentType.ALERT
@@ -1012,10 +1064,13 @@ class Alert(TlsMessage):
         alert = bytearray()
         if self.level == int:
             alert.extend(pdu.pack_uint8(self.level))
+
         else:
             alert.extend(pdu.pack_uint8(self.level.value))
+
         if self.description == int:
             alert.extend(pdu.pack_uint8(self.description))
+
         else:
             alert.extend(pdu.pack_uint8(self.description.value))
 
@@ -1036,11 +1091,11 @@ class AppDataMessage(TlsMessage):
     """
 
     content_type = tls.ContentType.APPLICATION_DATA
-    """ :obj:`tlsmate.constants.ContentType.APPLICATION_DATA`
+    """ :obj:`tlsmate.tls.ContentType.APPLICATION_DATA`
     """
 
     msg_type = tls.ContentType.APPLICATION_DATA
-    """ :obj:`tlsmate.constants.ContentType.APPLICATION_DATA`
+    """ :obj:`tlsmate.tls.ContentType.APPLICATION_DATA`
     """
 
     @classmethod
@@ -1062,7 +1117,7 @@ class AppDataMessage(TlsMessage):
 
 
 class AppData(AppDataMessage):
-    """This class respresents an AppData message.
+    """This class represents an AppData message.
 
     Attributes:
         data (bytes): The application data received/to be sent.
@@ -1085,7 +1140,7 @@ class SSL2Message(TlsMessage):
     """
 
     content_type = tls.ContentType.SSL2
-    """:obj:`tlsmate.constants.ContentType.SSL2`
+    """:obj:`tlsmate.tls.ContentType.SSL2`
     """
 
     msg_type = None
@@ -1109,18 +1164,18 @@ class SSL2Message(TlsMessage):
 
 
 class SSL2ClientHello(SSL2Message):
-    """This class respresents an SSL2 CLientHello message.
+    """This class represents an SSL2 CLientHello message.
 
     Attributes:
-        version (:obj:`tlsmate.constants.SSLVersion`): The version "SSL2".
-        cipher_specs (list of :obj:`tlsmate.constants.SSLCipherKind`): The list
+        version (:obj:`tlsmate.tls.SSLVersion`): The version "SSL2".
+        cipher_specs (list of :obj:`tlsmate.tls.SSLCipherKind`): The list
             of cipher kinds offered by the client.
         session_id (bytes): The session id.
         challenge (bytes): The random bytes by the client.
     """
 
     msg_type = tls.SSLMessagType.SSL2_CLIENT_HELLO
-    """:obj:`tlsmate.constants.SSLMessagType.SSL2_CLIENT_HELLO`
+    """:obj:`tlsmate.tls.SSLMessagType.SSL2_CLIENT_HELLO`
     """
 
     def __init__(self):
@@ -1146,6 +1201,7 @@ class SSL2ClientHello(SSL2Message):
         msg.extend(pdu.pack_uint16(len(self.challenge)))
         for ck in self.cipher_specs:
             msg.extend(pdu.pack_uint24(ck.value))
+
         msg.extend(self.session_id)
         msg.extend(self.challenge)
         return msg
@@ -1155,21 +1211,21 @@ class SSL2ClientHello(SSL2Message):
 
 
 class SSL2ServerHello(SSL2Message):
-    """This class respresents an SSL2 ServerHello message.
+    """This class represents an SSL2 ServerHello message.
 
     Attributes:
         session_id_hit (int): An indication if the session id offered by the client
             will be used.
         cert_type (int): The type of the certificate.
-        version (:obj:`tlsmate.constants.SSLVersion`): The version "SSL2".
-        cipher_specs (list of :obj:`tlsmate.constants.SSLCipherKind`): The list
+        version (:obj:`tlsmate.tls.SSLVersion`): The version "SSL2".
+        cipher_specs (list of :obj:`tlsmate.tls.SSLCipherKind`): The list
             of cipher kinds offered by the server.
         connection_id (bytes): The connection id.
         certificate (bytes): The certificate provided by the server.
     """
 
     msg_type = tls.SSLMessagType.SSL2_SERVER_HELLO
-    """:obj:`tlsmate.constants.SSLMessagType.SSL2_SERVER_HELLO`
+    """:obj:`tlsmate.tls.SSLMessagType.SSL2_SERVER_HELLO`
     """
 
     def __init__(self):
@@ -1195,26 +1251,27 @@ class SSL2ServerHello(SSL2Message):
         for _ in range(int(cipher_len / 3)):
             cipher, offset = pdu.unpack_uint24(fragment, offset)
             self.cipher_specs.append(tls.SSLCipherKind.val2enum(cipher))
+
         self.connection_id, offset = pdu.unpack_bytes(fragment, offset, conn_id_len)
         return self
 
 
 class SSL2Error(SSL2Message):
-    """This class respresents an SSL2 Error message.
+    """This class represents an SSL2 Error message.
 
     Attributes:
         session_id_hit (int): An indication if the session id offered by the client
             will be used.
         cert_type (int): The type of the certificate.
-        version (:obj:`tlsmate.constants.SSLVersion`): The version "SSL2".
-        cipher_specs (list of :obj:`tlsmate.constants.SSLCipherKind`): The list
+        version (:obj:`tlsmate.tls.SSLVersion`): The version "SSL2".
+        cipher_specs (list of :obj:`tlsmate.tls.SSLCipherKind`): The list
             of cipher kinds offered by the server.
         connection_id (bytes): The connection id.
         certificate (bytes): The certificate provided by the server.
     """
 
     msg_type = tls.SSLMessagType.SSL2_ERROR
-    """:obj:`tlsmate.constants.SSLMessagType.SSL2_ERROR`
+    """:obj:`tlsmate.tls.SSLMessagType.SSL2_ERROR`
     """
 
     def __init__(self):
@@ -1251,13 +1308,13 @@ _hs_deserialization_map = {
     # tls.HandshakeType.MESSAGE_HASH = 254
 }
 
+_ccs_deserialization_map = {tls.CCSType.CHANGE_CIPHER_SPEC: ChangeCipherSpec}
 """Map the CCS message type to the corresponding class.
 """
-_ccs_deserialization_map = {tls.CCSType.CHANGE_CIPHER_SPEC: ChangeCipherSpec}
 
-"""Map the SSL2 message type to the corresponding class.
-"""
 _ssl2_deserialization_map = {
     tls.SSLMessagType.SSL2_SERVER_HELLO: SSL2ServerHello,
     tls.SSLMessagType.SSL2_ERROR: SSL2Error,
 }
+"""Map the SSL2 message type to the corresponding class.
+"""

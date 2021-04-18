@@ -4,7 +4,7 @@
 
 
 class TlsmateException(Exception):
-    """A class all exception for tlsmate are based on
+    """A class all exception for tlsmate are based on.
     """
 
 
@@ -13,7 +13,7 @@ class FatalAlert(TlsmateException):
 
     Attributes:
         message (str): A human readable string providing the cause
-        description (:obj:`tlsmate.constants.AlertDescription`): an enum used in the
+        description (:obj:`tlsmate.tls.AlertDescription`): an enum used in the
             alert sent to the peer.
     """
 
@@ -23,25 +23,25 @@ class FatalAlert(TlsmateException):
 
 
 class TlsConnectionClosedError(TlsmateException):
-    """Exception raised when the TLS connection is closed.
+    """Exception raised when the TLS connection is closed unexpectedly.
     """
 
     pass
 
 
 class TlsMsgTimeoutError(TlsmateException):
-    """Exception raised when message is not received within timeout
+    """Exception raised when a message is not received within a given timeout.
     """
 
     pass
 
 
 class CurveNotSupportedError(TlsmateException):
-    """Exception if a curve is negotiated which we do not support
+    """Exception raised when a curve is negotiated which is not supported.
 
     Attributes:
         message (str): A human readable string providing the cause
-        curve (:class:`tlsmate.constants.SupportedGroups`): The curve has been
+        curve (:class:`tlsmate.tls.SupportedGroups`): The curve has been
             offered by the client, and selected by the server, but it is not
             supported for a full key exchange.
     """
@@ -90,5 +90,3 @@ class CertChainValidationError(TlsmateException):
 class ServerParmsSignatureInvalid(TlsmateException):
     """More user friendly exception than cryptography.exception.InvalidSignature
     """
-
-    pass
