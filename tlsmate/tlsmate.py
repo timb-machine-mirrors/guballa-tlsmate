@@ -22,7 +22,7 @@ TLSMATE_DIR = pathlib.Path(__file__).parent.parent.resolve()
 
 
 class TlsMate(object):
-    """Class defining all the dependencies
+    """Class defining the tlsmate application.
 
     Arguments:
         config (:obj:`tlsmate.config.Configuration`): an object representing tlsmate's

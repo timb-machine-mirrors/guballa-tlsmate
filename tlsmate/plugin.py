@@ -80,6 +80,7 @@ class PluginManager(object):
             ValueError: If there is already another plugin registered under the
                 same name.
         """
+
         if plugin.name in cls._plugins:
             raise ValueError(
                 f"Another plugin is already registered under the name "
@@ -108,6 +109,7 @@ class PluginManager(object):
                     action="store_true",
                     default=False,
                 )
+
             cls._objects.append(plugin())
 
         for plugin in cls._objects:
@@ -183,6 +185,7 @@ class Worker(metaclass=abc.ABCMeta):
 
         The test manager will call this method which will implement the test suite.
         """
+
         raise NotImplementedError
 
 
@@ -193,13 +196,9 @@ class WorkManager(object):
 
     The registered workers are triggered (via their run-method) based on their
     priority by calling their run method.
-
-    Attributes:
-        test_suite (dict): Maps the cli-names of the registered plugins to the
-            corresponding classes.
     """
 
-    prio_pool = {}
+    _prio_pool = {}
 
     @classmethod
     def register(self, worker_class):
@@ -210,8 +209,9 @@ class WorkManager(object):
         Arguments:
             worker_class (:class:`Worker`): A worker class to be registered.
         """
-        self.prio_pool.setdefault(worker_class.prio, [])
-        self.prio_pool[worker_class.prio].append(worker_class)
+
+        self._prio_pool.setdefault(worker_class.prio, [])
+        self._prio_pool[worker_class.prio].append(worker_class)
 
     def run(self, tlsmate):
         """Function to actually start the work manager.
@@ -224,8 +224,8 @@ class WorkManager(object):
                 to the run methods of the workers.
         """
 
-        for prio_list in sorted(self.prio_pool.keys()):
-            for cls in sorted(self.prio_pool[prio_list], key=lambda cls: cls.name):
+        for prio_list in sorted(self._prio_pool.keys()):
+            for cls in sorted(self._prio_pool[prio_list], key=lambda cls: cls.name):
                 logging.debug(f"starting worker {cls.name}")
                 cls(tlsmate).run()
                 logging.debug(f"worker {cls.name} finished")
@@ -239,5 +239,6 @@ def register_worker(worker_class):
     Arguments:
         worker_class (:class:`Worker`): A worker class to be registered.
     """
+
     WorkManager.register(worker_class)
     return worker_class

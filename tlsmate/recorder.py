@@ -46,7 +46,7 @@ class Recorder(object):
     serialized to a YAML file.
     When replaying (normally triggered by pytest), the recorder object is deserialized
     from the file, and all recorded data is injected when the external interfaces
-    are used. This way an EXACTLY clone of the connection(s) is/are executed. The
+    are used. This way an EXACT clone of the connection(s) is/are executed. The
     replayed test case uses the same keying material as well, it is a "byte-to-byte""
     copy. Of course, all data sent over external interfaces are checked, and any
     deviation with the previously recorded data will let the test case fail.
@@ -120,6 +120,7 @@ class Recorder(object):
         Returns:
             ret: the converted value
         """
+
         if val_type is bytes:
             return val.hex()
 
@@ -146,6 +147,7 @@ class Recorder(object):
         Returns:
             ret: the converted value
         """
+
         if val_type is bytes:
             return bytes.fromhex(val)
 
@@ -174,16 +176,19 @@ class Recorder(object):
     def deactivate(self):
         """Deactivate the recorder.
         """
+
         self._state = RecorderState.INACTIVE
 
     def record(self):
         """Activate the recorder to record a test case.
         """
+
         self._state = RecorderState.RECORDING
 
     def replay(self):
         """Activate the recorder to replay a test case.
         """
+
         self._state = RecorderState.REPLAYING
 
     def is_injecting(self):
@@ -192,6 +197,7 @@ class Recorder(object):
         Returns:
             bool: True if the recorder is replaying
         """
+
         return self._state is RecorderState.REPLAYING
 
     def is_recording(self):
@@ -200,6 +206,7 @@ class Recorder(object):
         Returns:
             bool: True, if the recorder is recording
         """
+
         return self._state is RecorderState.RECORDING
 
     def get_trust_store(self):
@@ -207,8 +214,9 @@ class Recorder(object):
 
         Returns:
             list: A list of certificates in the trust store. These are strings
-                representing the certificates in DER-format.
+            representing the certificates in DER-format.
         """
+
         return self.data["trust_store"]
 
     def trace_client_auth(self, cl_auth):
@@ -218,6 +226,7 @@ class Recorder(object):
             cl_auth (list): the key and the certificate chain to add to the recorder.
                 Both must be provided as strings.
         """
+
         if self._state is RecorderState.RECORDING:
             self.data["client_key_chain"].append(cl_auth)
 
@@ -227,6 +236,7 @@ class Recorder(object):
         Returns:
             list: A list of (key/cert-chain) pairs.
         """
+
         return self.data["client_key_chain"]
 
     def trace_socket_recv(self, timeout, event_type, data=None):
@@ -237,6 +247,7 @@ class Recorder(object):
             event_type (:obj:`SocketEvent`): the event that occured
             data (bytes): the message in raw format (if event_type is data)
         """
+
         if self._state is RecorderState.RECORDING:
             if self._add_delay is not None:
                 timeout += self._add_delay
@@ -250,14 +261,18 @@ class Recorder(object):
         Returns:
             bytes: the message previously recorded
         """
+
         if self._state is RecorderState.REPLAYING:
             timeout, event_type, data = self._unstore_value("msg_recv")
             time.sleep(timeout)
             if event_type is SocketEvent.CLOSURE:
                 raise TlsConnectionClosedError
+
             elif event_type is SocketEvent.TIMEOUT:
                 raise TlsMsgTimeoutError
+
             return data
+
         return None
 
     def additional_delay(self, delay):
@@ -267,8 +282,10 @@ class Recorder(object):
             delay (float): The additional delay to take into account when injecting
                 a received message the next time.
         """
+
         if self._add_delay is None:
             self._add_delay = delay
+
         else:
             self._add_delay += delay
 
@@ -281,8 +298,10 @@ class Recorder(object):
         Returns:
             bool: True, if the message is sent externally.
         """
+
         if self._state is RecorderState.RECORDING:
             self._store_value("msg_sendall", msg)
+
         return self._state != RecorderState.REPLAYING
 
     def trace(self, **kwargs):
@@ -291,12 +310,15 @@ class Recorder(object):
         Arguments:
             **kwargs: the name and value to trace
         """
+
         if self._state is RecorderState.INACTIVE:
             return
+
         name, val = kwargs.popitem()
         if name in self._attr:
             if self._state is RecorderState.REPLAYING:
                 assert val == self._unstore_value(name)
+
             else:
                 self._store_value(name, val)
 
@@ -311,16 +333,20 @@ class Recorder(object):
 
         Returns:
             value: If recording: the data provided via kwargs, if replaying: the
-                data previously recorded.
+            data previously recorded.
         """
+
         name, val = kwargs.popitem()
         if self._state is RecorderState.INACTIVE:
             return val
+
         if name in self._attr:
             if self._state is RecorderState.REPLAYING:
                 val = self._unstore_value(name)
+
             else:
                 self._store_value(name, val)
+
         return val
 
     def serialize(self, filename):

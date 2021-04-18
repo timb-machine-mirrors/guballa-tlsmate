@@ -60,6 +60,7 @@ def deserialize_data(file_name):
     Returns:
         object: the deserialized object
     """
+
     with open(file_name) as fd:
         return yaml.safe_load(fd)
 
@@ -75,6 +76,7 @@ def fold_string(text, max_length, sep=" "):
     Returns:
         list: the list of strings
     """
+
     ret_lines = []
     tokens = []
     length = 0
@@ -107,21 +109,25 @@ def get_cipher_suite_details(cipher_suite):
     """Get details for a given cipher suite
 
     Arguments:
-        cipher_suite (:class:`tls.constants.CipherSuite`): The given cipher suite.
+        cipher_suite (:class:`tlsmate.tls.CipherSuite`): The given cipher suite.
 
     Returns:
-        :obj:`_CipherSuiteDetails`:
+        :obj:`tlsmate.structs.CipherSuiteDetails`:
         The structure with the detailed info regarding the given cipher suite.
     """
+
     cs = mappings.supported_cipher_suites.get(cipher_suite)
     if cs is None:
         return None
+
     ciph = mappings.supported_ciphers[cs.cipher]
     key = mappings.key_exchange.get(cs.key_ex)
     if key is not None:
         key_ex_supp = key.key_ex_supported
+
     else:
         key_ex_supp = False
+
     mac_struct = mappings.supported_macs.get(cs.mac)
 
     return structs.CipherSuiteDetails(
@@ -159,32 +165,32 @@ def filter_cipher_suites(
     a list.
 
     Arguments:
-        cs_list (list of :class:`tlsmate.constants.CipherSuite`): A list of cipher
+        cs_list (list of :class:`tlsmate.tls.CipherSuite`): A list of cipher
             suites to be filtered.
-        key_algo (list of :class:`tlsmate.constants.KeyExchangeAlgorithm`): Optional
+        key_algo (list of :class:`tlsmate.tls.KeyExchangeAlgorithm`): Optional
             match condition. If the key_algo (a combination of key_exch and key_auth,
             e.g. "DHE_RSA") of a cipher suite is in the given list, it is a match.
-        key_exch (list of :class:`tlsmate.constants.KeyExchangeType`): Optional
+        key_exch (list of :class:`tlsmate.tls.KeyExchangeType`): Optional
             match condition. If the key_exch (e.g. "ECDH") of a cipher suite is in
             the given list, it is a match.
-        key_auth (list of :class:`tlsmate.constants.KeyAuthentication`): Optional
+        key_auth (list of :class:`tlsmate.tls.KeyAuthentication`): Optional
             match condition. If the key_auth (e.g. "ECDSA") of a cipher suite is in
             the given list, it is a match.
-        cipher_type (list of :class:`tlsmate.constants.CipherType`): Optional
+        cipher_type (list of :class:`tlsmate.tls.CipherType`): Optional
             match condition. If the cipher_type (e.g. "STREAM") of a cipher suite
             is in the list, it is a match.
-        cipher_prim (list of :class:`tlsmate.constants.CipherPrimitive`): Optional
+        cipher_prim (list of :class:`tlsmate.tls.CipherPrimitive`): Optional
             match condition. If the cipher_prim (e.g. "AES") of a cipher suite is in
             the given list, it is a match.
-        cipher (list of :class:`tlsmate.constants.SymmetricCipher`): Optional
+        cipher (list of :class:`tlsmate.tls.SymmetricCipher`): Optional
             match condition. If the cipher (e.g. "AES_256_CCM_8") of a cipher suite
             is in the given list, it is a match.
-        mac (list of :class:`tlsmate.constants.HashPrimitive`): Optional match
+        mac (list of :class:`tlsmate.tls.HashPrimitive`): Optional match
             condition. If the mac (e.g. "SHA384") of a cipher suite is in the give
             list, it is a match.
-        version (:class:`tlsmate.constants.Version`): Optional match condition.
+        version (:class:`tlsmate.tls.Version`): Optional match condition.
             Cipher suites supported by the given TLS version are a match. This is
-            rather rudimentarily implemented: AEAD ciphers only for TLS1.2, specific
+            rather rudimentary implemented: AEAD ciphers only for TLS1.2, specific
             ciphers only for TLS1.3.
         full_hs (bool): Optional match condition. If the implementation supports a
             full handshake with a cipher suite, i.e. an encrypted connection can
@@ -197,33 +203,40 @@ def filter_cipher_suites(
             from the original list of cipher suites. Defaults to False.
 
     Returns:
-        list of :class:`tlsmate.constants.CipherSuite`:
+        list of :class:`tlsmate.tls.CipherSuite`:
         The list of cipher suites that match all the given conditions.
     """
 
     filter_funcs = []
     if key_algo is not None:
         filter_funcs.append(lambda cs: cs.key_algo in key_algo)
+
     if key_exch is not None:
         filter_funcs.append(
             lambda cs: getattr(cs.key_algo_struct, "key_ex_type", None) in key_exch
         )
+
     if key_auth is not None:
         filter_funcs.append(
             lambda cs: getattr(cs.key_algo_struct, "key_auth", None) in key_auth
         )
+
     if cipher_type is not None:
         filter_funcs.append(
             lambda cs: getattr(cs.cipher_struct, "c_type", None) in cipher_type
         )
+
     if cipher_prim is not None:
         filter_funcs.append(
             lambda cs: getattr(cs.cipher_struct, "primitive", None) in cipher_prim
         )
+
     if cipher is not None:
         filter_funcs.append(lambda cs: cs.cipher in cipher)
+
     if mac is not None:
         filter_funcs.append(lambda cs: cs.mac in mac)
+
     if version in [tls.Version.SSL30, tls.Version.TLS10, tls.Version.TLS11]:
         filter_funcs.append(
             lambda cs: cs.key_algo is not tls.KeyExchangeAlgorithm.TLS13_KEY_SHARE
@@ -232,16 +245,20 @@ def filter_cipher_suites(
                 or cs.cipher_struct.c_type is not tls.CipherType.AEAD
             )
         )
+
     if version is tls.Version.TLS12:
         filter_funcs.append(
             lambda cs: cs.key_algo is not tls.KeyExchangeAlgorithm.TLS13_KEY_SHARE
         )
+
     if version is tls.Version.TLS13:
         filter_funcs.append(
             lambda cs: cs.key_algo is tls.KeyExchangeAlgorithm.TLS13_KEY_SHARE
         )
+
     if full_hs is not None:
         filter_funcs.append(lambda cs: cs.full_hs is full_hs)
+
     if key_exchange_supported is not None:
         filter_funcs.append(
             lambda cs: cs.key_exchange_supported is key_exchange_supported
@@ -249,19 +266,22 @@ def filter_cipher_suites(
 
     if tls.CipherSuite.TLS_FALLBACK_SCSV in cs_list:
         cs_list.remove(tls.CipherSuite.TLS_FALLBACK_SCSV)
+
     if tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV in cs_list:
         cs_list.remove(tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV)
-    filtered = []
 
+    filtered = []
     for cs in cs_list:
         cs_details = get_cipher_suite_details(cs)
         if cs_details is None:
             continue
+
         match = True
         for filt_func in filter_funcs:
             if not filt_func(cs_details):
                 match = False
                 break
+
         if match:
             filtered.append(cs)
 
@@ -281,6 +301,7 @@ def int_to_bytes(number):
     Returns:
         bytes: just as many bytes as needed to represent the integer as an octet string
     """
+
     return number.to_bytes((number.bit_length() + 7) // 8, "big")
 
 
@@ -290,26 +311,29 @@ def set_logging(level):
     Arguments:
         level (str): The logging level to use.
     """
+
     if level is not None:
         logging.basicConfig(level=level.upper(), format="%(levelname)s: %(message)s")
 
 
 class Log(object):
-    """A class which implements relative timestamps.
+    """A class which implements relative time stamps.
     """
 
     start_time = None
 
     @classmethod
     def time(cls):
-        """returns a timestamp relative to the time of the first call to this method.
+        """returns a time stamp relative to the time of the first call to this method.
 
         Returns:
             str: the time in seconds with 3 positions after the decimal point.
         """
+
         timestamp = time.time()
         if cls.start_time is None:
             cls.start_time = timestamp
+
         diff = timestamp - cls.start_time
         return f"Timestamp {diff:.3f}"
 
@@ -320,7 +344,7 @@ class Table(object):
     Attributes:
         indent (int): the indentation level, i.e. how many blanks shall be added
             on the left side of the table
-        sep (str): the seperator to print between adjacent columns within a row
+        sep (str): the separator to print between adjacent columns within a row
     """
 
     def __init__(self, indent=0, sep=": "):
@@ -341,6 +365,7 @@ class Table(object):
     def dump(self):
         """Print the table
         """
+
         if not self._nbr_columns:
             return
 
@@ -348,6 +373,7 @@ class Table(object):
         for row in self._rows:
             for idx, col in enumerate(row):
                 cols[idx] = max(cols[idx], len(col))
+
         cols[-1] = 1
         for row in self._rows:
             print(" " * self._indent, end="")
@@ -360,6 +386,7 @@ def get_random_value():
     Returns:
         bytes: 32 bytes of almost random data
     """
+
     random = bytearray()
     random.extend(pdu.pack_uint32(int(time.time())))
     random.extend(os.urandom(28))
@@ -372,6 +399,7 @@ def log_extensions(extensions):
     Arguments:
         extensions: the list of extensions to iterate over
     """
+
     for extension in extensions:
         extension = extension.extension_id
         logging.debug(f"extension {extension.value} {extension}")

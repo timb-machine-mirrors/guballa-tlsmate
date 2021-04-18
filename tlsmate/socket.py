@@ -37,8 +37,9 @@ class Socket(object):
         """Opens a socket.
 
         Arguments:
-            endpoint: The L4-endpoint, consisting of the IP-address and the port.
+            endpoint (str): The L4-endpoint, consisting of the IP-address and the port.
         """
+
         endp = resolver.determine_transport_endpoint(endpoint)
         if endp.host_type is tls.HostType.HOST:
             endp = resolver.get_ip_endpoint(endp)
@@ -68,6 +69,7 @@ class Socket(object):
     def close_socket(self):
         """Closes a socket.
         """
+
         if self._socket is not None:
             logging.info(f"{utils.Log.time()}: closing socket")
             self._socket.close()
@@ -79,17 +81,19 @@ class Socket(object):
         Arguments:
             data (bytes): The data to send.
         """
+
         cont = self._recorder.trace_socket_sendall(data)
         if cont:
             if self._socket is None:
                 return
+
             self._socket.sendall(data)
 
     def recv_data(self, timeout=5):
         """Wait for data from the network.
 
         Arguments:
-            timeout (int): The maximum time to wait in seconds.
+            timeout (float): The maximum time to wait in seconds.
 
         Returns:
             bytes: The bytes received or None if the timeout expired.
@@ -98,26 +102,32 @@ class Socket(object):
             TlsMsgTimeoutError: If no data is received within the given timeout
             TlsConnectionClosedError: If the connection was closed.
         """
+
         data = self._recorder.inject_socket_recv()
         if data is None:
             if self._socket is None:
                 self.open_socket()
+
             start = time.time()
             rfds, wfds, efds = select.select([self._socket], [], [], timeout)
             timeout = time.time() - start
             if not rfds:
                 self._recorder.trace_socket_recv(timeout, recorder.SocketEvent.TIMEOUT)
                 raise TlsMsgTimeoutError
+
             try:
                 data = self._socket.recv(self._fragment_max_size)
+
             except ConnectionResetError:
                 self._recorder.trace_socket_recv(timeout, recorder.SocketEvent.CLOSURE)
                 self.close_socket()
                 raise TlsConnectionClosedError
+
             self._recorder.trace_socket_recv(
                 timeout, recorder.SocketEvent.DATA, data=data
             )
         if data == b"":
             self.close_socket()
             raise TlsConnectionClosedError
+
         return data
