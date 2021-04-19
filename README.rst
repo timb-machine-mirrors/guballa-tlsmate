@@ -3,6 +3,11 @@
 tlsmate
 #######
 
+.. inclusion-marker-start-overview
+
+Overview
+========
+
 This project provides a python framework for simulating TLS endpoints. It
 provides a comfortable way of creating arbitrary TLS handshake scenarios and
 executes the scenarios against TLS servers or clients (well, at the current
@@ -13,67 +18,13 @@ support of TLS protocol versions, cipher suites, and much more) as well as for
 some commonly known TLS vulnerabilities.
 
 State of the project
-====================
+--------------------
 
 The project is still in an alpha phase. Consequently the interfaces (CLI,
 python APIs) provided might change significantly.
 
-Installation
-============
-
-This package requires Python3.6 or higher.
-
-The recommended way installing the package is by using `virtual environments`_.
-If you decide to follow this recommendation, just execute the following
-optional command (adapt the path to the virtual environment according to your
-preferences):
-
-.. code-block:: console
-
-   $ mkdir -p ~/.virtualenv/tlsmate \
-      && python3 -m venv ~/.virtualenv/tlsmate \
-      && source ~/.virtualenv/tlsmate/bin/activate
-
-Next, install the package using pip. If you want to use the latest stable
-version of the package , use the command
-
-.. code-block:: console
-
-   $ pip install git+https://gitlab.com/guballa/tlsmate.git@master
-
-Or, if you want to use the most recent version from the development branch:
-
-.. code-block:: console
-
-   $ pip install git+https://gitlab.com/guballa/tlsmate.git
-
-.. _`virtual environments`: https://packaging.python.org/guides/installing-using-pip-and-virtual-environments
-
-Basic usage
-===========
-
-For a full documentation of the `tlsmate` command refer to the `documentation
-here <https://guballa.gitlab.io/tlsmate/cli.html>`_. There you will find also a
-detailed description how to use the package directly from other python
-applications. In the following only some basic examples for using the CLI are
-given. Use the `tlsmate --help` command to get all supported command line
-options. Note, that in the examples the URL `mytlsmatedomain.net` is used, a
-domain name which is currently not registered.
-
-.. code-block:: console
-
-   $ tlsmate --scan --progress mytlsmatedomain.net
-
-This command will perform a TLS scan against the domain `mytlsmatedomain.net`, and the
-result will be displayed in Yaml format.
-
-Using the tlsmate library from other python applications is described in the
-`Python API documentation`_.
-
-.. _`Python API documentation`: PYTHON.rst
-
 A word of warning
-=================
+-----------------
 
 This package is intended for test purposes only. Never ever use it to
 transmit sensitive data! Here are some reasons:
@@ -81,12 +32,13 @@ transmit sensitive data! Here are some reasons:
 * secret keying material isn't appropriately protected, e.g., it is not deleted
   when not used anymore. Such sensitive data are even logged for debugging purpose.
 * quite a lot of checks are missing which are essential for productive use cases.
+* `random values` are not always random
 * side channels? Probably there are some.
 * Extensive tests and proven in practice? No!
 * etc.
 
 Features
-========
+--------
 
 `tlsmate` comes with its own TLS protocol stack implementation. For a list of
 supported TLS protocol elements refer to `TLSFEATURES`_ .
@@ -129,7 +81,77 @@ in the future:
 * simulating a TLS server (thus allowing to test TLS clients)
 * scan for more vulnerabilities
 
-.. _`TLSFEATURES`: TLSFEATURES.rst
+.. _`TLSFEATURES`: https://guballa.gitlab.io/tlsmate/tls_features.html
+
+.. inclusion-marker-end-overview
+
+.. inclusion-marker-start-installation
+
+Installation
+============
+
+This package requires Python3.6 or higher. Additionally, the packages
+`libgmp-dev`, `libmpfr-dev` and `libmpc-dev` are required.
+
+The recommended way installing the package is by using `virtual environments`_.
+If you decide to follow this recommendation, just execute the following
+optional command (adapt the path to the virtual environment according to your
+preferences):
+
+.. code-block:: console
+
+   $ mkdir -p ~/.virtualenv/tlsmate \
+      && python3 -m venv ~/.virtualenv/tlsmate \
+      && source ~/.virtualenv/tlsmate/bin/activate
+
+Next, install the package using pip. If you want to use the latest stable
+version of the package , use the command
+
+.. code-block:: console
+
+   $ pip install git+https://gitlab.com/guballa/tlsmate.git@master
+
+Or, if you want to use the most recent version from the development branch:
+
+.. code-block:: console
+
+   $ pip install git+https://gitlab.com/guballa/tlsmate.git
+
+.. _`virtual environments`: https://packaging.python.org/guides/installing-using-pip-and-virtual-environments
+
+.. inclusion-marker-end-installation
+
+.. inclusion-marker-start-usage
+
+Basic usage
+===========
+
+For a full documentation of the `tlsmate` command refer to the `documentation
+here <https://guballa.gitlab.io/tlsmate/cli.html>`_. There you will find also a
+detailed description how to use the package directly from other python
+applications.
+
+In the following only some basic examples for using the CLI are
+given. Use the `tlsmate --help` command to get all supported command line
+options. Note, that in the examples the URL `mytlsmatedomain.net` is used, a
+domain name which is currently not registered.
+
+.. code-block:: console
+
+   $ tlsmate --scan --progress mytlsmatedomain.net
+
+This command will perform a TLS scan against the domain `mytlsmatedomain.net`, and the
+result will be displayed in Yaml format.
+
+Using the tlsmate library from other python applications is described in the
+`Python API documentation`_.
+
+.. _`CLI documentation`: https://guballa.gitlab.io/tlsmate/cli.html
+
+.. _`Python API documentation`: https://guballa.gitlab.io/tlsmate/modules.html
+
+.. inclusion-marker-end-usage
+
 
 .. |Build Status| image:: https://gitlab.com/guballa/tlsmate/badges/development/pipeline.svg
    :target: https://gitlab.com/guballa/tlsmate/-/commits/development
