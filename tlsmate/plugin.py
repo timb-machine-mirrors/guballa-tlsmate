@@ -76,6 +76,9 @@ class PluginManager(object):
         Arguments:
             plugin (:class:`Plugin`): The class to register
 
+        Returns:
+            :class:`Plugin`: the plugin class from the arguments
+
         Raises:
             ValueError: If there is already another plugin registered under the
                 same name.
@@ -88,6 +91,7 @@ class PluginManager(object):
             )
 
         cls._plugins[plugin.name] = plugin
+        return plugin
 
     @classmethod
     def add_args(cls, parser):
@@ -208,10 +212,14 @@ class WorkManager(object):
 
         Arguments:
             worker_class (:class:`Worker`): A worker class to be registered.
+
+        Returns:
+            :class:`Worker`: the worker class passed as argument
         """
 
         self._prio_pool.setdefault(worker_class.prio, [])
         self._prio_pool[worker_class.prio].append(worker_class)
+        return worker_class
 
     def run(self, tlsmate):
         """Function to actually start the work manager.
