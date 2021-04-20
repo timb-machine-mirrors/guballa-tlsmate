@@ -15,9 +15,25 @@ class Plugin(metaclass=abc.ABCMeta):
     """
 
     name = None
+    """str: The unique name of the plugin, used to avoid multiple registrations of the
+    same plugin.
+    """
+
     prio = 50
+    """int: The prio determines the sequence of the plugins. The sequence determines
+    in which order the added CLI options will be displayed. when the ``--help``
+    options is used.
+    """
+
     cli_name = None
+    """str: The command line argument which causes the plugin to be activated. Includes
+    the two dashes, e.g., ``--scan``. If set to None, the plugin will always be 
+    activated.
+    """
+
     cli_help = None
+    """str: The help text used on the CLI for the cli_name option
+    """
 
     def register_config(self, config):
         """Register configs for this plugin
@@ -31,6 +47,9 @@ class Plugin(metaclass=abc.ABCMeta):
     def add_args(self, parser):
         """Adds arguments to the CLI parser object.
 
+        This method is called to allow the plugin to add additional command line
+        argument to the parser.
+
         Arguments:
             parser (:obj:`argparse.Parser`): the CLI parser object
         """
@@ -39,6 +58,10 @@ class Plugin(metaclass=abc.ABCMeta):
 
     def args_parsed(self, args, parser, config):
         """Called after the arguments have been parsed.
+
+        This is the point where the plugin evaluates the given command line arguments,
+        adapts the configuration object accordingly and registers the workers
+        accordingly.
 
         Arguments:
             args: the object holding the parsed CLI arguments
@@ -71,7 +94,9 @@ class PluginManager(object):
 
     @classmethod
     def register(cls, plugin):
-        """Register a class as a plugin.
+        """Register a class derived from :class:`Plugin` as a plugin.
+
+        Typically be used as a class decorator.
 
         Arguments:
             plugin (:class:`Plugin`): The class to register
@@ -144,7 +169,7 @@ class PluginManager(object):
             config (:obj:`tlsmate.config.Configuration`): the configuration object
         """
 
-        if not any([getattr(args, name) for name in cls._cli_names]):
+        if not any([getattr(args, name.replace("-", "_")) for name in cls._cli_names]):
             cli_names = ",".join(["--" + name for name in cls._cli_names])
             parser.error(f"specify at least one of the following options: {cli_names}")
 
