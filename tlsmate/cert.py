@@ -147,14 +147,9 @@ def equal_oid(name_attrs1, name_attrs2):
     Returns:
         bool: True, if both attributes are equal as defined in RFC 5280.
     """
-    values1 = []
-    for name_attr in name_attrs1:
-        values1.append(string_prep(name_attr.value))
 
-    values2 = []
-    for name_attr in name_attrs2:
-        values2.append(string_prep(name_attr.value))
-
+    values1 = [string_prep(name_attr.value) for name_attr in name_attrs1]
+    values2 = [string_prep(name_attr.value) for name_attr in name_attrs2]
     return set(values1) == set(values2)
 
 

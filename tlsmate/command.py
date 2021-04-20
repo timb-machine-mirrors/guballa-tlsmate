@@ -209,8 +209,6 @@ PluginManager.reset()
 from tlsmate.plugins import server_profile, scan  # NOQA
 
 # And now look for additional user provided plugins
-discovered_plugins = {
-    name: importlib.import_module(name)
-    for finder, name, ispkg in pkgutil.iter_modules()
-    if name.startswith("tlsmate_")
-}
+for finder, name, ispkg in pkgutil.iter_modules():
+    if name.startswith("tlsmate_"):
+        importlib.import_module(name)
