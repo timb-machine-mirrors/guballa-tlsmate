@@ -12,31 +12,27 @@ import abc
 
 class Plugin(metaclass=abc.ABCMeta):
     """Base abstract class for a plugin
+
+    Attributes:
+        name (str): The unique name of the plugin, used to avoid multiple registrations
+            of the same plugin.
+        prio (int): The prio determines the sequence of the plugins. It is only
+            relevent for displaying the command help with ``--help``: The sequence
+            of parameters in the help is determined according to the prio of the plugin.
+        cli_name (str): The command line argument which causes the plugin to be
+            activated. Includes the two dashes, e.g., ``--scan``. If set to
+            None, the plugin will always be activated.
+        cli_help (str): The help text used on the CLI for the cli_name option.
     """
 
     name = None
-    """str: The unique name of the plugin, used to avoid multiple registrations of the
-    same plugin.
-    """
-
     prio = 50
-    """int: The prio determines the sequence of the plugins. The sequence determines
-    in which order the added CLI options will be displayed. when the ``--help``
-    options is used.
-    """
 
     cli_name = None
-    """str: The command line argument which causes the plugin to be activated. Includes
-    the two dashes, e.g., ``--scan``. If set to None, the plugin will always be 
-    activated.
-    """
-
     cli_help = None
-    """str: The help text used on the CLI for the cli_name option
-    """
 
     def register_config(self, config):
-        """Register configs for this plugin
+        """A callback method which can be used to extend ``tlsmate``'s configuration
 
         Arguments:
             config (:obj:`tlsmate.config.Configuration`): the configuration object
@@ -45,7 +41,7 @@ class Plugin(metaclass=abc.ABCMeta):
         return
 
     def add_args(self, parser):
-        """Adds arguments to the CLI parser object.
+        """A callback method used to add arguments to the CLI parser object.
 
         This method is called to allow the plugin to add additional command line
         argument to the parser.
@@ -57,7 +53,7 @@ class Plugin(metaclass=abc.ABCMeta):
         return
 
     def args_parsed(self, args, parser, config):
-        """Called after the arguments have been parsed.
+        """A callback method called after the arguments have been parsed.
 
         This is the point where the plugin evaluates the given command line arguments,
         adapts the configuration object accordingly and registers the workers
@@ -190,9 +186,15 @@ def register_plugin(plugin):
 
 
 class Worker(metaclass=abc.ABCMeta):
-    """Provides a base class for the implementation a worker.
+    """Provides a base class for the implementation of a worker.
 
     Attributes:
+        name (str): name of the worker, used for logging purposes only
+        prio (int): all workers are executed according to their the priority.
+            A lower value indicates higher priority, i.e., the worker with the lowest
+            value will run first. If two workers have the same priority, their
+            execution order will be determined by the alphabetical order of their
+            name attribute.
         server_profile (:obj:`tlsmate.server_profile.ServerProfile`): The server
             profile instance. Can be used to get data from it (e.g. which cipher
             suites are supported for which TLS versions), or to extend it.

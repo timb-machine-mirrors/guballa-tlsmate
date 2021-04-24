@@ -7,7 +7,7 @@ option over and over again. This is where environment variables and ini-files
 come into play: ``tlsmate`` determines the values for command line options from different sources.
 They are listed below according to the preference (most relevant source comes first):
 
-* command line option
+* command line arguments
 * environment variables
 * ini-file
 * hard-coded default values
@@ -56,7 +56,7 @@ Boolean configuration options
 
 On the command line a boolean option is set simply by its presence. For environment variables
 as well as for ini-files different rules apply: if the value is ``0``, ``off``, ``no`` or ``false``
-(case insensitive) it is evaluated to false, and it it is set to any other value, it is evaluated
+(case insensitive) it is evaluated to false, and if it is set to any other value, it is evaluated
 to true.
 
 File lists

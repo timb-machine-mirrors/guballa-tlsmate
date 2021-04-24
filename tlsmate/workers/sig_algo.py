@@ -60,7 +60,7 @@ class ScanSigAlgs(Worker):
     descr = "check signature algorithms"
     prio = 20
 
-    def scan_auth_method(self, cipher_suites, sig_algs, prof_sig_algo, backend):
+    def _scan_auth_method(self, cipher_suites, sig_algs, prof_sig_algo, backend):
         sig_alg_supported = []
         if not cipher_suites:
             return sig_alg_supported
@@ -104,7 +104,7 @@ class ScanSigAlgs(Worker):
         for sig_algo in sig_alg_supported:
             prof_sig_algo.algorithms.append(sig_algo)
 
-    def scan_tls12(self):
+    def _scan_tls12(self):
         prof_version = self.server_profile.get_version_profile(tls.Version.TLS12)
         if prof_version is None:
             return
@@ -128,7 +128,7 @@ class ScanSigAlgs(Worker):
                 sigalg_list,
             )
         ]
-        self.scan_auth_method(rsa_ciphers, rsa_sigalgs, prof_sig_algo, _BackendTls12)
+        self._scan_auth_method(rsa_ciphers, rsa_sigalgs, prof_sig_algo, _BackendTls12)
 
         dsa_ciphers = utils.filter_cipher_suites(
             values.cipher_suites, key_auth=[tls.KeyAuthentication.DSS]
@@ -140,7 +140,7 @@ class ScanSigAlgs(Worker):
                 sigalg_list,
             )
         ]
-        self.scan_auth_method(dsa_ciphers, dsa_sigalgs, prof_sig_algo, _BackendTls12)
+        self._scan_auth_method(dsa_ciphers, dsa_sigalgs, prof_sig_algo, _BackendTls12)
 
         ecdsa_ciphers = utils.filter_cipher_suites(
             values.cipher_suites, key_algo=[tls.KeyExchangeAlgorithm.ECDHE_ECDSA]
@@ -153,11 +153,11 @@ class ScanSigAlgs(Worker):
             )
         ]
         ecdsa_sigalgs.extend([tls.SignatureScheme.ED25519, tls.SignatureScheme.ED448])
-        self.scan_auth_method(
+        self._scan_auth_method(
             ecdsa_ciphers, ecdsa_sigalgs, prof_sig_algo, _BackendTls12
         )
 
-    def scan_tls13(self):
+    def _scan_tls13(self):
         prof_version = self.server_profile.get_version_profile(tls.Version.TLS13)
         if prof_version is None:
             return
@@ -173,7 +173,7 @@ class ScanSigAlgs(Worker):
         self.client.key_shares = tls.SupportedGroups.all_tls13()
         self.client.versions = [tls.Version.TLS13]
 
-        self.scan_auth_method(
+        self._scan_auth_method(
             prof_version.cipher_suites,
             tls.SignatureScheme.all(),
             prof_sig_algo,
@@ -181,5 +181,5 @@ class ScanSigAlgs(Worker):
         )
 
     def run(self):
-        self.scan_tls12()
-        self.scan_tls13()
+        self._scan_tls12()
+        self._scan_tls13()

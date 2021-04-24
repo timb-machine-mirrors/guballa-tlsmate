@@ -27,13 +27,17 @@ The project is hosted on `GitLab <https://gitlab.com/guballa/tlsmate>`_.
    :caption: Extending tlsmate
    :maxdepth: 2
 
-   overview
+   plain_python
+   plugin
+   class_description
 
 .. toctree::
    :caption: Python Modules
    :maxdepth: 2
 
    modules
+   mod_plugins
+   mod_workers
 
 
 Indices and tables

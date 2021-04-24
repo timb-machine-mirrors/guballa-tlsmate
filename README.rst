@@ -40,7 +40,7 @@ transmit sensitive data! Here are some reasons:
 Features
 --------
 
-`tlsmate` comes with its own TLS protocol stack implementation. For a list of
+``tlsmate`` comes with its own TLS protocol stack implementation. For a list of
 supported TLS protocol elements refer to `TLSFEATURES`_ .
 
 The following basic features are supported:
@@ -53,7 +53,7 @@ The following basic features are supported:
 * scan result is provided as JSON/Yaml format to simplify tool-based post-processing
 * plugin concept for either proprietary test cases or for extending the scanner plugin
 * writing keying material to a key logging file to allow wireshark to decode encrypted packets
-* configuration of `tlsmate` through an ini-file or through environment variables
+* configuration of ``tlsmate`` through an ini-file or through environment variables
 * slowing down a scan to circumvent rate limitings
 * several logging levels
 
@@ -69,7 +69,7 @@ For creating customized handshake scenarios the following features are provided:
   to defining the deepest bit in a message
 * various conditions when waiting for a message (timeout, optional message)
 * background handling of some messages (e.g., NewSessionTicket)
-* simple python API to use `tlsmate` from other python applications
+* simple python API to use ``tlsmate`` from other python applications
 
 The following features are currently not yet supported but will likely be added
 in the future:
@@ -91,7 +91,7 @@ Installation
 ============
 
 This package requires Python3.6 or higher. Additionally, the packages
-`libgmp-dev`, `libmpfr-dev` and `libmpc-dev` are required.
+``libgmp-dev``, ``libmpfr-dev`` and ``libmpc-dev`` are required.
 
 The recommended way installing the package is by using `virtual environments`_.
 If you decide to follow this recommendation, just execute the following
@@ -126,21 +126,21 @@ Or, if you want to use the most recent version from the development branch:
 Basic usage
 ===========
 
-For a full documentation of the `tlsmate` command refer to the `documentation
+For a full documentation of the ``tlsmate`` command refer to the `documentation
 here <https://guballa.gitlab.io/tlsmate/cli.html>`_. There you will find also a
 detailed description how to use the package directly from other python
 applications.
 
 In the following only some basic examples for using the CLI are
-given. Use the `tlsmate --help` command to get all supported command line
-options. Note, that in the examples the URL `mytlsmatedomain.net` is used, a
+given. Use the ``tlsmate --help`` command to get all supported command line
+options. Note, that in the examples the URL ``mytlsmatedomain.net`` is used, a
 domain name which is currently not registered.
 
 .. code-block:: console
 
    $ tlsmate --scan --progress mytlsmatedomain.net
 
-This command will perform a TLS scan against the domain `mytlsmatedomain.net`, and the
+This command will perform a TLS scan against the domain ``mytlsmatedomain.net``, and the
 result will be displayed in Yaml format.
 
 Using the tlsmate library from other python applications is described in the

@@ -5,15 +5,15 @@ The term "protocol features" refers to messages, parameters, extensions, feature
 cryptographic primitives which are essential for TLS. They are not limited to the TLS
 protocol only but cover e.g. X509 certificates as well.
 
-`tlsmate` is using the library `cryptography`_ and provides almost all protocol features
+``tlsmate`` is using the library `cryptography`_ and provides almost all protocol features
 that are supported by it.
 
 Some protocol features can be negotiated with the server (e.g., sent in the ClientHello,
 received in the ServerHello), but they are actually not fully supported, i.e., it is not
 possible to fully establish a protected connection and thus no application data can be
-exchanged. For instance, `tlsmate` supports offering and
-negotiating the cipher suite `TLS_RSA_WITH_ARIA_128_CBC_SHA256`, but actually the ARIA cipher
-is not supported, and as a result the handshake will fail (`tlsmate` cannot encrypt/decrypt
+exchanged. For instance, ``tlsmate`` supports offering and
+negotiating the cipher suite ``TLS_RSA_WITH_ARIA_128_CBC_SHA256``, but actually the ARIA cipher
+is not supported, and as a result the handshake will fail (``tlsmate`` cannot encrypt/decrypt
 the Finished message).
 
 Nevertheless, such rudimentary support is sufficient to check if a TLS
@@ -80,7 +80,7 @@ For all other protocol versions the cipher suites `registered at IANA`_ are supp
 but not all of them can be used for a successful handshake completion.
 
 .. note:: The signalling cipher suite values
-   `TLS_EMPTY_RENEGOTIATION_INFO_SCSV` and `TLS_FALLBACK_SCSV` are supported as
+   ``TLS_EMPTY_RENEGOTIATION_INFO_SCSV`` and ``TLS_FALLBACK_SCSV`` are supported as
    well.
 
 A cipher suite can be used for a successful handshake completion,
@@ -249,7 +249,7 @@ The following TLS extensions are supported:
 Certificates and certificate chains
 -----------------------------------
 
-`tlsmate` performs basics checks to validate certificate chains received from the server.
+``tlsmate`` performs basics checks to validate certificate chains received from the server.
 The results are cached, i.e., if the same certificate chain is received multiple times,
 the validation will only be done once. The following checks are currently implemented:
 
@@ -273,7 +273,7 @@ all certificate extensions are supported (yet).
 Other features
 --------------
 
-This section describes features or procedures supported by `tlsmate`.
+This section describes features or procedures supported by ``tlsmate``.
 
 * resumption via session_id (TLS1.0 - TLS1.2)
 * resumption via session tickets (TLS1.0 - TLS1.2)
