@@ -27,6 +27,21 @@ class TlsMate(object):
     Arguments:
         config (:obj:`tlsmate.config.Configuration`): an object representing tlsmate's
             configuration.
+
+    Attributes:
+        config (:obj:`tlsmate.config.Configuration`): the configuration object
+            available for most other major object as well
+        server_profile (:obj:`tlsmate.server_profile.ServerProfile`): the server
+            profile object, describing which features and capabilities are
+            supported by the server.
+        recorder (:obj:`tlsmate.recorder.Recorder`): the recorder object, available
+            for most major objects as well. Used for unit tests only.
+        trust_store (:obj:`tlsmate.cert.TrustStore`): the trust store which provides
+            access to the root certificates
+        crl_manager (:obj:`tlsmate.cert.CrlManager`): the object which manages CRLs.
+        client_auth (:obj:`tlsmate.client_auth.ClientAuth`): the object which manages
+            the keys and certificate chains needed for client authentication
+        client (:obj:`tlsmate.client.Client`): the client object
     """
 
     def __init__(self, config=None):

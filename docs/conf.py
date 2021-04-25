@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.abspath('../'))
 # -- Project information -----------------------------------------------------
 
 project = 'tlsmate'
-copyright = '2020, Jens Guballa'
+copyright = '2021, Jens Guballa'
 author = 'Jens Guballa'
 
 # The full version, including alpha/beta/rc tags

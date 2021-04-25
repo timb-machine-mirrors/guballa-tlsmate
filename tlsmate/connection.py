@@ -223,7 +223,7 @@ class TlsConnection(object):
         >>>     conn.handshake()
 
         The variable `conn` references the `TlsConnection` instance. When entering
-        the context manager, the endpoint's URL is resolved, and a TCP socket it
+        the context manager, the endpoint's URL is resolved, and a TCP socket is
         opened. When leaving the context manager, the TLS-connection is always
         properly closed, e.g., by sending a closure alert and by closing the
         underlying TCP socket.

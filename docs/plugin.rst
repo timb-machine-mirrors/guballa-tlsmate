@@ -3,7 +3,7 @@ Writing a plugin for tlsmate
 
 This section focuses on how to extend ``tlsmate`` by a plugin. We do not concentrate much
 here on how a TLS connection is setup, instead you will see which classes are relevant
-for embeeding your TLS scenarios into the application.
+for embedding your TLS scenarios into the application.
 
 The challenge
 -------------
