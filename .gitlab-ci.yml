@@ -37,6 +37,8 @@ pages:
   stage: deploy
   image: python:3.7-alpine
   script:
+  - apt update --yes && apt upgrade --yes
+  - apt install --yes build-essential libssl-dev libffi-dev python-dev libgmp-dev libmpfr-dev libmpc-dev
   - pip install .
   - pip install sphinx sphinx-argparse sphinx_rtd_theme
   - sphinx-build docs/ docs/_build/html
