@@ -9,14 +9,14 @@ import datetime
 # import own stuff
 from tlsmate import tls
 from tlsmate.version import __version__
-from tlsmate.plugin import Worker
+from tlsmate.plugin import WorkerPlugin
 from tlsmate.server_profile import SPServer, SPNameResolution
 from tlsmate import resolver
 
 # import other stuff
 
 
-class ScanStart(Worker):
+class ScanStart(WorkerPlugin):
     """Provide basic infos without actually really scanning against the server.
     """
 
@@ -56,7 +56,7 @@ class ScanStart(Worker):
         self.server_profile.server = SPServer(data=data)
 
 
-class ScanEnd(Worker):
+class ScanEnd(WorkerPlugin):
     """Complement the info after the scan is finished.
     """
 

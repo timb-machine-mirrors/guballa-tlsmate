@@ -9,7 +9,7 @@ import pkgutil
 # import own stuff
 from tlsmate.config import Configuration
 from tlsmate.tlsmate import TlsMate
-from tlsmate.plugin import PluginManager
+from tlsmate.plugin import CliManager
 from tlsmate import utils
 from tlsmate.version import __version__
 
@@ -142,7 +142,7 @@ def build_parser():
 
     _args_authentication(parser)
 
-    PluginManager.add_args(parser)
+    CliManager.add_args(parser)
 
     return parser
 
@@ -181,7 +181,7 @@ def main():
 
     config = Configuration()
 
-    PluginManager.register_config(config)
+    CliManager.register_config(config)
 
     config.init_from_external(args.config_file)
 
@@ -197,13 +197,13 @@ def main():
     config.set("sni", args.sni)
     config.set("key_log_file", args.key_log_file)
 
-    PluginManager.args_parsed(args, parser, config)
+    CliManager.args_parsed(args, parser, config)
 
     tlsmate = TlsMate(config=config)
     tlsmate.work_manager.run(tlsmate)
 
 
-PluginManager.reset()
+CliManager.reset()
 
 # And now load the plugins which are shipped by default with tlsmate...
 from tlsmate.plugins import server_profile, scan  # NOQA

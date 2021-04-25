@@ -19,6 +19,7 @@ from tlsmate.config import Configuration
 class OpensslVersion(enum.Enum):
     """Defines the openssl versions which are used to generate the unit tests.
     """
+
     v1_0_1g = enum.auto()
     v1_0_2 = enum.auto()
     v1_1_1 = enum.auto()

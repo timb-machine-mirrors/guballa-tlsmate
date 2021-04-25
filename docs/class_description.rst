@@ -39,8 +39,8 @@ negotiating a TLS connection with a server.
 The TlsConnection class
 -----------------------
 
-Objects for this class are typically instantiated by the client. It represents
-a TLS connection (including the underlying TCP connection) using a python context
+Objects of this class are typically instantiated by the client. they represent a
+TLS connection (including the underlying TCP connection) using a python context
 manager. The object and its properties are available even after the connection
 has been closed.
 
@@ -66,13 +66,7 @@ Several methods are provided which give access to the most often used server
 profile values.
 
 Server profiles can be serialized in JSON or Yaml format. It is also possible
-to deserialize 
+to deserialize them, which allows to postprocess them or to use them as an
+information source for implementing additional TLS scenarios.
 
 Refer to :class:`tlsmate.server_profile.ServerProfile`.
-
-
-msg
-ext
-tls
-
-

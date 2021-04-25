@@ -23,7 +23,7 @@ prints the cipher suite selected by the server.
 
     # To execute a successful TLS handshake we must tell `tlsmate` where to find
     # the trust store(s) containing the root certificates. Those trust stores are
-    # files which contain a set of certificates in PEM format. This examples uses
+    # files which contain a set of certificates in PEM format. This example uses
     # the trust store from a typical Ubuntu system. For demonstation purposes we
     # set the trust store hard coded in the application. Later we will see how we
     # can define such a common setting via an ini-file or via an environment variable.

@@ -8,7 +8,7 @@ import abc
 # import own stuff
 from tlsmate import msg
 from tlsmate import tls
-from tlsmate.plugin import Worker
+from tlsmate.plugin import WorkerPlugin
 from tlsmate.exception import ScanError
 from tlsmate.server_profile import SPSupportedGroups
 from tlsmate import utils
@@ -230,7 +230,7 @@ class _TLS13_Scan(_Scan):
             self._profile_groups.groups_advertised = status
 
 
-class ScanSupportedGroups(Worker):
+class ScanSupportedGroups(WorkerPlugin):
     name = "groups"
     descr = "check for FF-DH and EC groups"
     prio = 20

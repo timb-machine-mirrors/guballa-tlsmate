@@ -1,19 +1,20 @@
 Writing a plugin for tlsmate
 ============================
 
-This section focuses on how to extend ``tlsmate`` by a plugin. We do not concentrate much
-here on how a TLS connection is setup, instead you will see which classes are relevant
-for embedding your TLS scenarios into the application.
+This section focuses on how to extend ``tlsmate`` by a plugin. We do not
+concentrate much here on how a TLS connection is setup, instead you will see
+which classes are relevant for embedding your python code into the application.
 
 The challenge
 -------------
 
-Let's give us the following task: We want to write a plugin which establishes
-a TLS connection to a server and prints the cipher suite negotiated for this connection.
-The output of the cipher suite shall be preceded with a string which we can provide as
-a command line parameter (well, that's an odd requirement, but it will demonstrate how to define
-and use additional command line arguments). The plugin we are writing shall be located
-in the directory ``~/myplugin``.
+Let's give us the following task: We want to write a plugin which establishes a
+TLS connection to a server and prints the cipher suite negotiated for this
+connection. The output of the cipher suite shall be preceded with a string
+which we can provide as a command line parameter (well, that's an odd
+requirement, but it will demonstrate how to define and use additional command
+line arguments). The plugin we are writing shall be located in the directory
+``~/myplugin``.
 
 So, here is the command we want to execute::
 
@@ -28,9 +29,10 @@ Here is the expected output::
 Locating plugins
 ----------------
 
-``tlsmate`` has a simple mechanism to load plugins: all python modules starting with
-``tlsmate_`` are imported. I.e., all we have to do is to create a file like ``tlsmate_myplugin.py``,
-and add the directory where it resides to the environment variable ``PYTHONPATH``.
+``tlsmate`` has a simple mechanism to load plugins: all python modules starting
+with ``tlsmate_`` are imported. I.e., all we have to do is to create a file
+like ``tlsmate_myplugin.py``, and add the directory where it resides to the
+environment variable ``PYTHONPATH``.
 
 For our example this means we need to use the following command (bash assumed)::
 
@@ -40,12 +42,12 @@ Now let's create the file ``~/myplugin/tlsmate_myplugin.py`` with the following 
 
 .. code-block:: python
 
-    from tlsmate.plugin import Plugin, PluginManager, Worker, WorkManager
+    from tlsmate.plugin import CliPlugin, CliManager, WorkerPlugin, WorkManager
     from tlsmate.structs import ConfigItem
     from tlsmate import tls
 
 
-    class MyWorker(Worker):
+    class MyWorker(WorkerPlugin):
         name = "cipher_suiter"
         prio = 100
 
@@ -61,8 +63,8 @@ Now let's create the file ``~/myplugin/tlsmate_myplugin.py`` with the following 
                 print(self.config.get("text"), conn.msg.server_hello.cipher_suite)
 
 
-    @PluginManager.register
-    class MyPlugin(Plugin):
+    @CliManager.register
+    class MyPlugin(CliPlugin):
         name = "cipher_suite_dumper"
         prio = 100
         cli_name = "--cipher-printer"
@@ -84,7 +86,6 @@ Now let's create the file ``~/myplugin/tlsmate_myplugin.py`` with the following 
                 WorkManager.register(MyWorker)
                 # ... and set the configuration item's value to the given command line argument
                 config.set("text", args.text)
-
 
 First let's check if the newly defined command line arguments are recognized by ``tlsmate``::
 
@@ -121,80 +122,89 @@ Perfect.
 
 Let's have a closer look at the classes involved.
 
-Plugins and Workers are an essential concept of ``tlsmate``. Indeed, the scanner provided
-with the tool uses this concept internally as well. So if in doubt you can have a look at the code.
+CLI plugins and worker plugins are an essential concept of ``tlsmate``. Indeed,
+the scanner provided with the tool uses this concept internally as well. So if
+in doubt you can have a look at the code.
 
-Plugins are basically extending the CLI, while workers do all the hard stuff like
-executing arbitrary TLS message flows or scanning for specific TLS server configurations and
-vulnerabilities. But workers are also used to read and write server profile files or dumping
-such profiles in a human readable format to the user. Workers simply do something.
+CLI plugins are basically extending the CLI, while worker plugins (or simply
+called "workers") do all the hard stuff like executing arbitrary TLS message
+flows or scanning for specific TLS server configurations and vulnerabilities.
+But workers are also used to read and write server profile files or dumping
+such profiles in a human readable format to the user. Workers simply do
+something.
 
-The Plugin class
-----------------
+The CliPlugin class
+-------------------
 
-The base class :obj:`tlsmate.plugin.Plugin` is provided to derive specific plugin classes from.
-Plugins are responsible for the following tasks:
+The base class :obj:`tlsmate.plugin.CliPlugin` is provided to derive specific
+classes from that are extending the CLI. These plugins are responsible for the
+following tasks:
 
 * add additional configuration items to the :obj:`tlsmate.config.Configuration` object
 * define additional arguments for the CLI, i.e., extend the argument parser
 * evaluate the command line arguments parsed, map these arguments to the
   configuration items and register the worker classes as desired.
 
-Plugins are registered by decorating the class with the :meth:`tlsmate.plugin.PluginManager.register`
-decorator.
+CLI plugins are registered by decorating the class with the
+:meth:`tlsmate.plugin.PluginManager.register` decorator.
 
-The attributes :attr:`tlsmate.plugin.Plugin.cli_name` and :attr:`tlsmate.plugin.Plugin.cli_help` define
-the command line argument which is associated with the plugin. Additional command line arguments
-can be defined in the method :meth:`tlsmate.plugin.Plugin.add_args`.
+The attributes :attr:`tlsmate.plugin.CliPlugin.cli_name` and
+:attr:`tlsmate.plugin.CliPlugin.cli_help` define the command line argument which
+is associated with the plugin. Additional command line arguments can be defined
+in the method :meth:`tlsmate.plugin.CliPlugin.add_args`.
 
-The method :meth:`tlsmate.plugin.Plugin.register_config` is used to define additional configuration
-items including their default values. Note, that defining default values for command line arguments
-is a pitfall: In such a case values defined in an ini-file or via environment variables will have
-no effect.
+The method :meth:`tlsmate.plugin.CliPlugin.register_config` is used to define
+additional configuration items including their default values. Note, that
+defining default values for command line arguments is a pitfall: In such a case
+values defined in an ini-file or via environment variables will have no effect.
 
-The Worker class
-----------------
+The WorkerPlugin class
+----------------------
 
-Workers are derived from the class :class:`tlsmate.plugin.Worker`. Analog to the plugins, worker
-classes must be registered to the :class:`tlsmate.plugin.WorkManager`. There are two ways to
-do this.
+Workers are derived from the class :class:`tlsmate.plugin.WorkerPlugin`. Analog
+to the CLI plugins, worker classes must be registered to the
+:class:`tlsmate.plugin.WorkManager`. There are two ways to do this.
 
-Using :meth:`tlsmate.plugin.WorkManager.register` as a decorator. This will register the
-worker "unconditionally", i.e., it will always run, independent from any command line arguments.
-In such a case the usage of the Plugin class is not required. Example:
+Using :meth:`tlsmate.plugin.WorkManager.register` as a decorator. This will
+register the worker "unconditionally", i.e., it will always run, independent
+from any command line argument. In such a case the usage of the CliPlugin class
+is not required. Example:
 
 .. code-block:: python
 
     @WorkManager.register
-    class MyWorker(Worker):
+    class MyWorker(WorkerPlugin):
         pass
 
-Using :meth:`tlsmate.plugin.WorkManager.register` as a function. This allows to register
-the worker from within a plugin. Example:
+Using :meth:`tlsmate.plugin.WorkManager.register` as a function. This allows to
+register the worker from within a CLI plugin. Example:
 
 .. code-block:: python
 
-    class MyWorker(Worker):
+    class MyWorker(WorkerPlugin):
         pass
 
     WorkManager.register(MyWorker)
 
-Workers are executed in the sequence which is defined by the priority attribute. Lower
-priority means earlier execution. If two workers have the same priority their execution
-sequence is determined by the alphabetical order of their names.
+Workers are executed in the sequence which is defined by the priority
+attribute. Lower priority means earlier execution. If two workers have the same
+priority their execution sequence is determined by the alphabetical order of
+their names.
 
 The Configuration class
 -----------------------
 
-Let's have a look at the configuration handling. The class :class:`tlsmate.config.Configuration`
-manages so called configuration items. These items are structures which can be registered as
-desired. Such registered configuration items are recognized by ``tlsmate``, and thus can be
-specified in ini-files or can be set via environment variables. These configuration items
+Let's have a look at the configuration handling. The class
+:class:`tlsmate.config.Configuration` manages so called configuration items.
+These items are structures which can be registered as desired. Such registered
+configuration items are recognized by ``tlsmate``, and thus can be specified in
+ini-files or can be set via environment variables. These configuration items
 are then available for the workers as well.
 
-In our code example we defined the configuration item in :meth:`tlsmate.plugin.Plugin.register_config`,
-and its value is populated from the given parsed arguments. Note, that in
-:meth:`tlsmate.plugin.Plugin.args_parsed` the configuration item might have already a value
-populated, either taken from the ini-file or from an environment variable. Using
-:meth:`tlsmate.config.Configuration.set` with the value None will actually not overwrite
-the current value.
+In our code example we defined the configuration item in
+:meth:`tlsmate.plugin.CliPlugin.register_config`, and its value is populated
+from the given parsed arguments. Note, that in
+:meth:`tlsmate.plugin.CliPlugin.args_parsed` the configuration item might have
+already a value populated, either taken from the ini-file or from an
+environment variable. Using :meth:`tlsmate.config.Configuration.set` with the
+value None will actually not overwrite the current value.

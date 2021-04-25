@@ -5,7 +5,7 @@
 
 # import own stuff
 from tlsmate.structs import ConfigItem
-from tlsmate.plugin import Plugin, WorkManager, PluginManager
+from tlsmate.plugin import CliPlugin, WorkManager, CliManager
 from tlsmate.workers.eval_cipher_suites import ScanCipherSuites
 from tlsmate.workers.scanner_info import ScanStart, ScanEnd
 from tlsmate.workers.supported_groups import ScanSupportedGroups
@@ -23,9 +23,9 @@ from tlsmate.workers.text_server_profile import TextProfileWorker
 # import other stuff
 
 
-@PluginManager.register
-class ScanPlugin(Plugin):
-    """Plugin to perform a scan against a TLS server.
+@CliManager.register
+class ScanPlugin(CliPlugin):
+    """CLI plugin to perform a scan against a TLS server.
     """
 
     prio = 20

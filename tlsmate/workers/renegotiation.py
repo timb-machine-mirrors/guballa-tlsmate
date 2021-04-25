@@ -5,12 +5,12 @@
 
 # import own stuff
 from tlsmate import tls
-from tlsmate.plugin import Worker
+from tlsmate.plugin import WorkerPlugin
 
 # import other stuff
 
 
-class ScanRenegotiation(Worker):
+class ScanRenegotiation(WorkerPlugin):
     name = "renegotiation"
     descr = "check which kind of renegotiations are supported by the server"
     prio = 30
