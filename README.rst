@@ -41,7 +41,7 @@ Features
 --------
 
 ``tlsmate`` comes with its own TLS protocol stack implementation. For a list of
-supported TLS protocol elements refer to `TLSFEATURES`_ .
+supported TLS protocol elements refer to `TLS features`_ .
 
 The following basic features are supported:
 
@@ -81,7 +81,7 @@ in the future:
 * simulating a TLS server (thus allowing to test TLS clients)
 * scan for more vulnerabilities
 
-.. _`TLSFEATURES`: https://guballa.gitlab.io/tlsmate/tls_features.html
+.. _`TLS features`: https://guballa.gitlab.io/tlsmate/tlsfeatures.html
 
 .. inclusion-marker-end-overview
 
