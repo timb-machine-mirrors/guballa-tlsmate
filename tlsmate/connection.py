@@ -109,6 +109,13 @@ class TlsDefragmenter(object):
                 msg=bytes(message + self._get_all_bytes()),
             )
 
+        elif self._content_type is tls.ContentType.HEARTBEAT:
+            return structs.UpperLayerMsg(
+                content_type=self._content_type,
+                msg_type=None,
+                msg=bytes(message + self._get_all_bytes()),
+            )
+
         elif self._content_type is tls.ContentType.SSL2:
             return structs.UpperLayerMsg(
                 content_type=self._content_type,
@@ -151,6 +158,14 @@ class TlsConnectionMsgs(object):
             the client
         server_alert (:obj:`tlsmate.msg.Alert`): the Alert messages sent by
             the server
+        client_heartbeat_request (:obj:`tlsmate.msg.HeartBeatRequest`): the
+            heart beat request message sent by the client
+        server_heartbeat_request (:obj:`tlsmate.msg.HeartBeatRequest`): the
+            heart beat request message sent by the server
+        client_heartbeat_response (:obj:`tlsmate.msg.HeartBeatResponse`): the
+            heart beat response message sent by the client
+        server_heartbeat_response (:obj:`tlsmate.msg.HeartBeatResponse`): the
+            heart beat response message sent by the server
     """
 
     _map_msg2attr = {
@@ -173,6 +188,8 @@ class TlsConnectionMsgs(object):
         tls.HandshakeType.MESSAGE_HASH: None,
         tls.CCSType.CHANGE_CIPHER_SPEC: "_change_cipher_spec",
         tls.ContentType.ALERT: "_alert",
+        tls.HeartBeatType.HEARTBEAT_REQUEST: "_heartbeat_request",
+        tls.HeartBeatType.HEARTBEAT_RESPONSE: "_heartbeat_response",
     }
 
     def __init__(self):
@@ -191,6 +208,10 @@ class TlsConnectionMsgs(object):
         self.server_finished = None
         self.client_alert = None
         self.server_alert = None
+        self.client_heartbeat_request = None
+        self.server_heartbeat_request = None
+        self.client_heartbeat_response = None
+        self.server_heartbeat_response = None
 
     def store_msg(self, msg, received=True):
         """Stores a received/sent message
@@ -296,6 +317,8 @@ class TlsConnection(object):
             Only used for negotiated versions < TLS1.3.
         master_secret (bytes):the master secret used in the latest handshake. Only
             used for negotiated versions < TLS1.3.
+        heartbeat_allowed_to_send (bool): an indication if the peer allowed to send
+            HeartBeat messages.
     """
 
     _cert_chain_digests = []
@@ -322,10 +345,14 @@ class TlsConnection(object):
         self.handshake_completed = False
         self.alert_received = False
         self.alert_sent = False
-        self.auto_handler = [tls.HandshakeType.NEW_SESSION_TICKET]
+        self.auto_handler = [
+            tls.HandshakeType.NEW_SESSION_TICKET,
+            tls.HeartBeatType.HEARTBEAT_REQUEST,
+        ]
         self._send_early_data = False
         self.early_data_accepted = False
         self._ext_psk = None
+        self.heartbeat_allowed_to_send = False
 
         # general
         self._entity = tls.Entity.CLIENT
@@ -1049,6 +1076,11 @@ class TlsConnection(object):
         logging.info(f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite}")
         self._update_cipher_suite(msg.cipher_suite)
         self._record_layer_version = min(self.version, tls.Version.TLS12)
+        heartbeat_ext = msg.get_extension(tls.Extension.HEARTBEAT)
+        if heartbeat_ext:
+            self.heartbeat_allowed_to_send = (
+                heartbeat_ext.heartbeat_mode is tls.HeartBeatMode.PEER_ALLOWED_TO_SEND
+            )
         if self.version is tls.Version.TLS13:
             self._on_server_hello_tls13(msg)
 
@@ -1306,7 +1338,17 @@ class TlsConnection(object):
         if method is not None:
             method(self, msg)
 
-    _auto_responder_map = {}
+    def _auto_heartbeat_request(self, message):
+        if self.client.heartbeat_mode is tls.HeartBeatMode.PEER_ALLOWED_TO_SEND:
+            response = msg.HeartBeatResponse()
+            response.payload_length = message.payload_length
+            response.payload = message.payload
+            response.padding = b"\xff" * 16
+            self.send(response)
+
+    _auto_responder_map = {
+        tls.HeartBeatType.HEARTBEAT_REQUEST: _auto_heartbeat_request,
+    }
     """Maps the message to the auto handler function.
 
     Auto handler functions are only required, if specific actions must be taken, e.g.,
@@ -1358,6 +1400,9 @@ class TlsConnection(object):
 
         elif mb.content_type is tls.ContentType.APPLICATION_DATA:
             message = msg.AppDataMessage.deserialize(mb.msg, self)
+
+        elif mb.content_type is tls.ContentType.HEARTBEAT:
+            message = msg.HeartBeatMessage.deserialize(mb.msg, self)
 
         elif mb.content_type is tls.ContentType.SSL2:
             message = msg.SSL2Message.deserialize(mb.msg, self)

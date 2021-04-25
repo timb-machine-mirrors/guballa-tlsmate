@@ -138,6 +138,7 @@ class ContentType(ExtendedEnum):
     ALERT = 21
     HANDSHAKE = 22
     APPLICATION_DATA = 23
+    HEARTBEAT = 24
     SSL2 = 256
 
 
@@ -646,6 +647,16 @@ class CCSType(ExtendedEnum):
     CHANGE_CIPHER_SPEC = 1
 
 
+class HeartBeatType(ExtendedEnum):
+    """Enum representing the message types for the HeartBeat protocol.
+
+    The values defined correspond to the values used in PDUs as defined by IANA.
+    """
+
+    HEARTBEAT_REQUEST = 1
+    HEARTBEAT_RESPONSE = 2
+
+
 class SupportedGroups(ExtendedEnum):
     """Enum representing the supported groups.
 
@@ -949,6 +960,14 @@ class PskKeyExchangeMode(ExtendedEnum):
 
     PSK_KE = 0
     PSK_DHE_KE = 1
+
+
+class HeartBeatMode(ExtendedEnum):
+    """Values for the heart beat mode (extension)
+    """
+
+    PEER_ALLOWED_TO_SEND = 1
+    PEER_NOT_ALLOWED_TO_SEND = 2
 
 
 class SPBool(ExtendedEnum):

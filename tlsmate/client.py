@@ -78,6 +78,9 @@ class Client(object):
             If True, the connection will be closed with a fatal alert. If False,
             the connection continues. The latter is useful for scanning a server, as
             the scan would be aborted otherwise.
+        heartbeat_mode (:class:`tls.HeartBeatMode`): The mode which is offered in the
+            heart beat extension. If set to None, the extension will not be setup
+            when using the :meth:`Client.client_hello` method.
     """
 
     def __init__(self, tlsmate):
@@ -137,6 +140,7 @@ class Client(object):
         self.support_encrypt_then_mac = False
         self.support_secure_renegotiation = False
         self.support_scsv_renegotiation = False
+        self.heartbeat_mode = None
 
         if profile_values is not None:
             self.versions = profile_values.versions[:]
@@ -553,6 +557,11 @@ class Client(object):
                     kwargs["ticket"] = self.session_state_ticket.ticket
 
                 msg.extensions.append(ext.ExtSessionTicket(**kwargs))
+
+            if self.heartbeat_mode:
+                msg.extensions.append(
+                    ext.ExtHeartBeat(heartbeat_mode=self.heartbeat_mode)
+                )
 
             if tls.Version.TLS13 in self.versions:
                 if self._tlsmate.recorder.inject(
