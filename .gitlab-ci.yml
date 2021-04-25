@@ -35,7 +35,7 @@ include:
 - template: Security/SAST.gitlab-ci.yml
 pages:
   stage: deploy
-  image: python:3.7-alpine
+  image: python:3.7-slim
   script:
   - apt update --yes && apt upgrade --yes
   - apt install --yes build-essential libssl-dev libffi-dev python-dev libgmp-dev libmpfr-dev libmpc-dev
