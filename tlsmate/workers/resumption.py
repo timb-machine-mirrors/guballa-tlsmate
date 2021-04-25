@@ -5,13 +5,13 @@
 
 # import own stuff
 from tlsmate import tls
-from tlsmate.plugin import Worker
+from tlsmate.plugin import WorkerPlugin
 from tlsmate import msg
 
 # import other stuff
 
 
-class ScanResumption(Worker):
+class ScanResumption(WorkerPlugin):
     name = "resumption"
     descr = "check if the server supports resumption via (session_id and ticket)"
     prio = 30

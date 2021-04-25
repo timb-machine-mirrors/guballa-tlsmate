@@ -41,6 +41,7 @@ class _Backend(metaclass=abc.ABCMeta):
             bytes: The calculated HMAC value, having the same length than the output
             of the hash algorithm.
         """
+
         hmac_object = hmac.HMAC(secret, hash_algo())
         hmac_object.update(msg)
         return hmac_object.finalize()
@@ -62,11 +63,13 @@ class _Backend(metaclass=abc.ABCMeta):
         Returns:
             (bytes): An bytearray of the desired length.
         """
+
         out = b""
         ax = bytes(seed)
         while len(out) < size:
             ax = __class__._hmac_func(secret, ax, hash_algo)
             out = out + __class__._hmac_func(secret, ax + seed, hash_algo)
+
         return out[:size]
 
     @abc.abstractmethod
@@ -76,6 +79,7 @@ class _Backend(metaclass=abc.ABCMeta):
         Arguments:
             msg (bytes): The message to add.
         """
+
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -86,6 +90,7 @@ class _Backend(metaclass=abc.ABCMeta):
             bytes: The calculated current  message digest, output has the same length
             than the hash length.
         """
+
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -101,6 +106,7 @@ class _Backend(metaclass=abc.ABCMeta):
         Returns:
             (bytes): An bytearray of the desired length.
         """
+
         raise NotImplementedError
 
 
@@ -132,6 +138,7 @@ class _BackendTls10(_Backend):
         result = bytearray(sha_bytes)
         for i, b in enumerate(md5_bytes):
             result[i] ^= b
+
         return result
 
 
@@ -163,8 +170,10 @@ class _BackendTls12(_Backend):
             bytes: The byte sequence generated having the same length than the
             underlying hash algorithm.
         """
+
         if secret is None:
             secret = b"\0" * self._hash_algo.digest_size
+
         h = hmac.HMAC(salt, self._hash_algo())
         h.update(secret)
         return h.finalize()
@@ -183,6 +192,7 @@ class _BackendTls12(_Backend):
         Returns:
             bytes: A bytearray as long as specified by the length parameter.
         """
+
         hkdf = HKDFExpand(algorithm=self._hash_algo(), length=length, info=label)
         return hkdf.derive(secret)
 
@@ -202,6 +212,7 @@ class _BackendTls12(_Backend):
         Returns:
             bytes: A bytearray as long as specified by the length parameter.
         """
+
         label_bytes = ("tls13 " + label).encode()
         hkdf_label = (
             struct.pack("!H", length)
@@ -245,10 +256,13 @@ class Kdf(object):
                 negotiated hash algorithm implementation, determined with the
                 reception of the ServerHello.
         """
+
         if hash_algo is None:
             self._backend = _BackendTls10(hash_algo)
+
         else:
             self._backend = _BackendTls12(hash_algo)
+
         self._empty_msg_digest = self.current_msg_digest()
         if self._msg_digest_queue is not None:
             self._backend.update_msg_digest(self._msg_digest_queue)
@@ -264,6 +278,7 @@ class Kdf(object):
         Arguments:
             msg (bytes): The message to add.
         """
+
         if not self._msg_digest_active:
             return
 
@@ -272,8 +287,10 @@ class Kdf(object):
         if self._backend is None:
             if self._msg_digest_queue is None:
                 self._msg_digest_queue = bytearray(msg)
+
             else:
                 self._msg_digest_queue.extend(msg)
+
         else:
             self._backend.update_msg_digest(msg)
 
@@ -283,6 +300,7 @@ class Kdf(object):
         Returns:
             bytes: the concatenation of all messages.
         """
+
         return self._all_msgs
 
     def empty_msg_digest(self):
@@ -291,6 +309,7 @@ class Kdf(object):
         Returns:
             bytes: The message digest for no given messages.
         """
+
         return self._empty_msg_digest
 
     def current_msg_digest(self, suspend=False):
@@ -306,8 +325,10 @@ class Kdf(object):
             bytes: The calculated message digest, output has the same length than
             the hash length.
         """
+
         if suspend:
             self._msg_digest_active = False
+
         return self._backend.current_msg_digest()
 
     def msg_digest_active(self):
@@ -316,11 +337,13 @@ class Kdf(object):
         Returns:
             bool: an indication if the message digest is suspended or active.
         """
+
         return self._msg_digest_active
 
     def resume_msg_digest(self):
         """Change the state of the message digest to active
         """
+
         self._msg_digest_active = True
 
     def prf(self, secret, label, seed, size):
@@ -335,12 +358,13 @@ class Kdf(object):
         Returns:
             bytes: A bytearray as long as specified by the size parameter.
         """
+
         return self._backend.prf(secret, label, seed, size)
 
     def hkdf_extract(self, secret, salt):
         """HKDF-extract function for TLS1.3
 
-        Arguments
+        Arguments:
             secret (bytes): The secret used for the extract function.
             salt (bytes): The salt for the extract function.
 
@@ -348,6 +372,7 @@ class Kdf(object):
             bytes: The byte sequence generated having the same length than the
             hash algorithm used in the underlying hash function.
         """
+
         return self._backend.hkdf_extract(secret, salt)
 
     def hkdf_expand_label(self, secret, label, msg_digest, length):
@@ -363,4 +388,5 @@ class Kdf(object):
         Returns:
             bytes: A bytearray as long as specified by the length parameter.
         """
+
         return self._backend.hkdf_expand_label(secret, label, msg_digest, length)

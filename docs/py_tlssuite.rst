@@ -2,6 +2,6 @@ Module tlssuite
 ---------------
 
 .. automodule:: tlsmate.tlssuite
+   :noindex:
    :members:
-   :undoc-members:
    :show-inheritance:

@@ -12,7 +12,7 @@ import math
 from tlsmate import msg
 from tlsmate import tls
 from tlsmate import utils
-from tlsmate.plugin import Worker
+from tlsmate.plugin import WorkerPlugin
 
 # import other stuff
 import gmpy2
@@ -22,12 +22,12 @@ def _rsa_encrypt(msg, e, n, mod_bytes):
     return int(gmpy2.powmod(msg, e, n)).to_bytes(mod_bytes, byteorder="big")
 
 
-class ScanRobot(Worker):
+class ScanRobot(WorkerPlugin):
     name = "robot"
     descr = "check if server is vulnerable to ROBOT vulnerability"
     prio = 41
 
-    def get_oracle_results(self, with_ccs):
+    def _get_oracle_results(self, with_ccs):
         def cke_pre_serialization(message):
             message.rsa_encrypted_pms = self.enc_pms
 
@@ -56,13 +56,13 @@ class ScanRobot(Worker):
 
         return results
 
-    def determine_status(self):
+    def _determine_status(self):
         for send_ccs_finished in [True, False]:
-            results = self.get_oracle_results(send_ccs_finished)
+            results = self._get_oracle_results(send_ccs_finished)
             if len(set(results)) == 1:
                 continue
 
-            results2 = self.get_oracle_results(send_ccs_finished)
+            results2 = self._get_oracle_results(send_ccs_finished)
             for res1, res2 in zip(results, results2):
                 if res1 != res2:
                     return tls.RobotVulnerability.INCONSITENT_RESULTS
@@ -119,7 +119,7 @@ class ScanRobot(Worker):
                         pms_bad_in4,
                     ]
                 ]
-                status = self.determine_status()
+                status = self._determine_status()
 
         else:
             status = tls.RobotVulnerability.NOT_APPLICABLE

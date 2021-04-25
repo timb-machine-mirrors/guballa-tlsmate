@@ -1,6 +1,6 @@
 .. _CLI_Reference_Documentation:
 
-CLI Reference Documentation
+CLI reference documentation
 ===========================
 
 .. argparse::

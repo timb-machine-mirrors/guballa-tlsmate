@@ -35,11 +35,13 @@ class RecordLayer(object):
         """Protects a fragment and adds it to the send queue.
 
         Arguments:
-            rl_msg (:obj:`tlsmate.structures.RecordLayerMsg`): The record layer
+            rl_msg (:obj:`tlsmate.structs.RecordLayerMsg`): The record layer
                 message to be sent.
         """
+
         if self._write_state is not None:
             rl_msg = self._write_state.protect_msg(rl_msg)
+
         self._send_buffer.extend(pdu.pack_uint8(rl_msg.content_type.value))
         self._send_buffer.extend(pdu.pack_uint16(rl_msg.version.value))
         self._send_buffer.extend(pdu.pack_uint16(len(rl_msg.fragment)))
@@ -53,11 +55,12 @@ class RecordLayer(object):
         Each fragment is then protected (if applicable) and added to the send queue.
 
         Arguments:
-            rl_msg (:obj:`tlsmate.structures.RecordLayerMsg`): The message to be sent.
+            rl_msg (:obj:`tlsmate.structs.RecordLayerMsg`): The message to be sent.
         """
         if len(rl_msg.fragment) <= self._fragment_max_size:
             self._send_fragment(rl_msg)
             return
+
         message = rl_msg.fragment
         while len(message) > self._fragment_max_size:
             frag = message[: self._fragment_max_size]
@@ -69,6 +72,7 @@ class RecordLayer(object):
                     fragment=frag,
                 )
             )
+
         if len(message):
             self._send_fragment(
                 structs.RecordLayerMsg(
@@ -91,23 +95,27 @@ class RecordLayer(object):
         flush method to do so.
 
         Arguments:
-            message (:obj:`tlsmate.structures.RecordLayerMsg`): The message to send.
+            message (:obj:`tlsmate.structs.RecordLayerMsg`): The message to send.
         """
+
         if message.content_type is tls.ContentType.SSL2:
             self._ssl2 = True
             self._send_buffer.extend(pdu.pack_uint16(len(message.fragment) | 0x8000))
             self._send_buffer.extend(message.fragment)
+
         else:
             self._fragment(message)
 
     def open_socket(self):
         """Opens the socket
         """
+
         self._socket.open_socket(self.endpoint)
 
     def close_socket(self):
         """Closes the socket. Obviously.
         """
+
         self._socket.close_socket()
 
     def flush(self):
@@ -116,6 +124,7 @@ class RecordLayer(object):
         This function is useful if e.g. multiple handshake messages shall be sent
         in one record layer message.
         """
+
         self._socket.sendall(self._send_buffer)
         self._send_buffer = bytearray()
 
@@ -127,13 +136,14 @@ class RecordLayer(object):
                 parameter is optional and defaults to 5 seconds.
 
         Returns:
-            :obj:`tlsmate.structures.RecordLayerMsg`:
+            :obj:`tlsmate.structs.RecordLayerMsg`:
             A complete record layer message. If a timeout occurs, None is returned.
 
         Raises:
             FatalAlert: If anything went wrong, e.g. message could not be
                 authenticated, wrong padding, etc.
         """
+
         # wait for record layer header
         rl_len = 2 if self._ssl2 else 5
         while len(self._receive_buffer) < rl_len:
@@ -141,6 +151,7 @@ class RecordLayer(object):
             if data is None or not len(data):
                 # TODO: timeout
                 return None
+
             self._receive_buffer.extend(data)
 
         if self._ssl2:
@@ -151,8 +162,10 @@ class RecordLayer(object):
                 length &= 0x3FFF  # don't evaluate is-escape bit
                 offset += 1  # skip padding byte
                 rl_len = 3
+
             else:
                 length &= 0x7FFF
+
         else:
             content_type, offset = pdu.unpack_uint8(self._receive_buffer, 0)
             content_type = tls.ContentType.val2enum(content_type, alert_on_failure=True)
@@ -165,6 +178,7 @@ class RecordLayer(object):
             if data is None or not len(data):
                 # TODO: timeout
                 return None
+
             self._receive_buffer.extend(data)
 
         # here we have received at least a complete record layer fragment
@@ -177,6 +191,7 @@ class RecordLayer(object):
 
         if self._read_state is None:
             return rl_msg
+
         else:
             return self._read_state.unprotect_msg(rl_msg)
 
@@ -186,14 +201,16 @@ class RecordLayer(object):
         I.e. sent or received fragments are encrypted and authenticated.
 
         Arguments:
-            new_state (:obj:`tlsmate.structures.StateUpdateParams`): A complete
+            new_state (:obj:`tlsmate.structs.StateUpdateParams`): A complete
                 state (either a read state or a write state), containing the
                 keying material for the symmetric ciphers and other relevant elements.
         """
+
         state = RecordLayerState(new_state)
         if new_state.is_write_state:
             self._write_state = state
             state_type = "WRITE"
+
         else:
             self._read_state = state
             state_type = "READ"
@@ -202,5 +219,6 @@ class RecordLayer(object):
         logging.debug(f"{state_type} enc key: {pdu.dump(state._keys.enc)}")
         if state._iv:
             logging.debug(f"{state_type} iv: {pdu.dump(state._iv)}")
+
         if state._keys.mac:
             logging.debug(f"{state_type} hmac key: {pdu.dump(state._keys.mac)}")

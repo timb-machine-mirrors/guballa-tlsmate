@@ -4,14 +4,14 @@
 # import basic stuff
 
 # import own stuff
-from tlsmate.plugin import Worker
+from tlsmate.plugin import WorkerPlugin
 from tlsmate import utils
 
 # import other stuff
 
 
-class ReadProfileWorker(Worker):
-    """Worker class which deserializes a server profile in Yaml format
+class ReadProfileWorker(WorkerPlugin):
+    """WorkerPlugin class which deserializes a server profile in Yaml format
     """
 
     name = "profile_reader"
@@ -23,8 +23,8 @@ class ReadProfileWorker(Worker):
             self.server_profile.load(utils.deserialize_data(read_profile))
 
 
-class DumpProfileWorker(Worker):
-    """Worker class which serializes a server profile.
+class DumpProfileWorker(WorkerPlugin):
+    """WorkerPlugin class which serializes a server profile.
     """
 
     name = "profile_dumper"

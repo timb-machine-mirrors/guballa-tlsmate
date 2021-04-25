@@ -1,5 +1,21 @@
 # -*- coding: utf-8 -*-
 """Module containing various mapping tables
+
+Attributes:
+    supported_cipher_suites (dict): maps :obj:`tlsmate.tls.CipherSuite` to
+        :obj:`tlsmate.structs.CipherSuite` objects
+
+    supported_ciphers (dict): maps :obj:`tlsmate.tls.SymmetricCipher` to
+        :obj:`tlsmate.structs.Cipher` objects
+
+    supported_macs (dict): maps :obj:`tlsmate.tls.HashPrimitive` to
+        :obj:`tlsmate.structs.Mac` objects
+
+    key_exchange (dict): maps :obj:`tlsmate.tls.KeyExchangeAlgorithm` to
+        :obj:`tlsmate.structs.KeyExchange` objects
+
+    curve_to_group (dict): maps supported group strings to
+        :obj:`tlsmate.tls.SupportedGroups` objects
 """
 # import basic stuff
 

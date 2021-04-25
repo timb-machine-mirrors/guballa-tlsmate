@@ -1,5 +1,38 @@
 # -*- coding: utf-8 -*-
 """Module containing the server profile class
+
+The class :class:`ServerProfile` is the base for storing TLS server scan results.
+A basic work flow for a server scan is as follows:
+
+* The server profile is initialized and contains no data at the beginning.
+
+* The scan is started, and the workers do their job. They are storing their
+  results in the server profile. For example, first the supported TLS versions
+  are determined together with the supported cipher suites. Next, the workers
+  scan for the supported groups and the supported signature algorithms.
+
+* At this point in time the server profile can be read by subsequent workers. E.g.,
+  DH-parameters are only checked, if the server profile contains cipher suites
+  using the DH key exchange. The DH-scanner worker will use the corresponding
+  TLS versions, cipher suites and other parameters, knowing that they are all
+  supported by the server. Then the worker will store its results in the server
+  profile as well.
+
+* After the scan is finished, the server profile can either be stored in a JSON/YAML
+  file, or an extract from the server profile can be displayed on the screen (by a
+  dedicated worker).
+
+The server profile can also be used as a base for customized test cases: if a
+scan has been executed against the target and the server profile has been serialized
+to a file, then this server profile can be deserialized, and thus the test case can
+use the data from it to evaluate if the feature to be tested is supported by the
+target, and if so, the server profile values can be used to initiate connection to
+the target with parameters known to be supported. This is exactly what the provided
+workers do.
+
+The YAML/JSON schema of a serialized server profile is described by the class
+:class:`ServerProfileSchema` (and its nested schema classes). Look at the code
+if you want to see the detailed structure.
 """
 # import basic stuff
 import abc
@@ -23,16 +56,16 @@ from marshmallow_oneofschema import OneOfSchema
 # #### Helper classes
 
 
-class YamlBlockStyle(str):
+class _YamlBlockStyle(str):
     """Class used to indicate that a string shall be serialized using the block style.
     """
 
 
-def literal_presenter(dumper, data):
+def _literal_presenter(dumper, data):
     return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
 
 
-yaml.add_representer(YamlBlockStyle, literal_presenter)
+yaml.add_representer(_YamlBlockStyle, _literal_presenter)
 
 
 class FieldsEnumString(fields.String):
@@ -40,15 +73,17 @@ class FieldsEnumString(fields.String):
 
     An extended enum is serialized to a string field, containing the name of the enum.
 
-    Usage:
-        In the schema class:
-            field = FieldsEnumString(enum_class=tls.Version)
+    Example:
+        ::
 
-        In the data object:
-            obj.field = tls.Version.TLS10
+            In the schema class:
+                field = FieldsEnumString(enum_class=tls.Version)
 
-        Serialized:
-            "field": "TLS10"
+            In the data object:
+                obj.field = tls.Version.TLS10
+
+            Serialized:
+                "field": "TLS10"
 
     Arguments:
         enum_class(:class:`tls.ExtendedEnum`): The enum class used for deserialization.
@@ -61,20 +96,24 @@ class FieldsEnumString(fields.String):
     def __init__(self, enum_class, **kwargs):
         if enum_class is None:
             raise ValueError("FieldsEnumString: enum_class not given")
+
         if not issubclass(enum_class, tls.ExtendedEnum):
             raise ValueError("FieldsEnumString: class must be ExtendedEnum")
+
         self.enum_class = enum_class
         super().__init__(**kwargs)
 
     def _serialize(self, value, attr, obj, **kwargs):
         if not isinstance(value, self.enum_class):
             return None
+
         return super()._serialize(value.name, attr, obj, **kwargs)
 
     def _deserialize(self, value, attr, data, **kwargs):
         ret = self.enum_class.str2enum(value)
         if ret is None:
             raise self.make_error("not_in_enum")
+
         return ret
 
 
@@ -85,7 +124,9 @@ class FieldsBytes(fields.String):
     a colon.
 
     Example:
-        b"Hallo" will be serialized to "48:61:6c:6c:6f"
+        ::
+
+            b"Hallo" will be serialized to "48:61:6c:6c:6f"
     """
 
     default_error_messages = fields.String.default_error_messages
@@ -94,6 +135,7 @@ class FieldsBytes(fields.String):
     def _serialize(self, value, attr, obj, **kwargs):
         if not isinstance(value, (bytes, bytearray)):
             return None
+
         return pdu.string(value)
 
     def _deserialize(self, value, attr, data, **kwargs):
@@ -107,7 +149,7 @@ class FieldsBlockString(fields.String):
     """
 
     def _serialize(self, value, attr, obj, **kwargs):
-        return YamlBlockStyle(value)
+        return _YamlBlockStyle(value)
 
 
 class ProfileSchema(Schema):
@@ -126,9 +168,11 @@ class ProfileSchema(Schema):
             Deserialized data, either a newly instantiated object (if given by the
             __profile_class__ class property), or the original dict.
         """
+
         cls = getattr(self, "__profile_class__")
         if cls is not None:
             return cls(data=data)
+
         return data
 
     @post_dump(pass_original=True)
@@ -142,9 +186,11 @@ class ProfileSchema(Schema):
         Returns:
             dict: the final dict representing the serialized object
         """
+
         for key in orig.__dict__:
             if not key.startswith("_") and key not in data:
                 data[key] = orig.__dict__[key]
+
         return data
 
 
@@ -414,6 +460,7 @@ class SPCertUserNotice(SPObject):
                 self.notice_reference = SPCertNoticeReference(
                     ref=notice.notice_reference
                 )
+
         else:
             self.text = notice
 
@@ -441,10 +488,12 @@ class SPDistrPoint(SPObject):
                 "Certificate extensions CrlDistrPoints: relative name "
                 "not implemented"
             )
+
         if point.crl_issuer is not None:
             logging.error(
                 "Certificate extensions CrlDistrPoints: crl_issuer not implemented"
             )
+
         if point.reasons is not None:
             logging.error(
                 "Certificate extensions CrlDistrPoints: reasons not implemented"
@@ -533,22 +582,30 @@ class SPCertExtension(SPObject):
         key_usage = []
         if value.digital_signature:
             key_usage.append(tls.CertKeyUsage.DIGITAL_SIGNATURE)
+
         if value.content_commitment:
             key_usage.append(tls.CertKeyUsage.CONTENT_COMMITMENT)
+
         if value.key_encipherment:
             key_usage.append(tls.CertKeyUsage.KEY_ENCIPHERMENT)
+
         if value.data_encipherment:
             key_usage.append(tls.CertKeyUsage.DATA_ENCIPHERMENT)
+
         if value.key_agreement:
             key_usage.append(tls.CertKeyUsage.KEY_AGREEMENT)
             if value.encipher_only:
                 key_usage.append(tls.CertKeyUsage.ENCIPHER_ONLY)
+
             if value.decipher_only:
                 key_usage.append(tls.CertKeyUsage.DECIPHER_ONLY)
+
         if value.key_cert_sign:
             key_usage.append(tls.CertKeyUsage.KEY_CERT_SIGN)
+
         if value.crl_sign:
             key_usage.append(tls.CertKeyUsage.CRL_SIGN)
+
         self.key_usage = key_usage
 
     def _ext_basic_constraints(self, value):
@@ -1095,6 +1152,7 @@ class SPCertChain(SPObject):
         self.cert_chain = [SPCertificate(cert=cert) for cert in chain.certificates]
         if chain.issues:
             self.issues = chain.issues
+
         chain.root_cert_transmitted = tls.SPBool(chain.root_cert_transmitted)
         if chain.root_cert is not None:
             self.root_certificate = SPCertificate(cert=chain.root_cert)
@@ -1266,6 +1324,17 @@ class SPVulnerabilitiesSchema(ProfileSchema):
 
 class ServerProfile(SPObject):
     """Data class for the server profile.
+
+    Attributes:
+        cert_chains (list :obj:`SPCertChain`): the list of certificate chains used
+            by the server
+        features (:obj:`SPFeatures`): the profile structure for the features supported
+            by the server
+        scan_info (:obj:`SPScanInfo`): object describing basic scan information
+        server (:obj:`SPServer`): object describing the sercer's details
+        versions (list of :obj:`SPVersion`): list versions supported by the server
+        vulnerabilities (:obj:`SPVulnerabilities`): object containing infos regarding
+            the vulnerabilities
     """
 
     def _init_from_args(self):
@@ -1279,17 +1348,19 @@ class ServerProfile(SPObject):
         self.vulnerabilities = SPVulnerabilities()
 
     def append_unique_cert_chain(self, chain):
-        """Append a chain only, if not yet present.
+        """Append a certificate chain to the profile, if not yet present.
 
         Arguments:
-            chain (bytes): the chain to add
+            chain (:obj:`tlsmate.cert.CertChain`): the chain to be added
 
         Returns:
             int: the index of the chain, which may be created newly, or it might have
-                been present already.
+            been present already.
         """
+
         if chain.digest in self._hash:
             return self._hash[chain.digest]
+
         idx = len(self._hash) + 1
         self._hash[chain.digest] = idx
         chain.id = idx
@@ -1299,53 +1370,65 @@ class ServerProfile(SPObject):
         """Get all TLS versions from the profile.
 
         Returns:
-            list(:obj:`tlsmate.constants.Version`): A list of all supported versions.
+            list(:obj:`tlsmate.tls.Version`): A list of all supported versions.
         """
+
         if exclude is None:
             exclude = []
+
         return [obj.version for obj in self.versions if obj.version not in exclude]
 
     def get_version_profile(self, version):
         """Get the profile entry for a given version.
 
         Returns:
-            :obj:`SPVersion`: the profile entry for the given version.
+            :obj:`SPVersion`: the profile entry for the given version or None, if the
+            version is not supported by the server.
         """
+
         for version_obj in self.versions:
             if version_obj.version is version:
                 return version_obj
+
         return None
 
     def get_cipher_suites(self, version):
         """Get all cipher suites for a given TLS version.
 
         Arguments:
-            version (:obj:`tlsmate.constants.Version`): The version for which to get
+            version (:obj:`tlsmate.tls.Version`): The version for which to get
                 the cipher suites for.
+
         Returns:
-            list(:obj:`tlsmate.constants.Ciphersuite`): The list of cipher suites.
+            list(:obj:`tlsmate.tls.Ciphersuite`): The list of cipher suites or None,
+            if the version is not supported by the server.
         """
+
         version_prof = self.get_version_profile(version)
         if version_prof is not None:
             if version is tls.Version.SSL20:
                 return version_prof.cipher_kinds
+
             else:
                 return version_prof.cipher_suites
+
         return None
 
     def get_supported_groups(self, version):
         """Get all supported groups for a given TLS version.
 
         Arguments:
-            version (:class:`tlsmate.constants.Version`): the TLS version to use
+            version (:class:`tlsmate.tls.Version`): the TLS version to use
 
         Returns:
             list: a list of all supported groups supported by the server for the given
-                TLS version.
+            TLS version, or None if no supported groups are available.
         """
+
         version_prof = self.get_version_profile(version)
         try:
             return version_prof.supported_groups.groups
+
         except AttributeError:
             return None
 
@@ -1353,31 +1436,34 @@ class ServerProfile(SPObject):
         """Get all signature algorithms for a given TLS version.
 
         Arguments:
-            version (:class:`tlsmate.constants.Version`): the TLS version to use
+            version (:class:`tlsmate.tls.Version`): the TLS version to use
 
         Returns:
             list: a list of all signature algorithms supported by the server for the
-                given TLS version.
+            given TLS version, or None if no signature algorithms are available.
         """
+
         version_prof = self.get_version_profile(version)
         if version_prof is not None and hasattr(version_prof, "signature_algorithms"):
             return version_prof.signature_algorithms.algorithms
+
         return None
 
     def get_profile_values(self, filter_versions, full_hs=False):
         """Get a set of some common attributes for the given TLS version(s).
 
         Arguments:
-            filter_versions (list of :class:`tlsmate.constants.Version`): the list of
+            filter_versions (list of :class:`tlsmate.tls.Version`): the list of
                 TLS versions to retrieve the data for
             full_hs (bool): an indication if only those cipher suites shall be returned
                 for which a full handshake is supported. Defaults to False.
 
         Returns:
             :obj:`tlsmate.structures.ProfileValues`: a structure that provides a list of
-                the versions, the cipher suites, the supported groups and the
-                signature algorithms
+            the versions, the cipher suites, the supported groups and the
+            signature algorithms
         """
+
         versions = []
         cipher_suites = []
         sig_algos = []
@@ -1389,6 +1475,7 @@ class ServerProfile(SPObject):
         for version in sorted(self.get_versions(), reverse=True):
             if version not in filter_versions:
                 continue
+
             # So the versions are restored in order from low to high
             versions.insert(0, version)
 
@@ -1434,6 +1521,7 @@ class ServerProfile(SPObject):
         Returns:
             dict: the serializable data provided as a dict.
         """
+
         return ServerProfileSchema().dump(self)
 
     def load(self, data):

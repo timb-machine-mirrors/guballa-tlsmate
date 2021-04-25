@@ -17,6 +17,9 @@ from tlsmate.config import Configuration
 
 
 class OpensslVersion(enum.Enum):
+    """Defines the openssl versions which are used to generate the unit tests.
+    """
+
     v1_0_1g = enum.auto()
     v1_0_2 = enum.auto()
     v1_1_1 = enum.auto()
@@ -25,6 +28,15 @@ class OpensslVersion(enum.Enum):
 
 class TlsSuiteTester(metaclass=abc.ABCMeta):
     """Base class to define unit tests
+
+    Attributes:
+        recorder_yaml (str): the name of the yaml file with the serialized recorder
+            object
+        sp_in_yaml (str): the file name of the server profile to read and deserialize
+        sp_out_yaml (str): the file name of server profile to write and serialize
+        path (pathlib.Path): the path of the test script
+        server (str): the name of the server to use to generate the test case
+        port (int): the port number to use to generate the test case
     """
 
     recorder_yaml = None
@@ -61,8 +73,8 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
 
         Arguments:
             input_str (str): the string to provide on the STDIN pipe
-            timeout (int): the timeout to wait before providing the input in milli
-            seconds.
+            timeout (int): the timeout to wait before providing the input in
+                milliseconds.
         """
 
         if self.recorder.is_injecting():
@@ -84,6 +96,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         Returns:
             :class:`pathlib.Path`: a Path object for the yaml file
         """
+
         if name is None:
             return None
 
@@ -96,6 +109,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             is_replaying (bool): an indication if the test case is replayed or recorded.
                 Defaults to False.
         """
+
         if is_replaying:
             ini_file = None
 
@@ -104,9 +118,6 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             if not ini_file.is_file():
                 ini_file = None
 
-        # self.config = Configuration(
-        #    ini_file=ini_file, init_from_external=not is_replaying
-        # )
         self.config = Configuration()
         if not is_replaying:
             self.config.init_from_external(ini_file)
@@ -146,4 +157,5 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
     def test_entry(self):
         """Entry point for pytest.
         """
+
         self.entry(is_replaying=True)

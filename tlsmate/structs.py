@@ -176,6 +176,7 @@ class ProfileValues(NamedTuple):
     supported_groups: list = []
     signature_algorithms: list = []
     key_shares: list = []
+    """Only applicable for TLS1.3"""
 
 
 class CertSigAlgo(NamedTuple):
@@ -204,7 +205,7 @@ class ResolvedHost(NamedTuple):
 
 
 class ConfigItem(NamedTuple):
-    """A configuratio setting
+    """A configuration setting
     """
 
     name: str

@@ -5,7 +5,7 @@
 
 # import own stuff
 
-from tlsmate.plugin import Worker
+from tlsmate.plugin import WorkerPlugin
 from tlsmate import tls
 from tlsmate import utils
 from tlsmate import pdu
@@ -376,8 +376,8 @@ def _check_version(version, reference):
     return apply_mood(txt, mood)
 
 
-class TextProfileWorker(Worker):
-    """Worker class which serializes a server profile.
+class TextProfileWorker(WorkerPlugin):
+    """WorkerPlugin class which serializes a server profile.
     """
 
     name = "text_profile_dumper"

@@ -6,7 +6,7 @@ from typing import NamedTuple
 
 # import own stuff
 from tlsmate import tls
-from tlsmate.plugin import Worker
+from tlsmate.plugin import WorkerPlugin
 from tlsmate import msg
 from tlsmate import utils
 from tlsmate.dh_numbers import DHNumbers, KnownDhGroups, dh_number_digest
@@ -70,7 +70,7 @@ class _DhGroupCache(object):
         version_prof.dh_groups = groups_prof
 
 
-class ScanDhGroups(Worker):
+class ScanDhGroups(WorkerPlugin):
     name = "dh_groups"
     descr = "check for DH groups"
     prio = 30

@@ -20,8 +20,12 @@ class Extension(metaclass=abc.ABCMeta):
     """
 
     @abc.abstractmethod
-    def serialize_ext_body(self):
+    def _serialize_ext_body(self, conn):
         """Serializes the content of an extension, i.e. excluding the header.
+
+        Arguments:
+            conn (:obj:`tlsmate.connection.TlsConnection`): the connection object
+                that will be used to send this extensions.
 
         Returns:
             bytes: The serialized extensions body.
@@ -39,11 +43,13 @@ class Extension(metaclass=abc.ABCMeta):
         Returns:
             bytes: The serialized extension.
         """
-        ext_body = self.serialize_ext_body(conn)
+        ext_body = self._serialize_ext_body(conn)
         if self.extension_id is tls.Extension.UNKNOW_EXTENSION:
             ext_id = self.id
+
         else:
             ext_id = self.extension_id.value
+
         ext = bytearray(pdu.pack_uint16(ext_id))
         ext.extend(pdu.pack_uint16(len(ext_body)))
         ext.extend(ext_body)
@@ -58,8 +64,8 @@ class Extension(metaclass=abc.ABCMeta):
             offset (int): The offset within the fragment where the extension starts.
 
         Returns:
-            :obj:`Extension`, new offset: The deserialized extension as an
-                python object and the new offset into the fragment.
+            tuple (:obj:`Extension`, new offset): The deserialized extension as an
+            python object and the new offset into the fragment.
         """
         ext_id_int, offset = pdu.unpack_uint16(fragment, offset)
         ext_id = tls.Extension.val2enum(ext_id_int)
@@ -68,9 +74,18 @@ class Extension(metaclass=abc.ABCMeta):
         cls_name = deserialization_map.get(ext_id)
         if cls_name is None:
             return ExtUnknownExtension(id=ext_id_int, bytes=fragment)
+
         extension = cls_name()
-        extension.deserialize_ext_body(ext_body)
+        extension._deserialize_ext_body(ext_body)
         return extension, offset
+
+    @abc.abstractmethod
+    def _deserialize_ext_body(self, fragment):
+        """Deserializes the body of an extension.
+
+        Arguments:
+            fragment (bytes): the body of the extension in binary format
+        """
 
 
 class ExtUnknownExtension(Extension):
@@ -87,10 +102,10 @@ class ExtUnknownExtension(Extension):
         self.id = None
         self.bytes = None
 
-    def serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, conn):
         return self.bytes
 
-    def deserialize_ext_body(self, fragment):
+    def _deserialize_ext_body(self, fragment):
         # deserialization implemented in base class.
         pass
 
@@ -103,13 +118,13 @@ class ExtServerNameIndication(Extension):
     """
 
     extension_id = tls.Extension.SERVER_NAME
-    """:obj:`tlsmate.constants.Extension.SERVER_NAME`
+    """:obj:`tlsmate.tls.Extension.SERVER_NAME`
     """
 
-    def __init__(self, **kwargs):
-        self.host_name = kwargs.get("host_name")
+    def __init__(self, host_name=None):
+        self.host_name = host_name
 
-    def serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, conn):
         # we only support exacly one list element: host_name
         ext = bytearray(pdu.pack_uint8(0))  # host_name
         ext.extend(pdu.pack_uint16(len(self.host_name)))
@@ -118,21 +133,24 @@ class ExtServerNameIndication(Extension):
         ext_body.extend(ext)
         return ext_body
 
-    def deserialize_ext_body(self, fragment):
+    def _deserialize_ext_body(self, fragment):
         if not len(fragment):
             return
+
         list_length, offset = pdu.unpack_uint16(fragment, 0)
         if offset + list_length != len(fragment):
             raise FatalAlert(
                 f"Extension {self.extension_id}: list length incorrect",
                 tls.AlertDescription.DECODE_ERROR,
             )
+
         while offset < len(fragment):
             name_type, offset = pdu.unpack_uint8(fragment, offset)
             name_length, offset = pdu.unpack_uint16(fragment, offset)
             name, offset = pdu.unpack_bytes(fragment, offset, name_length)
             if name_type == 0:
                 self.host_name = name.decode()
+
         if self.host_name is None:
             raise FatalAlert(
                 f"{self.extension_id}: host_name not present",
@@ -145,13 +163,13 @@ class ExtExtendedMasterSecret(Extension):
     """
 
     extension_id = tls.Extension.EXTENDED_MASTER_SECRET
-    """:obj:`tlsmate.constants.Extension.EXTENDED_MASTER_SECRET`
+    """:obj:`tlsmate.tls.Extension.EXTENDED_MASTER_SECRET`
     """
 
-    def serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, conn):
         return b""
 
-    def deserialize_ext_body(self, ext_body):
+    def _deserialize_ext_body(self, ext_body):
         if ext_body:
             raise FatalAlert(
                 f"Message length error for {self.extension_id}",
@@ -164,13 +182,13 @@ class ExtEncryptThenMac(Extension):
     """
 
     extension_id = tls.Extension.ENCRYPT_THEN_MAC
-    """:obj:`tlsmate.constants.Extension.ENCRYPT_THEN_MAC`
+    """:obj:`tlsmate.tls.Extension.ENCRYPT_THEN_MAC`
     """
 
-    def serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, conn):
         return b""
 
-    def deserialize_ext_body(self, ext_body):
+    def _deserialize_ext_body(self, ext_body):
         if ext_body:
             raise FatalAlert(
                 f"Message length error for {self.extension_id}",
@@ -186,20 +204,20 @@ class ExtRenegotiationInfo(Extension):
     """
 
     extension_id = tls.Extension.RENEGOTIATION_INFO
-    """:obj:`tlsmate.constants.Extension.RENEGOTIATION_INFO`
+    """:obj:`tlsmate.tls.Extension.RENEGOTIATION_INFO`
     """
 
-    def __init__(self, **kwargs):
-        self.renegotiated_connection = kwargs.get("renegotiated_connection", b"\0")
+    def __init__(self, renegotiated_connection=b"\0"):
+        self.renegotiated_connection = renegotiated_connection
 
-    def serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, conn):
         ext_body = (
             pdu.pack_uint8(len(self.renegotiated_connection))
             + self.renegotiated_connection
         )
         return ext_body
 
-    def deserialize_ext_body(self, ext_body):
+    def _deserialize_ext_body(self, ext_body):
         length, offset = pdu.unpack_uint8(ext_body, 0)
         self.renegotiated_connection, offset = pdu.unpack_bytes(
             ext_body, offset, length
@@ -210,80 +228,87 @@ class ExtEcPointFormats(Extension):
     """Represents the EcPointFormat extension.
 
     Attributes:
-        point_formats (list of :obj:`tlsmate.constants.EcPointFormat`): The list
-        of supported point formats.
+        ec_point_formats (list of :obj:`tlsmate.tls.EcPointFormat`): The list
+            of supported point formats.
     """
 
     extension_id = tls.Extension.EC_POINT_FORMATS
-    """:obj:`tlsmate.constants.Extension.EC_POINT_FORMATS`
+    """:obj:`tlsmate.tls.Extension.EC_POINT_FORMATS`
     """
 
-    def __init__(self, **kwargs):
-        self.point_formats = kwargs.get(
-            "point_formats", [tls.EcPointFormat.UNCOMPRESSED]
+    def __init__(self, ec_point_formats=None):
+        self.ec_point_formats = (
+            ec_point_formats if ec_point_formats else [tls.EcPointFormat.UNCOMPRESSED]
         )
 
-    def serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, conn):
         format_list = bytearray()
-        for point_format in self.point_formats:
+        for point_format in self.ec_point_formats:
             if type(point_format) == int:
                 format_list.extend(pdu.pack_uint8(point_format))
+
             else:
                 format_list.extend(pdu.pack_uint8(point_format.value))
+
         ext_body = bytearray()
         ext_body.extend(pdu.pack_uint8(len(format_list)))
         ext_body.extend(format_list)
         return ext_body
 
-    def deserialize_ext_body(self, ext_body):
-        self.point_formats = []
+    def _deserialize_ext_body(self, ext_body):
+        self.ec_point_formats = []
         length, offset = pdu.unpack_uint8(ext_body, 0)
         if offset + length != len(ext_body):
             raise FatalAlert(
                 f"Message length error for {self.extension_id}",
                 tls.AlertDescription.DECODE_ERROR,
             )
+
         for i in range(length):
             point_format, offset = pdu.unpack_uint8(ext_body, offset)
-            self.point_formats.append(tls.EcPointFormat.val2enum(point_format))
+            self.ec_point_formats.append(tls.EcPointFormat.val2enum(point_format))
 
 
 class ExtSupportedGroups(Extension):
     """Represents the SupportedGroup extension.
 
     Attributes:
-        supported_groups (list of :obj:`tlsmate.constants.SupportedGroup`): The list
-        of supported groups.
+        supported_groups (list of :obj:`tlsmate.tls.SupportedGroup`): The list
+            of supported groups.
     """
 
     extension_id = tls.Extension.SUPPORTED_GROUPS
-    """:obj:`tlsmate.constants.Extension.SUPPORTED_GROUPS`
+    """:obj:`tlsmate.tls.Extension.SUPPORTED_GROUPS`
     """
 
-    def __init__(self, **kwargs):
-        self.supported_groups = kwargs.get("supported_groups", [])
+    def __init__(self, supported_groups=None):
+        self.supported_groups = supported_groups if supported_groups else []
 
-    def serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, conn):
         group_list = bytearray()
         for group in self.supported_groups:
             if type(group) == int:
                 group_list.extend(pdu.pack_uint16(group))
+
             else:
                 group_list.extend(pdu.pack_uint16(group.value))
+
         ext_body = bytearray()
         ext_body.extend(pdu.pack_uint16(len(group_list)))
         ext_body.extend(group_list)
         return ext_body
 
-    def deserialize_ext_body(self, ext_body):
+    def _deserialize_ext_body(self, ext_body):
         length, offset = pdu.unpack_uint16(ext_body, 0)
         end_of_list = offset + length
         while offset < end_of_list:
             group, offset = pdu.unpack_uint16(ext_body, offset)
             try:
                 group = tls.SupportedGroups(group)
+
             except ValueError:
                 pass
+
             self.supported_groups.append(group)
 
 
@@ -291,40 +316,45 @@ class ExtSignatureAlgorithms(Extension):
     """Represents the SignatureAlgorithms extension.
 
     Attributes:
-        signature_algorithms (list of :obj:`tlsmate.constants.SignatureScheme`): The
-        of supported signature algorithms.
+        signature_algorithms (list of :obj:`tlsmate.tls.SignatureScheme`): The
+            of supported signature algorithms.
     """
 
     extension_id = tls.Extension.SIGNATURE_ALGORITHMS
-    """:obj:`tlsmate.constants.Extension.SIGNATURE_ALGORITHMS`
+    """:obj:`tlsmate.tls.Extension.SIGNATURE_ALGORITHMS`
     """
 
-    def __init__(self, **kwargs):
-        self.signature_algorithms = kwargs.get("signature_algorithms", [])
+    def __init__(self, signature_algorithms=None):
+        self.signature_algorithms = signature_algorithms if signature_algorithms else []
 
-    def serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, conn):
         algo_list = bytearray()
         for algo in self.signature_algorithms:
             if type(algo) == int:
                 algo_list.extend(pdu.pack_uint16(algo))
+
             elif type(algo) == tls.SignatureScheme:
                 algo_list.extend(pdu.pack_uint16(algo.value))
+
             elif type(algo) == tuple:
                 pass  # TODO
+
         ext_body = bytearray()
         ext_body.extend(pdu.pack_uint16(len(algo_list)))
         ext_body.extend(algo_list)
         return ext_body
 
-    def deserialize_ext_body(self, ext_body):
+    def _deserialize_ext_body(self, ext_body):
         length, offset = pdu.unpack_uint16(ext_body, 0)
         end_of_list = offset + length
         while offset < end_of_list:
             algo, offset = pdu.unpack_uint16(ext_body, offset)
             try:
                 algo = tls.SignatureScheme(algo)
+
             except ValueError:
                 pass
+
             self.signature_algorithms.append(algo)
 
 
@@ -336,16 +366,16 @@ class ExtCertificateAuthorities(Extension):
     """
 
     extension_id = tls.Extension.CERTIFICATE_AUTHORITIES
-    """:obj:`tlsmate.constants.Extension.CERTIFICATE_AUTHORITIES`
+    """:obj:`tlsmate.tls.Extension.CERTIFICATE_AUTHORITIES`
     """
 
-    def __init__(self, **kwargs):
-        self.authorities = kwargs.get("authorities", [])
+    def __init__(self, authorities=None):
+        self.authorities = authorities if authorities else []
 
-    def serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, conn):
         raise NotImplementedError(f"serialization of extension {self} not implemented")
 
-    def deserialize_ext_body(self, ext_body):
+    def _deserialize_ext_body(self, ext_body):
         length, offset = pdu.unpack_uint16(ext_body, 0)
         end_of_list = offset + length
         while offset < end_of_list:
@@ -362,19 +392,20 @@ class ExtSessionTicket(Extension):
     """
 
     extension_id = tls.Extension.SESSION_TICKET
-    """:obj:`tlsmate.constants.Extension.SIGNATURE_ALGORITHMS`
+    """:obj:`tlsmate.tls.Extension.SESSION_TICKET`
     """
 
-    def __init__(self, **kwargs):
-        self.ticket = kwargs.get("ticket")
+    def __init__(self, ticket=None):
+        self.ticket = ticket
 
-    def serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, conn):
         ext_body = bytearray()
         if self.ticket is not None:
             ext_body.extend(self.ticket)
+
         return ext_body
 
-    def deserialize_ext_body(self, ext_body):
+    def _deserialize_ext_body(self, ext_body):
         pass
 
 
@@ -382,27 +413,28 @@ class ExtSupportedVersions(Extension):
     """Represents the SupportedVersion extension.
 
     Attributes:
-        versions (list of :obj:`tlsmate.constants.Version`): The list of TLS versions
+        versions (list of :obj:`tlsmate.tls.Version`): The list of TLS versions
             supported.
     """
 
     extension_id = tls.Extension.SUPPORTED_VERSIONS
-    """:obj:`tlsmate.constants.Extension.SUPPORTED_VERSIONS`
+    """:obj:`tlsmate.tls.Extension.SUPPORTED_VERSIONS`
     """
 
-    def __init__(self, **kwargs):
-        self.versions = kwargs.get("versions")
+    def __init__(self, versions=None):
+        self.versions = versions
 
-    def serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, conn):
         versions = bytearray()
         for version in self.versions:
             versions.extend(pdu.pack_uint16(version.value))
+
         ext_body = bytearray()
         ext_body.extend(pdu.pack_uint8(len(versions)))
         ext_body.extend(versions)
         return ext_body
 
-    def deserialize_ext_body(self, ext_body):
+    def _deserialize_ext_body(self, ext_body):
         self.versions = []
         offset = 0
         while offset < len(ext_body):
@@ -420,30 +452,31 @@ class ExtKeyShare(Extension):
     provided in the SupportedGroup extension.
 
     Attributes:
-        key_shares (list of :obj:`tlsmate.constants.SupportedGroup`): The list of
+        key_shares (list of :obj:`tlsmate.tls.SupportedGroup`): The list of
             supported groups for which key shares shall be generated.
     """
 
     extension_id = tls.Extension.KEY_SHARE
-    """:obj:`tlsmate.constants.Extension.SIGNATURE_ALGORITHMS`
+    """:obj:`tlsmate.tls.Extension.KEY_SHARE`
     """
 
-    def __init__(self, **kwargs):
-        self.key_shares = kwargs.get("key_shares")
+    def __init__(self, key_shares=None):
+        self.key_shares = key_shares
 
-    def serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, conn):
         key_shares = bytearray()
         for group in self.key_shares:
             key_shares.extend(pdu.pack_uint16(group.value))
             share = conn.get_key_share(group)
             key_shares.extend(pdu.pack_uint16(len(share)))
             key_shares.extend(share)
+
         ext_body = bytearray()
         ext_body.extend(pdu.pack_uint16(len(key_shares)))
         ext_body.extend(key_shares)
         return ext_body
 
-    def deserialize_ext_body(self, ext_body):
+    def _deserialize_ext_body(self, ext_body):
         self.key_shares = []
         offset = 0
         while offset < len(ext_body):
@@ -467,14 +500,14 @@ class ExtPreSharedKey(Extension):
     """
 
     extension_id = tls.Extension.PRE_SHARED_KEY
-    """:obj:`tlsmate.constants.Extension.PRE_SHARED_KEY`
+    """:obj:`tlsmate.tls.Extension.PRE_SHARED_KEY`
     """
 
-    def __init__(self, **kwargs):
-        self.psks = kwargs.get("psks")
+    def __init__(self, psks=None):
+        self.psks = psks
         self._bytes_after_ids = 0
 
-    def serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, conn):
         identities = bytearray()
         binders = bytearray()
         for psk in self.psks:
@@ -498,7 +531,7 @@ class ExtPreSharedKey(Extension):
 
         return ext_body
 
-    def deserialize_ext_body(self, ext_body):
+    def _deserialize_ext_body(self, ext_body):
         self.selected_id, offset = pdu.unpack_uint16(ext_body, 0)
 
 
@@ -506,24 +539,25 @@ class ExtPskKeyExchangeMode(Extension):
     """Represents the psk_key_exchange_mode extension.
 
     Attributes:
-        modes (list of :obj:`tlsmate.constants.PskKeyExchangeMode`): The list of
+        modes (list of :obj:`tlsmate.tls.PskKeyExchangeMode`): The list of
             the PSK key exchange modes to offer to the server.
     """
 
     extension_id = tls.Extension.PSK_KEY_EXCHANGE_MODES
-    """:obj:`tlsmate.constants.Extension.PSK_KEY_EXCHANGE_MODES`
+    """:obj:`tlsmate.tls.Extension.PSK_KEY_EXCHANGE_MODES`
     """
 
-    def __init__(self, **kwargs):
-        self.modes = kwargs.get("modes")
+    def __init__(self, modes=None):
+        self.modes = modes
 
-    def serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, conn):
         ext_body = bytearray(pdu.pack_uint8(len(self.modes)))
         for mode in self.modes:
             ext_body.extend(pdu.pack_uint8(mode.value))
+
         return ext_body
 
-    def deserialize_ext_body(self, ext_body):
+    def _deserialize_ext_body(self, ext_body):
         raise NotImplementedError
 
 
@@ -532,19 +566,20 @@ class ExtEarlyData(Extension):
     """
 
     extension_id = tls.Extension.EARLY_DATA
-    """:obj:`tlsmate.constants.Extension.EARLY_DATA`
+    """:obj:`tlsmate.tls.Extension.EARLY_DATA`
     """
 
-    def __init__(self, **kwargs):
-        self.max_early_data_size = kwargs.get("max_early_data_size")
+    def __init__(self, max_early_data_size=None):
+        self.max_early_data_size = max_early_data_size
 
-    def serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, conn):
         if self.max_early_data_size is None:
             return b""
+
         else:
             return bytes(pdu.pack_uint32(self.max_early_data_size))
 
-    def deserialize_ext_body(self, ext_body):
+    def _deserialize_ext_body(self, ext_body):
         if ext_body:
             self.max_early_data_size, _ = pdu.unpack_uint32(ext_body, 0)
 
@@ -554,13 +589,13 @@ class ExtPostHandshakeAuth(Extension):
     """
 
     extension_id = tls.Extension.POST_HANDSHAKE_AUTH
-    """:obj:`tlsmate.constants.Extension.POST_HANDSHAKE_AUTH`
+    """:obj:`tlsmate.tls.Extension.POST_HANDSHAKE_AUTH`
     """
 
-    def serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, conn):
         return b""
 
-    def deserialize_ext_body(self, ext_body):
+    def _deserialize_ext_body(self, ext_body):
         if ext_body:
             raise FatalAlert(
                 f"Message length error for {self.extension_id}",

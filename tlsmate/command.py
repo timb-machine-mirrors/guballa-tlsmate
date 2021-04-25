@@ -9,20 +9,14 @@ import pkgutil
 # import own stuff
 from tlsmate.config import Configuration
 from tlsmate.tlsmate import TlsMate
-from tlsmate.plugin import PluginManager
+from tlsmate.plugin import CliManager
 from tlsmate import utils
 from tlsmate.version import __version__
 
 # import other stuff
 
 
-def print_version():
-    """Prints the version.
-    """
-    print(__version__)
-
-
-def args_authentication(parser):
+def _args_authentication(parser):
     """Defines the arguments for authentication via certificates
     """
     group = parser.add_argument_group(title="X509 certificates options")
@@ -146,14 +140,14 @@ def build_parser():
         type=str,
     )
 
-    args_authentication(parser)
+    _args_authentication(parser)
 
-    PluginManager.add_args(parser)
+    CliManager.add_args(parser)
 
     return parser
 
 
-def args_consistency(args, parser):
+def _args_consistency(args, parser):
     """Check the consistency of the given args which cannot be checked by argparse.
 
     Arguments:
@@ -180,14 +174,14 @@ def main():
     parser = build_parser()
 
     args = parser.parse_args()
-    args_consistency(args, parser)
+    _args_consistency(args, parser)
 
     # logging must be setup before the first log is generated.
     utils.set_logging(args.logging)
 
     config = Configuration()
 
-    PluginManager.register_config(config)
+    CliManager.register_config(config)
 
     config.init_from_external(args.config_file)
 
@@ -203,20 +197,18 @@ def main():
     config.set("sni", args.sni)
     config.set("key_log_file", args.key_log_file)
 
-    PluginManager.args_parsed(args, parser, config)
+    CliManager.args_parsed(args, parser, config)
 
     tlsmate = TlsMate(config=config)
     tlsmate.work_manager.run(tlsmate)
 
 
-PluginManager.reset()
+CliManager.reset()
 
 # And now load the plugins which are shipped by default with tlsmate...
 from tlsmate.plugins import server_profile, scan  # NOQA
 
 # And now look for additional user provided plugins
-discovered_plugins = {
-    name: importlib.import_module(name)
-    for finder, name, ispkg in pkgutil.iter_modules()
-    if name.startswith("tlsmate_")
-}
+for finder, name, ispkg in pkgutil.iter_modules():
+    if name.startswith("tlsmate_"):
+        importlib.import_module(name)

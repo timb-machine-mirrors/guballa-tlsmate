@@ -4,7 +4,7 @@
 # import basic stuff
 
 # import own stuff
-from tlsmate.plugin import Plugin, WorkManager, PluginManager
+from tlsmate.plugin import CliPlugin, WorkManager, CliManager
 from tlsmate.workers.server_profile import ReadProfileWorker, DumpProfileWorker
 from tlsmate.workers.text_server_profile import TextProfileWorker
 from tlsmate.structs import ConfigItem
@@ -12,9 +12,9 @@ from tlsmate.structs import ConfigItem
 # import other stuff
 
 
-@PluginManager.register
-class ServerProfilePlugin(Plugin):
-    """Plugin for deserializing and serializing the server profile.
+@CliManager.register
+class ServerProfilePlugin(CliPlugin):
+    """CLI plugin for deserializing and serializing the server profile.
     """
 
     prio = 10

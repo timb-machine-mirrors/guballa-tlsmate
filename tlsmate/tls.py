@@ -32,10 +32,12 @@ class ExtendedEnum(enum.Enum):
             FatalAlert: In case the given value is not a valid enum and
                 `alert_on_failure` is True
         """
+
         enum = cls._value2member_map_.get(value)
         if (enum is None) and alert_on_failure:
             message = f"Value {value} not defined for {cls}"
             raise FatalAlert(message, AlertDescription.ILLEGAL_PARAMETER)
+
         return enum
 
     @classmethod
@@ -56,10 +58,12 @@ class ExtendedEnum(enum.Enum):
             FatalAlert: In case the given name is not a valid enum and
                 `alert_on_failure` is True
         """
+
         enum = cls._member_map_.get(name)
         if (enum is None) and alert_on_failure:
             message = f"Value {name} not defined for {cls}"
             raise FatalAlert(message, AlertDescription.ILLEGAL_PARAMETER)
+
         return enum
 
     @classmethod
@@ -69,6 +73,7 @@ class ExtendedEnum(enum.Enum):
         Returns:
             list of all enum items defined for that enum
         """
+
         return list(cls.__members__.values())
 
     def __str__(self):
@@ -77,6 +82,7 @@ class ExtendedEnum(enum.Enum):
         Returns:
             str: the name of the enum item
         """
+
         return self.name
 
 
@@ -702,6 +708,7 @@ class SupportedGroups(ExtendedEnum):
         Returns:
             list (:obj:`SupportedGroups`): list of TLS1.3 supported groups
         """
+
         return [
             cls.SECP256R1,
             cls.SECP384R1,

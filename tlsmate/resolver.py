@@ -15,15 +15,15 @@ from tlsmate import structs
 
 
 def determine_transport_endpoint(endpoint):
-    """Evaluate an endpoint, (host name or an IP-address) optionally followed by a port.
+    """Evaluate an endpoint (host name or an IP-address), optionally followed by a port.
 
     Arguments:
         endpoint (str): the given transport protocol endpoint. This might be an IP
-        address or a hostname, optionally followed by a port (separated by a colon).
+            address or a hostname, optionally followed by a port (separated by a colon).
 
     Returns:
-        obj.`tlsmate.structs.TransportEndpoint`: The structure reprenting a transport
-            protocol endpoint.
+        :obj:`tlsmate.structs.TransportEndpoint`: The structure representing a transport
+        protocol endpoint.
     """
 
     if endpoint.startswith("["):
@@ -71,6 +71,7 @@ def resolve_hostname(host_name):
     Returns:
         :obj:`tlsmate.structs.ResolvedHost`: the structure for a resolved host name.
     """
+
     if host_name not in _resolved:
 
         try:
@@ -102,8 +103,9 @@ def get_ip_endpoint(endpoint):
 
     Returns:
         :obj:`tlsmate.structs.TransportEndpoint`: the endpoint, either with an IPv4
-            or IPv6 address.
+        or IPv6 address.
     """
+
     if endpoint.host_type is not tls.HostType.HOST:
         return endpoint
 

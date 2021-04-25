@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Module containing the class for the client client
+"""Module containing the class for the client
 """
 # import basic stuff
 import time
@@ -17,8 +17,8 @@ from tlsmate.connection import TlsConnection
 class Client(object):
     """The class representing a TLS client
 
-    Connections are inititiated by the TLS client, and it also stores
-    data across several connections, like session tickets.
+    Connections are initiated by the TLS client, and it also stores data across
+    several connections, like session tickets.
 
     A TLS client has a dedicated profile which controls the TLS connections,
     e.g. the supported TLS versions, the supported cipher suites and other
@@ -29,55 +29,53 @@ class Client(object):
     and not a message instance is provided in the test case.
 
     Attributes:
-        config (dict): contains the configuration
-        compression_methods (list of :obj:`CompressionMethod`):
+        config (:obj:`tlsmate.config.Configuration`): the configuration object
+        compression_methods (list of :obj:`tlsmate.tls.CompressionMethod`):
             a list of supported compression methods. This list will be used to
             populate the compression list in the ClientHello message.
-            Default: [CompressionMethod.NULL]
-
-        support_session_id (bool): An indication if the client supports resumption
+            Default: [:obj:`tlsmate.tls.CompressionMethod.NULL`]
+        support_session_id (bool): An indication if the client shall support resumption
             via the session id.
-
-        session_state_id (:obj:`SessionStateId`): the stored sessions state usable to
-            resume a session with the session_id
-        support_session_ticket: (bool): An indication if the client supports
+        session_state_id (:obj:`tlsmate.structs.SessionStateId`): the stored sessions
+            state usable to resume a session with the session_id
+        support_session_ticket: (bool): An indication if the client shall support
             resumption via the session_ticket extension
-        session_state_ticket (:obj`SessionStateTicket`): the stored sessions state
-            usable to resume a session with the session_ticket extension
+        session_state_ticket (:obj:`tlsmate.structs.SessionStateTicket`): the stored
+            sessions state usable to resume a session with the session_ticket extension
         support_sni (bool):
-            an indication if the SNI extension is supported
+            an indication if the SNI extension shall be supported
         sni (str):
             the SNI to use in the ClientHello. If None, the value will be taken from
             the configuration ("sni"). If this is None as well, it will be
             the host_name of the server.
-        support_extended_master_secret (bool): an indication if the client supports
+        support_extended_master_secret (bool): an indication if the client shall support
             the extensions EXTENDED_MASTER_SECRET
-        support_ec_point_formats (bool): an indication if the client supports
+        support_ec_point_formats (bool): an indication if the client shall support
             the extension EC_POINT_FORMATS
-        ec_point_formats (list of :obj:`EcPointFormat`): the list of supported
-            ec-point formats supported by the client. Default:
-            EcPointFormat.UNCOMPRESSED
-        supported_groups (list of :obj:`SupportedGroups`): the list of supported
-            groups supported by the client. If set to [] or None, the extension
-            will not be present in the ClientHello message.
-        signature_algorithms (list of :obj:`SignatureScheme`): the list of
+        ec_point_formats (list of :obj:`tlsmate.tls.EcPointFormat`): the list
+            of supported ec-point formats supported by the client. Default:
+            [:obj:`tlsmate.tls.EcPointFormat.UNCOMPRESSED`]
+        supported_groups (list of :obj:`tlsmate.tls.SupportedGroups`): the list
+            of supported groups supported by the client. If set to [] or None, the
+            extension will not be present in the ClientHello message.
+        signature_algorithms (list of :obj:`tlsmate.tls.SignatureScheme`): the list of
             signature algorithms supported by the client. If set to [] or None, the
             extension will not be present in the ClientHello message.
-        support_encrypt_then_mac (bool): an indication if the client supports the
+        support_encrypt_then_mac (bool): an indication if the client shall support the
             encrypt-then-mac extension
-        key_shares (list of :obj:`SupportedGroups`): this list of key share ob
+        key_shares (list of :obj:`tlsmate.tls.SupportedGroups`): the list of key share
             supported for TLS1.3.
         support_psk (bool): and indication whether the client offers a PSK with
             the ClientHello (i.e. NewSessionTicket message have been received before).
-        psks (list of :obj:`Psk`): The TLS1.3 PSKs
-        psk_key_exchange_modes (list of :obj:`tlsmate.constants.PskKeyExchangeMode`):
+        psks (list of :obj:`tlsmate.structs.Psk`): The TLS1.3 PSKs
+        psk_key_exchange_modes (list of :obj:`tlsmate.tls.PskKeyExchangeMode`):
             the list of PSK key exchange modes used in the extension
             psk_key_exchange_modes.
         early_data (bytes): The application data to be sent with 0-RTT. TLS1.3 only.
             If None, then no early data will be sent.
         alert_on_invalid_cert (bool): Controls the behavior in case a certificate or
             the complete certificate chain cannot successfully be validated.
-            If True, the connected will be closed with a fatal alert. If False,
+            If True, the connection will be closed with a fatal alert. If False,
             the connection continues. The latter is useful for scanning a server, as
             the scan would be aborted otherwise.
     """
@@ -100,8 +98,8 @@ class Client(object):
             At least the versions and the cipher_suite list must be provided before
             this profile can be used.
 
-        Compression methods is set to [tls.CompressionMethod.NULL], and by default
-        the sni extention is enabled. Everything else is empty or disabled.
+        Compression methods is set to [:obj:`tlsmate.tls.CompressionMethod.NULL`], and
+        by default the sni extension is enabled. Everything else is empty or disabled.
 
         Arguments:
             profile_values (:obj:`tlsmate.structs.ProfileValues`): the profile
@@ -150,12 +148,15 @@ class Client(object):
     def set_profile_interoperability(self):
         """Define profile for interoperability, like used in modern browsers
 
-        Properties:
+        :note:
+            This method is deprecated. Use :meth:`Client.set_profile` instead.
+
+        Profile properties:
           - TLS Versions 1.0 - 1.3
           - ECDHE cipher & RSA-based key transport
           - AESGCM, AES, CHACHA_POLY and 3DES as last resort
           - Signature algorithms: ECDSA+SHA1, RSA PKCS1+SHA1 as last resort
-          - Resumption, encrypt-then-mac, extended-mastersecret
+          - Resumption, encrypt-then-mac, extended-master-secret
           - pskmode psk_dhe
         """
         self.init_profile()
@@ -217,12 +218,15 @@ class Client(object):
     def set_profile_legacy(self):
         """Define profile for legacy like client
 
-        Properties:
+        :note:
+            This method is deprecated. Use :meth:`Client.set_profile` instead.
+
+        Profile properties:
           - TLS Versions 1.0 - 1.2
           - ECDHE cipher & DHE & RSA-based key transport
           - AESGCM, AES, CHACHA_POLY and 3DES as last resort
           - Signature algorithms: ECDSA+SHA1, RSA PKCS1+SHA1 as last resort
-          - Resumption, encrypt-then-mac, extended-mastersecret
+          - Resumption, encrypt-then-mac, extended-master-secret
         """
         self.init_profile()
         self.versions = [
@@ -284,12 +288,15 @@ class Client(object):
     def set_profile_modern(self):
         """Define profile for "modern" configurations
 
-        Properties:
+        :note:
+            This method is deprecated. Use :meth:`Client.set_profile` instead.
+
+        Profile properties:
           - TLS Versions 1.2 + 1.3
           - ECDHE cipher
           - AESGCM, CHACHA_POLY
           - signatures: ECDSA + PSS_RSAE
-          - Resumption, encrypt-then-mac, extended-mastersecret
+          - Resumption, encrypt-then-mac, extended-master-secret
           - pskmode psk_dhe
         """
         self.init_profile()
@@ -331,7 +338,10 @@ class Client(object):
     def set_profile_tls13(self):
         """Define profile for TLS1.3 only.
 
-        Properties:
+        :note:
+            This method is deprecated. Use :meth:`Client.set_profile` instead.
+
+        Profile properties:
           - TLS Version 1.3
           - AESGCM + CHACHA_POLY
           - pskmode psk_dhe
@@ -367,6 +377,12 @@ class Client(object):
         self.support_sni = True
 
     def set_profile(self, profile):
+        """Initializes the client according to the given profile.
+
+        Arguments:
+            profile (:obj:`tlsmate.tls.Profile`): the profile to which the client
+                shall be initialized.
+        """
         if profile is tls.Profile.INTEROPERABILITY:
             self.set_profile_interoperability()
         elif profile is tls.Profile.TLS13:
@@ -381,8 +397,14 @@ class Client(object):
     def create_connection(self, server=None):
         """Create a new connection object
 
+        Arguments:
+            server (str): the server endpoint to contact. If not given, the server
+                endpoint is taken from the configuration. The given string can be
+                a URL or an IP address, with the port optionally be appended (separated
+                by a colon).
+
         Returns:
-            :obj:`TlsConnection`: the created connection object
+            :obj:`tlsmate.connection.TlsConnection`: the created connection object
         """
 
         self._server = server if server is not None else self.config.get("endpoint")
@@ -397,8 +419,9 @@ class Client(object):
         """Save a session state
 
         Args:
-            session_state (:obj:`SessionStateId`): A session state to be stored on
-                the client level, usable to resume connections using the session_id
+            session_state (:obj:`tlsmate.structs.SessionStateId`): A session
+                state to be stored on the client level, usable to resume
+                connections using the session_id
         """
         self.session_state_id = session_state
 
@@ -406,7 +429,8 @@ class Client(object):
         """Get the session state (id)
 
         Returns:
-            :obj:`SessionStateId`: the session state to resume a session from
+            :obj:`tlsmate.structs.SessionStateId`: the session state to resume a
+            session from
         """
         return self.session_state_id
 
@@ -414,8 +438,9 @@ class Client(object):
         """Save a session state
 
         Args:
-            session_state (:obj:`SessionStateId`): A session state to be stored on
-                the client level, usable to resume connections using the session ticket.
+            session_state (:obj:`tlsmate.structs.SessionStateId`): A session state to be
+                stored on the client level, usable to resume connections using the
+                session ticket.
         """
         self.session_state_ticket = session_state
 
@@ -423,16 +448,18 @@ class Client(object):
         """Get the session state (ticket)
 
         Returns:
-            :obj:`SessionStateTicket`: the session state to resume a session from
+            :obj:`tlsmate.structs.SessionStateTicket`: the session state to resume a
+            session from
         """
         return self.session_state_ticket
 
     def save_psk(self, psk):
         """Save a TLS1.3 PSK
 
-        Args:
-            psk (:obj:`Psk`): A pre-shared key be stored on the client level, usable
-            to resume connections using the pre-shared key extension.
+        Arguments:
+            psk (:obj:`tlsmate.structs.Psk`): A pre-shared key be stored on the
+            client level, usable to resume connections using the pre-shared key
+            extension.
         """
         self.psks.append(psk)
 
@@ -463,7 +490,7 @@ class Client(object):
         """Populate a ClientHello message according to the current client profile
 
         Returns:
-            :obj:`ClientHello`: the ClientHello object
+            :obj:`tlsmate.msg.ClientHello`: the ClientHello object
         """
         msg = ClientHello()
         max_version = max(self.versions)

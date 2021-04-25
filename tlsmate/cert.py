@@ -122,11 +122,12 @@ def subject_matches(subject, full_domain, name_no_subdomain):
         subject (str): the subject to be checked
         full_domain (str): the full domain, e.g. "www.example.com". This argument
             should be string-prepped.
-        name_no_domain (str): the domain without the leading subdomain, e.g.
+        name_no_subdomain (str): the domain without the leading subdomain, e.g.
             ".example.com". This argument should be string_prepped.
 
     Returns:
-        bool: True, if the subject matches either the full domain or the name_no_domain
+        bool: True, if the subject matches either the full domain or the
+        name_no_subdomain
     """
     subject = string_prep(subject)
     if subject.startswith("*"):
@@ -146,14 +147,9 @@ def equal_oid(name_attrs1, name_attrs2):
     Returns:
         bool: True, if both attributes are equal as defined in RFC 5280.
     """
-    values1 = []
-    for name_attr in name_attrs1:
-        values1.append(string_prep(name_attr.value))
 
-    values2 = []
-    for name_attr in name_attrs2:
-        values2.append(string_prep(name_attr.value))
-
+    values1 = [string_prep(name_attr.value) for name_attr in name_attrs1]
+    values2 = [string_prep(name_attr.value) for name_attr in name_attrs2]
     return set(values1) == set(values2)
 
 
@@ -182,7 +178,7 @@ def equal_names(name1, name2):
     """Check two x509 names for equality
 
     Arguments:
-        name1 (:obj:` cryptography.x509.Name`): a name object as defined by the
+        name1 (:obj:`cryptography.x509.Name`): a name object as defined by the
             library crypthography.
         name2 (:obj:`cryptography.x509.Name`): an name object as defined by the
         library crypthography.
@@ -223,22 +219,32 @@ _pss_sig_alg = {
 
 
 def _verify_rsa_pkcs(cert, signature, data, hash_algo):
+    """Verify RSA PKCSv15 signatures
+    """
     cert.parsed.public_key().verify(signature, data, padding.PKCS1v15(), hash_algo())
 
 
 def _verify_dsa(cert, signature, data, hash_algo):
+    """Verify DSA signatures
+    """
     cert.parsed.public_key().verify(signature, data, hash_algo())
 
 
 def _verify_ecdsa(cert, signature, data, hash_algo):
+    """Verify ECDSA signatures
+    """
     cert.parsed.public_key().verify(signature, data, ec.ECDSA(hash_algo()))
 
 
 def _verify_xcurve(cert, signature, data, hash_algo):
+    """Verify X25519 and X488 signatures
+    """
     cert.parsed.public_key().verify(signature, data)
 
 
 def _verify_rsae_pss(cert, signature, data, hash_algo):
+    """Verify RSA-PSS signatures
+    """
     cert.parsed.public_key().verify(
         signature,
         data,
@@ -281,7 +287,7 @@ def validate_signature(cert, sig_scheme, data, signature):
 
     Arguments:
         cert (:obj:`Certificate`): The certificate to use
-        sig_scheme (:class:`tlsmate.constansts.SignatureScheme`): The signature
+        sig_scheme (:class:`tlsmate.tls.SignatureScheme`): The signature
             scheme to use
         data (bytes): the bytes for which the signature is to be validated
         signature (bytes): the signature
@@ -304,7 +310,7 @@ def map_x509_sig_scheme(x509_hash, x509_oid):
             algorithm
 
     Returns:
-        :class:`tlsmate.constants.SignatureScheme`: the signature scheme
+        :class:`tlsmate.tls.SignatureScheme`: the signature scheme
     """
     if x509_oid is sigalg_oid.RSASSA_PSS:
         sig_scheme = _pss_sig_alg(x509_hash.name)
@@ -326,6 +332,15 @@ class CrlManager(object):
         self._crls = {}
 
     def add_crl(self, url, der_crl=None, pem_crl=None):
+        """Adds a URL and the CRL to the cache.
+
+        Either der_crl or pem_crl must be given.
+
+        Arguments:
+            url (str): the URL of the CRL
+            der_crl(bytes): the CRL in DER format given as bytes
+            pem_crl(bytes): the CRL in PEM format given as bytes
+        """
         crl = None
         if der_crl is not None:
             crl = x509.load_der_x509_crl(der_crl)
@@ -336,6 +351,8 @@ class CrlManager(object):
         self._crls[url] = crl
 
     def _get_crl_obj(self, url, recorder):
+        """Get the plain CRL object for a given URL.
+        """
         if url not in self._crls:
             recorder.trace(crl_url=url)
             try:
@@ -372,7 +389,7 @@ class CrlManager(object):
                 to trace/inject externally retrieved crl.
 
         Returns:
-            :obj:`tls.CertCrlStatus`: the final status.
+            :obj:`tlsmate.tls.CertCrlStatus`: the final status.
         """
         status = None
         for url in urls:
@@ -418,6 +435,8 @@ class TrustStore(object):
             self._ca_files = ca_files
 
     def __iter__(self):
+        """Iterator over all certificates
+        """
 
         for cert in self._cert_cache:
             yield cert
@@ -431,6 +450,11 @@ class TrustStore(object):
                     yield Certificate(pem=pem_item.as_bytes())
 
     def add_cert(self, cert):
+        """Add a certificate to the trust store if not yet present.
+
+        Arguments:
+            cert (:obj:`Certificate`): The certificate to add
+        """
         if cert.fingerprint_sha256 not in self._fingerprint_cache:
             logging.debug(
                 f'adding certificate "{cert.parsed.subject.rfc4514_string()}" '
@@ -489,6 +513,10 @@ class Certificate(object):
     Arguments:
         der (bytes): the certificate in DER-format (raw bytes)
         pem (bytes): the certificate in PEM-format
+        parse (bool): whether the certificate shall be parsed (i.e., all relevant
+            data are extracted from the given der/pem structure), or if it shall just
+            be stored. In the latter case the certificate will be parsed if a
+            property is accessed.
     """
 
     def __init__(self, der=None, pem=None, parse=False):
@@ -562,6 +590,8 @@ class Certificate(object):
         return self._pem
 
     def _determine_signature_algorithms(self, public_key):
+        """For a given public key provide the compatible signature algorithms.
+        """
         if isinstance(public_key, rsa.RSAPublicKey):
             self.tls12_signature_algorithms = [
                 tls.SignatureScheme.RSA_PKCS1_SHA1,
@@ -644,6 +674,11 @@ class Certificate(object):
             self._determine_signature_algorithms(self._parsed.public_key())
 
     def _common_name(self, name):
+        """From a given name, extract the common name
+
+        Note, that there might be multiple common names present, in this case
+        simple the first one is returned.
+        """
         cns = name.get_attributes_for_oid(NameOID.COMMON_NAME)
         if not cns:
             raise CertValidationError(f'no common name for "{self}"')
@@ -651,14 +686,14 @@ class Certificate(object):
 
     @property
     def self_signed(self):
-        """Provide an indication if the certificate is self-signed.
+        """bool: Provide an indication if the certificate is self-signed.
         """
         if self._self_signed is None:
             self._self_signed = equal_names(self.parsed.subject, self.parsed.issuer)
         return self._self_signed
 
     def validate_period(self, datetime):
-        """Validate the period of the certificate agains a given timestamp.
+        """Validate the period of the certificate against a given timestamp.
 
         Arguments:
             datetime (:obj:`datetime.datetime`): the timestamp
@@ -676,14 +711,17 @@ class Certificate(object):
     def validate_subject(self, domain, raise_on_failure=True):
         """Validate if the certificate matches the given domain
 
-        It takes the subject and the subject alternatetive name into account, and
+        It takes the subject and the subject alternative name into account, and
         supports wildcards as well.
 
         Arguments:
             domain (str): the domain to check against (normally used in the SNI)
+            raise_on_failure (bool): whether an exception shall be raised if the
+                validation fails or not. Useful for a TLS scan, as the scan shall
+                continue.
 
         Raises:
-            CertValidationError: if the certificarte is not issued for the given
+            CertValidationError: if the certificate is not issued for the given
             domain
         """
         domain = string_prep(domain)
@@ -713,7 +751,7 @@ class Certificate(object):
         """Validate a signature using the public key from the certificate.
 
         Arguments:
-            sig_scheme (:class:`tlsmate.constansts.SignatureScheme`): The signature
+            sig_scheme (:class:`tlsmate.tls.SignatureScheme`): The signature
                 scheme to use
             data (bytes): the bytes for which the signature is to be validated
             signature (bytes): the signature
@@ -772,7 +810,7 @@ class CertChain(object):
 
     @property
     def digest(self):
-        """bytes: a SHA256 digest of the complete chain, usable for comparation
+        """bytes: a SHA256 digest of the complete chain, usable for comparison
         """
         if self._digest_value is None:
             self._digest_value = self._digest.finalize()
@@ -809,6 +847,8 @@ class CertChain(object):
     def _validate_linked_certs(
         self, cert, issuer_cert, crl_manager, raise_on_failure, check_crl
     ):
+        """Validate a certificate against the issuer certificate.
+        """
 
         try:
             issuer_cert.validate_signature(
@@ -883,7 +923,7 @@ class CertChain(object):
 
         Raises:
             CertValidationError: in case a certificate within the chain cannot be
-                validated and raise_on_failure is True.
+                validated and `raise_on_failure` is True.
             CertChainValidationError: in case the chain cannot be validated and
                 raise_on_failure is True.
         """
@@ -953,7 +993,7 @@ class CertChain(object):
         """Serialize the certificate chain
 
         Returns:
-            list of str: A list of certificates which build the chain. The format is a
+            list of str: A list of certificates which build the chain. The format is
             a str, representing the DER-format for each certificate.
         """
         return [cert.bytes.hex() for cert in self.certificates]
@@ -963,7 +1003,7 @@ class CertChain(object):
 
         Arguments:
             chain (list of str): The list of certificates of the chain. Each certificate
-            is represented in DER-format as a string.
+                is represented in DER-format as a string.
         """
         for cert in chain:
             self.append_bin_cert(bytes.fromhex(cert))

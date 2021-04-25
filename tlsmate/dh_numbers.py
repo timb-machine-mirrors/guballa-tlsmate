@@ -391,11 +391,23 @@ well_known_dh_params = [
 
 
 def dh_number_digest(g_val, p_val):
+    """Determine hash value for given DH parameters.
+
+    Arguments:
+        g_val (int): the value g
+        p_val (bytes): the value p
+
+    Returns:
+        int: a hash value for the given DH parameters.
+    """
+
     return hash((g_val, p_val))
 
 
 class KnownDhGroups(object):
     """Class to give access to known groups
+
+    This class comes pre-populated with known DH groups from RFC3526 and RFC7919.
     """
 
     _groups = {}
