@@ -53,6 +53,7 @@ For the other protocol versions the following messages are supported:
 * ChangeCipherSpec
 * Alert
 * ApplicationData
+* Heartbeat
 
 Cipher suites
 -------------
@@ -144,107 +145,150 @@ Extensions
 
 The following TLS extensions are supported:
 
-* SERVER_NAME
-* SUPPORTED_GROUPS
+SERVER_NAME
+-----------
 
-  All supported groups can be negotiated, but only the following ones can be
-  used for a successful handshake completion:
+Any server name can be used.
 
-  * SECP192R1
-  * SECP224R1
-  * SECP256K1
-  * SECP256R1
-  * SECP384R1
-  * SECP521R1
-  * SECT163K1
-  * SECT163R2
-  * SECT233K1
-  * SECT233R1
-  * SECT283K1
-  * SECT283R1
-  * SECT409K1
-  * SECT409R1
-  * SECT571K1
-  * SECT571R1
-  * X25519
-  * X448
-  * BRAINPOOLP256R1
-  * BRAINPOOLP384R1
-  * BRAINPOOLP512R1
-  * FFDHE2048
-  * FFDHE3072
-  * FFDHE4096
-  * FFDHE6144
-  * FFDHE8192
+SUPPORTED_GROUPS
+^^^^^^^^^^^^^^^^
 
-* EC_POINT_FORMATS
+All supported groups can be negotiated, but only the following ones can be
+used for a successful handshake completion:
 
-  All EC point formats can be negotiated, but only the following one can be
-  used for a successful handshake completion:
+* SECP192R1
+* SECP224R1
+* SECP256K1
+* SECP256R1
+* SECP384R1
+* SECP521R1
+* SECT163K1
+* SECT163R2
+* SECT233K1
+* SECT233R1
+* SECT283K1
+* SECT283R1
+* SECT409K1
+* SECT409R1
+* SECT571K1
+* SECT571R1
+* X25519
+* X448
+* BRAINPOOLP256R1
+* BRAINPOOLP384R1
+* BRAINPOOLP512R1
+* FFDHE2048
+* FFDHE3072
+* FFDHE4096
+* FFDHE6144
+* FFDHE8192
 
-  * UNCOMPRESSED
+EC_POINT_FORMATS
+^^^^^^^^^^^^^^^^
 
-* SIGNATURE_ALGORITHMS
+All EC point formats can be negotiated, but only the following one can be
+used for a successful handshake completion:
 
-  All signature algorithms can be negotiated, but only the following one can be
-  used for signing or signature validation:
+* UNCOMPRESSED
 
-  * DSA_MD5
-  * DSA_SHA1
-  * DSA_SHA224
-  * DSA_SHA256
-  * DSA_SHA384
-  * DSA_SHA512
-  * ECDSA_SECP224R1_SHA224
-  * ECDSA_SECP256R1_SHA256
-  * ECDSA_SECP384R1_SHA384
-  * ECDSA_SECP521R1_SHA512
-  * ECDSA_SHA1
-  * ED25519
-  * ED448
-  * RSA_PKCS1_MD5
-  * RSA_PKCS1_SHA1
-  * RSA_PKCS1_SHA224
-  * RSA_PKCS1_SHA256
-  * RSA_PKCS1_SHA384
-  * RSA_PKCS1_SHA512
-  * RSA_PSS_RSAE_SHA256
-  * RSA_PSS_RSAE_SHA384
-  * RSA_PSS_RSAE_SHA512
+SIGNATURE_ALGORITHMS
+^^^^^^^^^^^^^^^^^^^^
 
-* ENCRYPT_THEN_MAC
-* EXTENDED_MASTER_SECRET
-* SESSION_TICKET
-* PRE_SHARED_KEY
+All signature algorithms can be negotiated, but only the following one can be
+used for signing or signature validation:
 
-  All pre shared key exchange modes are supported:
+* DSA_MD5
+* DSA_SHA1
+* DSA_SHA224
+* DSA_SHA256
+* DSA_SHA384
+* DSA_SHA512
+* ECDSA_SECP224R1_SHA224
+* ECDSA_SECP256R1_SHA256
+* ECDSA_SECP384R1_SHA384
+* ECDSA_SECP521R1_SHA512
+* ECDSA_SHA1
+* ED25519
+* ED448
+* RSA_PKCS1_MD5
+* RSA_PKCS1_SHA1
+* RSA_PKCS1_SHA224
+* RSA_PKCS1_SHA256
+* RSA_PKCS1_SHA384
+* RSA_PKCS1_SHA512
+* RSA_PSS_RSAE_SHA256
+* RSA_PSS_RSAE_SHA384
+* RSA_PSS_RSAE_SHA512
 
-  * PSK_KE
-  * PSK_DHE_KE
+ENCRYPT_THEN_MAC
+^^^^^^^^^^^^^^^^
 
-* EARLY_DATA
-* SUPPORTED_VERSIONS
+A full handshake is supported with this extension.
 
-  All supported versions are supported.
+EXTENDED_MASTER_SECRET
+^^^^^^^^^^^^^^^^^^^^^^
 
-* CERTIFICATE_AUTHORITIES
-* POST_HANDSHAKE_AUTH
-* KEY_SHARE
+A full handshake is supported with this extension.
 
-  All TLS1.3 named groups are supported:
+SESSION_TICKET
+^^^^^^^^^^^^^^
 
-  * ECDSA_SECP256R1_SHA256
-  * ECDSA_SECP384R1_SHA384
-  * ECDSA_SECP521R1_SHA512
-  * ED25519
-  * ED448
-  * FFDHE2048
-  * FFDHE3072
-  * FFDHE4096
-  * FFDHE6144
-  * FFDHE8192
+Sessions resumption using a previously received session ticket is supported.
 
-* RENEGOTIATION_INFO
+PRE_SHARED_KEY
+^^^^^^^^^^^^^^
+
+All pre shared key exchange modes are supported:
+
+* PSK_KE
+* PSK_DHE_KE
+
+EARLY_DATA
+^^^^^^^^^^
+
+Sending early data is supported.
+
+SUPPORTED_VERSIONS
+^^^^^^^^^^^^^^^^^^
+
+All supported versions are supported.
+
+CERTIFICATE_AUTHORITIES
+^^^^^^^^^^^^^^^^^^^^^^^
+
+This extension is currently supported rudimentary only.
+
+POST_HANDSHAKE_AUTH
+^^^^^^^^^^^^^^^^^^^
+
+Post-handshake client authentication is supported (TLS1.3)
+
+KEY_SHARE
+^^^^^^^^^
+
+All TLS1.3 named groups are supported:
+
+* ECDSA_SECP256R1_SHA256
+* ECDSA_SECP384R1_SHA384
+* ECDSA_SECP521R1_SHA512
+* ED25519
+* ED448
+* FFDHE2048
+* FFDHE3072
+* FFDHE4096
+* FFDHE6144
+* FFDHE8192
+
+RENEGOTIATION_INFO
+^^^^^^^^^^^^^^^^^^
+
+Renegotiation (client.initiated and server-initiated, secure and insecure) is supported.
+
+HEARTBEAT
+^^^^^^^^^
+
+Sending and receiving Heartbeat messages (requests and responses) is supported.
+
 
 Certificates and certificate chains
 -----------------------------------
