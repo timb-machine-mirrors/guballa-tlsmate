@@ -1135,6 +1135,66 @@ class AppData(AppDataMessage):
         return bytes(self.data)
 
 
+class HeartbeatMessage(TlsMessage):
+    """A base class for all Heartbeat messages.
+    """
+
+    content_type = tls.ContentType.HEARTBEAT
+    """ :obj:`tlsmate.tls.ContentType.HEARTBEAT`
+    """
+
+    msg_type = None
+    """ :obj:`tlsmate.tls.HeartbeatType`: The type of the Heartbeat message.
+    """
+
+    def __init__(self, payload_length=None, payload=None, padding=None):
+        self.payload_length = payload_length
+        self.payload = payload
+        self.padding = padding
+
+    @classmethod
+    def deserialize(cls, fragment, conn):
+        msg_type, offset = pdu.unpack_uint8(fragment, 0)
+        msg_type = tls.HeartbeatType.val2enum(msg_type, alert_on_failure=True)
+        payload_length, offset = pdu.unpack_uint16(fragment, offset)
+        payload, offset = pdu.unpack_bytes(fragment, offset, payload_length)
+        padding = fragment[offset:]
+        cls_name = _heartbeat_deserialization_map[msg_type]
+        return cls_name(payload_length, payload, padding)
+
+    def serialize(self, conn):
+        message = bytearray()
+        message.extend(pdu.pack_uint8(self.msg_type.value))
+        message.extend(pdu.pack_uint16(self.payload_length))
+        message.extend(self.payload)
+        message.extend(self.padding)
+        return message
+
+
+class HeartbeatRequest(HeartbeatMessage):
+    """This class represents a heartbeat request message.
+    """
+
+    msg_type = tls.HeartbeatType.HEARTBEAT_REQUEST
+    """ :obj:`tlsmate.tls.HeartbeatType.HEARTBEAT_REQUEST`
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+class HeartbeatResponse(HeartbeatMessage):
+    """This class represents a heartbeat response message.
+    """
+
+    msg_type = tls.HeartbeatType.HEARTBEAT_RESPONSE
+    """ :obj:`tlsmate.tls.HeartbeatType.HEARTBEAT_RESPONSE`
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
 class SSL2Message(TlsMessage):
     """A base class for all SSL2 messages.
     """
@@ -1311,6 +1371,11 @@ _hs_deserialization_map = {
 _ccs_deserialization_map = {tls.CCSType.CHANGE_CIPHER_SPEC: ChangeCipherSpec}
 """Map the CCS message type to the corresponding class.
 """
+
+_heartbeat_deserialization_map = {
+    tls.HeartbeatType.HEARTBEAT_REQUEST: HeartbeatRequest,
+    tls.HeartbeatType.HEARTBEAT_RESPONSE: HeartbeatResponse,
+}
 
 _ssl2_deserialization_map = {
     tls.SSLMessagType.SSL2_SERVER_HELLO: SSL2ServerHello,

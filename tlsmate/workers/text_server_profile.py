@@ -322,6 +322,18 @@ _features = {
     "early_data": (Mood.GOOD, Mood.BAD, Mood.NEUTRAL, Mood.SOSO),
 }
 
+_heartbeat = {
+    tls.SPHeartbeat.C_FALSE: ("not supported", Mood.GOOD),
+    tls.SPHeartbeat.C_TRUE: ("supported", Mood.BAD),
+    tls.SPHeartbeat.C_NA: ("not applicable", Mood.NEUTRAL),
+    tls.SPHeartbeat.C_UNDETERMINED: ("undetermined", Mood.SOSO),
+    tls.SPHeartbeat.C_NOT_REPONDING: ("supported, but no response", Mood.BAD),
+    tls.SPHeartbeat.C_WRONG_RESPONSE: (
+        "supported, but invalid response received",
+        Mood.BAD,
+    ),
+}
+
 _cert = {
     "chain_valid": {
         tls.SPBool.C_FALSE: ("validation failed", Mood.BAD),
@@ -671,6 +683,17 @@ class TextProfileWorker(WorkerPlugin):
 
             print()
 
+    def _print_common_features(self, feat_prof):
+        print(f'  {apply_mood("Common features", Mood.BOLD)}')
+        table = utils.Table(indent=4, sep="  ")
+        hb_state = getattr(feat_prof, "heartbeat", None)
+        if hb_state is not None:
+            txt, mood = _heartbeat[hb_state]
+            table.row("Heartbeat", apply_mood(txt, mood))
+
+        table.dump()
+        print()
+
     def _print_features_tls12(self, feat_prof):
         print(f'  {apply_mood("Features for TLS1.2 and below", Mood.BOLD)}')
         table = utils.Table(indent=4, sep="  ")
@@ -765,6 +788,8 @@ class TextProfileWorker(WorkerPlugin):
 
         print(apply_mood("Features", Mood.HEADLINE))
         print()
+
+        self._print_common_features(feat_prof)
 
         versions = self.server_profile.get_versions()
         wanted = {

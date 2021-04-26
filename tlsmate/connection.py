@@ -109,6 +109,13 @@ class TlsDefragmenter(object):
                 msg=bytes(message + self._get_all_bytes()),
             )
 
+        elif self._content_type is tls.ContentType.HEARTBEAT:
+            return structs.UpperLayerMsg(
+                content_type=self._content_type,
+                msg_type=None,
+                msg=bytes(message + self._get_all_bytes()),
+            )
+
         elif self._content_type is tls.ContentType.SSL2:
             return structs.UpperLayerMsg(
                 content_type=self._content_type,
@@ -151,6 +158,14 @@ class TlsConnectionMsgs(object):
             the client
         server_alert (:obj:`tlsmate.msg.Alert`): the Alert messages sent by
             the server
+        client_heartbeat_request (:obj:`tlsmate.msg.HeartbeatRequest`): the
+            heartbeat request message sent by the client
+        server_heartbeat_request (:obj:`tlsmate.msg.HeartbeatRequest`): the
+            heartbeat request message sent by the server
+        client_heartbeat_response (:obj:`tlsmate.msg.HeartbeatResponse`): the
+            heartbeat response message sent by the client
+        server_heartbeat_response (:obj:`tlsmate.msg.HeartbeatResponse`): the
+            heartbeat response message sent by the server
     """
 
     _map_msg2attr = {
@@ -173,6 +188,8 @@ class TlsConnectionMsgs(object):
         tls.HandshakeType.MESSAGE_HASH: None,
         tls.CCSType.CHANGE_CIPHER_SPEC: "_change_cipher_spec",
         tls.ContentType.ALERT: "_alert",
+        tls.HeartbeatType.HEARTBEAT_REQUEST: "_heartbeat_request",
+        tls.HeartbeatType.HEARTBEAT_RESPONSE: "_heartbeat_response",
     }
 
     def __init__(self):
@@ -191,6 +208,10 @@ class TlsConnectionMsgs(object):
         self.server_finished = None
         self.client_alert = None
         self.server_alert = None
+        self.client_heartbeat_request = None
+        self.server_heartbeat_request = None
+        self.client_heartbeat_response = None
+        self.server_heartbeat_response = None
 
     def store_msg(self, msg, received=True):
         """Stores a received/sent message
@@ -254,14 +275,14 @@ class TlsConnection(object):
         auto_handler (list of :obj:`tlsmate.tls.HandshakeType`): a list of messages
             which are registered for auto handling. `Auto handling` means that these
             messages if received, are treated by tlsmate autonomously, e.g., a received
-            HeartBeat message will be answered accordingly. There is no need to
+            Heartbeat message will be answered accordingly. There is no need to
             consider those messages within the test case. If a message is registered
             for auto handling, and it is awaited in a test case, then such a received
             message will not be auto handled by tlsmate. In this case it is up
             to the test case to completely process the message, e.g., by
             sending an appropriate response. This mechanism is intended for messages,
             which can be received at any time and/or where the number of messages sent
-            by the server is unknown (HeartBeat, NewSessionTicket).
+            by the server is unknown (Heartbeat, NewSessionTicket).
 
             Currently, this attribute defaults to
             [tls.HandshakeType.NEW_SESSION_TICKET].
@@ -296,6 +317,8 @@ class TlsConnection(object):
             Only used for negotiated versions < TLS1.3.
         master_secret (bytes):the master secret used in the latest handshake. Only
             used for negotiated versions < TLS1.3.
+        heartbeat_allowed_to_send (bool): an indication if the peer allowed to send
+            Heartbeat messages.
     """
 
     _cert_chain_digests = []
@@ -322,10 +345,14 @@ class TlsConnection(object):
         self.handshake_completed = False
         self.alert_received = False
         self.alert_sent = False
-        self.auto_handler = [tls.HandshakeType.NEW_SESSION_TICKET]
+        self.auto_handler = [
+            tls.HandshakeType.NEW_SESSION_TICKET,
+            tls.HeartbeatType.HEARTBEAT_REQUEST,
+        ]
         self._send_early_data = False
         self.early_data_accepted = False
         self._ext_psk = None
+        self.heartbeat_allowed_to_send = False
 
         # general
         self._entity = tls.Entity.CLIENT
@@ -1049,6 +1076,11 @@ class TlsConnection(object):
         logging.info(f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite}")
         self._update_cipher_suite(msg.cipher_suite)
         self._record_layer_version = min(self.version, tls.Version.TLS12)
+        heartbeat_ext = msg.get_extension(tls.Extension.HEARTBEAT)
+        if heartbeat_ext:
+            self.heartbeat_allowed_to_send = (
+                heartbeat_ext.heartbeat_mode is tls.HeartbeatMode.PEER_ALLOWED_TO_SEND
+            )
         if self.version is tls.Version.TLS13:
             self._on_server_hello_tls13(msg)
 
@@ -1306,7 +1338,17 @@ class TlsConnection(object):
         if method is not None:
             method(self, msg)
 
-    _auto_responder_map = {}
+    def _auto_heartbeat_request(self, message):
+        if self.client.heartbeat_mode is tls.HeartbeatMode.PEER_ALLOWED_TO_SEND:
+            response = msg.HeartbeatResponse()
+            response.payload_length = message.payload_length
+            response.payload = message.payload
+            response.padding = b"\xff" * 16
+            self.send(response)
+
+    _auto_responder_map = {
+        tls.HeartbeatType.HEARTBEAT_REQUEST: _auto_heartbeat_request,
+    }
     """Maps the message to the auto handler function.
 
     Auto handler functions are only required, if specific actions must be taken, e.g.,
@@ -1358,6 +1400,9 @@ class TlsConnection(object):
 
         elif mb.content_type is tls.ContentType.APPLICATION_DATA:
             message = msg.AppDataMessage.deserialize(mb.msg, self)
+
+        elif mb.content_type is tls.ContentType.HEARTBEAT:
+            message = msg.HeartbeatMessage.deserialize(mb.msg, self)
 
         elif mb.content_type is tls.ContentType.SSL2:
             message = msg.SSL2Message.deserialize(mb.msg, self)

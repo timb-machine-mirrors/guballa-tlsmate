@@ -138,6 +138,7 @@ class ContentType(ExtendedEnum):
     ALERT = 21
     HANDSHAKE = 22
     APPLICATION_DATA = 23
+    HEARTBEAT = 24
     SSL2 = 256
 
 
@@ -646,6 +647,16 @@ class CCSType(ExtendedEnum):
     CHANGE_CIPHER_SPEC = 1
 
 
+class HeartbeatType(ExtendedEnum):
+    """Enum representing the message types for the Heartbeat protocol.
+
+    The values defined correspond to the values used in PDUs as defined by IANA.
+    """
+
+    HEARTBEAT_REQUEST = 1
+    HEARTBEAT_RESPONSE = 2
+
+
 class SupportedGroups(ExtendedEnum):
     """Enum representing the supported groups.
 
@@ -951,6 +962,14 @@ class PskKeyExchangeMode(ExtendedEnum):
     PSK_DHE_KE = 1
 
 
+class HeartbeatMode(ExtendedEnum):
+    """Values for the heartbeat mode (extension)
+    """
+
+    PEER_ALLOWED_TO_SEND = 1
+    PEER_NOT_ALLOWED_TO_SEND = 2
+
+
 class SPBool(ExtendedEnum):
     """Enum representing a pseudo-boolean value in the server profile.
 
@@ -1095,3 +1114,15 @@ class RobotVulnerability(ExtendedEnum):
     WEAK_ORACLE = enum.auto()
     STRONG_ORACLE = enum.auto()
     NOT_VULNERABLE = enum.auto()
+
+
+class SPHeartbeat(ExtendedEnum):
+    """Status for heartbeart support
+    """
+
+    C_FALSE = 0
+    C_TRUE = 1
+    C_NA = 2
+    C_UNDETERMINED = 3
+    C_NOT_REPONDING = 3
+    C_WRONG_RESPONSE = 4

@@ -358,6 +358,34 @@ class ExtSignatureAlgorithms(Extension):
             self.signature_algorithms.append(algo)
 
 
+class ExtHeartbeat(Extension):
+    """Represents the Heartbeat extension.
+
+    Attributes:
+        heartbeat_mode (:obj:`tlsmate.tls.HeartbeatMode`): The mode for the
+            heartbeat extension.
+    """
+
+    extension_id = tls.Extension.HEARTBEAT
+    """:obj:`tlsmate.tls.Extension.HEARTBEAT`
+    """
+
+    def __init__(self, heartbeat_mode=None):
+        self.heartbeat_mode = heartbeat_mode
+
+    def _serialize_ext_body(self, conn):
+        if type(self.heartbeat_mode) is int:
+            val = self.heartbeat_mode
+        else:
+            val = self.heartbeat_mode.value
+
+        return pdu.pack_uint8(val)
+
+    def _deserialize_ext_body(self, ext_body):
+        mode, offset = pdu.unpack_uint8(ext_body, 0)
+        self.heartbeat_mode = tls.HeartbeatMode.val2enum(mode, alert_on_failure=True)
+
+
 class ExtCertificateAuthorities(Extension):
     """Represents the CertificateAuthorities extension.
 
@@ -621,7 +649,7 @@ deserialization_map = {
     # tls.Extension.SRP = 12
     tls.Extension.SIGNATURE_ALGORITHMS: ExtSignatureAlgorithms,
     # tls.Extension.USE_SRTP = 14
-    # tls.Extension.HEARTBEAT = 15
+    tls.Extension.HEARTBEAT: ExtHeartbeat,
     # tls.Extension.APPLICATION_LAYER_PROTOCOL_NEGOTIATION = 16
     # tls.Extension.STATUS_REQUEST_V2 = 17
     # tls.Extension.SIGNED_CERTIFICATE_TIMESTAMP = 18
