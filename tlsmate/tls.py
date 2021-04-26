@@ -1114,3 +1114,15 @@ class RobotVulnerability(ExtendedEnum):
     WEAK_ORACLE = enum.auto()
     STRONG_ORACLE = enum.auto()
     NOT_VULNERABLE = enum.auto()
+
+
+class SPHeartbeat(ExtendedEnum):
+    """Status for heartbeart support
+    """
+
+    C_FALSE = 0
+    C_TRUE = 1
+    C_NA = 2
+    C_UNDETERMINED = 3
+    C_NOT_REPONDING = 3
+    C_WRONG_RESPONSE = 4

@@ -19,6 +19,7 @@ from tlsmate.workers.ccs_injection import ScanCcsInjection
 from tlsmate.workers.robot import ScanRobot
 from tlsmate.workers.dh_params import ScanDhGroups
 from tlsmate.workers.text_server_profile import TextProfileWorker
+from tlsmate.workers.heartbeat import ScanHeartbeat
 
 # import other stuff
 
@@ -41,6 +42,7 @@ class ScanPlugin(CliPlugin):
         "ext_master_secret": ScanExtendedMasterSecret,
         "renegotiation": ScanRenegotiation,
         "resumption": ScanResumption,
+        "heartbeat": ScanHeartbeat,
         "ccs_injection": ScanCcsInjection,
         "robot": ScanRobot,
     }
@@ -150,6 +152,12 @@ class ScanPlugin(CliPlugin):
                 "scan for resumption support (SSL30 - TLS1.2) and for PSK support "
                 "(TLS1.3)"
             ),
+            action="store_const",
+            const=True,
+        )
+        group.add_argument(
+            "--heartbeat",
+            help="scan for heartbeat support",
             action="store_const",
             const=True,
         )

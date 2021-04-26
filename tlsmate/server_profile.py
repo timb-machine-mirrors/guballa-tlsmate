@@ -287,6 +287,7 @@ class SPFeaturesSchema(ProfileSchema):
     insecure_renegotiation = FieldsEnumString(enum_class=tls.SPBool)
     secure_renegotation = FieldsEnumString(enum_class=tls.SPBool)
     scsv_renegotiation = FieldsEnumString(enum_class=tls.SPBool)
+    heartbeat = FieldsEnumString(enum_class=tls.SPHeartbeat)
 
 
 class SPPublicKey(SPObject):
