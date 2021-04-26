@@ -38,17 +38,17 @@ class TestCase(CipherSuiteTester):
         client.signature_algorithms = self.signature_algorithms
 
         end_of_tc_reached = False
-        client.heartbeat_mode = tls.HeartBeatMode.PEER_ALLOWED_TO_SEND
+        client.heartbeat_mode = tls.HeartbeatMode.PEER_ALLOWED_TO_SEND
         with client.create_connection() as conn:
             conn.handshake()
             self.server_input("B\n", timeout=200)
             conn.timeout(500)
-            request = msg.HeartBeatRequest()
+            request = msg.HeartbeatRequest()
             request.payload = b"abracadabra"
             request.payload_length = len(request.payload)
             request.padding = b"\xff" * 16
             conn.send(request)
-            response = conn.wait(msg.HeartBeatResponse)
+            response = conn.wait(msg.HeartbeatResponse)
             assert response.payload_length == request.payload_length
             assert response.payload == request.payload
             end_of_tc_reached = True

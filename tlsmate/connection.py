@@ -158,14 +158,14 @@ class TlsConnectionMsgs(object):
             the client
         server_alert (:obj:`tlsmate.msg.Alert`): the Alert messages sent by
             the server
-        client_heartbeat_request (:obj:`tlsmate.msg.HeartBeatRequest`): the
-            heart beat request message sent by the client
-        server_heartbeat_request (:obj:`tlsmate.msg.HeartBeatRequest`): the
-            heart beat request message sent by the server
-        client_heartbeat_response (:obj:`tlsmate.msg.HeartBeatResponse`): the
-            heart beat response message sent by the client
-        server_heartbeat_response (:obj:`tlsmate.msg.HeartBeatResponse`): the
-            heart beat response message sent by the server
+        client_heartbeat_request (:obj:`tlsmate.msg.HeartbeatRequest`): the
+            heartbeat request message sent by the client
+        server_heartbeat_request (:obj:`tlsmate.msg.HeartbeatRequest`): the
+            heartbeat request message sent by the server
+        client_heartbeat_response (:obj:`tlsmate.msg.HeartbeatResponse`): the
+            heartbeat response message sent by the client
+        server_heartbeat_response (:obj:`tlsmate.msg.HeartbeatResponse`): the
+            heartbeat response message sent by the server
     """
 
     _map_msg2attr = {
@@ -188,8 +188,8 @@ class TlsConnectionMsgs(object):
         tls.HandshakeType.MESSAGE_HASH: None,
         tls.CCSType.CHANGE_CIPHER_SPEC: "_change_cipher_spec",
         tls.ContentType.ALERT: "_alert",
-        tls.HeartBeatType.HEARTBEAT_REQUEST: "_heartbeat_request",
-        tls.HeartBeatType.HEARTBEAT_RESPONSE: "_heartbeat_response",
+        tls.HeartbeatType.HEARTBEAT_REQUEST: "_heartbeat_request",
+        tls.HeartbeatType.HEARTBEAT_RESPONSE: "_heartbeat_response",
     }
 
     def __init__(self):
@@ -275,14 +275,14 @@ class TlsConnection(object):
         auto_handler (list of :obj:`tlsmate.tls.HandshakeType`): a list of messages
             which are registered for auto handling. `Auto handling` means that these
             messages if received, are treated by tlsmate autonomously, e.g., a received
-            HeartBeat message will be answered accordingly. There is no need to
+            Heartbeat message will be answered accordingly. There is no need to
             consider those messages within the test case. If a message is registered
             for auto handling, and it is awaited in a test case, then such a received
             message will not be auto handled by tlsmate. In this case it is up
             to the test case to completely process the message, e.g., by
             sending an appropriate response. This mechanism is intended for messages,
             which can be received at any time and/or where the number of messages sent
-            by the server is unknown (HeartBeat, NewSessionTicket).
+            by the server is unknown (Heartbeat, NewSessionTicket).
 
             Currently, this attribute defaults to
             [tls.HandshakeType.NEW_SESSION_TICKET].
@@ -318,7 +318,7 @@ class TlsConnection(object):
         master_secret (bytes):the master secret used in the latest handshake. Only
             used for negotiated versions < TLS1.3.
         heartbeat_allowed_to_send (bool): an indication if the peer allowed to send
-            HeartBeat messages.
+            Heartbeat messages.
     """
 
     _cert_chain_digests = []
@@ -347,7 +347,7 @@ class TlsConnection(object):
         self.alert_sent = False
         self.auto_handler = [
             tls.HandshakeType.NEW_SESSION_TICKET,
-            tls.HeartBeatType.HEARTBEAT_REQUEST,
+            tls.HeartbeatType.HEARTBEAT_REQUEST,
         ]
         self._send_early_data = False
         self.early_data_accepted = False
@@ -1079,7 +1079,7 @@ class TlsConnection(object):
         heartbeat_ext = msg.get_extension(tls.Extension.HEARTBEAT)
         if heartbeat_ext:
             self.heartbeat_allowed_to_send = (
-                heartbeat_ext.heartbeat_mode is tls.HeartBeatMode.PEER_ALLOWED_TO_SEND
+                heartbeat_ext.heartbeat_mode is tls.HeartbeatMode.PEER_ALLOWED_TO_SEND
             )
         if self.version is tls.Version.TLS13:
             self._on_server_hello_tls13(msg)
@@ -1339,15 +1339,15 @@ class TlsConnection(object):
             method(self, msg)
 
     def _auto_heartbeat_request(self, message):
-        if self.client.heartbeat_mode is tls.HeartBeatMode.PEER_ALLOWED_TO_SEND:
-            response = msg.HeartBeatResponse()
+        if self.client.heartbeat_mode is tls.HeartbeatMode.PEER_ALLOWED_TO_SEND:
+            response = msg.HeartbeatResponse()
             response.payload_length = message.payload_length
             response.payload = message.payload
             response.padding = b"\xff" * 16
             self.send(response)
 
     _auto_responder_map = {
-        tls.HeartBeatType.HEARTBEAT_REQUEST: _auto_heartbeat_request,
+        tls.HeartbeatType.HEARTBEAT_REQUEST: _auto_heartbeat_request,
     }
     """Maps the message to the auto handler function.
 
@@ -1402,7 +1402,7 @@ class TlsConnection(object):
             message = msg.AppDataMessage.deserialize(mb.msg, self)
 
         elif mb.content_type is tls.ContentType.HEARTBEAT:
-            message = msg.HeartBeatMessage.deserialize(mb.msg, self)
+            message = msg.HeartbeatMessage.deserialize(mb.msg, self)
 
         elif mb.content_type is tls.ContentType.SSL2:
             message = msg.SSL2Message.deserialize(mb.msg, self)

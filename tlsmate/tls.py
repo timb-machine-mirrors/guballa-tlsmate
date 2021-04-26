@@ -647,8 +647,8 @@ class CCSType(ExtendedEnum):
     CHANGE_CIPHER_SPEC = 1
 
 
-class HeartBeatType(ExtendedEnum):
-    """Enum representing the message types for the HeartBeat protocol.
+class HeartbeatType(ExtendedEnum):
+    """Enum representing the message types for the Heartbeat protocol.
 
     The values defined correspond to the values used in PDUs as defined by IANA.
     """
@@ -962,8 +962,8 @@ class PskKeyExchangeMode(ExtendedEnum):
     PSK_DHE_KE = 1
 
 
-class HeartBeatMode(ExtendedEnum):
-    """Values for the heart beat mode (extension)
+class HeartbeatMode(ExtendedEnum):
+    """Values for the heartbeat mode (extension)
     """
 
     PEER_ALLOWED_TO_SEND = 1

@@ -1135,8 +1135,8 @@ class AppData(AppDataMessage):
         return bytes(self.data)
 
 
-class HeartBeatMessage(TlsMessage):
-    """A base class for all HeartBeat messages.
+class HeartbeatMessage(TlsMessage):
+    """A base class for all Heartbeat messages.
     """
 
     content_type = tls.ContentType.HEARTBEAT
@@ -1144,7 +1144,7 @@ class HeartBeatMessage(TlsMessage):
     """
 
     msg_type = None
-    """ :obj:`tlsmate.tls.HeartBeatType`: The type of the HeartBeat message.
+    """ :obj:`tlsmate.tls.HeartbeatType`: The type of the Heartbeat message.
     """
 
     def __init__(self, payload_length=None, payload=None, padding=None):
@@ -1155,7 +1155,7 @@ class HeartBeatMessage(TlsMessage):
     @classmethod
     def deserialize(cls, fragment, conn):
         msg_type, offset = pdu.unpack_uint8(fragment, 0)
-        msg_type = tls.HeartBeatType.val2enum(msg_type, alert_on_failure=True)
+        msg_type = tls.HeartbeatType.val2enum(msg_type, alert_on_failure=True)
         payload_length, offset = pdu.unpack_uint16(fragment, offset)
         payload, offset = pdu.unpack_bytes(fragment, offset, payload_length)
         padding = fragment[offset:]
@@ -1171,24 +1171,24 @@ class HeartBeatMessage(TlsMessage):
         return message
 
 
-class HeartBeatRequest(HeartBeatMessage):
-    """This class represents a heart beat request message.
+class HeartbeatRequest(HeartbeatMessage):
+    """This class represents a heartbeat request message.
     """
 
-    msg_type = tls.HeartBeatType.HEARTBEAT_REQUEST
-    """ :obj:`tlsmate.tls.HeartBeatType.HEARTBEAT_REQUEST`
+    msg_type = tls.HeartbeatType.HEARTBEAT_REQUEST
+    """ :obj:`tlsmate.tls.HeartbeatType.HEARTBEAT_REQUEST`
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
 
-class HeartBeatResponse(HeartBeatMessage):
-    """This class represents a heart beat response message.
+class HeartbeatResponse(HeartbeatMessage):
+    """This class represents a heartbeat response message.
     """
 
-    msg_type = tls.HeartBeatType.HEARTBEAT_RESPONSE
-    """ :obj:`tlsmate.tls.HeartBeatType.HEARTBEAT_RESPONSE`
+    msg_type = tls.HeartbeatType.HEARTBEAT_RESPONSE
+    """ :obj:`tlsmate.tls.HeartbeatType.HEARTBEAT_RESPONSE`
     """
 
     def __init__(self, *args, **kwargs):
@@ -1373,8 +1373,8 @@ _ccs_deserialization_map = {tls.CCSType.CHANGE_CIPHER_SPEC: ChangeCipherSpec}
 """
 
 _heartbeat_deserialization_map = {
-    tls.HeartBeatType.HEARTBEAT_REQUEST: HeartBeatRequest,
-    tls.HeartBeatType.HEARTBEAT_RESPONSE: HeartBeatResponse,
+    tls.HeartbeatType.HEARTBEAT_REQUEST: HeartbeatRequest,
+    tls.HeartbeatType.HEARTBEAT_RESPONSE: HeartbeatResponse,
 }
 
 _ssl2_deserialization_map = {

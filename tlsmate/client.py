@@ -78,8 +78,8 @@ class Client(object):
             If True, the connection will be closed with a fatal alert. If False,
             the connection continues. The latter is useful for scanning a server, as
             the scan would be aborted otherwise.
-        heartbeat_mode (:class:`tls.HeartBeatMode`): The mode which is offered in the
-            heart beat extension. If set to None, the extension will not be setup
+        heartbeat_mode (:class:`tls.HeartbeatMode`): The mode which is offered in the
+            heartbeat extension. If set to None, the extension will not be setup
             when using the :meth:`Client.client_hello` method.
     """
 
@@ -560,7 +560,7 @@ class Client(object):
 
             if self.heartbeat_mode:
                 msg.extensions.append(
-                    ext.ExtHeartBeat(heartbeat_mode=self.heartbeat_mode)
+                    ext.ExtHeartbeat(heartbeat_mode=self.heartbeat_mode)
                 )
 
             if tls.Version.TLS13 in self.versions:
