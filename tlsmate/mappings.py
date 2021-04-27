@@ -2036,6 +2036,12 @@ key_exchange = {
         key_ex_supported=True,
         default_sig_scheme=tls.SignatureScheme.RSA_PKCS1_SHA1,
     ),
+    tls.KeyExchangeAlgorithm.DHE_RSA_EXPORT: structs.KeyExchange(
+        key_ex_type=tls.KeyExchangeType.DH,
+        key_auth=tls.KeyAuthentication.RSA,
+        key_ex_supported=True,
+        default_sig_scheme=tls.SignatureScheme.RSA_PKCS1_SHA1,
+    ),
     tls.KeyExchangeAlgorithm.TLS13_KEY_SHARE: structs.KeyExchange(
         key_ex_type=None, key_auth=None, key_ex_supported=True, default_sig_scheme=None
     ),
@@ -2047,9 +2053,6 @@ key_exchange = {
     ),
     tls.KeyExchangeAlgorithm.DHE_PSK: structs.KeyExchange(
         key_ex_type=tls.KeyExchangeType.DH, key_auth=tls.KeyAuthentication.NONE
-    ),
-    tls.KeyExchangeAlgorithm.DHE_RSA_EXPORT: structs.KeyExchange(
-        key_ex_type=tls.KeyExchangeType.DH, key_auth=tls.KeyAuthentication.RSA
     ),
     tls.KeyExchangeAlgorithm.DH_ANON_EXPORT: structs.KeyExchange(
         key_ex_type=tls.KeyExchangeType.DH, key_auth=tls.KeyAuthentication.NONE

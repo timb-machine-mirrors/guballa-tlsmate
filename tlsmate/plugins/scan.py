@@ -20,6 +20,7 @@ from tlsmate.workers.robot import ScanRobot
 from tlsmate.workers.dh_params import ScanDhGroups
 from tlsmate.workers.text_server_profile import TextProfileWorker
 from tlsmate.workers.heartbeat import ScanHeartbeat
+from tlsmate.workers.heartbleed import ScanHeartbleed
 
 # import other stuff
 
@@ -45,6 +46,7 @@ class ScanPlugin(CliPlugin):
         "heartbeat": ScanHeartbeat,
         "ccs_injection": ScanCcsInjection,
         "robot": ScanRobot,
+        "heartbleed": ScanHeartbleed,
     }
 
     def register_config(self, config):
@@ -174,6 +176,12 @@ class ScanPlugin(CliPlugin):
         group.add_argument(
             "--ccs-injection",
             help="scan for vulnerability CCS-injection (only TL1.0 - TLS1.2)",
+            action="store_const",
+            const=True,
+        )
+        group.add_argument(
+            "--heartbleed",
+            help="scan for the Heartbleed vulnerability CVE-2014-0160",
             action="store_const",
             const=True,
         )

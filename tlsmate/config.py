@@ -61,6 +61,7 @@ class Configuration(object):
         self.register(ConfigItem("pytest_recorder_file", type=str))
         self.register(ConfigItem("pytest_recorder_replaying", type=str))
         self.register(ConfigItem("pytest_port", type=int))
+        self.register(ConfigItem("pytest_openssl_1_0_1e", type=str))
         self.register(ConfigItem("pytest_openssl_1_0_1g", type=str))
         self.register(ConfigItem("pytest_openssl_1_0_2", type=str))
         self.register(ConfigItem("pytest_openssl_1_1_1", type=str))

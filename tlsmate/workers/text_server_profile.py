@@ -978,6 +978,11 @@ class TextProfileWorker(WorkerPlugin):
             txt, mood = _vulnerabilities[ccs]
             table.row("CCS injection (CVE-2014-0224)", apply_mood(txt, mood))
 
+        hb = getattr(vuln_prof, "heartbleed", None)
+        if hb is not None:
+            txt, mood = _vulnerabilities[hb]
+            table.row("Heartbleed (CVE-2014-0160)", apply_mood(txt, mood))
+
         robot = getattr(vuln_prof, "robot", None)
         if robot is not None:
             txt, mood = _robot[robot]
