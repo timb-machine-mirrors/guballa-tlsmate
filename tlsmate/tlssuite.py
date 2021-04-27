@@ -20,6 +20,7 @@ class OpensslVersion(enum.Enum):
     """Defines the openssl versions which are used to generate the unit tests.
     """
 
+    v1_0_1e = enum.auto()
     v1_0_1g = enum.auto()
     v1_0_2 = enum.auto()
     v1_1_1 = enum.auto()
@@ -48,6 +49,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
 
     def _start_server(self):
         openssl_prefix = {
+            OpensslVersion.v1_0_1e: self.config.get("pytest_openssl_1_0_1e"),
             OpensslVersion.v1_0_1g: self.config.get("pytest_openssl_1_0_1g"),
             OpensslVersion.v1_0_2: self.config.get("pytest_openssl_1_0_2"),
             OpensslVersion.v1_1_1: self.config.get("pytest_openssl_1_1_1"),
