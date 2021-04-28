@@ -21,6 +21,7 @@ from tlsmate.workers.dh_params import ScanDhGroups
 from tlsmate.workers.text_server_profile import TextProfileWorker
 from tlsmate.workers.heartbeat import ScanHeartbeat
 from tlsmate.workers.heartbleed import ScanHeartbleed
+from tlsmate.workers.grease import ScanGrease
 
 # import other stuff
 
@@ -47,6 +48,7 @@ class ScanPlugin(CliPlugin):
         "ccs_injection": ScanCcsInjection,
         "robot": ScanRobot,
         "heartbleed": ScanHeartbleed,
+        "grease": ScanGrease,
     }
 
     def register_config(self, config):
@@ -160,6 +162,12 @@ class ScanPlugin(CliPlugin):
         group.add_argument(
             "--heartbeat",
             help="scan for heartbeat support",
+            action="store_const",
+            const=True,
+        )
+        group.add_argument(
+            "--grease",
+            help="scan for unknown parameter tolerance",
             action="store_const",
             const=True,
         )

@@ -99,8 +99,8 @@ class ExtUnknownExtension(Extension):
     extension_id = tls.Extension.UNKNOW_EXTENSION
 
     def __init__(self, **kwargs):
-        self.id = None
-        self.bytes = None
+        self.id = kwargs.get("id")
+        self.bytes = kwargs.get("bytes")
 
     def _serialize_ext_body(self, conn):
         return self.bytes
@@ -287,11 +287,7 @@ class ExtSupportedGroups(Extension):
     def _serialize_ext_body(self, conn):
         group_list = bytearray()
         for group in self.supported_groups:
-            if type(group) == int:
-                group_list.extend(pdu.pack_uint16(group))
-
-            else:
-                group_list.extend(pdu.pack_uint16(group.value))
+            group_list.extend(pdu.pack_uint16(getattr(group, "value", group)))
 
         ext_body = bytearray()
         ext_body.extend(pdu.pack_uint16(len(group_list)))
@@ -330,14 +326,9 @@ class ExtSignatureAlgorithms(Extension):
     def _serialize_ext_body(self, conn):
         algo_list = bytearray()
         for algo in self.signature_algorithms:
-            if type(algo) == int:
-                algo_list.extend(pdu.pack_uint16(algo))
-
-            elif type(algo) == tls.SignatureScheme:
-                algo_list.extend(pdu.pack_uint16(algo.value))
-
-            elif type(algo) == tuple:
-                pass  # TODO
+            if type(algo) is tuple:
+                algo = 256 * algo[0] + algo[1]
+            algo_list.extend(pdu.pack_uint16(getattr(algo, "value", algo)))
 
         ext_body = bytearray()
         ext_body.extend(pdu.pack_uint16(len(algo_list)))
@@ -455,7 +446,7 @@ class ExtSupportedVersions(Extension):
     def _serialize_ext_body(self, conn):
         versions = bytearray()
         for version in self.versions:
-            versions.extend(pdu.pack_uint16(version.value))
+            versions.extend(pdu.pack_uint16(getattr(version, "value", version)))
 
         ext_body = bytearray()
         ext_body.extend(pdu.pack_uint8(len(versions)))
@@ -581,7 +572,7 @@ class ExtPskKeyExchangeMode(Extension):
     def _serialize_ext_body(self, conn):
         ext_body = bytearray(pdu.pack_uint8(len(self.modes)))
         for mode in self.modes:
-            ext_body.extend(pdu.pack_uint8(mode.value))
+            ext_body.extend(pdu.pack_uint8(getattr(mode, "value", mode)))
 
         return ext_body
 

@@ -258,16 +258,34 @@ class SPScanInfoSchema(ProfileSchema):
     version = fields.String()
 
 
-class SPFeatures(SPObject):
-    """Data class for TLS features.
-    """
-
-
 class SPCompressionEnumSchema(ProfileEnumSchema):
     """Schema for compression method (enum)
     """
 
     __profile_class__ = tls.CompressionMethod
+
+
+class SPGrease(SPObject):
+    """Data class for GREASE
+    """
+
+
+class SPGreaseSchema(ProfileSchema):
+    """Schema for GREASE
+    """
+
+    __profile_class__ = SPGrease
+    version_tolerance = FieldsEnumString(enum_class=tls.SPBool)
+    cipher_suite_tolerance = FieldsEnumString(enum_class=tls.SPBool)
+    extension_tolerance = FieldsEnumString(enum_class=tls.SPBool)
+    group_tolerance = FieldsEnumString(enum_class=tls.SPBool)
+    sig_algo_tolerance = FieldsEnumString(enum_class=tls.SPBool)
+    psk_mode_tolerance = FieldsEnumString(enum_class=tls.SPBool)
+
+
+class SPFeatures(SPObject):
+    """Data class for TLS features.
+    """
 
 
 class SPFeaturesSchema(ProfileSchema):
@@ -288,6 +306,7 @@ class SPFeaturesSchema(ProfileSchema):
     secure_renegotation = FieldsEnumString(enum_class=tls.SPBool)
     scsv_renegotiation = FieldsEnumString(enum_class=tls.SPBool)
     heartbeat = FieldsEnumString(enum_class=tls.SPHeartbeat)
+    grease = fields.Nested(SPGreaseSchema)
 
 
 class SPPublicKey(SPObject):

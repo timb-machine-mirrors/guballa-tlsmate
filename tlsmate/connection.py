@@ -565,7 +565,7 @@ class TlsConnection(object):
             logging.debug(f"session_id: {pdu.dump(msg.session_id)}")
 
         for cs in msg.cipher_suites:
-            logging.debug(f"cipher suite: 0x{cs.value:04x} {cs}")
+            logging.debug(f"cipher suite: 0x{getattr(cs, 'value', cs):04x} {cs}")
 
         for comp in msg.compression_methods:
             logging.debug(f"compression method: 0x{comp.value:01x} {comp}")
@@ -1700,7 +1700,7 @@ class TlsConnection(object):
         """
         self.wait(msg.Timeout, timeout=timeout)
 
-    def handshake(self):
+    def handshake(self, ch_pre_serialization=None):
         """Convenient method to execute a complete handshake.
 
         With this method there is no need to define the exact scenario. The parameters
@@ -1725,8 +1725,16 @@ class TlsConnection(object):
             The handshake finishes with the exchange of the Finished messages, i.e.,
             receiving messages hereafter needs to be covered separately, e.g. receiving
             NewSessionTicket messages in TLS1.3 (if not treated by the auto_handler).
+
+        Arguments:
+            ch_pre_serialization (func): a call back function executed after
+                the parameters for the ClientHello are setup, but before its
+                serialization. Useful to manipulate the ClientHello.
+                The function receives the client_hello object
+                (:obj:`tlsmate.msg.TlsMessage`) as an argument. No return value is
+                expected.
         """
-        self.send(msg.ClientHello)
+        self.send(msg.ClientHello, pre_serialization=ch_pre_serialization)
         if self.client.early_data is not None:
             self.send(msg.AppData(self.client.early_data))
 

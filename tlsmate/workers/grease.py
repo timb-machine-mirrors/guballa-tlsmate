@@ -1,0 +1,204 @@
+# -*- coding: utf-8 -*-
+"""Module containing the test suite
+"""
+# import basic stuff
+import random
+
+# import own stuff
+from tlsmate import tls
+from tlsmate.plugin import WorkerPlugin
+from tlsmate import msg
+from tlsmate import ext
+from tlsmate.server_profile import SPGrease
+
+# import other stuff
+
+_grease_params = [
+    0x0A0A,
+    0x1A1A,
+    0x2A2A,
+    0x3A3A,
+    0x4A4A,
+    0x5A5A,
+    0x6A6A,
+    0x7A7A,
+    0x8A8A,
+    0x9A9A,
+    0xAAAA,
+    0xBABA,
+    0xCACA,
+    0xDADA,
+    0xEAEA,
+    0xFAFA,
+]
+
+_grease_cipher_suites = [
+    0x0A0A,
+    0x1A1A,
+    0x2A2A,
+    0x3A3A,
+    0x4A4A,
+    0x5A5A,
+    0x6A6A,
+    0x7A7A,
+    0x8A8A,
+    0x9A9A,
+    0xAAAA,
+    0xBABA,
+    0xCACA,
+    0xDADA,
+    0xEAEA,
+    0xFAFA,
+]
+
+_grease_psk_modes = [0x0B, 0x2A, 0x49, 0x68, 0x87, 0xA6, 0xC5, 0xE4]
+
+
+class ScanGrease(WorkerPlugin):
+    name = "grease"
+    descr = "check if the server is tolerant to unknown parameter values"
+    prio = 35
+
+    def _check_version(self, grease_prof):
+        values = self.server_profile.get_profile_values(tls.Version.all(), full_hs=True)
+        self.client.init_profile(profile_values=values)
+        self.client.versions.append(random.choice(_grease_params))
+        with self.client.create_connection() as conn:
+            conn.handshake()
+
+        if conn.handshake_completed:
+            state = tls.SPBool.C_TRUE
+
+        else:
+            state = tls.SPBool.C_FALSE
+
+        setattr(grease_prof, "version_tolerance", state)
+
+    def _check_cipher_suite(self, grease_prof):
+        values = self.server_profile.get_profile_values(tls.Version.all(), full_hs=True)
+        self.client.init_profile(profile_values=values)
+        self.client.cipher_suites.insert(0, random.choice(_grease_cipher_suites))
+        with self.client.create_connection() as conn:
+            conn.handshake()
+
+        if conn.handshake_completed:
+            state = tls.SPBool.C_TRUE
+
+        else:
+            state = tls.SPBool.C_FALSE
+
+        setattr(grease_prof, "cipher_suite_tolerance", state)
+
+    def _check_extension(self, grease_prof):
+        def add_unknown_extension(msg):
+            unknown_ext = ext.ExtUnknownExtension(id=0x0A0A, bytes=b"deadbeaf")
+            msg.extensions.insert(0, unknown_ext)
+
+        values = self.server_profile.get_profile_values(tls.Version.all(), full_hs=True)
+        self.client.init_profile(profile_values=values)
+        with self.client.create_connection() as conn:
+            conn.handshake(ch_pre_serialization=add_unknown_extension)
+
+        if conn.handshake_completed:
+            state = tls.SPBool.C_TRUE
+
+        else:
+            state = tls.SPBool.C_FALSE
+
+        setattr(grease_prof, "extension_tolerance", state)
+
+    def _check_groups(self, grease_prof):
+        versions = [
+            tls.Version.TLS10,
+            tls.Version.TLS11,
+            tls.Version.TLS12,
+            tls.Version.TLS13,
+        ]
+        values = self.server_profile.get_profile_values(versions, full_hs=True)
+        if not values.versions:
+            state = tls.SPBool.C_NA
+
+        else:
+            self.client.init_profile(profile_values=values)
+            self.client.supported_groups.insert(0, random.choice(_grease_params))
+            state = tls.SPBool.C_UNDETERMINED
+            with self.client.create_connection() as conn:
+                conn.handshake()
+
+            if conn.handshake_completed:
+                state = tls.SPBool.C_TRUE
+
+            else:
+                state = tls.SPBool.C_FALSE
+
+        setattr(grease_prof, "group_tolerance", state)
+
+    def _check_sig_algo(self, grease_prof):
+        versions = [tls.Version.TLS12, tls.Version.TLS13]
+        values = self.server_profile.get_profile_values(versions, full_hs=True)
+        if not values.versions:
+            state = tls.SPBool.C_NA
+
+        else:
+            self.client.init_profile(profile_values=values)
+            self.client.signature_algorithms.insert(0, random.choice(_grease_params))
+            state = tls.SPBool.C_UNDETERMINED
+            with self.client.create_connection() as conn:
+                conn.handshake()
+
+            if conn.handshake_completed:
+                state = tls.SPBool.C_TRUE
+
+            else:
+                state = tls.SPBool.C_FALSE
+
+        setattr(grease_prof, "sig_algo_tolerance", state)
+
+    def _check_psk_mode(self, grease_prof):
+        if (
+            getattr(self.server_profile.features, "resumption_psk", None)
+            is not tls.SPBool.C_TRUE
+        ):
+            state = tls.SPBool.C_NA
+
+        else:
+            values = self.server_profile.get_profile_values(
+                [tls.Version.TLS13], full_hs=True
+            )
+            self.client.init_profile(profile_values=values)
+            state = tls.SPBool.C_UNDETERMINED
+            self.client.support_psk = True
+            self.client.psk_key_exchange_modes = [
+                random.choice(_grease_psk_modes),
+                tls.PskKeyExchangeMode.PSK_DHE_KE,
+                tls.PskKeyExchangeMode.PSK_KE,
+            ]
+            ticket_msg = None
+            with self.client.create_connection() as conn:
+                conn.handshake()
+                ticket_msg = conn.wait(msg.NewSessionTicket, optional=True, timeout=200)
+
+            if ticket_msg:
+                with self.client.create_connection() as conn:
+                    conn.handshake()
+
+                if conn.handshake_completed:
+                    state = tls.SPBool.C_TRUE
+
+                else:
+                    state = tls.SPBool.C_FALSE
+
+        setattr(grease_prof, "psk_mode_tolerance", state)
+
+    def run(self):
+        grease_prof = getattr(self.server_profile.features, "grease", None)
+        if grease_prof is None:
+            grease_prof = SPGrease
+            self.server_profile.features.grease = grease_prof
+
+        self._check_version(grease_prof)
+        self._check_cipher_suite(grease_prof)
+        self._check_extension(grease_prof)
+        self._check_groups(grease_prof)
+        self._check_sig_algo(grease_prof)
+        self._check_psk_mode(grease_prof)
