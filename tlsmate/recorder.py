@@ -95,6 +95,7 @@ class Recorder(object):
         "trust_store": str,
         "client_auth": bool,
         "client_key_chain": "client_key_chain",
+        "grease": int,
     }
 
     def __init__(self):

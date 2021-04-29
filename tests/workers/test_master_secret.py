@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Implements a class to test the compression worker.
+"""Implements a class to test the master secret worker.
 """
 import pathlib
 from tlsmate.workers.master_secret import ScanExtendedMasterSecret

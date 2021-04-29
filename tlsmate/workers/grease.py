@@ -59,10 +59,13 @@ class ScanGrease(WorkerPlugin):
     descr = "check if the server is tolerant to unknown parameter values"
     prio = 35
 
+    def _get_grease_value(self, values):
+        return self._tlsmate.recorder.inject(grease=random.choice(values))
+
     def _check_version(self, grease_prof):
         values = self.server_profile.get_profile_values(tls.Version.all(), full_hs=True)
         self.client.init_profile(profile_values=values)
-        self.client.versions.append(random.choice(_grease_params))
+        self.client.versions.append(self._get_grease_value(_grease_params))
         with self.client.create_connection() as conn:
             conn.handshake()
 
@@ -77,7 +80,9 @@ class ScanGrease(WorkerPlugin):
     def _check_cipher_suite(self, grease_prof):
         values = self.server_profile.get_profile_values(tls.Version.all(), full_hs=True)
         self.client.init_profile(profile_values=values)
-        self.client.cipher_suites.insert(0, random.choice(_grease_cipher_suites))
+        self.client.cipher_suites.insert(
+            0, self._get_grease_value(_grease_cipher_suites)
+        )
         with self.client.create_connection() as conn:
             conn.handshake()
 
@@ -91,7 +96,9 @@ class ScanGrease(WorkerPlugin):
 
     def _check_extension(self, grease_prof):
         def add_unknown_extension(msg):
-            unknown_ext = ext.ExtUnknownExtension(id=0x0A0A, bytes=b"deadbeaf")
+            unknown_ext = ext.ExtUnknownExtension(
+                id=self._get_grease_value(_grease_params), bytes=b"deadbeaf"
+            )
             msg.extensions.insert(0, unknown_ext)
 
         values = self.server_profile.get_profile_values(tls.Version.all(), full_hs=True)
@@ -120,7 +127,9 @@ class ScanGrease(WorkerPlugin):
 
         else:
             self.client.init_profile(profile_values=values)
-            self.client.supported_groups.insert(0, random.choice(_grease_params))
+            self.client.supported_groups.insert(
+                0, self._get_grease_value(_grease_params)
+            )
             state = tls.SPBool.C_UNDETERMINED
             with self.client.create_connection() as conn:
                 conn.handshake()
@@ -141,7 +150,9 @@ class ScanGrease(WorkerPlugin):
 
         else:
             self.client.init_profile(profile_values=values)
-            self.client.signature_algorithms.insert(0, random.choice(_grease_params))
+            self.client.signature_algorithms.insert(
+                0, self._get_grease_value(_grease_params)
+            )
             state = tls.SPBool.C_UNDETERMINED
             with self.client.create_connection() as conn:
                 conn.handshake()
@@ -169,7 +180,7 @@ class ScanGrease(WorkerPlugin):
             state = tls.SPBool.C_UNDETERMINED
             self.client.support_psk = True
             self.client.psk_key_exchange_modes = [
-                random.choice(_grease_psk_modes),
+                self._get_grease_value(_grease_psk_modes),
                 tls.PskKeyExchangeMode.PSK_DHE_KE,
                 tls.PskKeyExchangeMode.PSK_KE,
             ]

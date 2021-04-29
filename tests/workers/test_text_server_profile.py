@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Implements a class to test the compression worker.
+"""Implements a class to test the text server profile worker.
 """
 from tlsmate.workers.server_profile import ReadProfileWorker
 from tlsmate.workers.text_server_profile import TextProfileWorker
