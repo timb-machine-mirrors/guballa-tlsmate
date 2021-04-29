@@ -225,7 +225,9 @@ class RsaKeyExchange(KeyExchange):
         the ClientHello.
         """
         pms = bytearray()
-        pms.extend(pdu.pack_uint16(self._conn.client_version_sent.value))
+        version = self._conn.client_version_sent
+        val = getattr(version, "value", version)
+        pms.extend(pdu.pack_uint16(val))
         random = self._recorder.inject(pms_rsa=os.urandom(46))
         pms.extend(random)
         self._pms = pms

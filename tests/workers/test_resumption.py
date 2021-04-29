@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Implements a class to test the encrypt_then_mac worker.
+"""Implements a class to test the resumption worker.
 """
 import pathlib
 from tlsmate.workers.resumption import ScanResumption
@@ -14,6 +14,7 @@ class TestCase(TlsSuiteTester):
     """
 
     sp_in_yaml = "profile_sig_algos_openssl3_0_0"
+    sp_out_yaml = "profile_resumption_openssl3_0_0"
     recorder_yaml = "recorder_resumption"
     path = pathlib.Path(__file__)
     server_cmd = (

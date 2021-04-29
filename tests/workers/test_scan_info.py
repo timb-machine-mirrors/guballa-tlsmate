@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Implements a class to test the encrypt_then_mac worker.
+"""Implements a class to test the scanner info workers.
 """
 import pathlib
 import time

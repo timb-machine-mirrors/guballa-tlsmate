@@ -252,11 +252,7 @@ class ClientHello(HandshakeMessage):
         msg = bytearray()
 
         # version
-        version = self.version
-        if type(version) == tls.Version:
-            version = version.value
-
-        msg.extend(pdu.pack_uint16(version))
+        msg.extend(pdu.pack_uint16(getattr(self.version, "value", self.version)))
 
         # random
         msg.extend(self.random)

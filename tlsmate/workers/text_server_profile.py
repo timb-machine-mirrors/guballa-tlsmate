@@ -334,6 +334,24 @@ _heartbeat = {
     ),
 }
 
+_grease = {
+    "parameters": (
+        ("version_tolerance", "protocol versions"),
+        ("cipher_suite_tolerance", "cipher suites"),
+        ("extension_tolerance", "extensions"),
+        ("group_tolerance", "named groups"),
+        ("sig_algo_tolerance", "signature algorithms"),
+        ("psk_mode_tolerance", "PSK exchange modes (TLS1.3)"),
+    ),
+    "result": {
+        tls.SPBool.C_FALSE: ("not tolerant", Mood.BAD),
+        tls.SPBool.C_TRUE: ("tolerant", Mood.GOOD),
+        tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
+        tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
+    },
+}
+
+
 _cert = {
     "chain_valid": {
         tls.SPBool.C_FALSE: ("validation failed", Mood.BAD),
@@ -762,6 +780,7 @@ class TextProfileWorker(WorkerPlugin):
     def _print_features_tls13(self, feat_prof):
         print(f'  {apply_mood("Features for TLS1.3", Mood.BOLD)}')
 
+        table = utils.Table(indent=4, sep="  ")
         resumption_psk = getattr(feat_prof, "resumption_psk", None)
         if resumption_psk is not None:
             txt = _features["text"][resumption_psk.value]
@@ -771,14 +790,30 @@ class TextProfileWorker(WorkerPlugin):
                 add_txt = ""
             else:
                 add_txt = f", life time: {feat_prof.psk_lifetime} seconds"
-            print(f"    resumption with PSK: {apply_mood(txt, mood)}{add_txt}")
+            table.row("resumption with PSK", f"{apply_mood(txt, mood)}{add_txt}")
 
         early_data = getattr(feat_prof, "early_data", None)
         if early_data is not None:
             txt = _features["text"][early_data.value]
             mood = _features["early_data"][early_data.value]
-            print(f"    early data (0-RTT): {apply_mood(txt, mood)}")
+            table.row("early data (0-RTT)", apply_mood(txt, mood))
 
+        table.dump()
+        print()
+
+    def _print_grease(self, grease_prof):
+        caption = apply_mood(
+            "Server tolerance to unknown values (GREASE, RFC8701)", Mood.BOLD
+        )
+        print(f"  {caption}")
+        table = utils.Table(indent=4, sep="  ")
+
+        for attribute, text in _grease["parameters"]:
+            val = getattr(grease_prof, attribute, tls.SPBool.C_UNDETERMINED)
+            result, mood = _grease["result"][val]
+            table.row(text, apply_mood(result, mood))
+
+        table.dump()
         print()
 
     def _print_features(self):
@@ -803,6 +838,9 @@ class TextProfileWorker(WorkerPlugin):
 
         if tls.Version.TLS13 in versions:
             self._print_features_tls13(feat_prof)
+
+        if hasattr(feat_prof, "grease"):
+            self._print_grease(feat_prof.grease)
 
     def _print_cert(self, cert, idx):
         items = [str(getattr(cert, "version", ""))]
