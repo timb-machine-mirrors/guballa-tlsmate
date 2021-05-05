@@ -5,37 +5,43 @@
 stages:
 - test
 - deploy
+
 test/python36:
   stage: test
-  image: python:3.6-slim
+  image: python:3.6
   script:
   - apt update --yes && apt upgrade --yes
   - apt install --yes build-essential libssl-dev libffi-dev python-dev libgmp-dev libmpfr-dev libmpc-dev
   - pip install tox
   - tox -e py36
+
 test/python37:
   stage: test
-  image: python:3.7-slim
+  image: python:3.7
   script:
   - apt update --yes && apt upgrade --yes
   - apt install --yes build-essential libssl-dev libffi-dev python-dev libgmp-dev libmpfr-dev libmpc-dev
   - pip install tox
   - tox -e py37
+
 test/python38:
   stage: test
-  image: python:3.8-slim
+  image: python:3.8
   script:
   - apt update --yes && apt upgrade --yes
   - apt install --yes build-essential libssl-dev libffi-dev python-dev libgmp-dev libmpfr-dev libmpc-dev
   - pip install tox
   - tox -e py38
+
 sast:
   stage: test
+
 include:
 - template: Security/SAST.gitlab-ci.yml
+
 pages:
   stage: deploy
-  image: python:3.7-slim
+  image: python:3.7
   script:
   - apt update --yes && apt upgrade --yes
   - apt install --yes build-essential libssl-dev libffi-dev python-dev libgmp-dev libmpfr-dev libmpc-dev
@@ -48,4 +54,14 @@ pages:
     - public
   only:
   - master
-  - development
+
+pypi:
+  stage: deploy
+  image: python:3.7
+  rules:
+  - if: $CI_COMMIT_TAG =~ /^v\d+.\d+.\d+/
+    when: on_success
+  script:
+  - pip install twine
+  - python setup.py sdist bdist_wheel
+  - python -m twine upload dist/*

@@ -7,6 +7,12 @@ ca/*/crl
 ca/*/csr
 ca/*/db
 
+# private file
+TODO.txt
+
+# automatically generated version file
+tlsmate/_version.py
+
 # directory for scratch plugins
 scratch_plugin/
 

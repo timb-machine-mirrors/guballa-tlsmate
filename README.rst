@@ -91,33 +91,12 @@ Installation
 ============
 
 This package requires Python3.6 or higher. Additionally, the packages
-``libgmp-dev``, ``libmpfr-dev`` and ``libmpc-dev`` are required.
-
-The recommended way installing the package is by using `virtual environments`_.
-If you decide to follow this recommendation, just execute the following
-optional command (adapt the path to the virtual environment according to your
-preferences):
+``libgmp-dev``, ``libmpfr-dev`` and ``libmpc-dev`` are required. The recommended way
+installing ``tlsmate`` is using pip:
 
 .. code-block:: console
 
-   $ mkdir -p ~/.virtualenv/tlsmate \
-      && python3 -m venv ~/.virtualenv/tlsmate \
-      && source ~/.virtualenv/tlsmate/bin/activate
-
-Next, install the package using pip. If you want to use the latest stable
-version of the package , use the command
-
-.. code-block:: console
-
-   $ pip install git+https://gitlab.com/guballa/tlsmate.git@master
-
-Or, if you want to use the most recent version from the development branch:
-
-.. code-block:: console
-
-   $ pip install git+https://gitlab.com/guballa/tlsmate.git
-
-.. _`virtual environments`: https://packaging.python.org/guides/installing-using-pip-and-virtual-environments
+    $ pip install tlsmate
 
 .. inclusion-marker-end-installation
 
@@ -153,14 +132,14 @@ Using the tlsmate library from other python applications is described in the
 .. inclusion-marker-end-usage
 
 
-.. |Build Status| image:: https://gitlab.com/guballa/tlsmate/badges/development/pipeline.svg
-   :target: https://gitlab.com/guballa/tlsmate/-/commits/development
+.. |Build Status| image:: https://gitlab.com/guballa/tlsmate/badges/master/pipeline.svg
+   :target: https://gitlab.com/guballa/tlsmate/-/commits/master
 
-.. |Coverage| image:: https://gitlab.com/guballa/tlsmate/badges/development/coverage.svg
-   :target: https://gitlab.com/guballa/tlsmate/-/commits/development
+.. |Coverage| image:: https://gitlab.com/guballa/tlsmate/badges/master/coverage.svg
+   :target: https://gitlab.com/guballa/tlsmate/-/commits/master
 
 .. |License| image:: https://img.shields.io/badge/License-MIT-blue.svg
-   :target: https://gitlab.com/guballa/tlsmate/-/blob/development/LICENSE
+   :target: https://gitlab.com/guballa/tlsmate/-/blob/master/LICENSE
 
 .. |Black| image:: https://img.shields.io/badge/code%20style-black-000000.svg
    :target: https://github.com/python/black

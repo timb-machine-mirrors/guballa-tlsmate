@@ -87,7 +87,7 @@ install: ## install the package using pip
 	pip install .
 
 install-dev: ## install the package using the development environment
-	pip install -e .
+	pip install -e .[dev]
 
 uninstall: ## uninstall the package using pip
 	pip uninstall tlsmate
