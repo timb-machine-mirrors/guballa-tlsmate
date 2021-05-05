@@ -1,34 +1,44 @@
-.. boilerplate documentation master file
+.. tlsmate documentation master file
 
-Welcome to boilerplate's documentation!
-=======================================
+Welcome to tlsmate's documentation!
+===================================
 
-This project provides a Python implementation for bla bla bla.
-The project is hosted on `GitLab <https://gitlab.com/guballa/boilerplate>`_.
+This project provides a Python implementation for creating arbitrary TLS scenarios.
+The project is hosted on `GitLab <https://gitlab.com/guballa/tlsmate>`_.
 
-
-
-.. toctree::
-   :caption: Some description here
-   :maxdepth: 2
-
-   file_a
-   file_b
-   file_c
 
 .. toctree::
-   :caption: Some description here
-   :maxdepth: 2
+   :caption: General
+   :maxdepth: 3
 
-   file_1
-   file_2
+   overview
+   installation
+   usage
+   tlsfeatures
 
 .. toctree::
-   :caption: Another description
+   :caption: Command Line Interface
    :maxdepth: 2
 
-   file_y
-   file_z
+   cli_config
+   cli
+
+.. toctree::
+   :caption: Extending tlsmate
+   :maxdepth: 2
+
+   plain_python
+   plugin
+   class_description
+
+.. toctree::
+   :caption: Python Modules
+   :maxdepth: 2
+
+   modules
+   mod_plugins
+   mod_workers
+
 
 Indices and tables
 ==================

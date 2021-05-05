@@ -1,6 +1,8 @@
 .PHONY: clean clean-test clean-pyc clean-build docs help lint black test \
-	test-all dist install install-dev uninstall tags
+	test-all dist install install-dev uninstall tags certs
 .DEFAULT_GOAL := help
+
+COVERAGE= --cov=tlsmate --cov=tlsmate/workers --cov=tlsmate/plugins
 
 SHELL := /bin/bash
 
@@ -43,28 +45,31 @@ clean-docs: ## remove generated html files
 	$(MAKE) -C docs clean
 
 lint: ## check style with flake8
-	flake8 tlsclient tests
+	flake8 tlsmate tests
 
 black: ## check if black would reformat the python code
-	black --check tlsclient tests
+	black --check tlsmate tests
 
 black-diff: ## provide the changes black would do as a diff
-	black --check --diff tlsclient tests
+	black --check --diff tlsmate tests
 
 black-reformat: ## let black reformat the python code
-	black tlsclient tests
+	black tlsmate tests
+
+certs: ## create certificates using private ca
+	(cd ca && $(MAKE) all)
 
 test: ## run tests quickly with the default Python
 	py.test
 
 tags: ## generate ctags
-	ctags -R --languages=python  -f ./tags tlsclient/ tests/
+	ctags -R --languages=python  -f ./tags tlsmate/ tests/
 
 test-cov: ## generate coverage statistics
-	py.test --cov tlsclient/
+	py.test $(COVERAGE)
 
 test-cov-report: ## generate coverage report for each file
-	py.test --cov-report annotate:cov_annotate --cov=tlsclient/
+	py.test --cov-report annotate:cov_annotate $(COVERAGE)
 
 test-all: ## run tests on every Python version with tox
 	tox
@@ -82,7 +87,7 @@ install: ## install the package using pip
 	pip install .
 
 install-dev: ## install the package using the development environment
-	pip install -e .
+	pip install -e .[dev]
 
 uninstall: ## uninstall the package using pip
-	pip uninstall tlsclient
+	pip uninstall tlsmate

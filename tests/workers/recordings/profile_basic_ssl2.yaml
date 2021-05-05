@@ -1,0 +1,19 @@
+cert_chains: []
+features: {}
+scan_info: {}
+server: {}
+versions:
+- cipher_suites:
+  - id: 65664
+    name: SSL_CK_RC4_128_WITH_MD5
+  - id: 196736
+    name: SSL_CK_RC2_128_CBC_WITH_MD5
+  - id: 327808
+    name: SSL_CK_IDEA_128_CBC_WITH_MD5
+  - id: 458944
+    name: SSL_CK_DES_192_EDE3_CBC_WITH_MD5
+  server_preference: C_UNDETERMINED
+  version:
+    id: 512
+    name: SSL20
+vulnerabilities: {}

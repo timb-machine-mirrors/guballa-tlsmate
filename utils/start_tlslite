@@ -1,0 +1,90 @@
+#!/bin/bash
+
+usage() {
+    cat <<EOF
+Usage: start_tlslite <options>
+
+Starts a tlslite-ng server.
+
+List of options:
+    -h, --help          Print this help
+    -p, --port <int>    The listening port for the tls.py server
+    -c, --cert <str>    The type of the certificate to use. Valid values:
+                            rsa, ecdsa, dsa, x25519, x448
+                        The keys  and certificate must be located under
+                        the directory specified by the --certdir parameter.
+    -d, --cert2 <str>   An optional alternative to --cert allowing to offer
+                        different certificates by the tls.py server.
+                        The same rules than for --cert apply.
+    -e, --cert3 <str>   An optional alternative to --cert allowing to offer
+                        different certificates by the tls.py server.
+                        The same rules than for --cert apply.
+    -f, --cert4 <str>   An optional alternative to --cert allowing to offer
+                        different certificates by the tls.py server.
+                        The same rules than for --cert apply.
+    -g, --cert5 <str>   An optional alternative to --cert allowing to offer
+                        different certificates by the tls.py server.
+                        The same rules than for --cert apply.
+    --                  Indicates the end of the options for this script.
+                        All following options will be passed transparently
+                        to the tls.py command.
+EOF
+    exit 1
+}
+
+
+auth1=rsa
+port=44330
+server_dir=~/project/private-ca/server
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -h|--help) usage ;;
+        -p|--port) port="$2"; shift ;;
+        -c|--cert) auth1="$2"; shift ;;
+        -d|--cert2) auth2="$2"; shift ;;
+        -e|--cert3) auth3="$2"; shift ;;
+        -f|--cert4) auth4="$2"; shift ;;
+        -g|--cert5) auth5="$2"; shift ;;
+        --) shift; break ;;
+        *) echo "Unknown option $1"; usage; exit 1 ;;
+    esac
+    shift
+done
+
+source ~/.virtualenv/tlslite-ng/bin/activate
+
+key1=$server_dir/private/server-$auth1.key
+key2=$server_dir/private/server-$auth2.key
+key3=$server_dir/private/server-$auth3.key
+key4=$server_dir/private/server-$auth4.key
+key5=$server_dir/private/server-$auth5.key
+cert1=$server_dir/certs/server-$auth1.crt
+cert2=$server_dir/certs/server-$auth2.crt
+cert3=$server_dir/certs/server-$auth3.crt
+cert4=$server_dir/certs/server-$auth4.crt
+cert5=$server_dir/certs/server-$auth5.crt
+#chain1=$server_dir/chains/server-$auth1.pem
+#chain2=$server_dir/chains/server-$auth2.pem
+#chain3=$server_dir/chains/server-$auth3.pem
+#chain4=$server_dir/chains/server-$auth4.pem
+#chain5=$server_dir/chains/server-$auth5.pem
+
+cert_params=" -c $cert1 -k $key1"
+if [ -n "$auth2" ]; then
+    cert_params=$cert_params" -c $cert2 -k $key2"
+fi
+if [ -n "$auth3" ]; then
+    cert_params=$cert_params" -c $cert3 -k $key3"
+fi
+if [ -n "$auth4" ]; then
+    cert_params=$cert_params" -c $cert4 -k $key4"
+fi
+if [ -n "$auth5" ]; then
+    cert_params=$cert_params" -c $cert5 -k $key5"
+fi
+
+kill `lsof -t -i :$port`
+
+cmd="tls.py server --ssl3 --max-ver tls1.3 $cert_params $@ localhost:$port"
+echo $cmd
+$cmd

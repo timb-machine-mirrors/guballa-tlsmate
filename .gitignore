@@ -1,3 +1,21 @@
+# CA files
+ca/**/*.pem
+ca/*/certs
+ca/*/chains
+ca/*/private
+ca/*/crl
+ca/*/csr
+ca/*/db
+
+# private file
+TODO.txt
+
+# automatically generated version file
+tlsmate/_version.py
+
+# directory for scratch plugins
+scratch_plugin/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
