@@ -64,33 +64,41 @@ class ScanGrease(WorkerPlugin):
 
     def _check_version(self, grease_prof):
         values = self.server_profile.get_profile_values(tls.Version.all(), full_hs=True)
-        self.client.init_profile(profile_values=values)
-        self.client.versions.append(self._get_grease_value(_grease_params))
-        with self.client.create_connection() as conn:
-            conn.handshake()
-
-        if conn.handshake_completed:
-            state = tls.SPBool.C_TRUE
+        if not values.versions:
+            state = tls.SPBool.C_NA
 
         else:
-            state = tls.SPBool.C_FALSE
+            self.client.init_profile(profile_values=values)
+            self.client.versions.append(self._get_grease_value(_grease_params))
+            with self.client.create_connection() as conn:
+                conn.handshake()
+
+            if conn.handshake_completed:
+                state = tls.SPBool.C_TRUE
+
+            else:
+                state = tls.SPBool.C_FALSE
 
         setattr(grease_prof, "version_tolerance", state)
 
     def _check_cipher_suite(self, grease_prof):
         values = self.server_profile.get_profile_values(tls.Version.all(), full_hs=True)
-        self.client.init_profile(profile_values=values)
-        self.client.cipher_suites.insert(
-            0, self._get_grease_value(_grease_cipher_suites)
-        )
-        with self.client.create_connection() as conn:
-            conn.handshake()
-
-        if conn.handshake_completed:
-            state = tls.SPBool.C_TRUE
+        if not values.versions:
+            state = tls.SPBool.C_NA
 
         else:
-            state = tls.SPBool.C_FALSE
+            self.client.init_profile(profile_values=values)
+            self.client.cipher_suites.insert(
+                0, self._get_grease_value(_grease_cipher_suites)
+            )
+            with self.client.create_connection() as conn:
+                conn.handshake()
+
+            if conn.handshake_completed:
+                state = tls.SPBool.C_TRUE
+
+            else:
+                state = tls.SPBool.C_FALSE
 
         setattr(grease_prof, "cipher_suite_tolerance", state)
 
