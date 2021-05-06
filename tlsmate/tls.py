@@ -127,6 +127,13 @@ class Version(ExtendedIntEnum):
     TLS12 = 0x0303
     TLS13 = 0x0304
 
+    @classmethod
+    def tls_only(cls):
+        """Comfortable method to get all TLS versions 1.0 .. 1.3, excluding SSLv2/v3.
+        """
+
+        return [cls.TLS10, cls.TLS11, cls.TLS12, cls.TLS13]
+
 
 class ContentType(ExtendedEnum):
     """Enum representing the TLS-Handshake protocols.

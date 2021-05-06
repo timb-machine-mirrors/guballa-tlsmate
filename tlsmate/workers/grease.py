@@ -101,26 +101,26 @@ class ScanGrease(WorkerPlugin):
             )
             msg.extensions.insert(0, unknown_ext)
 
-        values = self.server_profile.get_profile_values(tls.Version.all(), full_hs=True)
-        self.client.init_profile(profile_values=values)
-        with self.client.create_connection() as conn:
-            conn.handshake(ch_pre_serialization=add_unknown_extension)
-
-        if conn.handshake_completed:
-            state = tls.SPBool.C_TRUE
+        versions = tls.Version.tls_only()
+        values = self.server_profile.get_profile_values(versions, full_hs=True)
+        if not values.versions:
+            state = tls.SPBool.C_NA
 
         else:
-            state = tls.SPBool.C_FALSE
+            self.client.init_profile(profile_values=values)
+            with self.client.create_connection() as conn:
+                conn.handshake(ch_pre_serialization=add_unknown_extension)
+
+            if conn.handshake_completed:
+                state = tls.SPBool.C_TRUE
+
+            else:
+                state = tls.SPBool.C_FALSE
 
         setattr(grease_prof, "extension_tolerance", state)
 
     def _check_groups(self, grease_prof):
-        versions = [
-            tls.Version.TLS10,
-            tls.Version.TLS11,
-            tls.Version.TLS12,
-            tls.Version.TLS13,
-        ]
+        versions = tls.Version.tls_only()
         values = self.server_profile.get_profile_values(versions, full_hs=True)
         if not values.versions:
             state = tls.SPBool.C_NA
