@@ -570,7 +570,12 @@ class Client(object):
                     msg.extensions.append(ext.ExtPostHandshakeAuth())
 
                 self._key_share_objects = []
-                msg.extensions.append(ext.ExtSupportedVersions(versions=self.versions))
+
+                msg.extensions.append(
+                    ext.ExtSupportedVersions(
+                        versions=sorted(self.versions, reverse=True)
+                    )
+                )
                 # TLS13 key shares: enforce the same sequence as in supported groups
                 if self.key_shares:
                     key_shares = []
