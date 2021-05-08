@@ -1470,6 +1470,31 @@ class ServerProfile(SPObject):
 
         return None
 
+    def get_cert_sig_algos(self, key_types=None):
+        """Get all signature algorithms from the cert chains for the given key_types
+
+        Arguments:
+            key_types (list (:obj:`tlsmate.tls.SignatureAlgorithm`): the type of the
+                public key required in the host certificate. Can be None to get
+                all signature algorithms of all certs of all chains.
+
+        Returns:
+            list(:obj:`tlsmate.tls.SignatureScheme`): the list requested
+        """
+        sig_algos = []
+        for chain in self.cert_chains:
+            key_type = chain.cert_chain[0].public_key.key_type
+            if key_types is None or key_type in key_types:
+                for cert in chain.cert_chain:
+                    if cert.signature_algorithm not in sig_algos:
+                        sig_algos.append(cert.signature_algorithm)
+
+                if hasattr(chain, "root_certificate"):
+                    if chain.root_certificate.signature_algorithm not in sig_algos:
+                        sig_algos.append(chain.root_certificate.signature_algorithm)
+
+        return sig_algos
+
     def get_profile_values(self, filter_versions, full_hs=False):
         """Get a set of some common attributes for the given TLS version(s).
 
@@ -1509,15 +1534,9 @@ class ServerProfile(SPObject):
 
             # Add the signature algorithms used in the certificate chains as well, if
             # not yet present.
-            for chain in self.cert_chains:
-                for cert in chain.cert_chain:
-                    if cert.signature_algorithm not in sig_algos:
-                        sig_algos.append(cert.signature_algorithm)
-
-                if hasattr(chain, "root_certificate"):
-                    if chain.root_certificate.signature_algorithm not in sig_algos:
-                        sig_algos.append(chain.root_certificate.signature_algorithm)
-
+            sig_algos.extend(
+                [algo for algo in self.get_cert_sig_algos() if algo not in sig_algos]
+            )
             vers_group = self.get_supported_groups(version)
             if vers_group is not None:
                 groups.extend([group for group in vers_group if group not in groups])
