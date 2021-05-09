@@ -25,7 +25,7 @@ class _BackendTls12(_Backend):
     def get_sig_alg_from_server(client, sig_algs, cert_algs):
         sig_alg = None
         cert_chain = None
-        client.signature_algorithms = sig_algs + cert_algs
+        client.profile.signature_algorithms = sig_algs + cert_algs
         with client.create_connection() as conn:
             conn.send(msg.ClientHello)
             conn.wait(msg.ServerHello)
@@ -45,7 +45,7 @@ class _BackendTls13(_Backend):
     def get_sig_alg_from_server(client, sig_algs, cert_algs):
         sig_alg = None
         cert_chain = None
-        client.signature_algorithms = sig_algs + cert_algs
+        client.profile.signature_algorithms = sig_algs + cert_algs
         with client.create_connection() as conn:
             conn.send(msg.ClientHello)
             conn.wait(msg.ServerHello)
@@ -69,9 +69,8 @@ class ScanSigAlgs(WorkerPlugin):
         sig_alg_supported = []
         if not cipher_suites:
             return sig_alg_supported
-        self.client.cipher_suites = cipher_suites
-        self.client.support_signature_algorithms = True
-        self.client.signature_algorithms = sig_algs
+        self.client.profile.cipher_suites = cipher_suites
+        self.client.profile.signature_algorithms = sig_algs
 
         while sig_algs:
             sig_alg, cert_chain = backend.get_sig_alg_from_server(
@@ -193,10 +192,9 @@ class ScanSigAlgs(WorkerPlugin):
         values = self.server_profile.get_profile_values([tls.Version.TLS12])
         self.client.init_profile(profile_values=values)
         prof_sig_algo = prof_version.signature_algorithms
-        self.client.support_supported_groups = True
-        self.client.supported_groups = prof_version.supported_groups.groups
-        self.client.key_shares = tls.SupportedGroups.all_tls13()
-        self.client.versions = [tls.Version.TLS13]
+        self.client.profile.supported_groups = prof_version.supported_groups.groups
+        self.client.profile.key_shares = tls.SupportedGroups.all_tls13()
+        self.client.profile.versions = [tls.Version.TLS13]
 
         self._scan_auth_method(
             prof_version.cipher_suites,

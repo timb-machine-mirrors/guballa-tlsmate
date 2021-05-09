@@ -81,7 +81,7 @@ class ScanRobot(WorkerPlugin):
         )
         if rsa_ciphers:
             self.client.init_profile(profile_values=values)
-            self.client.cipher_suites = rsa_ciphers
+            self.client.profile.cipher_suites = rsa_ciphers
             with self.client.create_connection() as conn:
                 conn.handshake()
 

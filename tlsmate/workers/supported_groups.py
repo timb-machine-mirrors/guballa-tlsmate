@@ -84,11 +84,11 @@ class _Scan(metaclass=abc.ABCMeta):
 
     def scan(self, testsuite_name):
         try:
-            self._client.cipher_suites = self._get_cipher_suites()
-            if not self._client.cipher_suites:
+            self._client.profile.cipher_suites = self._get_cipher_suites()
+            if not self._client.profile.cipher_suites:
                 raise ScanError("No (EC)DH cipher suites supported")
-            self._client.versions = [self._version]
-            self._client.signature_algorithms = [
+            self._client.profile.versions = [self._version]
+            self._client.profile.signature_algorithms = [
                 tls.SignatureScheme.ED25519,
                 tls.SignatureScheme.ED448,
                 tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
@@ -130,8 +130,7 @@ class _TLS12_Scan(_Scan):
         )
 
     def _get_group_from_server(self, offered_groups):
-        self._client.support_supported_groups = True
-        self._client.supported_groups = offered_groups
+        self._client.profile.supported_groups = offered_groups
 
         with self._client.create_connection() as conn:
             conn.send(msg.ClientHello)
@@ -170,9 +169,8 @@ class _TLS13_Scan(_Scan):
         return self._version_prof.cipher_suites
 
     def _get_share_from_server(self, offered_groups):
-        self._client.support_supported_groups = True
-        self._client.supported_groups = offered_groups
-        self._client.key_shares = offered_groups
+        self._client.profile.supported_groups = offered_groups
+        self._client.profile.key_shares = offered_groups
 
         with self._client.create_connection() as conn:
             conn.send(msg.ClientHello)
@@ -200,8 +198,8 @@ class _TLS13_Scan(_Scan):
     def _determine_advertised_group(self):
         status = None
         groups = self._profile_groups.groups
-        self._client.supported_groups = groups[:1]
-        self._client.key_shares = groups[:1]
+        self._client.profile.supported_groups = groups[:1]
+        self._client.profile.key_shares = groups[:1]
         encrypted_extensions = None
 
         with self._client.create_connection() as conn:

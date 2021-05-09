@@ -25,7 +25,7 @@ class ScanCompression(WorkerPlugin):
         comp_methods = tls.CompressionMethod.all()
 
         while comp_methods:
-            self.client.compression_methods = comp_methods
+            self.client.profile.compression_methods = comp_methods
             server_hello = None
             with self.client.create_connection() as conn:
                 conn.send(msg.ClientHello)

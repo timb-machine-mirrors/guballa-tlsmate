@@ -31,7 +31,8 @@ class TestCase(CipherSuiteTester):
         client = tlsmate.client
 
         client.set_profile(tls.Profile.LEGACY)
-        client.support_scsv_renegotiation = True
+        client.profile.support_scsv_renegotiation = True
+        end_of_tc_reached = False
         with client.create_connection() as conn:
             conn.handshake()
             conn.timeout(100)

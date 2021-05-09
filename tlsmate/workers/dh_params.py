@@ -103,7 +103,7 @@ class ScanDhGroups(WorkerPlugin):
                 )
                 self.client.init_profile(profile_values=prof_vals)
                 for cs in dh_cs:
-                    self.client.cipher_suites = [cs]
+                    self.client.profile.cipher_suites = [cs]
                     with self.client.create_connection() as conn:
                         conn.send(msg.ClientHello)
                         conn.wait(msg.ServerHello)

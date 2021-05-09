@@ -24,9 +24,9 @@ class ScanResumption(WorkerPlugin):
             state = tls.SPBool.C_FALSE
             self.client.init_profile(profile_values=prof_vals)
             if session_ticket:
-                self.client.support_session_ticket = True
+                self.client.profile.support_session_ticket = True
             else:
-                self.client.support_session_id = True
+                self.client.profile.support_session_id = True
             with self.client.create_connection() as conn:
                 conn.handshake()
             if conn.handshake_completed:
@@ -35,7 +35,9 @@ class ScanResumption(WorkerPlugin):
                 else:
                     resumption_possible = bool(len(conn.msg.server_hello.session_id))
                 if resumption_possible:
-                    self.client.cipher_suites = [conn.msg.server_hello.cipher_suite]
+                    self.client.profile.cipher_suites = [
+                        conn.msg.server_hello.cipher_suite
+                    ]
                     with self.client.create_connection() as conn2:
                         conn2.handshake()
                     if conn2.handshake_completed and conn2.abbreviated_hs:
@@ -71,8 +73,8 @@ class ScanResumption(WorkerPlugin):
         )
         if prof_vals.versions:
             self.client.init_profile(profile_values=prof_vals)
-            self.client.support_psk = True
-            self.client.psk_key_exchange_modes = [
+            self.client.profile.support_psk = True
+            self.client.profile.psk_key_exchange_modes = [
                 tls.PskKeyExchangeMode.PSK_DHE_KE,
                 tls.PskKeyExchangeMode.PSK_KE,
             ]
@@ -89,7 +91,7 @@ class ScanResumption(WorkerPlugin):
                 resumption_psk = tls.SPBool.C_TRUE
                 early_data = tls.SPBool.C_FALSE
 
-                self.client.early_data = b"This is EarlyData (0-RTT)"
+                self.client.profile.early_data = b"This is EarlyData (0-RTT)"
                 with self.client.create_connection() as conn:
                     conn.handshake()
 

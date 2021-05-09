@@ -33,26 +33,24 @@ class TestCase(CipherSuiteTester):
         client = tlsmate.client
         client.init_profile()
 
-        client.versions = [tls.Version.TLS13]
-        client.cipher_suites = [tls.CipherSuite.TLS_AES_128_GCM_SHA256]
-        client.support_supported_groups = True
-        client.support_signature_algorithms = True
-        client.supported_groups = [
+        client.profile.versions = [tls.Version.TLS13]
+        client.profile.cipher_suites = [tls.CipherSuite.TLS_AES_128_GCM_SHA256]
+        client.profile.supported_groups = [
             tls.SupportedGroups.SECP256R1,
             tls.SupportedGroups.SECP384R1,
             tls.SupportedGroups.SECP521R1,
             tls.SupportedGroups.X25519,
             tls.SupportedGroups.X448,
         ]
-        client.key_shares = self.supported_groups
-        client.signature_algorithms = [
+        client.profile.key_shares = self.supported_groups
+        client.profile.signature_algorithms = [
             tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
             tls.SignatureScheme.RSA_PKCS1_SHA256,
             tls.SignatureScheme.RSA_PSS_PSS_SHA256,
             tls.SignatureScheme.RSA_PSS_RSAE_SHA256,
         ]
-        client.support_psk = True
-        client.psk_key_exchange_modes = [tls.PskKeyExchangeMode.PSK_DHE_KE]
+        client.profile.support_psk = True
+        client.profile.psk_key_exchange_modes = [tls.PskKeyExchangeMode.PSK_DHE_KE]
         end_of_tc_reached = False
         with client.create_connection() as conn:
             conn.handshake()
@@ -60,7 +58,7 @@ class TestCase(CipherSuiteTester):
             end_of_tc_reached = True
         assert end_of_tc_reached is True
 
-        client.early_data = b"This is EarlyData (0-RTT)"
+        client.profile.early_data = b"This is EarlyData (0-RTT)"
         end_of_tc_reached = False
         with client.create_connection() as conn:
             conn.handshake()

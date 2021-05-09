@@ -31,9 +31,9 @@ class TestCase(CipherSuiteTester):
         client = tlsmate.client
         client.init_profile()
 
-        client.versions = [tls.Version.TLS12]
-        client.cipher_suites = [tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA]
-        client.supported_groups = [
+        client.profile.versions = [tls.Version.TLS12]
+        client.profile.cipher_suites = [tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA]
+        client.profile.supported_groups = [
             tls.SupportedGroups.X25519,
             tls.SupportedGroups.X448,
             tls.SupportedGroups.SECT163K1,
@@ -57,7 +57,7 @@ class TestCase(CipherSuiteTester):
             tls.SupportedGroups.FFDHE2048,
             tls.SupportedGroups.FFDHE4096,
         ]
-        client.signature_algorithms = [
+        client.profile.signature_algorithms = [
             tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
             tls.SupportedGroups.X448,
             tls.SupportedGroups.SECT163K1,
@@ -99,7 +99,7 @@ class TestCase(CipherSuiteTester):
                     logging.debug("openssl_command: " + line)
                     conn.recorder.trace(openssl_command=line)
 
-        client.support_session_id = True
+        client.profile.support_session_id = True
         end_of_tc_reached = False
         with client.create_connection() as conn:
             conn.send(msg.ClientHello)

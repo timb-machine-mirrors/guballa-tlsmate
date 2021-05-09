@@ -33,7 +33,7 @@ class ScanHeartbleed(WorkerPlugin):
                 tls.Version.all(), full_hs=True
             )
             self.client.init_profile(profile_values=values)
-            self.client.heartbeat_mode = tls.HeartbeatMode.PEER_ALLOWED_TO_SEND
+            self.client.profile.heartbeat_mode = tls.HeartbeatMode.PEER_ALLOWED_TO_SEND
             with self.client.create_connection() as conn:
                 conn.handshake()
                 request = msg.HeartbeatRequest()
