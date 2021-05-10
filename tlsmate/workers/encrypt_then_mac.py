@@ -30,8 +30,8 @@ class ScanEncryptThenMac(WorkerPlugin):
             state = tls.SPBool.C_NA
         else:
             self.client.init_profile(profile_values=prof_values)
-            self.client.cipher_suites = cipher_suites
-            self.client.support_encrypt_then_mac = True
+            self.client.profile.cipher_suites = cipher_suites
+            self.client.profile.support_encrypt_then_mac = True
             with self.client.create_connection() as conn:
                 conn.handshake()
             if conn.handshake_completed:

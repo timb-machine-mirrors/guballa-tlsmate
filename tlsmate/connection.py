@@ -386,11 +386,11 @@ class TlsConnection(object):
         self._secure_reneg_ext = False
         self._secure_reneg_scsv = False
 
-        if self.client.support_secure_renegotiation:
+        if self.client.profile.support_secure_renegotiation:
             self._secure_reneg_request = True
             self._secure_reneg_ext = True
 
-        if self.client.support_scsv_renegotiation:
+        if self.client.profile.support_scsv_renegotiation:
             self._secure_reneg_request = True
             self._secure_reneg_scsv = True
 
@@ -1339,7 +1339,7 @@ class TlsConnection(object):
             method(self, msg)
 
     def _auto_heartbeat_request(self, message):
-        if self.client.heartbeat_mode is tls.HeartbeatMode.PEER_ALLOWED_TO_SEND:
+        if self.client.profile.heartbeat_mode is tls.HeartbeatMode.PEER_ALLOWED_TO_SEND:
             response = msg.HeartbeatResponse()
             response.payload_length = message.payload_length
             response.payload = message.payload
@@ -1735,8 +1735,8 @@ class TlsConnection(object):
                 expected.
         """
         self.send(msg.ClientHello, pre_serialization=ch_pre_serialization)
-        if self.client.early_data is not None:
-            self.send(msg.AppData(self.client.early_data))
+        if self.client.profile.early_data is not None:
+            self.send(msg.AppData(self.client.profile.early_data))
 
         self.wait(msg.ServerHello)
         if self.version is tls.Version.TLS13:

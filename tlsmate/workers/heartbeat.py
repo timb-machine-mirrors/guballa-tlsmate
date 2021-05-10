@@ -30,7 +30,7 @@ class ScanHeartbeat(WorkerPlugin):
 
         else:
             self.client.init_profile(profile_values=prof_values)
-            self.client.heartbeat_mode = tls.HeartbeatMode.PEER_ALLOWED_TO_SEND
+            self.client.profile.heartbeat_mode = tls.HeartbeatMode.PEER_ALLOWED_TO_SEND
             with self.client.create_connection() as conn:
                 conn.handshake()
                 if conn.handshake_completed:

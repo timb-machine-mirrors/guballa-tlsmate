@@ -32,13 +32,13 @@ class TestCase(CipherSuiteTester):
         client = tlsmate.client
         client.init_profile()
 
-        client.versions = [self.version]
-        client.cipher_suites = [self.cipher_suite]
-        client.supported_groups = self.supported_groups
-        client.signature_algorithms = self.signature_algorithms
+        client.profile.versions = [self.version]
+        client.profile.cipher_suites = [self.cipher_suite]
+        client.profile.supported_groups = self.supported_groups
+        client.profile.signature_algorithms = self.signature_algorithms
 
         end_of_tc_reached = False
-        client.heartbeat_mode = tls.HeartbeatMode.PEER_ALLOWED_TO_SEND
+        client.profile.heartbeat_mode = tls.HeartbeatMode.PEER_ALLOWED_TO_SEND
         with client.create_connection() as conn:
             conn.handshake()
             self.server_input("B\n", timeout=200)

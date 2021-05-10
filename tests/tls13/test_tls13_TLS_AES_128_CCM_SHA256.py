@@ -33,13 +33,11 @@ class TestCase(CipherSuiteTester):
         client = tlsmate.client
         client.init_profile()
 
-        client.versions = [tls.Version.TLS13]
-        client.cipher_suites = [tls.CipherSuite.TLS_AES_128_CCM_SHA256]
-        client.supported_groups = [tls.SupportedGroups.SECP256R1]
-        client.key_shares = [tls.SupportedGroups.SECP256R1]
-        client.support_supported_groups = True
-        client.support_signature_algorithms = True
-        client.signature_algorithms = [
+        client.profile.versions = [tls.Version.TLS13]
+        client.profile.cipher_suites = [tls.CipherSuite.TLS_AES_128_CCM_SHA256]
+        client.profile.supported_groups = [tls.SupportedGroups.SECP256R1]
+        client.profile.key_shares = [tls.SupportedGroups.SECP256R1]
+        client.profile.signature_algorithms = [
             tls.SignatureScheme.RSA_PKCS1_SHA1,
             tls.SignatureScheme.ECDSA_SHA1,
             tls.SignatureScheme.RSA_PKCS1_SHA256,
@@ -55,7 +53,7 @@ class TestCase(CipherSuiteTester):
             tls.SignatureScheme.RSA_PSS_PSS_SHA512,
         ]
 
-        client.support_session_ticket = True
+        client.profile.support_session_ticket = True
         end_of_tc_reached = False
         with client.create_connection() as conn:
 

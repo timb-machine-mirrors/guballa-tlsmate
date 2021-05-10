@@ -73,11 +73,11 @@ class CipherSuiteTester(TlsSuiteTester):
         client = tlsmate.client
         client.init_profile()
 
-        client.versions = [self.version]
-        client.cipher_suites = [self.cipher_suite]
-        client.supported_groups = self.supported_groups
-        client.key_shares = self.supported_groups
-        client.signature_algorithms = self.signature_algorithms
+        client.profile.versions = [self.version]
+        client.profile.cipher_suites = [self.cipher_suite]
+        client.profile.supported_groups = self.supported_groups
+        client.profile.key_shares = self.supported_groups
+        client.profile.signature_algorithms = self.signature_algorithms
         self.update_client(client)
 
         end_of_tc_reached = False

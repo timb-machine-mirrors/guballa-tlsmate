@@ -28,7 +28,7 @@ class TestCase(CipherSuiteTester):
 
     def update_client(self, client):
 
-        client.support_extended_master_secret = True
+        client.profile.support_extended_master_secret = True
 
 
 if __name__ == "__main__":

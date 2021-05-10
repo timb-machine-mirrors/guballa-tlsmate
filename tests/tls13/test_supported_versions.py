@@ -10,7 +10,7 @@ from tlsmate import tls
 
 def test_order_supported_versions(tlsmate):
     tlsmate.client.set_profile(tls.Profile.MODERN)
-    tlsmate.client.versions = [
+    tlsmate.client.profile.versions = [
         tls.Version.TLS10,
         tls.Version.SSL20,
         tls.Version.TLS13,

@@ -23,7 +23,7 @@ class ScanExtendedMasterSecret(WorkerPlugin):
             state = tls.SPBool.C_NA
         else:
             self.client.init_profile(profile_values=prof_values)
-            self.client.support_extended_master_secret = True
+            self.client.profile.support_extended_master_secret = True
             with self.client.create_connection() as conn:
                 conn.handshake()
             if conn.handshake_completed:

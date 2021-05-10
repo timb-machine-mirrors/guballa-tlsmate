@@ -69,7 +69,7 @@ class ScanGrease(WorkerPlugin):
 
         else:
             self.client.init_profile(profile_values=values)
-            self.client.versions.append(self._get_grease_value(_grease_params))
+            self.client.profile.versions.append(self._get_grease_value(_grease_params))
             with self.client.create_connection() as conn:
                 conn.handshake()
 
@@ -88,7 +88,7 @@ class ScanGrease(WorkerPlugin):
 
         else:
             self.client.init_profile(profile_values=values)
-            self.client.cipher_suites.insert(
+            self.client.profile.cipher_suites.insert(
                 0, self._get_grease_value(_grease_cipher_suites)
             )
             with self.client.create_connection() as conn:
@@ -135,7 +135,7 @@ class ScanGrease(WorkerPlugin):
 
         else:
             self.client.init_profile(profile_values=values)
-            self.client.supported_groups.insert(
+            self.client.profile.supported_groups.insert(
                 0, self._get_grease_value(_grease_params)
             )
             state = tls.SPBool.C_UNDETERMINED
@@ -158,7 +158,7 @@ class ScanGrease(WorkerPlugin):
 
         else:
             self.client.init_profile(profile_values=values)
-            self.client.signature_algorithms.insert(
+            self.client.profile.signature_algorithms.insert(
                 0, self._get_grease_value(_grease_params)
             )
             state = tls.SPBool.C_UNDETERMINED
@@ -186,8 +186,8 @@ class ScanGrease(WorkerPlugin):
             )
             self.client.init_profile(profile_values=values)
             state = tls.SPBool.C_UNDETERMINED
-            self.client.support_psk = True
-            self.client.psk_key_exchange_modes = [
+            self.client.profile.support_psk = True
+            self.client.profile.psk_key_exchange_modes = [
                 self._get_grease_value(_grease_psk_modes),
                 tls.PskKeyExchangeMode.PSK_DHE_KE,
                 tls.PskKeyExchangeMode.PSK_KE,

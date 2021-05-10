@@ -28,7 +28,7 @@ class TestCase(CipherSuiteTester):
 
     def update_client(self, client):
 
-        client.support_encrypt_then_mac = True
+        client.profile.support_encrypt_then_mac = True
 
 
 if __name__ == "__main__":

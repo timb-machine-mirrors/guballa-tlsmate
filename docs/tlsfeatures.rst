@@ -146,7 +146,7 @@ Extensions
 The following TLS extensions are supported:
 
 SERVER_NAME
------------
+^^^^^^^^^^^
 
 Any server name can be used.
 
@@ -282,7 +282,7 @@ All TLS1.3 named groups are supported:
 RENEGOTIATION_INFO
 ^^^^^^^^^^^^^^^^^^
 
-Renegotiation (client.initiated and server-initiated, secure and insecure) is supported.
+Renegotiation (secure and insecure and server-initiated) is supported.
 
 HEARTBEAT
 ^^^^^^^^^

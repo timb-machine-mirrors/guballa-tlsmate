@@ -31,17 +31,15 @@ class TestCase(CipherSuiteTester):
         client = tlsmate.client
         client.init_profile()
 
-        client.versions = [tls.Version.TLS12]
-        client.cipher_suites = [tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384]
-        client.support_supported_groups = True
-        client.support_signature_algorithms = True
-        client.supported_groups = [
+        client.profile.versions = [tls.Version.TLS12]
+        client.profile.cipher_suites = [tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384]
+        client.profile.supported_groups = [
             tls.SupportedGroups.SECP256R1,
             tls.SupportedGroups.SECP384R1,
             tls.SupportedGroups.SECP521R1,
         ]
-        client.signature_algorithms = [tls.SignatureScheme.RSA_PKCS1_SHA1]
-        client.support_session_ticket = True
+        client.profile.signature_algorithms = [tls.SignatureScheme.RSA_PKCS1_SHA1]
+        client.profile.support_session_ticket = True
         with client.create_connection() as conn:
             conn.send(msg.ClientHello)
             conn.wait(msg.ServerHello)

@@ -37,7 +37,7 @@ class ScanRenegotiation(WorkerPlugin):
                 self.server_profile.features.insecure_renegotiation = tls.SPBool.C_TRUE
 
         self.server_profile.features.secure_renegotation = tls.SPBool.C_FALSE
-        self.client.support_secure_renegotiation = True
+        self.client.profile.support_secure_renegotiation = True
         with self.client.create_connection() as conn:
             conn.handshake()
             conn.handshake()
@@ -45,8 +45,8 @@ class ScanRenegotiation(WorkerPlugin):
                 self.server_profile.features.secure_renegotation = tls.SPBool.C_TRUE
 
         self.server_profile.features.scsv_renegotiation = tls.SPBool.C_FALSE
-        self.client.support_secure_renegotiation = False
-        self.client.support_scsv_renegotiation = True
+        self.client.profile.support_secure_renegotiation = False
+        self.client.profile.support_scsv_renegotiation = True
         with self.client.create_connection() as conn:
             conn.handshake()
             conn.handshake()

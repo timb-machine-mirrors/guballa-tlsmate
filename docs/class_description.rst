@@ -29,12 +29,28 @@ Refer to :class:`tlsmate.config.Configuration`.
 The Client class
 ----------------
 
-This class is used to implement a TLS client. It is something analog to a browser:
-It manages everything which needs to be handled outside of a TLS connection, e.g.,
-session tickets, trust stores, client certificates, etc. It is also responsible for
-initiating TLS connections, and it has implemented a client profile, which basically
-determines the TLS features, parameters, extensions, etc., which are used when
-negotiating a TLS connection with a server.
+This class is used to implement a TLS client. It is something analog to a
+browser: It manages everything which needs to be handled outside of a TLS
+connection, e.g., session tickets, trust stores, client certificates, etc. It
+is also responsible for initiating TLS connections, and it has implemented a
+client profile, which is described below.
+
+Refer to :class:`tlsmate.client.Client`.
+
+The ClientProfile class
+-----------------------
+
+This data class describes the TLS profile of the client, i.e., it defines which
+TLS features, parameters, extensions, etc., are supported. This information is
+basically used to generate a ClientHello and to check a received ServerHello
+for consistency (e.g., whether the protocol version selected by the server
+is defined as supported in the client profile as well).
+
+When writing a TLS scenario, the client profile can be defined according to
+the needs.
+
+Refer to :class:`tlsmate.client.ClientProfile`.
+
 
 The TlsConnection class
 -----------------------

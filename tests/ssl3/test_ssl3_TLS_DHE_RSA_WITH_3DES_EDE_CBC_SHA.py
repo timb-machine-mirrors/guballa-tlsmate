@@ -29,8 +29,8 @@ class TestCase(CipherSuiteTester):
     def run(self, tlsmate, is_replaying=False):
 
         client = tlsmate.client
-        client.versions = [tls.Version.SSL30]
-        client.cipher_suites = [tls.CipherSuite.TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA]
+        client.profile.versions = [tls.Version.SSL30]
+        client.profile.cipher_suites = [tls.CipherSuite.TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA]
 
         end_of_tc_reached = False
         with client.create_connection() as conn:
