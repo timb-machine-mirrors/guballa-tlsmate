@@ -76,6 +76,17 @@ class CertValidationError(TlsmateException):
         self.issue = issue
 
 
+class OcspError(TlsmateException):
+    """Exception for OCSP errors
+
+    Attributes:
+        issue (str): A human readable string describing the cause.
+    """
+
+    def __init__(self, issue):
+        self.issue = issue
+
+
 class CertChainValidationError(TlsmateException):
     """Exception for certificate chain validation errors
 

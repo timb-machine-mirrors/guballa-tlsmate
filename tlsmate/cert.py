@@ -4,17 +4,17 @@
 # import basic stuff
 import stringprep
 import unicodedata
-import urllib.request
 import logging
 import pem
 
 # import own stuff
 from tlsmate import tls
-from tlsmate.exception import CertValidationError, CertChainValidationError
+from tlsmate.exception import CertValidationError, CertChainValidationError, OcspError
 
 # import other stuff
+import requests
 from cryptography import x509
-from cryptography.x509.oid import NameOID, ExtensionOID
+from cryptography.x509.oid import NameOID, ExtensionOID, AuthorityInformationAccessOID
 from cryptography.x509.oid import SignatureAlgorithmOID as sigalg_oid
 from cryptography.hazmat.primitives.asymmetric import (
     padding,
@@ -24,7 +24,7 @@ from cryptography.hazmat.primitives.asymmetric import (
     ed25519,
     ed448,
 )
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.exceptions import InvalidSignature
 
@@ -354,14 +354,16 @@ class CrlManager(object):
         """Get the plain CRL object for a given URL.
         """
         if url not in self._crls:
+            bin_crl = None
             recorder.trace(crl_url=url)
             try:
                 if recorder.is_injecting():
                     bin_crl = recorder.inject(crl=None)
 
                 else:
-                    with urllib.request.urlopen(url, timeout=5) as response:
-                        bin_crl = response.read()
+                    crl_resp = requests.get(url, timeout=5)
+                    if crl_resp.ok:
+                        bin_crl = crl_resp.content
 
                     recorder.trace(crl=bin_crl)
 
@@ -537,6 +539,7 @@ class Certificate(object):
         self.tls12_signature_algorithms = None
         self.tls13_signature_algorithms = None
         self.crl_status = None
+        self.ocsp_status = None
 
         if der is not None:
             self._bytes = der
@@ -844,26 +847,9 @@ class CertChain(object):
             if self._raise_on_failure:
                 raise
 
-    def _validate_linked_certs(
-        self, cert, issuer_cert, crl_manager, raise_on_failure, check_crl
-    ):
-        """Validate a certificate against the issuer certificate.
+    def _check_crl(self, cert, issuer_cert, crl_manager, raise_on_failure, check_crl):
+        """Check the CRL state for the given certificate.
         """
-
-        try:
-            issuer_cert.validate_signature(
-                cert.signature_algorithm,
-                cert.parsed.tbs_certificate_bytes,
-                cert.parsed.signature,
-            )
-        except InvalidSignature:
-            issue = (
-                f'signature of certificate "{cert}" cannot be '
-                f'validated by issuer certificate "{issuer_cert}"'
-            )
-            self.issues.append(issue)
-            if raise_on_failure:
-                raise CertChainValidationError(issue)
 
         if not check_crl:
             cert.crl_status = tls.CertCrlStatus.UNDETERMINED
@@ -899,6 +885,123 @@ class CertChain(object):
             self.issues.append(issue)
             if raise_on_failure:
                 raise CertChainValidationError(issue)
+
+    def _check_ocsp(self, cert, issuer_cert, raise_on_failure, check_ocsp):
+        """Check the OCSP status for the given certificate.
+        """
+
+        def _ocsp_error(issue):
+            issue = f"certificate {cert}: " + issue
+            logging.debug(issue)
+            self.issues.append(issue)
+            if raise_on_failure:
+                raise OcspError(issue)
+
+        if not check_ocsp:
+            cert.ocsp_status = tls.OcspStatus.UNDETERMINED
+            return
+
+        try:
+            aia = cert.parsed.extensions.get_extension_for_oid(
+                x509.oid.ExtensionOID.AUTHORITY_INFORMATION_ACCESS
+            ).value
+
+        except x509.ExtensionNotFound:
+            return
+
+        ocsps = [
+            ia for ia in aia if ia.access_method == AuthorityInformationAccessOID.OCSP
+        ]
+        if not ocsps:
+            return
+
+        ocsp_url = ocsps[0].access_location.value
+        builder = x509.ocsp.OCSPRequestBuilder()
+
+        # Hm, some OCSP server do not support SHA256, so let's use SHA1 until we
+        # are told otherwise.
+        builder = builder.add_certificate(
+            cert.parsed, issuer_cert.parsed, hashes.SHA1()
+        )
+        req = builder.build()
+
+        try:
+            ocsp_resp = requests.post(
+                ocsp_url,
+                headers={"Content-Type": "application/ocsp-request"},
+                data=req.public_bytes(serialization.Encoding.DER),
+                timeout=5,
+            )
+
+        except requests.Timeout:
+            self.ocsp_status = tls.OcspStatus.TIMEOUT
+            return _ocsp_error(f"connection to OCSP server {ocsp_url} timed out")
+
+        except Exception:
+            self.ocsp_status = tls.OcspStatus.INVALID_RESPONSE
+            return _ocsp_error(f"connection to OCSP server {ocsp_url} failed")
+
+        if ocsp_resp.ok:
+            ocsp_decoded = x509.ocsp.load_der_ocsp_response(ocsp_resp.content)
+
+            # check signature
+            try:
+                sig_scheme = map_x509_sig_scheme(
+                    ocsp_decoded.signature_hash_algorithm,
+                    ocsp_decoded.signature_algorithm_oid,
+                )
+                issuer_cert.validate_signature(
+                    sig_scheme, ocsp_decoded.tbs_response_bytes, ocsp_decoded.signature,
+                )
+
+            except InvalidSignature:
+                self.ocsp_status = tls.OcspStatus.SIGNATURE_INVALID
+                return _ocsp_error(f"signature of OCSP server {ocsp_url} invalid")
+
+            if ocsp_decoded.response_status == x509.ocsp.OCSPResponseStatus.SUCCESSFUL:
+                if ocsp_decoded.certificate_status == x509.ocsp.OCSPCertStatus.GOOD:
+                    self.ocsp_status = tls.OcspStatus.NOT_REVOKED
+                    logging.debug(f"certificate {cert}: OCSP status ok")
+                    return
+
+                if ocsp_decoded.certificate_status == x509.ocsp.OCSPCertStatus.REVOKED:
+                    self.ocsp_status = tls.OcspStatus.REVOKED
+
+                else:
+                    self.ocsp_status = tls.OcspStatus.UNKNOWN
+
+                return _ocsp_error(f"certificate {cert}: OCSP status not ok")
+
+            self.ocsp_status = tls.OcspStatus.INVALID_RESPONSE
+            return _ocsp_error(f"OCSP response not ok: {ocsp_decoded.response_status}")
+
+        self.ocsp_status = tls.OcspStatus.INVALID_RESPONSE
+        return _ocsp_error(f"HTTP response failed with status {ocsp_resp.status_code}")
+
+    def _validate_linked_certs(
+        self, cert, issuer_cert, crl_manager, raise_on_failure, check_crl
+    ):
+        """Validate a certificate against the issuer certificate.
+        """
+
+        try:
+            issuer_cert.validate_signature(
+                cert.signature_algorithm,
+                cert.parsed.tbs_certificate_bytes,
+                cert.parsed.signature,
+            )
+        except InvalidSignature:
+            issue = (
+                f'signature of certificate "{cert}" cannot be '
+                f'validated by issuer certificate "{issuer_cert}"'
+            )
+            self.issues.append(issue)
+            if raise_on_failure:
+                raise CertChainValidationError(issue)
+
+        self._check_crl(cert, issuer_cert, crl_manager, raise_on_failure, check_crl)
+        # TODO: replace check_crl by check_ocsp
+        self._check_ocsp(cert, issuer_cert, raise_on_failure, check_crl)
 
     def validate(
         self,
