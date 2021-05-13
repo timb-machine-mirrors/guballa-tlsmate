@@ -831,6 +831,7 @@ class CertChain(object):
         """
         try:
             cert.validate_subject(domain_name, self._raise_on_failure)
+
         except CertValidationError as exc:
             self.issues.append(exc.issue)
             if self._raise_on_failure:
@@ -845,6 +846,7 @@ class CertChain(object):
         """
         try:
             cert.validate_period(timestamp)
+
         except CertValidationError as exc:
             self.issues.append(exc.issue)
             if self._raise_on_failure:
@@ -889,7 +891,7 @@ class CertChain(object):
             if raise_on_failure:
                 raise CertChainValidationError(issue)
 
-    def _check_ocsp(self, cert, issuer_cert, raise_on_failure, check_ocsp):
+    def _check_ocsp(self, cert, issuer_cert, raise_on_failure, check_ocsp, timestamp):
         """Check the OCSP status for the given certificate.
         """
 
@@ -970,7 +972,17 @@ class CertChain(object):
 
             if ocsp_decoded.response_status == x509.ocsp.OCSPResponseStatus.SUCCESSFUL:
 
-                # TODO: check timestamps
+                if ocsp_decoded.this_update > timestamp:
+                    cert.ocsp_status = tls.OcspStatus.INVALID_TIMESTAMP
+                    return _ocsp_error(
+                        f"invalid timestamp in OCSP response (thisUpdate)"
+                    )
+
+                if ocsp_decoded.next_update and ocsp_decoded.next_update < timestamp:
+                    cert.ocsp_status = tls.OcspStatus.INVALID_TIMESTAMP
+                    return _ocsp_error(
+                        f"invalid timestamp in OCSP response (nextUpdate)"
+                    )
 
                 if ocsp_decoded.certificate_status == x509.ocsp.OCSPCertStatus.GOOD:
                     cert.ocsp_status = tls.OcspStatus.NOT_REVOKED
@@ -992,7 +1004,14 @@ class CertChain(object):
         return _ocsp_error(f"HTTP response failed with status {ocsp_resp.status_code}")
 
     def _validate_linked_certs(
-        self, cert, issuer_cert, crl_manager, raise_on_failure, check_crl, check_ocsp,
+        self,
+        cert,
+        issuer_cert,
+        crl_manager,
+        raise_on_failure,
+        check_crl,
+        check_ocsp,
+        timestamp,
     ):
         """Validate a certificate against the issuer certificate.
         """
@@ -1013,7 +1032,7 @@ class CertChain(object):
                 raise CertChainValidationError(issue)
 
         self._check_crl(cert, issuer_cert, crl_manager, raise_on_failure, check_crl)
-        self._check_ocsp(cert, issuer_cert, raise_on_failure, check_ocsp)
+        self._check_ocsp(cert, issuer_cert, raise_on_failure, check_ocsp, timestamp)
 
     def validate(
         self,
@@ -1079,6 +1098,7 @@ class CertChain(object):
                     raise_on_failure,
                     check_crl,
                     check_ocsp,
+                    timestamp,
                 )
 
             logging.debug(f'certificate "{cert}" successfully validated')
@@ -1106,6 +1126,7 @@ class CertChain(object):
                     raise_on_failure,
                     check_crl,
                     check_ocsp,
+                    timestamp,
                 )
         else:
             if not trust_store.cert_in_trust_store(prev_cert):
