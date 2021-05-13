@@ -992,7 +992,7 @@ class CertChain(object):
         return _ocsp_error(f"HTTP response failed with status {ocsp_resp.status_code}")
 
     def _validate_linked_certs(
-        self, cert, issuer_cert, crl_manager, raise_on_failure, check_crl
+        self, cert, issuer_cert, crl_manager, raise_on_failure, check_crl, check_ocsp,
     ):
         """Validate a certificate against the issuer certificate.
         """
@@ -1013,8 +1013,7 @@ class CertChain(object):
                 raise CertChainValidationError(issue)
 
         self._check_crl(cert, issuer_cert, crl_manager, raise_on_failure, check_crl)
-        # TODO: replace check_crl by check_ocsp
-        self._check_ocsp(cert, issuer_cert, raise_on_failure, check_crl)
+        self._check_ocsp(cert, issuer_cert, raise_on_failure, check_ocsp)
 
     def validate(
         self,
@@ -1024,6 +1023,7 @@ class CertChain(object):
         crl_manager,
         raise_on_failure,
         check_crl=True,
+        check_ocsp=True,
     ):
         """Only the minimal checks are supported.
 
@@ -1073,7 +1073,12 @@ class CertChain(object):
                     if raise_on_failure:
                         raise CertChainValidationError(issue)
                 self._validate_linked_certs(
-                    prev_cert, cert, crl_manager, raise_on_failure, check_crl
+                    prev_cert,
+                    cert,
+                    crl_manager,
+                    raise_on_failure,
+                    check_crl,
+                    check_ocsp,
                 )
 
             logging.debug(f'certificate "{cert}" successfully validated')
@@ -1095,7 +1100,12 @@ class CertChain(object):
                 self.validate_cert(self.root_cert, timestamp)
 
                 self._validate_linked_certs(
-                    prev_cert, cert, crl_manager, raise_on_failure, check_crl
+                    prev_cert,
+                    cert,
+                    crl_manager,
+                    raise_on_failure,
+                    check_crl,
+                    check_ocsp,
                 )
         else:
             if not trust_store.cert_in_trust_store(prev_cert):
