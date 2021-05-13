@@ -953,7 +953,7 @@ class TextProfileWorker(WorkerPlugin):
             for crl in crls:
                 table.row("", crl)
 
-        crl_status = getattr(cert, "crl_revokation_status", None)
+        crl_status = getattr(cert, "crl_revocation_status", None)
         if crl_status is not None:
             txt, mood = _cert["crl_status"][crl_status]
             table.row("CRL revocation status", apply_mood(txt, mood))

@@ -376,7 +376,7 @@ class CrlManager(object):
         return self._crls[url]
 
     def get_crl_status(self, urls, serial_nbr, issuer, issuer_cert, recorder):
-        """Determines the CRL revokation status for a given cert/urls.
+        """Determines the CRL revocation status for a given cert/urls.
 
         Downloads the CRL (if a download fails, the next url is tried), if not yet
         cached, validates the CRL against the issuer & its signature and checks if
@@ -521,12 +521,10 @@ class Certificate(object):
             property is accessed.
     """
 
-    def __init__(self, der=None, pem=None, parse=False):
+    def __init__(self, der=None, pem=None, x509_cert=None, parse=False):
 
-        if der is None and pem is None:
-            raise ValueError("der or pem must be given")
-        if der is not None and pem is not None:
-            raise ValueError("der and pem are exclusive")
+        if (der, pem, x509_cert).count(None) != 2:
+            raise ValueError("der, pem and x509_cert are exclusive")
 
         self._bytes = None
         self._pem = None
@@ -554,6 +552,11 @@ class Certificate(object):
             self._pem = pem
             self._parsed = x509.load_pem_x509_certificate(pem)
             self._parse()
+
+        else:
+            self._parsed = x509_cert
+            if parse:
+                self._parse()
 
     def __str__(self):
         return self.subject_str
@@ -934,15 +937,22 @@ class CertChain(object):
             )
 
         except requests.Timeout:
-            self.ocsp_status = tls.OcspStatus.TIMEOUT
+            cert.ocsp_status = tls.OcspStatus.TIMEOUT
             return _ocsp_error(f"connection to OCSP server {ocsp_url} timed out")
 
         except Exception:
-            self.ocsp_status = tls.OcspStatus.INVALID_RESPONSE
+            cert.ocsp_status = tls.OcspStatus.INVALID_RESPONSE
             return _ocsp_error(f"connection to OCSP server {ocsp_url} failed")
 
         if ocsp_resp.ok:
             ocsp_decoded = x509.ocsp.load_der_ocsp_response(ocsp_resp.content)
+
+            if ocsp_decoded.certificates:
+                sig_cert = Certificate(x509_cert=ocsp_decoded.certificates[0])
+                # TODO: check the certificate chain
+
+            else:
+                sig_cert = issuer_cert
 
             # check signature
             try:
@@ -950,32 +960,35 @@ class CertChain(object):
                     ocsp_decoded.signature_hash_algorithm,
                     ocsp_decoded.signature_algorithm_oid,
                 )
-                issuer_cert.validate_signature(
+                sig_cert.validate_signature(
                     sig_scheme, ocsp_decoded.tbs_response_bytes, ocsp_decoded.signature,
                 )
 
             except InvalidSignature:
-                self.ocsp_status = tls.OcspStatus.SIGNATURE_INVALID
+                cert.ocsp_status = tls.OcspStatus.SIGNATURE_INVALID
                 return _ocsp_error(f"signature of OCSP server {ocsp_url} invalid")
 
             if ocsp_decoded.response_status == x509.ocsp.OCSPResponseStatus.SUCCESSFUL:
+
+                # TODO: check timestamps
+
                 if ocsp_decoded.certificate_status == x509.ocsp.OCSPCertStatus.GOOD:
-                    self.ocsp_status = tls.OcspStatus.NOT_REVOKED
+                    cert.ocsp_status = tls.OcspStatus.NOT_REVOKED
                     logging.debug(f"certificate {cert}: OCSP status ok")
                     return
 
                 if ocsp_decoded.certificate_status == x509.ocsp.OCSPCertStatus.REVOKED:
-                    self.ocsp_status = tls.OcspStatus.REVOKED
+                    cert.ocsp_status = tls.OcspStatus.REVOKED
 
                 else:
-                    self.ocsp_status = tls.OcspStatus.UNKNOWN
+                    cert.ocsp_status = tls.OcspStatus.UNKNOWN
 
                 return _ocsp_error(f"certificate {cert}: OCSP status not ok")
 
-            self.ocsp_status = tls.OcspStatus.INVALID_RESPONSE
+            cert.ocsp_status = tls.OcspStatus.INVALID_RESPONSE
             return _ocsp_error(f"OCSP response not ok: {ocsp_decoded.response_status}")
 
-        self.ocsp_status = tls.OcspStatus.INVALID_RESPONSE
+        cert.ocsp_status = tls.OcspStatus.INVALID_RESPONSE
         return _ocsp_error(f"HTTP response failed with status {ocsp_resp.status_code}")
 
     def _validate_linked_certs(
