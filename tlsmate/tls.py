@@ -1081,7 +1081,7 @@ class CertKeyUsage(ExtendedEnum):
 
 
 class CertCrlStatus(ExtendedEnum):
-    """CRL Revokation Status
+    """CRL Revocation Status
     """
 
     UNDETERMINED = enum.auto()
@@ -1093,7 +1093,7 @@ class CertCrlStatus(ExtendedEnum):
 
 
 class OcspStatus(ExtendedEnum):
-    """OCSP revokation status
+    """OCSP revocation status
     """
 
     UNDETERMINED = enum.auto()

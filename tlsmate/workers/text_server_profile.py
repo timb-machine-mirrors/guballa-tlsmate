@@ -377,6 +377,25 @@ _cert = {
         tls.CertCrlStatus.WRONG_CRL_ISSUER: ("wrong CRL issuer", Mood.BAD),
         tls.CertCrlStatus.CRL_SIGNATURE_INVALID: ("CRL signature invalid", Mood.BAD),
     },
+    "ocsp_status": {
+        tls.OcspStatus.UNDETERMINED: ("not checked", Mood.NEUTRAL),
+        tls.OcspStatus.NOT_REVOKED: ("certificate not revoked", Mood.GOOD),
+        tls.OcspStatus.REVOKED: ("certificate revoked", Mood.BAD),
+        tls.OcspStatus.UNKNOWN: ("certificate unknwon", Mood.BAD),
+        tls.OcspStatus.TIMEOUT: ("OCSP server timeout", Mood.BAD),
+        tls.OcspStatus.INVALID_RESPONSE: (
+            "invalid response from OCSP server",
+            Mood.BAD,
+        ),
+        tls.OcspStatus.SIGNATURE_INVALID: (
+            "OCSP response has invalid signature",
+            Mood.BAD,
+        ),
+        tls.OcspStatus.INVALID_TIMESTAMP: (
+            "OCSP response has invalid timestamp",
+            Mood.BAD,
+        ),
+    },
 }
 
 _cert_sig_algo = {}
@@ -957,6 +976,11 @@ class TextProfileWorker(WorkerPlugin):
         if crl_status is not None:
             txt, mood = _cert["crl_status"][crl_status]
             table.row("CRL revocation status", apply_mood(txt, mood))
+
+        ocsp_status = getattr(cert, "ocsp_revocation_status", None)
+        if ocsp_status is not None:
+            txt, mood = _cert["ocsp_status"][ocsp_status]
+            table.row("OCSP revocation status", apply_mood(txt, mood))
 
         if hasattr(cert, "fingerprint_sha1"):
             table.row("Fingerprint SHA1", pdu.string(cert.fingerprint_sha1))
