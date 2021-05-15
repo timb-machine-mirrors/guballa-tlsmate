@@ -931,12 +931,17 @@ class CertChain(object):
         req = builder.build()
 
         try:
-            ocsp_resp = requests.post(
-                ocsp_url,
-                headers={"Content-Type": "application/ocsp-request"},
-                data=req.public_bytes(serialization.Encoding.DER),
-                timeout=5,
-            )
+            if self.recorder.is_injecting():
+                ocsp_resp = self.recorder.inject_response()
+
+            else:
+                ocsp_resp = requests.post(
+                    ocsp_url,
+                    headers={"Content-Type": "application/ocsp-request"},
+                    data=req.public_bytes(serialization.Encoding.DER),
+                    timeout=5,
+                )
+                self.recorder.trace_response(ocsp_resp)
 
         except requests.Timeout:
             cert.ocsp_status = tls.OcspStatus.TIMEOUT
@@ -975,13 +980,13 @@ class CertChain(object):
                 if ocsp_decoded.this_update > timestamp:
                     cert.ocsp_status = tls.OcspStatus.INVALID_TIMESTAMP
                     return _ocsp_error(
-                        f"invalid timestamp in OCSP response (thisUpdate)"
+                        "invalid timestamp in OCSP response (thisUpdate)"
                     )
 
                 if ocsp_decoded.next_update and ocsp_decoded.next_update < timestamp:
                     cert.ocsp_status = tls.OcspStatus.INVALID_TIMESTAMP
                     return _ocsp_error(
-                        f"invalid timestamp in OCSP response (nextUpdate)"
+                        "invalid timestamp in OCSP response (nextUpdate)"
                     )
 
                 if ocsp_decoded.certificate_status == x509.ocsp.OCSPCertStatus.GOOD:

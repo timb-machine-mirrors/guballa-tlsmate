@@ -96,6 +96,9 @@ class Recorder(object):
         "client_auth": bool,
         "client_key_chain": "client_key_chain",
         "grease": int,
+        "response_ok": bool,
+        "response_status_code": int,
+        "response_content": bytes,
     }
 
     def __init__(self):
@@ -349,6 +352,40 @@ class Recorder(object):
                 self._store_value(name, val)
 
         return val
+
+    def inject_response(self):
+        """Inject a :obj:`requests.Response` object
+
+        Only minimal ducktyping is supported.
+
+        Returns:
+            (object): an object with the attributes ok, status_code and content
+        """
+
+        class _Response():
+            pass
+
+        if self._state is RecorderState.REPLAYING:
+            response = _Response()
+            response.ok = self._unstore_value("response_ok")
+            response.status_code = self._unstore_value("response_status_code")
+            response.content = self._unstore_value("response_content")
+            return response
+
+        return None
+
+    def trace_response(self, response):
+        """Trace a requests.Response object
+
+        Arguments:
+            response (:obj:`requests.Response`): the response object from which only
+                the most relevant attributes are recorded (ok, status_code, content)
+        """
+
+        if self._state is RecorderState.RECORDING:
+            self.data["response_ok"].append(response.ok)
+            self.data["response_status_code"].append(response.ok)
+            self.data["response_content"].append(response.ok)
 
     def serialize(self, filename):
         """Serialize the recorded data to a file using YAML
