@@ -18,7 +18,8 @@ class TestCase(CipherSuiteTester):
     name = "ServerHello"
     # cipher_suite = tls.CipherSuite.TLS_DH_ANON_WITH_AES_128_CBC_SHA
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --mode www --sslv2"
+        "utils/start_openssl --version {openssl_version} --port {server_port} "
+        "-- -www -ssl2"
     )
     openssl_version = OpensslVersion.v1_0_2
 

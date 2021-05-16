@@ -7,17 +7,27 @@ import subprocess
 import sys
 import time
 import enum
+import os
+import logging
 
 # import own stuff
 from tlsmate.tlsmate import TlsMate, TLSMATE_DIR
 from tlsmate import utils
-from tlsmate.config import Configuration
+from tlsmate.config import Configuration, ConfigItem
 
 # import other stuff
 
 
 class OpensslVersion(enum.Enum):
     """Defines the openssl versions which are used to generate the unit tests.
+
+    Note, that the openssl versions must be build in the directory "openssl".
+    E.g., the binary executable for versions 3.0.0 is located in
+    openssl/openssl3_0_0/apps/openssl (base directory is the source directory
+    for tlsmate.)
+
+    Note, that the names of the enums must start with "v" followed by the version
+    string that is passed to the utils/start_openssl script.
     """
 
     v1_0_1e = enum.auto()
@@ -44,24 +54,25 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
     sp_in_yaml = None
     sp_out_yaml = None
     path = None
-    server = None
-    port = None
 
     def _start_server(self):
-        openssl_prefix = {
-            OpensslVersion.v1_0_1e: self.config.get("pytest_openssl_1_0_1e"),
-            OpensslVersion.v1_0_1g: self.config.get("pytest_openssl_1_0_1g"),
-            OpensslVersion.v1_0_2: self.config.get("pytest_openssl_1_0_2"),
-            OpensslVersion.v1_1_1: self.config.get("pytest_openssl_1_1_1"),
-            OpensslVersion.v3_0_0: self.config.get("pytest_openssl_3_0_0"),
-        }[self.openssl_version]
+
+        ca_cmd = TLSMATE_DIR / "utils/start_ca_servers"
+        logging.debug(f'starting CA servers with command "{ca_cmd}"')
+        exit_code = os.system(TLSMATE_DIR / "utils/start_ca_servers")
+        if exit_code != 0:
+            raise ValueError(f"Could not start CA servers, exit code: {exit_code}")
 
         cmd = (
             str(TLSMATE_DIR)
             + "/"
-            + self.server_cmd.format(prefix=openssl_prefix, port=self.port)
+            + self.server_cmd.format(
+                openssl_version=f'openssl{self.openssl_version.name.lstrip("v")}',
+                server_port=self.config.get("server_port"),
+            )
         )
 
+        logging.debug(f'starting TLS server with command "{cmd}"')
         self.server_proc = subprocess.Popen(
             cmd.split(),
             stdin=subprocess.PIPE,
@@ -121,14 +132,17 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
                 ini_file = None
 
         self.config = Configuration()
+        self.config.register(ConfigItem("server_port", type=int, default=44330))
+        self.config.register(ConfigItem("server", type=str, default="localhost"))
+        self.config.register(ConfigItem("pytest_recorder_file", type=str))
+        self.config.register(ConfigItem("pytest_recorder_replaying", type=str))
+
         if not is_replaying:
             self.config.init_from_external(ini_file)
 
-        self.port = self.config.get("pytest_port")
-        if self.port is None:
-            self.port = 44330
-
-        self.config.set("endpoint", self.server + ":" + str(self.port))
+        self.config.set(
+            "endpoint", f'{self.config.get("server")}:{self.config.get("server_port")}'
+        )
         self.config.set("progress", False)
         self.config.set("read_profile", self.get_yaml_file(self.sp_in_yaml))
         self.config.set("pytest_recorder_file", self.get_yaml_file(self.recorder_yaml))

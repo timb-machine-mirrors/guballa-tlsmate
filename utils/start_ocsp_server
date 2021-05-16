@@ -1,0 +1,61 @@
+#!/bin/bash
+SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+
+if [ -z "$OPENSSL" ]; then
+    OPENSSL=`which openssl`
+fi
+
+usage() {
+    cat <<EOF
+Usage: start_ocsp_server <options>
+
+Starts a OCSP server using openssl
+
+List of options:
+    -h, --help          Print this help
+    --ca <str>          The CA to use. Currently supported: ca-rsa, ca-ecdsa
+                        Defaults to ca-rsa.
+    --port <int>        The listening port for an OCSP reponder. Can be set as
+                        well via the environment variable TLSMATE_CA_RSA_OCSP_PORT
+                        or TLSMATE_CA_ECDSA_OCSP_PORT. Defaults to 44401 for
+                        ca-rsa and to 44402 for ca-ecdsa.
+    --                  Indicates the end of the options for this script.
+                        All following options will be passed transparently
+                        to the openssl command.
+EOF
+    exit 1
+}
+
+ca=ca-rsa
+ca_dir=$SCRIPTPATH/../ca
+
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -h|--help) usage ;;
+        --ca) ca="$2"; shift;;
+        --port) port="$2"; shift;;
+        --) shift; break ;;
+        *) echo "Unknown option $1"; usage; exit 1 ;;
+    esac
+    shift
+done
+
+if [ -z "$port" ]; then
+    port=44401
+    if [ "$ca" == "ca-rsa" ]; then
+        if [ -n "$TLSMATE_CA_RSA_OCSP_PORT" ]; then
+            port=$TLSMATE_CA_RSA_OCSP_PORT
+        fi
+    fi
+    if [ "$ca" == "ca-ecdsa" ]; then
+        port=44402
+        if [ -n "$TLSMATE_CA_ECDSA_OCSP_PORT" ]; then
+            port=$TLSMATE_CA_ECDSA_OCSP_PORT
+        fi
+    fi
+fi
+
+kill `lsof -t -i :$port`
+cmd="$OPENSSL ocsp -index $ca_dir/db/$ca/index -port $port -rsigner $ca_dir/certs/$ca.crt -rkey $ca_dir/private/$ca.key -CA $ca_dir/certs/$ca.crt -resp_no_certs"
+echo $cmd
+$cmd

@@ -14,7 +14,7 @@ clean:
 	git clone --depth 1 --branch ${TAG} https://github.com/openssl/openssl.git $*
 
 %/Makefile: %/config
-	(cd $* && ./config ${CONFIG})
+	(cd $* && ./config ${CONFIG} && make depend)
 
 %/apps/openssl: %/Makefile
 	(cd $* && make)

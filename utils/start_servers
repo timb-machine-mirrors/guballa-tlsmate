@@ -25,15 +25,16 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
+./start_openssl &
 
 # Start openssl1.0.2 on port 44330
-./start_openssl --port 44330 --prefix /opt/openssl1.0.2 --cert rsa --cert2 ecdsa --mode www &
+#./start_openssl --port 44330 --prefix /opt/openssl1.0.2 --cert rsa --cert2 ecdsa --mode www &
 
 # Start openssl1.1.1f on port 44331
-./start_openssl --port 44331 --cert rsa --cert2 ecdsa --mode www &
+#./start_openssl --port 44331 --cert rsa --cert2 ecdsa --mode www &
 
 # Start openssl3.0.0 on port 44332
-./start_openssl --port 44332 --prefix /opt/openssl3.0.0 --cert rsa --cert2 ecdsa --mode www &
+#./start_openssl --port 44332 --prefix /opt/openssl3.0.0 --cert rsa --cert2 ecdsa --mode www &
 
 ## Start libressl on port 44333
 #./start_libressl --port 44333 --prefix /opt/libressl --cert rsa --cert2 dsa --cert3 ecdsa &

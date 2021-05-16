@@ -1,0 +1,47 @@
+#!/bin/bash
+SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+
+usage() {
+    cat <<EOF
+Usage: start_ca_servers <options>
+
+Starts servers for handling OCSP requests and providing CRL downloads.
+
+List of options:
+    -h, --help          Print this help
+    --crl-port <int>    The listening port for a webserver that provides
+                        an option to download CRLs. Can be set as well via
+                        the environment variable TLSMATE_CRL_PORT. Defaults
+                        to 44400.
+    --ocsp-rsa-port <int>
+                        The listening port for an OCSP reponder (RSA-based CA).
+                        Can be set as well via the environment variable
+                        TLSMATE_OCSP_RSA_PORT. Defaults to 44401.
+    --ocsp-edcda-port <int>
+                        The listening port for an OCSP reponder (ECDSA-based
+                        CA). Can be set as well via the environment variable
+                        TLSMATE_OCSP_ECDSA_PORT. Defaults to 44402.
+EOF
+    exit 1
+}
+
+if [ -n "$TLSMATE_SERVER_PORT" ]; then
+    port=$TLSMATE_SERVER_PORT
+fi
+
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -h|--help) usage ;;
+        --version) version="--version $2"; shift;;
+        --crl-port) crl_port="--port $2"; shift;;
+        --ocsp-rsa-port) ocsp_rsa_port="--port $2"; shift;;
+        --ocsp-ecdsa-port) ocsp_ecdsa_port="--port $2"; shift;;
+        --) shift; break ;;
+        *) echo "Unknown option $1"; usage; exit 1 ;;
+    esac
+    shift
+done
+
+$SCRIPTPATH/start_crl_server $crl_port &
+$SCRIPTPATH/start_ocsp_server --ca ca-rsa $ocsp_rsa_port &
+$SCRIPTPATH/start_ocsp_server --ca ca-ecdsa $ocsp_ecdsa_port &

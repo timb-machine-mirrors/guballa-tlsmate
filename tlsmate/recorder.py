@@ -11,6 +11,7 @@ from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
 from tlsmate import utils
 
 # import other stuff
+import requests
 
 
 class RecorderState(enum.Enum):
@@ -96,9 +97,7 @@ class Recorder(object):
         "client_auth": bool,
         "client_key_chain": "client_key_chain",
         "grease": int,
-        "response_ok": bool,
-        "response_status_code": int,
-        "response_content": bytes,
+        "response": "response",
     }
 
     def __init__(self):
@@ -138,6 +137,13 @@ class Recorder(object):
 
             return [timeout, event_type.value, data]
 
+        elif val_type == "response":
+            timeout, event_type, data = val
+            if data is not None:
+                data = [data.ok, data.content.hex(), data.status_code]
+
+            return [timeout, event_type.value, data]
+
         return val
 
     @staticmethod
@@ -164,6 +170,13 @@ class Recorder(object):
             if data is not None:
                 data = bytes.fromhex(data)
 
+            val = (timout, event_type, data)
+
+        elif val_type == "response":
+            timout, event_type, data = val
+            event_type = SocketEvent(event_type)
+            if data is not None:
+                data[1] = bytes.fromhex(data[1])
             val = (timout, event_type, data)
 
         return val
@@ -362,30 +375,37 @@ class Recorder(object):
             (object): an object with the attributes ok, status_code and content
         """
 
-        class _Response():
+        class _Response:
             pass
 
         if self._state is RecorderState.REPLAYING:
+            timeout, event_type, data = self._unstore_value("response")
+            time.sleep(timeout)
+            if event_type is SocketEvent.CLOSURE:
+                raise Exception
+
+            elif event_type is SocketEvent.TIMEOUT:
+                raise requests.Timeout
+
             response = _Response()
-            response.ok = self._unstore_value("response_ok")
-            response.status_code = self._unstore_value("response_status_code")
-            response.content = self._unstore_value("response_content")
+            response.ok, response.content, response.status_code = data
             return response
 
         return None
 
-    def trace_response(self, response):
-        """Trace a requests.Response object
+    def trace_response(self, timeout, event_type, data=None):
+        """Trace the result of a post/get/... request.
 
         Arguments:
-            response (:obj:`requests.Response`): the response object from which only
-                the most relevant attributes are recorded (ok, status_code, content)
+            timeout (float): the timeout after which the response was received.
+            event_type (:obj:`SocketEvent`): the event that occured
+            data (bytes): the response object from which only
+                the most relevant attributes are recorded (ok, status_code, content).
+                Only present if event_type is SocketEvent.DATA.
         """
 
         if self._state is RecorderState.RECORDING:
-            self.data["response_ok"].append(response.ok)
-            self.data["response_status_code"].append(response.ok)
-            self.data["response_content"].append(response.ok)
+            self._store_value("response", (timeout, event_type, data))
 
     def serialize(self, filename):
         """Serialize the recorded data to a file using YAML

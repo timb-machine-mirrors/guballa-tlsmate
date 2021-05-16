@@ -1,44 +1,47 @@
 [ default ]
-name              = root-ca
+name              = root-rsa
 domain_suffix     = localhost
-aia_url           = http://crl.localhost/root-ca-rsa.crt
-crl_url           = http://crl.localhost/root-ca-rsa.crl
-ocsp_url          = http://ocsp.localhost
-default_ca        = ca_root
+aia_url           = http://crt.localhost:$ENV::TLSMATE_CA_PORT/certs/$ENV::CA_NAME.crt
+crl_url           = http://crl.localhost:$ENV::TLSMATE_CA_PORT/crl/$ENV::CA_NAME.crl
+ocsp_url          = http://ocsp.localhost:$ENV::OCSP_PORT
+default_ca        = $ENV::CA_NAME
 name_opt          = utf8,esc_ctrl,multiline,lname,align
-
-[ ca_root ]
+distinguished_name = req_distinguished_name
 dir               = .
-database          = $dir/db/index
-serial            = $dir/db/serial
-crlnumber         = $dir/db/crlnumber
-private_key       = $dir/private/$name.key
-certificate       = $dir/certs/$name.crt
-RANDFILE          = $dir/private/random
-new_certs_dir     = $dir/issuedcerts
-unique_subject    = no
-copy_extensions   = none
-default_days      = 3650
-default_crl_days  = 30
+private_key       = $dir/private/$ENV::CA_NAME.key
+certificate       = $dir/certs/$ENV::CA_NAME.crt
+new_certs_dir     = $dir/certs/openssl
+db                = $dir/db/$ENV::CA_NAME
+database          = $db/index
+serial            = $db/serial
 default_md        = sha256
-preserve          = no
 policy            = policy_c_o_match
+default_days      = 3650
+default_crl_days  = 1000
+
+[ req ]
+prompt			= no
+
+[ req_distinguished_name ]
+countryName                     = DE
+organizationName                = The TlsMate Company
+commonName                      = BlaBla
 
 [ policy_c_o_match ]
 countryName             = match
 stateOrProvinceName     = optional
-organizationName        = match
+organizationName        = optional
 organizationalUnitName  = optional
 commonName              = supplied
 emailAddress            = optional
 
-[ root_ca_ext ]
+[ root_ext ]
 basicConstraints        = critical, CA:true
 keyUsage                = critical, keyCertSign, cRLSign
 subjectKeyIdentifier    = hash
 authorityKeyIdentifier  = keyid:always
 
-[ issuing_ca_ext ]
+[ ca_ext ]
 basicConstraints        = critical, CA:true, pathlen:0
 keyUsage                = critical, keyCertSign, cRLSign
 subjectKeyIdentifier    = hash
@@ -50,6 +53,27 @@ nameConstraints         = critical, @name_constraints
 # required by baseline requirements but could be considered as optional as private scope
 # also optional in recent NIST TLS guideline DRAFT v2
 #certificatePolicies	= 2.23.140.1.2.1
+
+[ client_ext ]
+basicConstraints        = critical,CA:FALSE
+keyUsage                = critical, digitalSignature
+extendedKeyUsage        = clientAuth
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid:always
+
+[ server_ext ]
+basicConstraints        = critical,CA:FALSE
+subjectAltName          = @alt_names
+extendedKeyUsage        = serverAuth
+subjectKeyIdentifier    = hash
+authorityKeyIdentifier  = keyid:always
+authorityInfoAccess     = @issuer_info
+crlDistributionPoints   = @crl_info
+certificatePolicies	= 2.23.140.1.2.1
+
+[ alt_names ]
+DNS.1 = test.localhost
+DNS.2 = *.wildcard.localhost
 
 [ crl_info ]
 URI.0                   = $crl_url
@@ -71,3 +95,4 @@ subjectKeyIdentifier 	= hash
 authorityKeyIdentifier 	= keyid:always
 noCheck          	= yes
 certificatePolicies	= 2.23.140.1.2.1
+

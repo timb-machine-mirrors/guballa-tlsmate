@@ -6,10 +6,12 @@ import stringprep
 import unicodedata
 import logging
 import pem
+import time
 
 # import own stuff
 from tlsmate import tls
 from tlsmate.exception import CertValidationError, CertChainValidationError, OcspError
+from tlsmate import recorder
 
 # import other stuff
 import requests
@@ -929,7 +931,7 @@ class CertChain(object):
             cert.parsed, issuer_cert.parsed, hashes.SHA1()
         )
         req = builder.build()
-
+        start = time.time()
         try:
             if self.recorder.is_injecting():
                 ocsp_resp = self.recorder.inject_response()
@@ -941,13 +943,21 @@ class CertChain(object):
                     data=req.public_bytes(serialization.Encoding.DER),
                     timeout=5,
                 )
-                self.recorder.trace_response(ocsp_resp)
+                self.recorder.trace_response(
+                    time.time() - start, recorder.SocketEvent.DATA, ocsp_resp
+                )
 
         except requests.Timeout:
+            self.recorder.trace_response(
+                time.time() - start, recorder.SocketEvent.TIMEOUT
+            )
             cert.ocsp_status = tls.OcspStatus.TIMEOUT
             return _ocsp_error(f"connection to OCSP server {ocsp_url} timed out")
 
         except Exception:
+            self.recorder.trace_response(
+                time.time() - start, recorder.SocketEvent.CLOSURE
+            )
             cert.ocsp_status = tls.OcspStatus.INVALID_RESPONSE
             return _ocsp_error(f"connection to OCSP server {ocsp_url} failed")
 
