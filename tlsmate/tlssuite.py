@@ -14,6 +14,7 @@ import logging
 from tlsmate.tlsmate import TlsMate, TLSMATE_DIR
 from tlsmate import utils
 from tlsmate.config import Configuration, ConfigItem
+from tlsmate.connection import TlsConnection
 
 # import other stuff
 
@@ -115,6 +116,14 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
 
         return self.path.resolve().parent / "recordings" / (name + ".yaml")
 
+    def _init_classes(self):
+        """Init class attributes.
+
+        Between two test cases some class attributes must be reset.
+        """
+
+        TlsConnection.reset()
+
     def entry(self, is_replaying=False):
         """Entry point for a test case.
 
@@ -122,6 +131,8 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             is_replaying (bool): an indication if the test case is replayed or recorded.
                 Defaults to False.
         """
+
+        self._init_classes()
 
         if is_replaying:
             ini_file = None

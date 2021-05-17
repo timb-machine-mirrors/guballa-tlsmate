@@ -14,12 +14,13 @@ class TestCase(TlsSuiteTester):
     """
 
     sp_in_yaml = "profile_sig_algos_openssl1_0_2"
-    sp_out_yaml = "profile_heartbeat_openssl1_0_1e"
-    recorder_yaml = "heartbeat"
+    sp_out_yaml = "profile_heartbeat_openssl1_0_2"
+    recorder_yaml = "recorder_heartbeat"
     path = pathlib.Path(__file__)
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
-        "--mode www -- -cipher ALL"
+        "utils/start_openssl --version {openssl_version} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa "
+        "-- -www -cipher ALL"
     )
     openssl_version = OpensslVersion.v1_0_2
 

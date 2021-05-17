@@ -24,7 +24,9 @@ class TestCase(TlsSuiteTester):
     recorder_yaml = "recorder_eval_cipher_suites_ssl2"
     path = pathlib.Path(__file__)
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --mode www --sslv2"
+        "utils/start_openssl --version {openssl_version} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa --no-cert-chain "
+        "-- -www -cipher ALL -ssl2"
     )
     openssl_version = OpensslVersion.v1_0_2
 

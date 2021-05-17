@@ -5,6 +5,7 @@ import pathlib
 from tlsmate.workers.dh_params import ScanDhGroups
 from tlsmate.tlssuite import TlsSuiteTester
 from tlsmate.tlssuite import OpensslVersion
+from tlsmate.tlsmate import TLSMATE_DIR
 
 
 class TestCase(TlsSuiteTester):
@@ -17,9 +18,10 @@ class TestCase(TlsSuiteTester):
     recorder_yaml = "recorder_dh_groups"
     path = pathlib.Path(__file__)
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
-        "--mode www -- -cipher ALL -dhparam utils/dhparam_modp_2048.pem"
-    )
+        "utils/start_openssl --version {openssl_version} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa "
+        "-- -www -cipher ALL"
+    ) + f" -dhparam {str(TLSMATE_DIR)}/utils/dhparam_modp_2048.pem"
     openssl_version = OpensslVersion.v1_0_2
 
     server = "localhost"

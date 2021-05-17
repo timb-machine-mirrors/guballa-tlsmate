@@ -75,7 +75,7 @@ class Recorder(object):
         "ec_seed": int,
         "pms_rsa": bytes,
         "rsa_enciphered": bytes,
-        "x_val": int,
+        "x_val": bytes,
         "y_val": int,
         "openssl_command": str,
         "early_secret": bytes,

@@ -18,8 +18,9 @@ class TestCase(CipherSuiteTester):
 
     cipher_suite = tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
-        "--mode www -- -cipher ALL -curves "
+        "utils/start_openssl --version {openssl_version} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa "
+        "-- -www -cipher ALL -curves "
         "sect233k1:sect163r2:sect163k1:sect233r1:sect283k1:sect283r1:sect409k1:"
         "sect409r1:sect571k1:sect571r1:secp224r1:secp256k1:brainpoolP256r1:"
         "brainpoolP384r1:brainpoolP512r1"

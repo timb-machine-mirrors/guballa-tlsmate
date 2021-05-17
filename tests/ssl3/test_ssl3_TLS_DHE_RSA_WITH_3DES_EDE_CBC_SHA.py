@@ -17,8 +17,8 @@ class TestCase(CipherSuiteTester):
     path = pathlib.Path(__file__)
     cipher_suite = tls.CipherSuite.TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
-        "--mode www -- -ssl3"
+        "utils/start_openssl --version {openssl_version} --port {server_port} "
+        "--cert1 server-rsa -- -www -ssl3"
     )
     openssl_version = OpensslVersion.v1_0_2
 

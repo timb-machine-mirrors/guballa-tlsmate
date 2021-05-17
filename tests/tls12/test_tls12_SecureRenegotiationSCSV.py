@@ -18,8 +18,9 @@ class TestCase(CipherSuiteTester):
     name = "SecureRenegotiationSCSV"
     path = pathlib.Path(__file__)
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
-        "--mode www"
+        "utils/start_openssl --version {openssl_version} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa "
+        "-- -www -cipher ALL"
     )
     openssl_version = OpensslVersion.v1_1_1
 

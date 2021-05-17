@@ -19,8 +19,9 @@ class TestCase(CipherSuiteTester):
 
     cipher_suite = tls.CipherSuite.TLS_AES_128_CCM_8_SHA256
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
-        "--mode www -- -cipher ALL "
+        "utils/start_openssl --version {openssl_version} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa "
+        "-- -www -cipher ALL "
         "-ciphersuites TLS_AES_128_CCM_SHA256:TLS_AES_128_CCM_8_SHA256"
     )
     openssl_version = OpensslVersion.v1_1_1

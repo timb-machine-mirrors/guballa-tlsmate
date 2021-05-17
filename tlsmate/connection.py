@@ -323,6 +323,15 @@ class TlsConnection(object):
 
     _cert_chain_digests = []
 
+    @classmethod
+    def reset(cls):
+        """Reset class attributes.
+
+        Required for pytest, as between two test cases the cert_chain_digest
+        must be reset.
+        """
+        cls._cert_chain_digests = []
+
     def __init__(self, tlsmate, endpoint):
         self._tlsmate = tlsmate
         self.msg = TlsConnectionMsgs()

@@ -355,6 +355,7 @@ class CrlManager(object):
     def _get_crl_obj(self, url, recorder):
         """Get the plain CRL object for a given URL.
         """
+
         if url not in self._crls:
             bin_crl = None
             recorder.trace(crl_url=url)

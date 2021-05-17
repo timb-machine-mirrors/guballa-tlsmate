@@ -17,8 +17,10 @@ class TestCaseVulnerable(TlsSuiteTester):
     recorder_yaml = "recorder_ccs_injection_nok_openssl1_0_1g"
     path = pathlib.Path(__file__)
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
-        "--mode www --ccs-inject -- -cipher ALL"
+        "utils/start_openssl --version {openssl_version} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa --no-cert-chain "
+        "--ca-file ca-certificates "
+        "-- -www -cipher ALL"
     )
     openssl_version = OpensslVersion.v1_0_1g
 

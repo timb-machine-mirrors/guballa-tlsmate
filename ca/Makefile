@@ -147,7 +147,7 @@ certs/client-rsa.crt: certs/ca-rsa.crt
 	export CA=ca-rsa
 	${OPENSSL} ca -batch -notext -config openssl.cnf \
 	-extensions client_ext -in tmp/req.pem -out certs/client-rsa.crt
-	ln -s ../certs/ca-rsa.crt chains/client-rsa.chn
+	cat certs/client-rsa.crt certs/ca-rsa.crt > chains/client-rsa.chn
 
 certs/client-ecdsa.crt: export CA_NAME=ca-ecdsa
 certs/client-ecdsa.crt: certs/ca-ecdsa.crt
@@ -158,7 +158,7 @@ certs/client-ecdsa.crt: certs/ca-ecdsa.crt
 	export CA=ca-ecdsa
 	${OPENSSL} ca -batch -notext -config openssl.cnf \
 	-extensions client_ext -in tmp/req.pem -out certs/client-ecdsa.crt
-	ln -s ../certs/ca-ecdsa.crt chains/client-ecdsa.chn
+	cat certs/client-ecdsa.crt certs/ca-ecdsa.crt > chains/client-ecdsa.chn
 
 crl/ca-rsa.crl: export CA_NAME=ca-rsa
 crl/ca-rsa.crl: certs/server-revoked-rsa.crt
