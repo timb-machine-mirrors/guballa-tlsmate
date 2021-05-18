@@ -5,8 +5,7 @@ import pathlib
 import time
 import datetime
 from tlsmate.workers.scanner_info import ScanStart, ScanEnd
-from tlsmate.tlssuite import TlsSuiteTester
-from tlsmate.tlssuite import OpensslVersion
+from tlsmate.tlssuite import TlsSuiteTester, TlsLibrary
 from tlsmate.version import __version__
 
 
@@ -20,11 +19,11 @@ class TestCase(TlsSuiteTester):
     recorder_yaml = "recorder_scan_info"
     path = pathlib.Path(__file__)
     server_cmd = (
-        "utils/start_openssl --version {openssl_version} --port {server_port} "
+        "utils/start_openssl --version {library} --port {server_port} "
         "--cert1 server-rsa --cert2 server-ecdsa "
         "-- -www -cipher ALL"
     )
-    openssl_version = OpensslVersion.v3_0_0
+    library = TlsLibrary.openssl3_0_0
 
     server = "localhost"
 

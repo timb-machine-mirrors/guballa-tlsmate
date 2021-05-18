@@ -4,7 +4,7 @@
 import pathlib
 from tests.cipher_suite_tester import CipherSuiteTester
 from tlsmate import tls
-from tlsmate.tlssuite import OpensslVersion
+from tlsmate.tlssuite import TlsLibrary
 
 
 class TestCase(CipherSuiteTester):
@@ -17,11 +17,11 @@ class TestCase(CipherSuiteTester):
 
     cipher_suite = tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
     server_cmd = (
-        "utils/start_openssl --version {openssl_version} --port {server_port} "
+        "utils/start_openssl --version {library} --port {server_port} "
         "--cert1 server-rsa --cert2 server-ecdsa "
         "-- -www -cipher ALL"
     )
-    openssl_version = OpensslVersion.v1_0_2
+    library = TlsLibrary.openssl1_0_2
 
     # Uncomment the line below if you do not want to use the default version and
     # adapt it to your needs.

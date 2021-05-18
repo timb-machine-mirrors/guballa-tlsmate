@@ -1,0 +1,48 @@
+#!/bin/bash
+SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+
+usage() {
+    cat <<EOF
+Usage: start_wolfssl <options>
+
+Starts a wolfssl server.
+
+List of options:
+    -h, --help          Print this help
+    --version           The wolfssl version to use. Currently supported:
+                        wolfssl3_12_0
+    --port <int>        The listening port for the wolfssl server.
+                        Can be set as well via the environment variable
+                        TLSMATE_SERVER_PORT. Defaults to 44330.
+    --                  Indicates the end of the options for this script.
+                        All following options will be passed transparently
+                        to the wolfssl command.
+EOF
+    exit 1
+}
+ca_dir=$SCRIPTPATH/../ca
+
+port=44330
+version=wolfssl3_12_0
+
+if [ -n "$TLSMATE_SERVER_PORT" ]; then
+    port=$TLSMATE_SERVER_PORT
+fi
+
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -h|--help) usage ;;
+        --version) version="$2"; shift;;
+        --port) port="$2"; shift;;
+        --) shift; break ;;
+        *) echo "Unknown option $1"; usage; exit 1 ;;
+    esac
+    shift
+done
+
+wolfssl_path=$SCRIPTPATH/../tlslibraries/$version
+
+kill `lsof -t -i :$port`
+cmd="./examples/server/server -C 5000 -x -p $port -d"
+echo $cmd
+(cd $wolfssl_path && $cmd)

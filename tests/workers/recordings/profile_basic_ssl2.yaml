@@ -3,7 +3,7 @@ features: {}
 scan_info: {}
 server: {}
 versions:
-- cipher_suites:
+- cipher_kinds:
   - id: 65664
     name: SSL_CK_RC4_128_WITH_MD5
   - id: 196736

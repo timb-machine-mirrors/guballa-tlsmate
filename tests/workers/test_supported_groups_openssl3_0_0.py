@@ -4,7 +4,7 @@
 import pathlib
 from tlsmate.workers.supported_groups import ScanSupportedGroups
 from tlsmate.tlssuite import TlsSuiteTester
-from tlsmate.tlssuite import OpensslVersion
+from tlsmate.tlssuite import TlsLibrary
 
 
 groups_tls12 = ["SECP256R1", "SECP384R1", "SECP521R1", "X25519", "X448"]
@@ -34,11 +34,11 @@ class TestCase(TlsSuiteTester):
     recorder_yaml = "recorder_supported_groups_openssl3_0_0"
     path = pathlib.Path(__file__)
     server_cmd = (
-        "utils/start_openssl --version {openssl_version} --port {server_port} "
+        "utils/start_openssl --version {library} --port {server_port} "
         "--cert1 server-rsa --cert2 server-ecdsa "
         "-- -www -cipher ALL"
     )
-    openssl_version = OpensslVersion.v3_0_0
+    library = TlsLibrary.openssl3_0_0
 
     server = "localhost"
 

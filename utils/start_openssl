@@ -3,7 +3,7 @@ SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
 usage() {
     cat <<EOF
-Usage: start_openssl2 <options>
+Usage: start_openssl <options>
 
 Starts a openssl server.
 
@@ -60,7 +60,7 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-openssl_path=$SCRIPTPATH/../openssl/$version
+openssl_path=$SCRIPTPATH/../tlslibraries/$version
 if [ -z "$OPENSSL" ]; then
     OPENSSL=$openssl_path/apps/openssl
 fi

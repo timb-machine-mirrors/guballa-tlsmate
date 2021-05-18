@@ -4,7 +4,7 @@
 import pathlib
 from tests.cipher_suite_tester import CipherSuiteTester
 from tlsmate import tls
-from tlsmate.tlssuite import OpensslVersion
+from tlsmate.tlssuite import TlsLibrary
 
 
 class TestCase(CipherSuiteTester):
@@ -20,11 +20,11 @@ class TestCase(CipherSuiteTester):
     path = pathlib.Path(__file__)
     cipher_suite = tls.CipherSuite.TLS_AES_128_GCM_SHA256
     server_cmd = (
-        "utils/start_openssl --version {openssl_version} --port {server_port} "
+        "utils/start_openssl --version {library} --port {server_port} "
         "--cert1 server-rsa --cert2 server-ecdsa "
         "-- -www -cipher ALL -verify 3 -client_sigalgs ECDSA+SHA256"
     )
-    openssl_version = OpensslVersion.v1_1_1
+    library = TlsLibrary.openssl1_1_1
 
     # Uncomment the line below if you do not want to use the default version and
     # adapt it to your needs.

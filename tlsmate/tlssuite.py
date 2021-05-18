@@ -19,23 +19,25 @@ from tlsmate.connection import TlsConnection
 # import other stuff
 
 
-class OpensslVersion(enum.Enum):
-    """Defines the openssl versions which are used to generate the unit tests.
+class TlsLibrary(enum.Enum):
+    """Defines enums for TLS libraries used for unit tests.
 
-    Note, that the openssl versions must be build in the directory "openssl".
-    E.g., the binary executable for versions 3.0.0 is located in
-    openssl/openssl3_0_0/apps/openssl (base directory is the source directory
+    Note, that the the libraries must be build in the directory "tlslibrary".
+    E.g., the binary executable for openssl versions 3.0.0 is located in
+    tlslibraries/openssl3_0_0/apps/openssl (base directory is the source directory
     for tlsmate.)
 
-    Note, that the names of the enums must start with "v" followed by the version
-    string that is passed to the utils/start_openssl script.
+    Note, that the names of the enums are equal to the directory names under
+    the tlslibraries directory, because the enum names are used to locate the
+    binaries.
     """
 
-    v1_0_1e = enum.auto()
-    v1_0_1g = enum.auto()
-    v1_0_2 = enum.auto()
-    v1_1_1 = enum.auto()
-    v3_0_0 = enum.auto()
+    openssl1_0_1e = enum.auto()
+    openssl1_0_1g = enum.auto()
+    openssl1_0_2 = enum.auto()
+    openssl1_1_1 = enum.auto()
+    openssl3_0_0 = enum.auto()
+    wolfssl3_12_0 = enum.auto()
 
 
 class TlsSuiteTester(metaclass=abc.ABCMeta):
@@ -68,7 +70,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             str(TLSMATE_DIR)
             + "/"
             + self.server_cmd.format(
-                openssl_version=f'openssl{self.openssl_version.name.lstrip("v")}',
+                library=self.library.name,
                 server_port=self.config.get("server_port"),
             )
         )
@@ -80,7 +82,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             stdout=sys.stdout,
             universal_newlines=True,
         )
-        time.sleep(2)  # give openssl some time for a clean startup
+        time.sleep(2)  # give the TLS server some time for a clean startup
 
     def server_input(self, input_str, timeout=None):
         """Feed a string to the server process' STDIN pipe

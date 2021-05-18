@@ -21,7 +21,8 @@ all: \
 	recordings/recorder_renegotiation.yaml \
 	recordings/recorder_resumption.yaml \
 	recordings/recorder_robot_ok.yaml \
-#	recordings/recorder_robot_weak_oracle.yaml \
+	recordings/recorder_robot_weak_oracle.yaml \
+	recordings/recorder_basic_profile_wolfssl3_12_0.yaml \
 	recordings/recorder_scan_info.yaml
 
 recordings/recorder_supported_groups_openssl%.yaml: recordings/recorder_eval_cipher_suites_openssl$*.yaml
@@ -50,7 +51,7 @@ recordings/recorder_resumption.yaml: recordings/recorder_sig_algos_openssl3_0_0.
 
 recordings/recorder_robot_ok.yaml: recordings/recorder_sig_algos_openssl1_0_2.yaml
 
-#recordings/recorder_robot_weak_oracle.yaml: recordings/recorder_sig_algos_openssl1_0_2.yaml
+recordings/recorder_robot_weak_oracle.yaml: recordings/recorder_basic_profile_wolfssl3_12_0.yaml
 
 recordings/recorder_scan_info.yaml: recordings/recorder_sig_algos_openssl3_0_0.yaml
 

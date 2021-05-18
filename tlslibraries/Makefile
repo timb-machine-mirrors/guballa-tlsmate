@@ -1,13 +1,14 @@
-.PHONY: clean all openssl1_0_1e openssl1_0_1g openssl1_0_2 openssl1_1_1 openssl3_0_0
+.PHONY: clean all openssl1_0_1e openssl1_0_1g openssl1_0_2 openssl1_1_1 openssl3_0_0 wolfssl3_12_0
 
 all: openssl1_0_1e \
 	openssl1_0_1g \
 	openssl1_0_2 \
 	openssl1_1_1 \
 	openssl3_0_0 \
+	wolfssl3_12_0
 
 clean:
-	rm -rf openssl1_0_1e openssl1_0_1g openssl1_0_2 openssl1_1_1 openssl3_0_0
+	rm -rf openssl1_0_1e openssl1_0_1g openssl1_0_2 openssl1_1_1 openssl3_0_0 wolfssl3_12_0
 
 %/config:
 	rm -rf $*
@@ -34,3 +35,9 @@ openssl1_1_1: openssl1_1_1/apps/openssl
 
 openssl3_0_0: export TAG = openssl-3.0.0-alpha16
 openssl3_0_0: openssl3_0_0/apps/openssl
+
+# Weak ROBOT oracle
+wolfssl3_12_0:
+	git clone --depth 1 --branch v3.12.0-stable https://github.com/wolfSSL/wolfssl.git wolfssl3_12_0
+	(cd wolfssl3_12_0 && ./autogen.sh && ./configure CFLAGS="-DWOLFSSL_STATIC_RSA")
+	(cd wolfssl3_12_0 && sed -i 's/-Werror //g' Makefile && make)

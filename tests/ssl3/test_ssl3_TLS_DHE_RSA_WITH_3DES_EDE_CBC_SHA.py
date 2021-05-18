@@ -5,7 +5,7 @@ import pathlib
 from tests.cipher_suite_tester import CipherSuiteTester
 from tlsmate import tls
 from tlsmate import msg
-from tlsmate.tlssuite import OpensslVersion
+from tlsmate.tlssuite import TlsLibrary
 
 
 class TestCase(CipherSuiteTester):
@@ -17,10 +17,10 @@ class TestCase(CipherSuiteTester):
     path = pathlib.Path(__file__)
     cipher_suite = tls.CipherSuite.TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA
     server_cmd = (
-        "utils/start_openssl --version {openssl_version} --port {server_port} "
+        "utils/start_openssl --version {library} --port {server_port} "
         "--cert1 server-rsa -- -www -ssl3"
     )
-    openssl_version = OpensslVersion.v1_0_2
+    library = TlsLibrary.openssl1_0_2
 
     # Uncomment the line below if you do not want to use the default version and
     # adapt it to your needs.
@@ -29,7 +29,7 @@ class TestCase(CipherSuiteTester):
     def run(self, tlsmate, is_replaying=False):
 
         client = tlsmate.client
-        client.profile.versions = [tls.Version.SSL30]
+        client.profile.opensslersions = [tls.Version.SSL30]
         client.profile.cipher_suites = [tls.CipherSuite.TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA]
 
         end_of_tc_reached = False
