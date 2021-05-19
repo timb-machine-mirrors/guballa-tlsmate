@@ -58,14 +58,6 @@ class Configuration(object):
         self.register(ConfigItem("client_chain", type="file_list"))
         self.register(ConfigItem("no_crl", type=bool, default=False))
         self.register(ConfigItem("key_log_file", type=str))
-        self.register(ConfigItem("pytest_recorder_file", type=str))
-        self.register(ConfigItem("pytest_recorder_replaying", type=str))
-        self.register(ConfigItem("pytest_port", type=int))
-        self.register(ConfigItem("pytest_openssl_1_0_1e", type=str))
-        self.register(ConfigItem("pytest_openssl_1_0_1g", type=str))
-        self.register(ConfigItem("pytest_openssl_1_0_2", type=str))
-        self.register(ConfigItem("pytest_openssl_1_1_1", type=str))
-        self.register(ConfigItem("pytest_openssl_3_0_0", type=str))
 
     def _str_to_filelist(self, string):
         """Resolves a string of files paths.

@@ -5,8 +5,7 @@ import pathlib
 import time
 import datetime
 from tlsmate.workers.scanner_info import ScanStart, ScanEnd
-from tlsmate.tlssuite import TlsSuiteTester
-from tlsmate.tlssuite import OpensslVersion
+from tlsmate.tlssuite import TlsSuiteTester, TlsLibrary
 from tlsmate.version import __version__
 
 
@@ -17,13 +16,14 @@ class TestCase(TlsSuiteTester):
     """
 
     sp_in_yaml = "profile_sig_algos_openssl3_0_0"
-    recorder_yaml = "scan_info"
+    recorder_yaml = "recorder_scan_info"
     path = pathlib.Path(__file__)
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
-        "--mode www -- -cipher ALL"
+        "utils/start_openssl --version {library} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa "
+        "-- -www -cipher ALL"
     )
-    openssl_version = OpensslVersion.v3_0_0
+    library = TlsLibrary.openssl3_0_0
 
     server = "localhost"
 
@@ -46,7 +46,7 @@ class TestCase(TlsSuiteTester):
 
         assert profile["server"]["ip"] == "127.0.0.1"
         assert profile["server"]["sni"] == "localhost"
-        assert profile["server"]["port"] == self.port
+        assert profile["server"]["port"] == self.config.get("server_port")
         assert profile["server"]["name_resolution"]["domain_name"] == "localhost"
         assert len(profile["server"]["name_resolution"]["ipv4_addresses"]) == 1
         assert profile["server"]["name_resolution"]["ipv4_addresses"][0] == "127.0.0.1"

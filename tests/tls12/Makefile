@@ -9,6 +9,7 @@ all: \
 	recordings/ClientAuth_RSA_SHA256.yaml \
 	recordings/EncryptThenMac.yaml \
 	recordings/ExtendedMasterSecret.yaml \
+	recordings/Heartbeat.yaml \
 	recordings/Legacy_Renegotiation_Client.yaml \
 	recordings/Legacy_Renegotiation_Server.yaml \
 	recordings/ResumptionById.yaml \
@@ -47,7 +48,7 @@ all: \
 	recordings/TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA.yaml \
 	recordings/TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384.yaml \
 	recordings/TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256.yaml \
-	recordings/TLS_RSA_WITH_AES_128_GCM_SHA256.yaml
+	recordings/TLS_RSA_WITH_AES_128_GCM_SHA256.yaml 
 
 clean:
 	rm -f recordings/*.yaml

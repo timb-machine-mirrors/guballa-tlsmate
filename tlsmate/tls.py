@@ -1081,7 +1081,7 @@ class CertKeyUsage(ExtendedEnum):
 
 
 class CertCrlStatus(ExtendedEnum):
-    """CRL Revokation Status
+    """CRL Revocation Status
     """
 
     UNDETERMINED = enum.auto()
@@ -1090,6 +1090,20 @@ class CertCrlStatus(ExtendedEnum):
     CRL_DOWNLOAD_FAILED = enum.auto()
     WRONG_CRL_ISSUER = enum.auto()
     CRL_SIGNATURE_INVALID = enum.auto()
+
+
+class OcspStatus(ExtendedEnum):
+    """OCSP revocation status
+    """
+
+    UNDETERMINED = enum.auto()
+    NOT_REVOKED = enum.auto()
+    REVOKED = enum.auto()
+    UNKNOWN = enum.auto()
+    TIMEOUT = enum.auto()
+    INVALID_RESPONSE = enum.auto()
+    SIGNATURE_INVALID = enum.auto()
+    INVALID_TIMESTAMP = enum.auto()
 
 
 class Profile(ExtendedEnum):

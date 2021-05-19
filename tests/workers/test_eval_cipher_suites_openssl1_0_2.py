@@ -4,7 +4,7 @@
 import pathlib
 from tlsmate.workers.eval_cipher_suites import ScanCipherSuites
 from tlsmate.tlssuite import TlsSuiteTester
-from tlsmate.tlssuite import OpensslVersion
+from tlsmate.tlssuite import TlsLibrary
 
 
 tls10_cs = [
@@ -104,10 +104,11 @@ class TestCase(TlsSuiteTester):
     recorder_yaml = "recorder_eval_cipher_suites_openssl1_0_2"
     path = pathlib.Path(__file__)
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
-        "--mode www -- -cipher ALL"
+        "utils/start_openssl --version {library} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa "
+        "-- -www -cipher ALL"
     )
-    openssl_version = OpensslVersion.v1_0_2
+    library = TlsLibrary.openssl1_0_2
 
     server = "localhost"
 
@@ -115,8 +116,8 @@ class TestCase(TlsSuiteTester):
         assert len(cert_chain) == 2
         assert cert_chain[0]["id"] == 1
         assert cert_chain[1]["id"] == 2
-        assert len(cert_chain[0]["cert_chain"]) == 3
-        assert len(cert_chain[1]["cert_chain"]) == 3
+        assert len(cert_chain[0]["cert_chain"]) == 2
+        assert len(cert_chain[1]["cert_chain"]) == 2
 
     def check_versions(self, versions):
         assert len(versions) == 4

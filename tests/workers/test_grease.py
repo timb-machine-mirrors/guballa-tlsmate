@@ -4,7 +4,7 @@
 import pathlib
 from tlsmate.workers.grease import ScanGrease
 from tlsmate.tlssuite import TlsSuiteTester
-from tlsmate.tlssuite import OpensslVersion
+from tlsmate.tlssuite import TlsLibrary
 
 
 class TestCase(TlsSuiteTester):
@@ -17,10 +17,11 @@ class TestCase(TlsSuiteTester):
     recorder_yaml = "recorder_grease"
     path = pathlib.Path(__file__)
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
-        "--mode www -- -cipher ALL"
+        "utils/start_openssl --version {library} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa "
+        "-- -www -cipher ALL"
     )
-    openssl_version = OpensslVersion.v3_0_0
+    library = TlsLibrary.openssl3_0_0
 
     server = "localhost"
 

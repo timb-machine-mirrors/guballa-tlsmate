@@ -1,0 +1,41 @@
+#!/bin/bash
+SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+
+usage() {
+    cat <<EOF
+Usage: start_crl_server <options>
+
+Starts a web server that serves CRL downloads.
+
+List of options:
+    -h, --help          Print this help
+    --port <int>        The listening port for a webserver that provides
+                        an option to download CRLs. Can be set as well via
+                        the environment variable TLSMATE_CA_PORT. Defaults
+                        to 44400.
+    --                  Indicates the end of the options for this script.
+                        All following options will be passed transparently
+                        to the http.server command.
+EOF
+    exit 1
+}
+
+port=44400
+if [ -n "$TLSMATE_CA_PORT" ]; then
+    port=$TLSMATE_CA_PORT
+fi
+
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -h|--help) usage ;;
+        --port) port="$2"; shift;;
+        --) shift; break ;;
+        *) echo "Unknown option $1"; usage; exit 1 ;;
+    esac
+    shift
+done
+
+kill `lsof -t -i :$port`
+cmd="python -m http.server $port $@"
+echo "(cd $SCRIPTPATH/../ca && $cmd)"
+(cd $SCRIPTPATH/../ca && $cmd)

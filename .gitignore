@@ -7,6 +7,10 @@ ca/*/crl
 ca/*/csr
 ca/*/db
 
+# tls librariy builds
+tlslibraries/openssl*
+tlslibraries/wolfssl*
+
 # private file
 TODO.txt
 

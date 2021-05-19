@@ -11,6 +11,7 @@ from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
 from tlsmate import utils
 
 # import other stuff
+import requests
 
 
 class RecorderState(enum.Enum):
@@ -74,7 +75,7 @@ class Recorder(object):
         "ec_seed": int,
         "pms_rsa": bytes,
         "rsa_enciphered": bytes,
-        "x_val": int,
+        "x_val": bytes,
         "y_val": int,
         "openssl_command": str,
         "early_secret": bytes,
@@ -96,6 +97,7 @@ class Recorder(object):
         "client_auth": bool,
         "client_key_chain": "client_key_chain",
         "grease": int,
+        "response": "response",
     }
 
     def __init__(self):
@@ -135,6 +137,13 @@ class Recorder(object):
 
             return [timeout, event_type.value, data]
 
+        elif val_type == "response":
+            timeout, event_type, data = val
+            if data is not None:
+                data = [data.ok, data.content.hex(), data.status_code]
+
+            return [timeout, event_type.value, data]
+
         return val
 
     @staticmethod
@@ -161,6 +170,13 @@ class Recorder(object):
             if data is not None:
                 data = bytes.fromhex(data)
 
+            val = (timout, event_type, data)
+
+        elif val_type == "response":
+            timout, event_type, data = val
+            event_type = SocketEvent(event_type)
+            if data is not None:
+                data[1] = bytes.fromhex(data[1])
             val = (timout, event_type, data)
 
         return val
@@ -349,6 +365,47 @@ class Recorder(object):
                 self._store_value(name, val)
 
         return val
+
+    def inject_response(self):
+        """Inject a :obj:`requests.Response` object
+
+        Only minimal ducktyping is supported.
+
+        Returns:
+            (object): an object with the attributes ok, status_code and content
+        """
+
+        class _Response:
+            pass
+
+        if self._state is RecorderState.REPLAYING:
+            timeout, event_type, data = self._unstore_value("response")
+            time.sleep(timeout)
+            if event_type is SocketEvent.CLOSURE:
+                raise Exception
+
+            elif event_type is SocketEvent.TIMEOUT:
+                raise requests.Timeout
+
+            response = _Response()
+            response.ok, response.content, response.status_code = data
+            return response
+
+        return None
+
+    def trace_response(self, timeout, event_type, data=None):
+        """Trace the result of a post/get/... request.
+
+        Arguments:
+            timeout (float): the timeout after which the response was received.
+            event_type (:obj:`SocketEvent`): the event that occured
+            data (bytes): the response object from which only
+                the most relevant attributes are recorded (ok, status_code, content).
+                Only present if event_type is SocketEvent.DATA.
+        """
+
+        if self._state is RecorderState.RECORDING:
+            self._store_value("response", (timeout, event_type, data))
 
     def serialize(self, filename):
         """Serialize the recorded data to a file using YAML

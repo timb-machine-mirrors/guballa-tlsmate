@@ -55,7 +55,15 @@ def _args_authentication(parser):
     group.add_argument(
         "--no-crl",
         help=(
-            "do not download the CRL to check for the certificate revokation status."
+            "do not download the CRL to check for the certificate revocation status."
+        ),
+        action="store_const",
+        const=True,
+    )
+    group.add_argument(
+        "--no-ocsp",
+        help=(
+            "do not query OCSP server for checking the certificate revocation status."
         ),
         action="store_const",
         const=True,
@@ -193,6 +201,7 @@ def main():
     config.set("client_key", args.client_key)
     config.set("client_chain", args.client_chain)
     config.set("no_crl", args.no_crl)
+    config.set("no_ocsp", args.no_ocsp)
     config.set("endpoint", args.host)
     config.set("sni", args.sni)
     config.set("key_log_file", args.key_log_file)

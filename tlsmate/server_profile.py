@@ -1134,7 +1134,10 @@ class SPCertificate(SPObject):
         self.public_key = SPPublicKey(pub_key=cert.parsed.public_key())
         self.extensions = [SPCertExtension(ext=ext) for ext in cert.parsed.extensions]
         if cert.crl_status is not None:
-            self.crl_revokation_status = cert.crl_status
+            self.crl_revocation_status = cert.crl_status
+        if cert.ocsp_status is not None:
+            self.ocsp_revocation_status = cert.ocsp_status
+
 
 
 class SPCertificateSchema(ProfileSchema):
@@ -1158,7 +1161,8 @@ class SPCertificateSchema(ProfileSchema):
     fingerprint_sha256 = FieldsBytes()
     signature_algorithm = FieldsEnumString(enum_class=tls.SignatureScheme)
     public_key = fields.Nested(SPPublicKeySchema)
-    crl_revokation_status = FieldsEnumString(enum_class=tls.CertCrlStatus)
+    crl_revocation_status = FieldsEnumString(enum_class=tls.CertCrlStatus)
+    ocsp_revocation_status = FieldsEnumString(enum_class=tls.OcspStatus)
     extensions = fields.List(fields.Nested(SPCertExtensionSchema))
 
 

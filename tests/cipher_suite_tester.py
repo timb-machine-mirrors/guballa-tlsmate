@@ -36,8 +36,6 @@ class CipherSuiteTester(TlsSuiteTester):
     # cipher suite name
     name = None
     path = None
-    server = "localhost"
-    port = 44330
     cipher_suite = None
     version = tls.Version.TLS12
     supported_groups = [

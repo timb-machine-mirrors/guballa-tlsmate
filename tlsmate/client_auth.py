@@ -52,6 +52,7 @@ class ClientAuth(object):
             key = serialization.load_pem_private_key(fd.read(), password=None)
 
         chain = CertChain()
+        chain.set_recorder(self._recorder)
         pem_list = pem.parse_file(chain_file)
         for pem_item in pem_list:
             chain.append_pem_cert(pem_item.as_bytes())
@@ -101,7 +102,7 @@ class ClientAuth(object):
             idx (int): the reference to the set of (key, certificate chain)
 
         Returns:
-            tuple: A tuple, where the first element represents the serialized key, and
+            list: A list, where the first element represents the serialized key, and
             the seconds element represents the serialized certificate chain.
         """
         key, chain = self._auth[idx]
@@ -110,7 +111,7 @@ class ClientAuth(object):
             format=serialization.PrivateFormat.PKCS8,
             encryption_algorithm=serialization.NoEncryption(),
         )
-        return (key_bytes.hex(), chain.serialize())
+        return [key_bytes.hex(), chain.serialize()]
 
     def deserialize_key_chain(self, key_chain):
         """Deserializes the pair of the given key/cert-chain.
