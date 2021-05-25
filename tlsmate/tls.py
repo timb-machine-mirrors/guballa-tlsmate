@@ -1089,6 +1089,7 @@ class CertCrlStatus(ExtendedEnum):
     REVOKED = enum.auto()
     CRL_DOWNLOAD_FAILED = enum.auto()
     WRONG_CRL_ISSUER = enum.auto()
+    INVALID_TIMESTAMP = enum.auto()
     CRL_SIGNATURE_INVALID = enum.auto()
 
 

@@ -1292,15 +1292,12 @@ class TlsConnection(object):
                 if sni is None:
                     raise ValueError("No SNI defined")
 
-            msg.chain.validate(
-                timestamp,
-                sni,
-                self._tlsmate.trust_store,
-                self._tlsmate.crl_manager,
-                self.client.alert_on_invalid_cert,
-                not self._tlsmate.config.get("no_crl"),
-                not self._tlsmate.config.get("no_ocsp"),
-            )
+            try:
+                msg.chain.validate(timestamp, sni, self.client.alert_on_invalid_cert)
+
+            except Exception as exc:
+                if self.client.alert_on_invalid_cert:
+                    raise exc
 
     def _on_certificate_request_received(self, msg):
         if self.version is tls.Version.TLS13:

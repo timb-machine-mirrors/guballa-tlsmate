@@ -63,7 +63,7 @@ class ClientProfile(object):
             extension will not be present in the ClientHello message. Note,
             that arbitraty interger values are supported as well, allowing to
             check if the server ignores unknown values. Default: None
-        signature_algorithms (list (:obj:`tlsmate.tls.SignatureScheme` or int)): 
+        signature_algorithms (list (:obj:`tlsmate.tls.SignatureScheme` or int)):
             The list of signature algorithms supported by the client. If
             set to None, the extension will not be present in the ClientHello
             message. Note, that arbitraty interger values are supported as

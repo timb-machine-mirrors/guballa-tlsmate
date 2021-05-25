@@ -11,7 +11,9 @@ from tlsmate.client import Client
 from tlsmate.client_auth import ClientAuth
 from tlsmate.recorder import Recorder
 from tlsmate.config import Configuration
-from tlsmate.cert import TrustStore, Certificate, CrlManager
+from tlsmate.cert import Certificate
+from tlsmate.crl_manager import CrlManager
+from tlsmate.trust_store import TrustStore
 from tlsmate.plugin import WorkManager
 from tlsmate.key_logging import KeyLogger
 from tlsmate import utils
@@ -44,7 +46,10 @@ class TlsMate(object):
         client (:obj:`tlsmate.client.Client`): the client object
     """
 
+    instance = None
+
     def __init__(self, config=None):
+        TlsMate.instance = self
         if config is None:
             config = Configuration()
 
@@ -54,9 +59,9 @@ class TlsMate(object):
         self.config = config
         self.server_profile = ServerProfile()
         self.recorder = Recorder()
-        self.trust_store = TrustStore(recorder=self.recorder)
+        self.trust_store = TrustStore(tlsmate=self)
         self.client_auth = ClientAuth(tlsmate=self)
-        self.crl_manager = CrlManager()
+        self.crl_manager = CrlManager(tlsmate=self)
         key_log_file = config.get("key_log_file")
         if key_log_file:
             KeyLogger.open_file(key_log_file)

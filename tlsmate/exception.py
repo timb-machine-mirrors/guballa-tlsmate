@@ -98,6 +98,17 @@ class CertChainValidationError(TlsmateException):
         self.issue = issue
 
 
+class UntrustedCertificate(TlsmateException):
+    """Exception for unsuccessful certificate (chain) validation.
+
+    Attributes:
+        issue (str): A human readable string describing the cause.
+    """
+
+    def __init__(self, issue):
+        self.issue = issue
+
+
 class ServerParmsSignatureInvalid(TlsmateException):
     """More user friendly exception than cryptography.exception.InvalidSignature
     """
