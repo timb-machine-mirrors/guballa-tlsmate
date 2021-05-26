@@ -78,7 +78,7 @@ class CrlManager(object):
             urls (list of str): a list of CRL-urls
             serial_nbr (int): the serial number of the certificate to check
             issuer (:obj:`x509.Name`): the issuer name of the cert to check
-            issuer_cert (:obj:`Certificate`): the certificate of the issuer
+            issuer_cert (:obj:`tlsmate.cert.Certificate`): the certificate of the issuer
 
         Returns:
             :obj:`tlsmate.tls.CertCrlStatus`: the final status.

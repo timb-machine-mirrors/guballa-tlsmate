@@ -31,6 +31,10 @@ class TrustStore(object):
 
     def set_ca_files(self, ca_files):
         """Store the CA files containing certs in PEM format
+
+        Arguments:
+            ca_files (list of str): A list of file names. Each file can contain
+                multiple certificates in PEM format.
         """
 
         if ca_files:
@@ -57,7 +61,7 @@ class TrustStore(object):
         """Add a certificate to the trust store if not yet present.
 
         Arguments:
-            cert (:obj:`Certificate`): The certificate to add
+            cert (:obj:`tlsmate.cert.Certificate`): The certificate to add
         """
         if cert.fingerprint_sha256 not in self._fingerprint_cache:
             logging.debug(
@@ -74,7 +78,7 @@ class TrustStore(object):
         """Checks if a given certificate is present in the trust store.
 
         Arguments:
-            cert (:obj:`Certificate`): the certificate to check
+            cert (:obj:`tlsmate.cert.Certificate`): the certificate to check
 
         Returns:
             bool: True, if the given certificate is present in the trust store
@@ -96,7 +100,7 @@ class TrustStore(object):
             issuer_name (:obj:`cryptography.x509.Name`): the name of the issuer
 
         Returns:
-            :obj:`Certificate` or None if the certificate is not found.
+            :obj:`tlsmate.cert.Certificate` or None if the certificate is not found.
         """
 
         for cert in self:

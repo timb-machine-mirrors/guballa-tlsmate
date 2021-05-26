@@ -392,10 +392,7 @@ class CertChain(object):
         # And now check for gratuitous certificate in the chain
         if not raise_on_failure:
             for idx, cert in enumerate(self.certificates):
-                if idx not in track:
-                    import pudb
-
-                    pudb.set_trace()
+                if idx not in track and cert.trusted is None:
                     cert.issues.append(
                         "gratuitous certificate, not part of trust chain"
                     )
