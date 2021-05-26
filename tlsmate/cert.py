@@ -7,7 +7,7 @@ import logging
 # import own stuff
 from tlsmate import tls
 from tlsmate import cert_utils
-from tlsmate.exception import CertValidationError
+from tlsmate.exception import UntrustedCertificate
 
 # import other stuff
 from cryptography import x509
@@ -223,7 +223,7 @@ class Certificate(object):
         """
         cns = name.get_attributes_for_oid(NameOID.COMMON_NAME)
         if not cns:
-            raise CertValidationError(f'no common name for "{self}"')
+            raise UntrustedCertificate(f'no common name for "{self}"')
         return cns[0].value
 
     @property
@@ -238,11 +238,11 @@ class Certificate(object):
 
     def _raise_untrusted(self, issue, raise_on_failure):
         self.trusted = False
-        issue = f"certificate {self}: {issue}"
-        logging.debug(issue)
+        issue_long = f"certificate {self}: {issue}"
+        logging.debug(issue_long)
         self.issues.append(issue)
         if raise_on_failure:
-            raise CertValidationError(issue)
+            raise UntrustedCertificate(issue_long)
 
     def validate_period(self, datetime, raise_on_failure=True):
         """Validate the period of the certificate against a given timestamp.
@@ -282,7 +282,7 @@ class Certificate(object):
             bool: indication, if the domain name matches the certificate's subject/SAN
 
         Raises:
-            CertValidationError: if the certificate is not issued for the given
+            UntrustedCertificate: if the certificate is not issued for the given
             domain
         """
         domain = cert_utils.string_prep(domain)
@@ -322,3 +322,21 @@ class Certificate(object):
 
         """
         cert_utils.validate_signature(self, sig_scheme, data, signature)
+
+    def validate_cert_signature(self, cert):
+        """Validate the signature within a certificate
+
+        Arguments:
+            cert (:obj:`Certificate`): the certificate for which the signature
+                shall be checked.
+
+        Raises:
+            cryptography.exceptions.InvalidSignature: If the signature does not
+                validate.
+        """
+
+        self.validate_signature(
+            cert.signature_algorithm,
+            cert.parsed.tbs_certificate_bytes,
+            cert.parsed.signature,
+        )

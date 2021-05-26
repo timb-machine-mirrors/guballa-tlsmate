@@ -105,8 +105,7 @@ class CertChain(object):
         logging.debug(f'CRL status for certificate "{cert}": {cert.crl_status}')
         if cert.crl_status is not tls.CertCrlStatus.NOT_REVOKED:
             cert._raise_untrusted(
-                f'CRL status not ok for certificate "{cert}": {cert.crl_status}',
-                raise_on_failure,
+                f"CRL status not ok: {cert.crl_status}", raise_on_failure
             )
 
     def _check_ocsp(self, cert, issuer_cert, timestamp, raise_on_failure):
@@ -229,9 +228,7 @@ class CertChain(object):
                 else:
                     cert.ocsp_status = tls.OcspStatus.UNKNOWN
 
-                cert._raise_untrusted(
-                    f"certificate {cert}: OCSP status not ok", raise_on_failure
-                )
+                cert._raise_untrusted("OCSP status not ok", raise_on_failure)
 
             else:
                 cert.ocsp_status = tls.OcspStatus.INVALID_RESPONSE
@@ -247,6 +244,8 @@ class CertChain(object):
         )
 
     def _issuer_certs(self, cert):
+        """Get a list of all potential issuers from the certificate chain.
+        """
         issuers = []
         for issuer_idx in range(1, len(self.certificates)):
             issuer_cert = self.certificates[issuer_idx]
@@ -264,9 +263,30 @@ class CertChain(object):
         return issuers
 
     def _validate_cert(self, cert, idx, timestamp, domain_name, raise_on_failure):
+        """Validates a certificate against the certificate chain.
+
+        Arguments:
+            cert (:obj:`tlsmate.cert.Certificate`): the certificate to check.
+                Initially, that's typically the server certificate, which must
+                come first in the chain. But other cases are supported as well,
+                e.g. checking a certificate from an OCSP response.
+            idx (int): the index of the certificate in the chain. The value -1
+                is used for OCSP certificates. None is used for certificates
+                from the trust store.
+            timestamp: The (current) timestamp to check the validity period
+            domain_name (str): The domain name or SNI
+            raise_on_failure (bool): An indication, if the validation shall abort
+                in case exceptional cases are detected. Normally set to False for
+                server scans.
+
+        Returns:
+            list of int: the sequence of certificate indexes from the chain which were
+            used to validate the chain. Can be used to detect gratuitous certificates.
+        """
+        track = []
         # cert already seen?
         if cert.trusted:
-            return
+            return track
 
         elif cert.trusted is False:
             raise UntrustedCertificate(f"certificate {cert} is not trusted")
@@ -277,13 +297,13 @@ class CertChain(object):
 
         if idx is None:
             cert.trusted = True
-            return
+            return track
 
         if cert.self_signed:
             issuers = [(idx, cert)]
             if not self._trust_store.cert_in_trust_store(cert):
                 cert._raise_untrusted(
-                    "self-signed certificate not found in trust store", raise_on_failure
+                    "self-signed certificate not found in trust store", True
                 )
             else:
                 self.root_cert_transmitted = True
@@ -297,7 +317,7 @@ class CertChain(object):
                     cert._raise_untrusted(
                         f'issuer certificate "{cert.parsed.issuer.rfc4514_string()}" '
                         f"not found in trust store",
-                        raise_on_failure,
+                        True,
                     )
                 else:
                     self.root_cert_transmitted = False
@@ -306,23 +326,16 @@ class CertChain(object):
                 issuers = [(None, root_cert)]
 
         exception = None
-        tmp_trust = cert.trusted
-        trusted_path = False
         for issuer_idx, issuer_cert in issuers:
-            cert.trusted = tmp_trust
             try:
                 try:
-                    issuer_cert.validate_signature(
-                        cert.signature_algorithm,
-                        cert.parsed.tbs_certificate_bytes,
-                        cert.parsed.signature,
-                    )
+                    issuer_cert.validate_cert_signature(cert)
 
                 except Exception:
                     cert._raise_untrusted("invalid signature", raise_on_failure)
 
                 if not cert.self_signed:
-                    self._validate_cert(
+                    track = self._validate_cert(
                         issuer_cert,
                         issuer_idx,
                         timestamp,
@@ -337,16 +350,11 @@ class CertChain(object):
                         self.issues.append(
                             "certificates of the chain are not in sequence"
                         )
-
-                if cert.trusted is not False:
-                    trusted_path = True
-                    if raise_on_failure:
-                        break
+                cert.trusted = True
+                break
 
             except Exception as exc:
                 exception = exc
-
-        cert.trusted = tmp_trust is not False and trusted_path
 
         if not cert.trusted and raise_on_failure:
             if exception:
@@ -355,31 +363,42 @@ class CertChain(object):
             else:
                 cert._raise_untrusted("no valid trust path found", raise_on_failure)
 
+        return [idx] + track
+
     def validate(self, timestamp, domain_name, raise_on_failure):
         """Only the minimal checks are supported.
 
-        If a discrepancy is found, an exception is raised.
+        If a discrepancy is found, an exception is raised (depending on
+        raise_on_failure).
 
         Arguments:
             timestamp (datetime.datetime): the timestamp to check against
             domain_name (str): the domain name to validate the host certificate against
+            raise_on_failure (bool): whether an exception shall be raised if the
+                validation fails or not. Useful for a TLS scan, as the scan shall
+                continue.
 
         Raises:
-            CertValidationError: in case a certificate within the chain cannot be
+            UntrustedCertificate: in case a certificate within the chain cannot be
                 validated and `raise_on_failure` is True.
-            CertChainValidationError: in case the chain cannot be validated and
-                raise_on_failure is True.
         """
 
-        self._validate_cert(
+        track = self._validate_cert(
             self.certificates[0], 0, timestamp, domain_name, raise_on_failure
         )
 
         self.successful_validation = self.certificates[0].trusted is True
+
+        # And now check for gratuitous certificate in the chain
         if not raise_on_failure:
-            for cert in self.certificates:
-                if cert.trusted is not True:
-                    self.issues.append(f"certificate {cert} not part of trust chain")
+            for idx, cert in enumerate(self.certificates):
+                if idx not in track:
+                    import pudb
+
+                    pudb.set_trace()
+                    cert.issues.append(
+                        "gratuitous certificate, not part of trust chain"
+                    )
 
     def serialize(self):
         """Serialize the certificate chain

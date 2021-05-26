@@ -1026,17 +1026,17 @@ class TextProfileWorker(WorkerPlugin):
                     txt = "    - " + "\n      ".join(lines)
                     print(apply_mood(txt, Mood.BAD))
 
-            root_transmitted = not hasattr(cert_chain, "root_certificate")
-            txt, mood = _cert["root_transmitted"][root_transmitted]
-            print(f"    {apply_mood(txt, mood)}")
+            if hasattr(cert_chain, "root_cert_transmitted"):
+                root_transmitted = cert_chain.root_cert_transmitted
+                txt, mood = _cert["root_transmitted"][root_transmitted]
+                print(f"    {apply_mood(txt, mood)}")
 
             for idx, cert in enumerate(cert_chain.cert_chain, start=1):
                 self._print_cert(cert, idx)
 
-            if not root_transmitted:
-                self._print_cert(
-                    cert_chain.root_certificate, len(cert_chain.cert_chain) + 1
-                )
+            root_cert = getattr(cert_chain, "root_certificate", None)
+            if root_cert:
+                self._print_cert(root_cert, len(cert_chain.cert_chain) + 1)
 
     def _print_vulnerabilities(self):
         vuln_prof = getattr(self.server_profile, "vulnerabilities", None)
