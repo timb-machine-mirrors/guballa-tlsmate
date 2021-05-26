@@ -870,6 +870,17 @@ class TextProfileWorker(WorkerPlugin):
         print(f'  Certificate #{idx}: {", ".join(items)}')
         table = utils.Table(indent=4, sep="  ")
 
+        issues = getattr(cert, "issues", None)
+        if issues:
+            issue_txt = []
+            for issue in issues:
+                folded_lines = utils.fold_string(issue, max_length=100)
+                issue_txt.append("- " + folded_lines.pop(0))
+                issue_txt.extend(["  " + item for item in folded_lines])
+            table.row("Issues", apply_mood(issue_txt[0], Mood.BAD))
+            for line in issue_txt[1:]:
+                table.row("", apply_mood(line, Mood.BAD))
+
         table.row("Serial number", f"{cert.serial_number_int} (integer)")
         table.row("", f"{pdu.string(cert.serial_number_bytes)} (hex)")
         lines = utils.fold_string(cert.subject, max_length=100, sep=",")

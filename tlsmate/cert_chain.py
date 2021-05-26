@@ -178,10 +178,10 @@ class CertChain(object):
             ocsp_decoded = x509.ocsp.load_der_ocsp_response(ocsp_resp.content)
 
             if ocsp_decoded.certificates:
-                sig_cert = Certificate(x509_cert=ocsp_decoded.certificates[0])
-                self._validate_cert(
-                    sig_cert, None, timestamp, None,
+                sig_cert = Certificate(
+                    x509_cert=ocsp_decoded.certificates[0], parse=True
                 )
+                self._validate_cert(sig_cert, -1, timestamp, None, raise_on_failure)
 
             else:
                 sig_cert = issuer_cert
@@ -323,14 +323,20 @@ class CertChain(object):
 
                 if not cert.self_signed:
                     self._validate_cert(
-                        issuer_cert, issuer_idx, timestamp, domain_name, raise_on_failure
+                        issuer_cert,
+                        issuer_idx,
+                        timestamp,
+                        domain_name,
+                        raise_on_failure,
                     )
 
                 self._check_crl(cert, issuer_cert, timestamp, raise_on_failure)
                 self._check_ocsp(cert, issuer_cert, timestamp, raise_on_failure)
                 if issuer_idx is not None:
                     if issuer_idx < idx:
-                        self.issues.appenf("certificates of the chain are not in sequence")
+                        self.issues.append(
+                            "certificates of the chain are not in sequence"
+                        )
 
                 if cert.trusted is not False:
                     trusted_path = True
@@ -373,9 +379,7 @@ class CertChain(object):
         if not raise_on_failure:
             for cert in self.certificates:
                 if cert.trusted is not True:
-                    self.issues.append(
-                        f"certificate {cert} not part of trust chain"
-                    )
+                    self.issues.append(f"certificate {cert} not part of trust chain")
 
     def serialize(self):
         """Serialize the certificate chain
