@@ -90,9 +90,8 @@ in the future:
 Installation
 ============
 
-This package requires Python3.6 or higher. Additionally, the packages
-``libgmp-dev``, ``libmpfr-dev`` and ``libmpc-dev`` are required. The recommended way
-installing ``tlsmate`` is using pip:
+This package requires Python3.6 or higher. The recommended way installing
+``tlsmate`` is using pip:
 
 .. code-block:: console
 
