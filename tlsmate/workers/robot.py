@@ -15,11 +15,10 @@ from tlsmate import utils
 from tlsmate.plugin import WorkerPlugin
 
 # import other stuff
-import gmpy2
 
 
 def _rsa_encrypt(msg, e, n, mod_bytes):
-    return int(gmpy2.powmod(msg, e, n)).to_bytes(mod_bytes, byteorder="big")
+    return int(pow(msg, e, n)).to_bytes(mod_bytes, byteorder="big")
 
 
 class ScanRobot(WorkerPlugin):
