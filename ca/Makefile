@@ -185,3 +185,9 @@ certs/ca-certificates.pem: certs/root-rsa.crt certs/root-ecdsa.crt certs/ca-rsa.
 
 certs/root-certificates.pem: certs/root-rsa.crt certs/root-ecdsa.crt
 	cat certs/root-rsa.crt certs/root-ecdsa.crt > certs/root-certificates.pem
+
+install:
+	mkdir -p ../tests/fixturefiles/ca/certs
+	mkdir -p ../tests/fixturefiles/ca/crl
+	cp certs/*.crt certs/*.pem ../tests/fixturefiles/ca/certs
+	cp crl/*.pem ../tests/fixturefiles/ca/crl
