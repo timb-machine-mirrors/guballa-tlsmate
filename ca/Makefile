@@ -7,7 +7,7 @@ TLSMATE_CA_ECDSA_OCSP_PORT ?= 44402
 export CA_NAME = root-rsa
 export OCSP_PORT = ${TLSMATE_CA_RSA_OCSP_PORT}
 
-all: root ca server client crl certs/ca-certificates.pem
+all: root ca server client crl certs/ca-certificates.pem certs/root-certificates.pem
 
 clean:
 	rm -rf crl certs chains private db tmp dsa_params.pem
@@ -17,6 +17,7 @@ root-rsa: certs/root-rsa.crt
 root-ecdsa: certs/root-ecdsa.crt
 ca: ca-rsa ca-ecdsa
 ca-rsa: certs/ca-rsa.crt
+ca-2nd-rsa: certs/ca-2nd-rsa.crt
 ca-ecdsa: certs/ca-ecdsa.crt
 server: server-rsa server-ecdsa server-ed25519 server-ed448 server-dsa server-revoked-rsa
 server-rsa: certs/server-rsa.crt
@@ -72,6 +73,15 @@ certs/ca-ecdsa.crt: certs/root-ecdsa.crt
 	export CA=root-ecdsa
 	${OPENSSL} ca -batch -notext -config openssl.cnf \
 	-extensions root_ext -in tmp/req.pem -out certs/ca-ecdsa.crt
+
+certs/ca-2nd-rsa.crt: export CA_NAME=root-ecdsa
+certs/ca-2nd-rsa.crt: certs/ca-ecdsa.crt
+	${OPENSSL} req -config openssl.cnf -nodes \
+	-subj "/C=DE/O=The TlsMate Company/CN=localhost Intermediate CA RSA" \
+	-keyout private/ca-2nd-rsa.key -out tmp/req.pem -newkey rsa:2048
+	export CA=root-ecdsa
+	${OPENSSL} ca -batch -notext -config openssl.cnf \
+	-extensions root_ext -in tmp/req.pem -out certs/ca-2nd-rsa.crt
 
 certs/server-rsa.crt: export OCSP_PORT=${TLSMATE_CA_RSA_OCSP_PORT}
 certs/server-rsa.crt: export CA_NAME=ca-rsa
@@ -171,4 +181,13 @@ crl/ca-ecdsa.crl: certs/ca-ecdsa.crt
 	${OPENSSL} crl -inform PEM -in crl/ca-ecdsa.crl.pem -outform DER -out crl/ca-ecdsa.crl
 
 certs/ca-certificates.pem: certs/root-rsa.crt certs/root-ecdsa.crt certs/ca-rsa.crt certs/ca-ecdsa.crt
-	cat certs/root-rsa.crt certs/root-ecdsa.crt certs/ca-rsa.crt certs/ca-ecdsa.crt > certs/ca-certificates.pem 
+	cat certs/root-rsa.crt certs/root-ecdsa.crt certs/ca-rsa.crt certs/ca-ecdsa.crt > certs/ca-certificates.pem
+
+certs/root-certificates.pem: certs/root-rsa.crt certs/root-ecdsa.crt
+	cat certs/root-rsa.crt certs/root-ecdsa.crt > certs/root-certificates.pem
+
+install:
+	mkdir -p ../tests/fixturefiles/ca/certs
+	mkdir -p ../tests/fixturefiles/ca/crl
+	cp certs/*.crt certs/*.pem ../tests/fixturefiles/ca/certs
+	cp crl/*.pem ../tests/fixturefiles/ca/crl

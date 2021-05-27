@@ -33,7 +33,9 @@ class TestCase(CipherSuiteTester):
         client.init_profile()
 
         client.profile.versions = [tls.Version.TLS12]
-        client.profile.cipher_suites = [tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA]
+        client.profile.cipher_suites = [
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+        ]
         client.profile.supported_groups = [
             tls.SupportedGroups.X25519,
             tls.SupportedGroups.X448,

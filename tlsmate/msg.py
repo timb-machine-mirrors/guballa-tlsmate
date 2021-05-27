@@ -9,7 +9,7 @@ import os
 from tlsmate import tls
 from tlsmate import ext
 from tlsmate.exception import FatalAlert
-from tlsmate import cert
+from tlsmate.cert_chain import CertChain
 from tlsmate import pdu
 
 # import other stuff
@@ -419,7 +419,7 @@ class Certificate(HandshakeMessage):
 
     def __init__(self):
         self.request_context = None
-        self.chain = cert.CertChain()
+        self.chain = CertChain()
 
     def _serialize_msg_body(self, conn):
         msg = bytearray()
@@ -441,9 +441,6 @@ class Certificate(HandshakeMessage):
         return msg
 
     def _deserialize_msg_body(self, fragment, offset, conn):
-        # TODO: Redesign, make container globally available to avoid those wired
-        # injections.
-        self.chain.set_recorder(conn.recorder)
 
         if conn.version is tls.Version.TLS13:
             length, offset = pdu.unpack_uint8(fragment, offset)

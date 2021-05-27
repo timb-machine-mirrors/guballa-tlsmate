@@ -360,8 +360,8 @@ _cert = {
         tls.SPBool.C_UNDETERMINED: ("validation status undetermined", Mood.SOSO),
     },
     "root_transmitted": {
-        False: ("root certificate was not provided by the server", Mood.GOOD),
-        True: ("root certificate was provided by the server", Mood.SOSO),
+        tls.SPBool.C_FALSE: ("root certificate was not provided by the server", Mood.GOOD),
+        tls.SPBool.C_TRUE: ("root certificate was provided by the server", Mood.SOSO),
     },
     "subject_matches": {
         tls.SPBool.C_FALSE: ("no, URI not matched against subject/SAN", Mood.BAD),
@@ -870,6 +870,17 @@ class TextProfileWorker(WorkerPlugin):
         print(f'  Certificate #{idx}: {", ".join(items)}')
         table = utils.Table(indent=4, sep="  ")
 
+        issues = getattr(cert, "issues", None)
+        if issues:
+            issue_txt = []
+            for issue in issues:
+                folded_lines = utils.fold_string(issue, max_length=100)
+                issue_txt.append("- " + folded_lines.pop(0))
+                issue_txt.extend(["  " + item for item in folded_lines])
+            table.row("Issues", apply_mood(issue_txt[0], Mood.BAD))
+            for line in issue_txt[1:]:
+                table.row("", apply_mood(line, Mood.BAD))
+
         table.row("Serial number", f"{cert.serial_number_int} (integer)")
         table.row("", f"{pdu.string(cert.serial_number_bytes)} (hex)")
         lines = utils.fold_string(cert.subject, max_length=100, sep=",")
@@ -1015,17 +1026,17 @@ class TextProfileWorker(WorkerPlugin):
                     txt = "    - " + "\n      ".join(lines)
                     print(apply_mood(txt, Mood.BAD))
 
-            root_transmitted = not hasattr(cert_chain, "root_certificate")
-            txt, mood = _cert["root_transmitted"][root_transmitted]
-            print(f"    {apply_mood(txt, mood)}")
+            if hasattr(cert_chain, "root_cert_transmitted"):
+                root_transmitted = cert_chain.root_cert_transmitted
+                txt, mood = _cert["root_transmitted"][root_transmitted]
+                print(f"    {apply_mood(txt, mood)}")
 
             for idx, cert in enumerate(cert_chain.cert_chain, start=1):
                 self._print_cert(cert, idx)
 
-            if not root_transmitted:
-                self._print_cert(
-                    cert_chain.root_certificate, len(cert_chain.cert_chain) + 1
-                )
+            root_cert = getattr(cert_chain, "root_certificate", None)
+            if root_cert:
+                self._print_cert(root_cert, len(cert_chain.cert_chain) + 1)
 
     def _print_vulnerabilities(self):
         vuln_prof = getattr(self.server_profile, "vulnerabilities", None)

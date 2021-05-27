@@ -1137,7 +1137,8 @@ class SPCertificate(SPObject):
             self.crl_revocation_status = cert.crl_status
         if cert.ocsp_status is not None:
             self.ocsp_revocation_status = cert.ocsp_status
-
+        if cert.issues:
+            self.issues = cert.issues
 
 
 class SPCertificateSchema(ProfileSchema):
@@ -1164,6 +1165,7 @@ class SPCertificateSchema(ProfileSchema):
     crl_revocation_status = FieldsEnumString(enum_class=tls.CertCrlStatus)
     ocsp_revocation_status = FieldsEnumString(enum_class=tls.OcspStatus)
     extensions = fields.List(fields.Nested(SPCertExtensionSchema))
+    issues = fields.List(fields.String())
 
 
 class SPCertChain(SPObject):
@@ -1177,7 +1179,7 @@ class SPCertChain(SPObject):
         if chain.issues:
             self.issues = chain.issues
 
-        chain.root_cert_transmitted = tls.SPBool(chain.root_cert_transmitted)
+        self.root_cert_transmitted = tls.SPBool(chain.root_cert_transmitted)
         if chain.root_cert is not None:
             self.root_certificate = SPCertificate(cert=chain.root_cert)
 

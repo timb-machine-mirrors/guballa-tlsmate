@@ -6,7 +6,7 @@ import pem
 
 # import own stuff
 from tlsmate import tls
-from tlsmate.cert import CertChain
+from tlsmate.cert_chain import CertChain
 
 # import other stuff
 from cryptography.hazmat.primitives import serialization
@@ -52,7 +52,6 @@ class ClientAuth(object):
             key = serialization.load_pem_private_key(fd.read(), password=None)
 
         chain = CertChain()
-        chain.set_recorder(self._recorder)
         pem_list = pem.parse_file(chain_file)
         for pem_item in pem_list:
             chain.append_pem_cert(pem_item.as_bytes())

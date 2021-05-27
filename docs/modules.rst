@@ -6,11 +6,13 @@ Python API reference documentation
     :maxdepth: 2
 
     py_cert
+    py_cert_chain
     py_client_auth
     py_client
     py_command
     py_config
     py_connection
+    py_crl_manager
     py_dh_numbers
     py_exception
     py_ext
@@ -31,5 +33,6 @@ Python API reference documentation
     py_tlsmate
     py_tls
     py_tlssuite
+    py_trust_store
     py_utils
 
