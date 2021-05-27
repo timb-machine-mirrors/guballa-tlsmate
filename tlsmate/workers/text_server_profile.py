@@ -360,8 +360,8 @@ _cert = {
         tls.SPBool.C_UNDETERMINED: ("validation status undetermined", Mood.SOSO),
     },
     "root_transmitted": {
-        False: ("root certificate was not provided by the server", Mood.GOOD),
-        True: ("root certificate was provided by the server", Mood.SOSO),
+        tls.SPBool.C_FALSE: ("root certificate was not provided by the server", Mood.GOOD),
+        tls.SPBool.C_TRUE: ("root certificate was provided by the server", Mood.SOSO),
     },
     "subject_matches": {
         tls.SPBool.C_FALSE: ("no, URI not matched against subject/SAN", Mood.BAD),

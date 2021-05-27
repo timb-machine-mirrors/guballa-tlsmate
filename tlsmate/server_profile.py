@@ -1179,7 +1179,7 @@ class SPCertChain(SPObject):
         if chain.issues:
             self.issues = chain.issues
 
-        chain.root_cert_transmitted = tls.SPBool(chain.root_cert_transmitted)
+        self.root_cert_transmitted = tls.SPBool(chain.root_cert_transmitted)
         if chain.root_cert is not None:
             self.root_certificate = SPCertificate(cert=chain.root_cert)
 
