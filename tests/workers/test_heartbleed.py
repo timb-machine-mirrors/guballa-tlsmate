@@ -30,7 +30,7 @@ class TestHeartbleed(TlsSuiteTester):
         server_profile = tlsmate.server_profile
         ScanHeartbleed(tlsmate).run()
         profile = server_profile.make_serializable()
-        assert profile["vulnerabilities"]["heartbleed"] == "C_TRUE"
+        assert profile["vulnerabilities"]["heartbleed"] == "VULNERABLE"
 
 
 if __name__ == "__main__":

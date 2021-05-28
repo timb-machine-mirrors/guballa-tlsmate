@@ -1345,7 +1345,7 @@ class SPVulnerabilitiesSchema(ProfileSchema):
 
     __profile_class__ = SPVulnerabilities
     ccs_injection = FieldsEnumString(enum_class=tls.SPBool)
-    heartbleed = FieldsEnumString(enum_class=tls.SPBool)
+    heartbleed = FieldsEnumString(enum_class=tls.HeartbleedStatus)
     robot = FieldsEnumString(enum_class=tls.RobotVulnerability)
 
 

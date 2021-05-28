@@ -1138,6 +1138,18 @@ class RobotVulnerability(ExtendedEnum):
     NOT_VULNERABLE = enum.auto()
 
 
+class HeartbleedStatus(ExtendedEnum):
+    """Status for heartbleed vulnerability
+    """
+
+    NOT_APPLICABLE = enum.auto()
+    UNDETERMINED = enum.auto()
+    VULNERABLE = enum.auto()
+    NOT_VULNERABLE = enum.auto()
+    TIMEOUT = enum.auto()
+    CONNECTION_CLOSED = enum.auto()
+
+
 class SPHeartbeat(ExtendedEnum):
     """Status for heartbeart support
     """
