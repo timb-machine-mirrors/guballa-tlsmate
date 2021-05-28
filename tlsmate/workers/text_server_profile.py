@@ -360,7 +360,10 @@ _cert = {
         tls.SPBool.C_UNDETERMINED: ("validation status undetermined", Mood.SOSO),
     },
     "root_transmitted": {
-        tls.SPBool.C_FALSE: ("root certificate was not provided by the server", Mood.GOOD),
+        tls.SPBool.C_FALSE: (
+            "root certificate was not provided by the server",
+            Mood.GOOD,
+        ),
         tls.SPBool.C_TRUE: ("root certificate was provided by the server", Mood.SOSO),
     },
     "subject_matches": {
@@ -405,6 +408,18 @@ _vulnerabilities = {
     tls.SPBool.C_TRUE: ("vulnerable", Mood.BAD),
     tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
     tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
+}
+
+_heartbleed = {
+    tls.HeartbleedStatus.NOT_APPLICABLE: ("not applicable", Mood.NEUTRAL),
+    tls.HeartbleedStatus.UNDETERMINED: ("undetermined", Mood.SOSO),
+    tls.HeartbleedStatus.VULNERABLE: ("vulnerable", Mood.BAD),
+    tls.HeartbleedStatus.NOT_VULNERABLE: ("not vulnerable", Mood.GOOD),
+    tls.HeartbleedStatus.TIMEOUT: ("timeout, probably not vulnerable", Mood.GOOD),
+    tls.HeartbleedStatus.CONNECTION_CLOSED: (
+        "not vulnerable (connection closed)",
+        Mood.GOOD,
+    ),
 }
 
 _robot = {
@@ -1053,7 +1068,7 @@ class TextProfileWorker(WorkerPlugin):
 
         hb = getattr(vuln_prof, "heartbleed", None)
         if hb is not None:
-            txt, mood = _vulnerabilities[hb]
+            txt, mood = _heartbleed[hb]
             table.row("Heartbleed (CVE-2014-0160)", apply_mood(txt, mood))
 
         robot = getattr(vuln_prof, "robot", None)
