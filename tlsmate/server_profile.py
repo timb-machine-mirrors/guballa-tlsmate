@@ -1281,7 +1281,6 @@ class SPDhGroupSchema(ProfileSchema):
     size = fields.Integer()
     g_value = fields.Integer()
     p_value = FieldsBytes()
-    cipher_suites = fields.List(fields.Nested(SPCipherSuiteSchema))
 
 
 class SPNameResolution(SPObject):
@@ -1327,7 +1326,7 @@ class SPVersionSchema(ProfileSchema):
     __profile_class__ = SPVersion
     cipher_kinds = fields.List(fields.Nested(SPCipherKindSchema))
     cipher_suites = fields.List(fields.Nested(SPCipherSuiteSchema))
-    dh_groups = fields.List(fields.Nested(SPDhGroupSchema))
+    dh_group = fields.Nested(SPDhGroupSchema)
     server_preference = FieldsEnumString(enum_class=tls.SPBool)
     supported_groups = fields.Nested(SPSupportedGroupsSchema)
     signature_algorithms = fields.Nested(SPSignatureAlgorithmsSchema)
