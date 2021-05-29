@@ -453,7 +453,6 @@ versions:
         name: TLS_RSA_WITH_RC4_128_SHA
     -   id: 4
         name: TLS_RSA_WITH_RC4_128_MD5
-    dh_groups: []
     server_preference: C_TRUE
     supported_groups: {}
     version:
@@ -578,12 +577,7 @@ versions:
         name: TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
     -   id: 52394
         name: TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256
-    dh_groups:
-    -   cipher_suites:
-        -   id: 57
-            name: TLS_DHE_RSA_WITH_AES_256_CBC_SHA
-        -   id: 51
-            name: TLS_DHE_RSA_WITH_AES_128_CBC_SHA
+    dh_group:
         g_value: 2
         name: 'RFC2409: 2nd Oakley Group'
         p_value: ff:ff:ff:ff:ff:ff:ff:ff:c9:0f:da:a2:21:68:c2:34:c4:c6:62:8b:80:dc:1c:d1:29:02:4e:08:8a:67:cc:74:02:0b:be:a6:3b:13:9b:22:51:4a:08:79:8e:34:04:dd:ef:95:19:b3:cd:3a:43:1b:30:2b:0a:6d:f2:5f:14:37:4f:e1:35:6d:6d:51:c2:45:e4:85:b5:76:62:5e:7e:c6:f4:4c:42:e9:a6:37:ed:6b:0b:ff:5c:b6:f4:06:b7:ed:ee:38:6b:fb:5a:89:9f:a5:ae:9f:24:11:7c:4b:1f:e6:49:28:66:51:ec:e6:53:81:ff:ff:ff:ff:ff:ff:ff:ff

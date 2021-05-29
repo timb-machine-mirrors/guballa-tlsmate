@@ -702,22 +702,21 @@ class TextProfileWorker(WorkerPlugin):
         dh_groups = {}
         for version in self._prof_values.versions:
             version_prof = self.server_profile.get_version_profile(version)
-            dh_prof = getattr(version_prof, "dh_groups", None)
+            dh_prof = getattr(version_prof, "dh_group", None)
             if dh_prof is None:
                 continue
 
-            for group in dh_prof:
-                name = getattr(group, "name", None)
-                combined = (name, group.size)
-                hashed = hash(combined)
-                if hashed in dh_groups:
-                    dh_groups[hashed]["versions"].append(str(version))
+            name = getattr(dh_prof, "name", None)
+            combined = (name, dh_prof.size)
+            hashed = hash(combined)
+            if hashed in dh_groups:
+                dh_groups[hashed]["versions"].append(str(version))
 
-                else:
-                    dh_groups[hashed] = {
-                        "versions": [str(version)],
-                        "combined": combined,
-                    }
+            else:
+                dh_groups[hashed] = {
+                    "versions": [str(version)],
+                    "combined": combined,
+                }
 
         if dh_groups:
             print(apply_mood("DH groups (finite field)", Mood.HEADLINE))
