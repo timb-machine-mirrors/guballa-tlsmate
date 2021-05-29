@@ -1239,7 +1239,6 @@ class SPSignatureAlgorithms(SPObject):
     """
 
     def _init_from_args(self):
-        self.server_preference = tls.SPBool.C_UNDETERMINED
         self.algorithms = []
 
 
@@ -1250,7 +1249,6 @@ class SPSignatureAlgorithmsSchema(ProfileSchema):
     __profile_class__ = SPSignatureAlgorithms
     algorithms = fields.List(fields.Nested(SPSigAlgoEnumSchema))
     info = fields.List(fields.String)
-    server_preference = FieldsEnumString(enum_class=tls.SPBool)
 
 
 class SPCipherSuiteSchema(ProfileEnumSchema):

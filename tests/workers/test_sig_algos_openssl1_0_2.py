@@ -43,7 +43,6 @@ class TestCase(TlsSuiteTester):
         assert "signature_algorithms" not in profile["versions"][1]  # TLS10
         assert "signature_algorithms" not in profile["versions"][2]  # TLS11
         prof = profile["versions"][3]  # TLS12
-        assert prof["server_preference"] == "C_FALSE"
         for a, b in zip(sig_algs, prof["signature_algorithms"]["algorithms"]):
             assert a == b["name"]
 
