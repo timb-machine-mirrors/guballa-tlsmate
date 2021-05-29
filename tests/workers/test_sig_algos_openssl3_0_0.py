@@ -45,13 +45,11 @@ class TestCase(TlsSuiteTester):
     server = "localhost"
 
     def check_tls12(self, prof):
-        assert prof["server_preference"] == "C_FALSE"
         assert len(prof["algorithms"]) == len(sig_algs_tls12)
         for a, b in zip(sig_algs_tls12, prof["algorithms"]):
             assert a == b["name"]
 
     def check_tls13(self, prof):
-        assert prof["server_preference"] == "C_FALSE"
         assert len(prof["algorithms"]) == len(sig_algs_tls13)
         for a, b in zip(sig_algs_tls13, prof["algorithms"]):
             assert a == b["name"]

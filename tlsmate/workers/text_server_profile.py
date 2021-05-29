@@ -259,20 +259,6 @@ _supported_groups = {
 }
 
 _sig_algo = {
-    "preference_txt": {
-        tls.SPBool.C_FALSE: "server does not enforce order of signature algorithms",
-        tls.SPBool.C_TRUE: "server enforces order of signature algorithms",
-        tls.SPBool.C_NA: None,
-        tls.SPBool.C_UNDETERMINED: "server preference for signature algorithms unknown",
-    },
-    "preference_mood": {
-        tls.Version.SSL20: (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL),
-        tls.Version.SSL30: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.NEUTRAL),
-        tls.Version.TLS10: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS11: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS12: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS13: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-    },
     "algos": {
         tls.SignatureScheme.RSA_PKCS1_SHA1: Mood.SOSO,
         tls.SignatureScheme.ECDSA_SHA1: Mood.SOSO,
@@ -655,45 +641,22 @@ class TextProfileWorker(WorkerPlugin):
                 continue
 
             algo_prof = version_prof.signature_algorithms
-            preference = getattr(algo_prof, "server_preference", None)
-            if preference is None:
-                pref_txt = None
-
-            else:
-                pref_txt = _sig_algo["preference_txt"][preference]
-                if pref_txt is not None:
-                    if all(
-                        [
-                            _sig_algo["algos"][algo] is Mood.GOOD
-                            for algo in algo_prof.algorithms
-                        ]
-                    ):
-                        pref_mood = Mood.NEUTRAL
-
-                    else:
-                        pref_mood = _sig_algo["preference_mood"][version][
-                            preference.value
-                        ]
-
-                    pref_txt = apply_mood(pref_txt, pref_mood)
-
-            combined = (pref_txt, tuple(algo_prof.algorithms))
-            hashed = hash(combined)
+            hashed = hash(tuple(algo_prof.algorithms))
             if hashed in algo_hash:
                 algo_hash[hashed]["versions"].append(str(version))
 
             else:
-                algo_hash[hashed] = {"versions": [str(version)], "combined": combined}
+                algo_hash[hashed] = {
+                    "versions": [str(version)],
+                    "algos": algo_prof.algorithms,
+                }
 
         for algo in algo_hash.values():
             versions = ", ".join(algo["versions"])
             print(f"\n  {apply_mood(versions, Mood.BOLD)}:")
-            pref_txt, algos = algo["combined"]
-            if pref_txt is not None:
-                print(f"    {pref_txt}")
 
             print("    signature algorithms:")
-            for alg in algos:
+            for alg in algo["algos"]:
                 alg_txt = apply_mood(alg, _sig_algo["algos"][alg])
                 print(f"      0x{alg.value:04x} {alg_txt}")
         print()

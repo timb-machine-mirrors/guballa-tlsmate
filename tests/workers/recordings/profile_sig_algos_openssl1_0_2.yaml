@@ -153,6 +153,7 @@ cert_chains:
     validity_period_days: 3650
     version: Version.v3
   id: 1
+  root_cert_transmitted: C_FALSE
   root_certificate:
     extensions:
     - ca: C_TRUE
@@ -354,6 +355,7 @@ cert_chains:
     validity_period_days: 3650
     version: Version.v3
   id: 2
+  root_cert_transmitted: C_FALSE
   root_certificate:
     extensions:
     - ca: C_TRUE
@@ -562,6 +564,7 @@ cert_chains:
     validity_period_days: 3650
     version: Version.v3
   id: 1
+  root_cert_transmitted: C_FALSE
   root_certificate:
     extensions:
     - ca: C_TRUE
@@ -1027,7 +1030,6 @@ versions:
       name: RSA_PKCS1_SHA512
     - id: 769
       name: RSA_PKCS1_SHA224
-    server_preference: C_FALSE
   supported_groups:
     extension_supported: C_TRUE
     groups:

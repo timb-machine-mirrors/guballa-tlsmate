@@ -563,7 +563,6 @@ versions:
             name: ECDSA_SECP521R1_SHA512
         -   id: 771
             name: ECDSA_SECP224R1_SHA224
-        server_preference: C_FALSE
     supported_groups:
         extension_supported: C_TRUE
         groups:
@@ -600,7 +599,6 @@ versions:
             name: RSA_PSS_RSAE_SHA384
         -   id: 2054
             name: RSA_PSS_RSAE_SHA512
-        server_preference: C_FALSE
     supported_groups:
         extension_supported: C_TRUE
         groups:
