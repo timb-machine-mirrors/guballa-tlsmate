@@ -70,7 +70,7 @@ def main():
 CliManager.reset()
 
 # And now load the plugins which are shipped by default with tlsmate...
-from tlsmate.plugins import server_profile, scan, version  # NOQA
+from tlsmate.plugins import scan, version  # NOQA
 
 # And now look for additional user provided plugins
 for finder, name, ispkg in pkgutil.iter_modules():

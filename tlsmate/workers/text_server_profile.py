@@ -1044,7 +1044,7 @@ class TextProfileWorker(WorkerPlugin):
         print()
 
     def run(self):
-        init(strip=self.config.get("no_color"))
+        init(strip=not self.config.get("color"))
         self._prof_values = self.server_profile.get_profile_values(tls.Version.all())
         self._print_tlsmate()
         self._print_scan_info()

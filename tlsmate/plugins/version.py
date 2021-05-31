@@ -26,9 +26,7 @@ class ScanPlugin(CliPlugin):
             subparser (:obj:`argparse.Action`): the CLI subparsers object
         """
 
-        subparsers.add_parser(
-            self.name, help="prints the version of tlsmate"
-        )
+        subparsers.add_parser(self.name, help="prints the version of tlsmate")
 
     def args_parsed(self, args, parser, subcommand, config):
         """Called after the arguments have been parsed.
