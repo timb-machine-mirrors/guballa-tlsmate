@@ -74,7 +74,7 @@ class CertChain(object):
         """Check the CRL state for the given certificate.
         """
 
-        if self._config.get("no_crl"):
+        if not self._config.get("crl"):
             cert.crl_status = tls.CertCrlStatus.UNDETERMINED
             return
 
@@ -112,7 +112,7 @@ class CertChain(object):
         """Check the OCSP status for the given certificate.
         """
 
-        if self._config.get("no_ocsp"):
+        if not self._config.get("ocsp"):
             cert.ocsp_status = tls.OcspStatus.UNDETERMINED
             return
 

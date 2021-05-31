@@ -29,9 +29,6 @@ class CliPlugin(metaclass=abc.ABCMeta):
     name = None
     prio = 50
 
-    cli_name = None
-    cli_help = None
-
     def register_config(self, config):
         """A callback method which can be used to extend ``tlsmate``'s configuration
 
@@ -41,7 +38,16 @@ class CliPlugin(metaclass=abc.ABCMeta):
 
         return
 
-    def add_args(self, parser):
+    def add_subcommand(self, subparsers):
+        """Adds a subcommand to the CLI parser object.
+
+        Arguments:
+            subparser (:obj:`argparse.Action`): the CLI subparsers object
+        """
+
+        return
+
+    def add_args(self, parser, subcommand):
         """A callback method used to add arguments to the CLI parser object.
 
         This method is called to allow the CLI plugin to add additional command line
@@ -49,11 +55,13 @@ class CliPlugin(metaclass=abc.ABCMeta):
 
         Arguments:
             parser (:obj:`argparse.Parser`): the CLI parser object
+            subcommand (str): the subcommand for which arguments can be added. If None,
+                the global arguments (valid for all subcommands) can be added.
         """
 
         return
 
-    def args_parsed(self, args, parser, config):
+    def args_parsed(self, args, parser, subcommand, config):
         """A callback method called after the arguments have been parsed.
 
         This is the point where the CLI plugin evaluates the given command line
@@ -64,6 +72,7 @@ class CliPlugin(metaclass=abc.ABCMeta):
             args: the object holding the parsed CLI arguments
             parser (:obj:`argparse.Parser`): the parser object, can be used to issue
                 consistency errors
+            subcommand (str): the subcommand that was given
             config (:obj:`tlsmate.config.Configuration`): the configuration object
         """
 
@@ -116,7 +125,7 @@ class CliManager(object):
         return plugin
 
     @classmethod
-    def add_args(cls, parser):
+    def extend_parser(cls, parser):
         """Adds the command line options for all registered CLI plugins.
 
         At this point the CLI plugin classes are instantiated as well.
@@ -125,21 +134,19 @@ class CliManager(object):
             parser (:obj:`argparse.Parser`): the parser object to add the arguments to.
         """
 
-        group = parser.add_argument_group(title="Available plugins")
-        for plugin in sorted(cls._plugins.values(), key=lambda x: x.prio):
-            if plugin.cli_name is not None:
-                cls._cli_names.append(plugin.cli_name[2:])
-                group.add_argument(
-                    plugin.cli_name,
-                    help=plugin.cli_help,
-                    action="store_true",
-                    default=False,
-                )
+        # required=True supported from Python3.7 on. Don't use it,
+        # and implement a consitency check
+        subparsers = parser.add_subparsers(title="commands", dest="subcommand")
 
-            cls._objects.append(plugin())
+        for plugin_cls in sorted(cls._plugins.values(), key=lambda x: x.prio):
+            plugin = plugin_cls()
+            plugin.add_subcommand(subparsers)
+            cls._objects.append(plugin)
 
         for plugin in cls._objects:
-            plugin.add_args(parser)
+            plugin.add_args(parser, subcommand=None)
+            for subcommand, subparser in subparsers.choices.items():
+                plugin.add_args(subparser, subcommand=subcommand)
 
     @classmethod
     def register_config(cls, config):
@@ -166,12 +173,11 @@ class CliManager(object):
             config (:obj:`tlsmate.config.Configuration`): the configuration object
         """
 
-        if not any([getattr(args, name.replace("-", "_")) for name in cls._cli_names]):
-            cli_names = ",".join(["--" + name for name in cls._cli_names])
-            parser.error(f"specify at least one of the following options: {cli_names}")
+        if args.subcommand is None:
+            parser.error("Subcommand is mandatory")
 
         for plugin in cls._objects:
-            plugin.args_parsed(args, parser, config)
+            plugin.args_parsed(args, parser, args.subcommand, config)
 
 
 def register_cli_plugin(plugin):

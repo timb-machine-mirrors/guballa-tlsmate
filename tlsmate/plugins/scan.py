@@ -4,6 +4,7 @@
 # import basic stuff
 
 # import own stuff
+from tlsmate import cli_utils
 from tlsmate.structs import ConfigItem
 from tlsmate.plugin import CliPlugin, WorkManager, CliManager
 from tlsmate.workers.eval_cipher_suites import ScanCipherSuites
@@ -26,6 +27,148 @@ from tlsmate.workers.grease import ScanGrease
 # import other stuff
 
 
+def _add_args_tls_versions(parser):
+    """Add basic arguments for TLS versions to a parser
+
+    Arguments:
+        parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
+    """
+
+    group = parser.add_argument_group(
+        title='TLS protocol versions for the "--scan" option',
+        description=(
+            "The following options specify the TLS protocol versions to scan. "
+            "If none of the versions is given then by default all protocol "
+            "versions will be scanned."
+        ),
+    )
+    group.add_argument(
+        "--sslv2",
+        help="scan for protocol version SSLv2",
+        action=cli_utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--sslv3",
+        help="scan for protocol version SSLv3",
+        action=cli_utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--tls10",
+        help="scan for protocol version TLS1.0",
+        action=cli_utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--tls11",
+        help="scan for protocol version TLS1.1",
+        action=cli_utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--tls12",
+        help="scan for protocol version TLS1.2",
+        action=cli_utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--tls13",
+        help="scan for protocol version TLS1.3",
+        action=cli_utils.BooleanOptionalAction,
+    )
+
+
+def _add_args_features(parser):
+    """Add arguments for using different workers to a parser
+
+    Arguments:
+        parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
+    """
+
+    group = parser.add_argument_group(
+        title='Feature to include for the "--scan" option',
+        description=(
+            "The following options specify which features to include in the scan. "
+            "If none of the features is given then by default all features "
+            "will be included. Note: TLS protocol versions, cipher suites, "
+            "supported groups, signature algorithms and certificates will always "
+            "be included in the scan."
+        ),
+    )
+    group.add_argument(
+        "--compression",
+        help="scan for compression support",
+        action=cli_utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--dh-groups",
+        help="scan for finite field DH groups (only TL1.0 - TLS1.2)",
+        action=cli_utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--encrypt-then-mac",
+        help="scan for encrypt-then-mac support (only TL1.0 - TLS1.2)",
+        action=cli_utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--ext-master-secret",
+        help="scan for extended master secret support (only TL1.0 - TLS1.2)",
+        action=cli_utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--renegotiation",
+        help="scan for renegotiation support (SSL30 - TLS1.2)",
+        action=cli_utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--resumption",
+        help=(
+            "scan for resumption support (SSL30 - TLS1.2) and for PSK support "
+            "(TLS1.3)"
+        ),
+        action=cli_utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--heartbeat",
+        help="scan for heartbeat support",
+        action=cli_utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--grease",
+        help="scan for unknown parameter tolerance",
+        action=cli_utils.BooleanOptionalAction,
+    )
+
+
+def _add_args_vulenerabilities(parser):
+    """Add arguments for vulnerabilities to a parser
+
+    Arguments:
+        parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
+    """
+    group = parser.add_argument_group(
+        title='Vulnerabilities to include for the "--scan" option',
+        description=(
+            "The following options specify which vulnerabilities to scan for. "
+            "If none of the vulnerabilities is given then by default all "
+            "vulnerabilities will be scanned."
+        ),
+    )
+    group.add_argument(
+        "--ccs-injection",
+        help="scan for vulnerability CCS-injection (only TL1.0 - TLS1.2)",
+        action=cli_utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--heartbleed",
+        help="scan for the Heartbleed vulnerability CVE-2014-0160",
+        action=cli_utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--robot",
+        help=(
+            "scan for ROBOT vulnerability CVE-2017-13099, etc. (only TL1.0 " "- TLS1.2)"
+        ),
+        action=cli_utils.BooleanOptionalAction,
+    )
+
+
 @CliManager.register
 class ScanPlugin(CliPlugin):
     """CLI plugin to perform a scan against a TLS server.
@@ -33,8 +176,6 @@ class ScanPlugin(CliPlugin):
 
     prio = 20
     name = "scan"
-    cli_name = "--scan"
-    cli_help = "scan for TLS server configurations, features and vulnerabilities"
 
     _versions = ["sslv2", "sslv3", "tls10", "tls11", "tls12", "tls13"]
     _feature_workers = {
@@ -63,172 +204,60 @@ class ScanPlugin(CliPlugin):
         for feature in self._feature_workers.keys():
             config.register(ConfigItem(feature, type=bool, default=False))
 
-    def _add_args_tls_versions(self, parser):
-        group = parser.add_argument_group(
-            title='TLS protocol versions for the "--scan" option',
-            description=(
-                "The following options specify the TLS protocol versions to scan. "
-                "If none of the versions is given then by default all protocol "
-                "versions will be scanned."
-            ),
-        )
-        group.add_argument(
-            "--sslv2",
-            help="scan for protocol version SSLv2",
-            action="store_const",
-            const=True,
-        )
-        group.add_argument(
-            "--sslv3",
-            help="scan for protocol version SSLv3",
-            action="store_const",
-            const=True,
-        )
-        group.add_argument(
-            "--tls10",
-            help="scan for protocol version TLS1.0",
-            action="store_const",
-            const=True,
-        )
-        group.add_argument(
-            "--tls11",
-            help="scan for protocol version TLS1.1",
-            action="store_const",
-            const=True,
-        )
-        group.add_argument(
-            "--tls12",
-            help="scan for protocol version TLS1.2",
-            action="store_const",
-            const=True,
-        )
-        group.add_argument(
-            "--tls13",
-            help="scan for protocol version TLS1.3",
-            action="store_const",
-            const=True,
-        )
-
-    def _add_args_features(self, parser):
-        group = parser.add_argument_group(
-            title='Feature to include for the "--scan" option',
-            description=(
-                "The following options specify which features to include in the scan. "
-                "If none of the features is given then by default all features "
-                "will be included. Note: TLS protocol versions, cipher suites, "
-                "supported groups, signature algorithms and certificates will always "
-                "be included in the scan."
-            ),
-        )
-        group.add_argument(
-            "--compression",
-            help="scan for compression support",
-            action="store_const",
-            const=True,
-        )
-        group.add_argument(
-            "--dh-groups",
-            help="scan for finite field DH groups (only TL1.0 - TLS1.2)",
-            action="store_const",
-            const=True,
-        )
-        group.add_argument(
-            "--encrypt-then-mac",
-            help="scan for encrypt-then-mac support (only TL1.0 - TLS1.2)",
-            action="store_const",
-            const=True,
-        )
-        group.add_argument(
-            "--ext-master-secret",
-            help="scan for extended master secret support (only TL1.0 - TLS1.2)",
-            action="store_const",
-            const=True,
-        )
-        group.add_argument(
-            "--renegotiation",
-            help="scan for renegotiation support (SSL30 - TLS1.2)",
-            action="store_const",
-            const=True,
-        )
-        group.add_argument(
-            "--resumption",
-            help=(
-                "scan for resumption support (SSL30 - TLS1.2) and for PSK support "
-                "(TLS1.3)"
-            ),
-            action="store_const",
-            const=True,
-        )
-        group.add_argument(
-            "--heartbeat",
-            help="scan for heartbeat support",
-            action="store_const",
-            const=True,
-        )
-        group.add_argument(
-            "--grease",
-            help="scan for unknown parameter tolerance",
-            action="store_const",
-            const=True,
-        )
-
-    def _add_args_vulenerabilities(self, parser):
-        group = parser.add_argument_group(
-            title='Vulnerabilities to include for the "--scan" option',
-            description=(
-                "The following options specify which vulnerabilities to scan for. "
-                "If none of the vulnerabilities is given then by default all "
-                "vulnerabilities will be scanned."
-            ),
-        )
-        group.add_argument(
-            "--ccs-injection",
-            help="scan for vulnerability CCS-injection (only TL1.0 - TLS1.2)",
-            action="store_const",
-            const=True,
-        )
-        group.add_argument(
-            "--heartbleed",
-            help="scan for the Heartbleed vulnerability CVE-2014-0160",
-            action="store_const",
-            const=True,
-        )
-        group.add_argument(
-            "--robot",
-            help=(
-                "scan for ROBOT vulnerability CVE-2017-13099, etc. (only TL1.0 "
-                "- TLS1.2)"
-            ),
-            action="store_const",
-            const=True,
-        )
-
-    def add_args(self, parser):
-        """Adds arguments to the CLI parser object.
+    def add_subcommand(self, subparsers):
+        """Adds a subcommand to the CLI parser object.
 
         Arguments:
-            parser (:obj:`argparse.Parser`): the CLI parser object
+            subparser (:obj:`argparse.Action`): the CLI subparsers object
         """
 
-        self._add_args_tls_versions(parser)
-        self._add_args_features(parser)
-        self._add_args_vulenerabilities(parser)
+        scan_cmd = subparsers.add_parser(self.name, help="performs a TLS server scan")
 
-    def args_parsed(self, args, parser, config):
+        cli_utils.add_basic_arguments(scan_cmd)
+        cli_utils.add_args_authentication(scan_cmd)
+        _add_args_tls_versions(scan_cmd)
+        _add_args_features(scan_cmd)
+        _add_args_vulenerabilities(scan_cmd)
+
+    def _args_consistency(self, args, parser):
+        """Check the consistency of the given args which cannot be checked by argparse.
+
+        Arguments:
+            args (object): the arguments parsed as an object
+            parser (:obj:`argparse.ArgumentParser`): the parser object
+        """
+        if (args.client_key is not None) or (args.client_chain is not None):
+            if (args.client_chain is None) or (args.client_chain is None):
+                parser.error(
+                    "if --client-key is given, --client-chain must be given as well, "
+                    "and vice versa"
+                )
+            if len(args.client_key) != len(args.client_chain):
+                parser.error(
+                    "number of arguments for --client-key and --client-chain must "
+                    "be identical"
+                )
+
+    def args_parsed(self, args, parser, subcommand, config):
         """Called after the arguments have been parsed.
 
         Arguments:
             args: the object holding the parsed CLI arguments
             parser: the parser object, can be used to issue consistency errors
+            subcommand (str): the subcommand selected by the user
             config (:obj:`tlsmate.config.Configuration`): the configuration object
         """
 
-        if args.scan:
+        if subcommand == self.name:
+            self._args_consistency(args, parser)
             WorkManager.register(ScanStart)
             WorkManager.register(ScanCipherSuites)
             WorkManager.register(ScanSupportedGroups)
             WorkManager.register(ScanSigAlgs)
             WorkManager.register(ScanEnd)
+
+            cli_utils.set_config_basic(config, args)
+            cli_utils.set_config_authentication(config, args)
 
             for version in self._versions:
                 config.set(version, getattr(args, version))

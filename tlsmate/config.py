@@ -56,8 +56,8 @@ class Configuration(object):
         self.register(ConfigItem("ca_certs", type="file_list"))
         self.register(ConfigItem("client_key", type="file_list"))
         self.register(ConfigItem("client_chain", type="file_list"))
-        self.register(ConfigItem("no_crl", type=bool, default=False))
-        self.register(ConfigItem("no_ocsp", type=bool, default=False))
+        self.register(ConfigItem("crl", type=bool, default=True))
+        self.register(ConfigItem("ocsp", type=bool, default=True))
         self.register(ConfigItem("key_log_file", type=str))
 
     def _str_to_filelist(self, string):

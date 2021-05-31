@@ -32,12 +32,17 @@ class ServerProfilePlugin(CliPlugin):
         config.register(ConfigItem("format", type=str, default=None))
         config.register(ConfigItem("no_color", type=bool, default=False))
 
-    def add_args(self, parser):
+    def add_args(self, parser, subcommand):
         """Adds arguments to the CLI parser object.
 
         Arguments:
             parser (:obj:`argparse.Parser`): the CLI parser object
+            subcommand (str): the subcommand for which arguments can be added. If None,
+                the global arguments (valid for all subcommands) can be added.
         """
+
+        if subcommand != "scan":
+            return
 
         group = parser.add_argument_group(
             title="Server profile options", description=None
@@ -74,7 +79,7 @@ class ServerProfilePlugin(CliPlugin):
             action="store_true",
         )
 
-    def args_parsed(self, args, parser, config):
+    def args_parsed(self, args, parser, subcommand, config):
         """Called after the arguments have been parsed.
 
         Arguments:
@@ -83,16 +88,17 @@ class ServerProfilePlugin(CliPlugin):
             config (:obj:`tlsmate.config.Configuration`): the configuration object
         """
 
-        config.set("format", args.format)
-        config.set("write_profile", args.write_profile)
-        config.set("read_profile", args.read_profile)
-        config.set("no_color", args.no_color)
+        if subcommand == "scan":
+            config.set("format", args.format)
+            config.set("write_profile", args.write_profile)
+            config.set("read_profile", args.read_profile)
+            config.set("no_color", args.no_color)
 
-        if args.read_profile is not None:
-            WorkManager.register(ReadProfileWorker)
+            if args.read_profile is not None:
+                WorkManager.register(ReadProfileWorker)
 
-        if args.format == "text":
-            WorkManager.register(TextProfileWorker)
+            if args.format == "text":
+                WorkManager.register(TextProfileWorker)
 
-        elif args.format in ["json", "yaml"]:
-            WorkManager.register(DumpProfileWorker)
+            elif args.format in ["json", "yaml"]:
+                WorkManager.register(DumpProfileWorker)

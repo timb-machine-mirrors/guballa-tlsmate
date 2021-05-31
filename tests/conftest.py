@@ -41,7 +41,7 @@ def tlsmate(fixturefiles_dir, trust_store_file):
     mate.trust_store.set_ca_files([trust_store_file])
     init_crl(fixturefiles_dir, mate.crl_manager, "ca-rsa")
     init_crl(fixturefiles_dir, mate.crl_manager, "ca-ecdsa")
-    mate.config.set("no_ocsp", True)
+    mate.config.set("ocsp", False)
     return mate
 
 
