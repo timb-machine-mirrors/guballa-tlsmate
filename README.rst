@@ -75,9 +75,6 @@ The following features are currently not yet supported but will likely be added
 in the future:
 
 * proxy support
-* OCSP support
-* support for unknown protocol-elements (versions, cipher suites, extensions, etc) [GREASE]
-* assessment of the scan result (what is good, what is bad) according to customizable profiles
 * simulating a TLS server (thus allowing to test TLS clients)
 * scan for more vulnerabilities
 
@@ -110,16 +107,18 @@ detailed description how to use the package directly from other python
 applications.
 
 In the following only some basic examples for using the CLI are
-given. Use the ``tlsmate --help`` command to get all supported command line
-options. Note, that in the examples the URL ``mytlsmatedomain.net`` is used, a
+given. Use the ``tlsmate --help`` command to get all supported subcommands.
+Well, currently there are not that many.
+
+Note, that in the examples the URL ``mytlsmatedomain.net`` is used, a
 domain name which is currently not registered.
 
 .. code-block:: console
 
-   $ tlsmate --scan --progress mytlsmatedomain.net
+   $ tlsmate scan --progress mytlsmatedomain.net
 
 This command will perform a TLS scan against the domain ``mytlsmatedomain.net``, and the
-result will be displayed in Yaml format.
+result will be displayed as colored console output.
 
 Using the tlsmate library from other python applications is described in the
 `Python API documentation`_.

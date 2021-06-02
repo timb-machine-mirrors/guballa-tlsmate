@@ -52,6 +52,18 @@ class Configuration(object):
         self._descr = {}
         self.register(ConfigItem("logging", type=str, default="error"))
 
+        self.register(ConfigItem("ca_certs", type="file_list"))
+        self.register(ConfigItem("client_chain", type="file_list"))
+        self.register(ConfigItem("client_key", type="file_list"))
+        self.register(ConfigItem("crl", type=bool, default=True))
+        self.register(ConfigItem("endpoint", type=str, default="localhost"))
+        self.register(ConfigItem("interval", type=int, default=0))
+        self.register(ConfigItem("key_log_file", type=str))
+        self.register(ConfigItem("ocsp", type=bool, default=True))
+        self.register(ConfigItem("progress", type=bool, default=False))
+        self.register(ConfigItem("sni", type=str, default=None))
+
+
     def _str_to_filelist(self, string):
         """Resolves a string of files paths.
 

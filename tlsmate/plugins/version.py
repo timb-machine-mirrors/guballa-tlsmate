@@ -12,8 +12,8 @@ from tlsmate.version import __version__
 
 
 @CliManager.register
-class ScanPlugin(CliPlugin):
-    """CLI plugin to perform a scan against a TLS server.
+class VersionPlugin(CliPlugin):
+    """CLI plugin to print the version of ``tlsmate``.
     """
 
     prio = 30

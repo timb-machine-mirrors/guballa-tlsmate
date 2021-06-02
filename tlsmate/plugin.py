@@ -36,7 +36,7 @@ def _add_basic_arguments(parser):
 
     parser.add_argument(
         "--progress",
-        help="provides a progress indicator",
+        help="provides a progress indicator. Defaults to False.",
         action=utils.BooleanOptionalAction,
     )
 
@@ -130,10 +130,6 @@ class CliPlugin(metaclass=abc.ABCMeta):
             relevant for displaying the command help with ``--help``: The sequence
             of parameters in the help is determined according to the prio of the CLI
             plugin.
-        cli_name (str): The command line argument which causes the CLI plugin to be
-            activated. Includes the two dashes, e.g., ``--scan``. If set to
-            None, the plugin will always be activated.
-        cli_help (str): The help text used on the CLI for the cli_name option.
     """
 
     name = None
@@ -194,24 +190,6 @@ class CliConnectionPlugin(CliPlugin):
 
     This class basically provides the common CLI arguments.
     """
-
-    def register_config(self, config):
-        """A callback method which can be used to extend ``tlsmate``'s configuration
-
-        Arguments:
-            config (:obj:`tlsmate.config.Configuration`): the configuration object
-        """
-
-        config.register(ConfigItem("ca_certs", type="file_list"))
-        config.register(ConfigItem("client_chain", type="file_list"))
-        config.register(ConfigItem("client_key", type="file_list"))
-        config.register(ConfigItem("crl", type=bool, default=True))
-        config.register(ConfigItem("endpoint", type=str, default="localhost"))
-        config.register(ConfigItem("interval", type=int, default=0))
-        config.register(ConfigItem("key_log_file", type=str))
-        config.register(ConfigItem("ocsp", type=bool, default=True))
-        config.register(ConfigItem("progress", type=bool, default=False))
-        config.register(ConfigItem("sni", type=str, default=None))
 
     def add_args(self, parser, subcommand):
         """A callback method used to add arguments to the CLI parser object.
