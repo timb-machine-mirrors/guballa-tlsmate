@@ -2,7 +2,6 @@
 """Module for the scan plugin
 """
 # import basic stuff
-import sys
 
 # import own stuff
 from tlsmate.plugin import CliPlugin, CliManager

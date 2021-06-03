@@ -63,7 +63,6 @@ class Configuration(object):
         self.register(ConfigItem("progress", type=bool, default=False))
         self.register(ConfigItem("sni", type=str, default=None))
 
-
     def _str_to_filelist(self, string):
         """Resolves a string of files paths.
 

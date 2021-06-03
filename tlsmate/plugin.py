@@ -7,7 +7,6 @@ import abc
 
 # import own stuff
 from tlsmate import utils
-from tlsmate.structs import ConfigItem
 
 # import other stuff
 
