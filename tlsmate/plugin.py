@@ -294,6 +294,7 @@ class CliManager(object):
         # and implement a consitency check
         subparsers = parser.add_subparsers(title="commands", dest="subcommand")
 
+        cls._objects = []
         for plugin_cls in sorted(cls._plugins.values(), key=lambda x: x.prio):
             plugin = plugin_cls()
             plugin.add_subcommand(subparsers)

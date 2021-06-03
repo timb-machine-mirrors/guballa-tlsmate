@@ -40,4 +40,3 @@ class VersionPlugin(CliPlugin):
 
         if subcommand == self.name:
             print(__version__)
-            sys.exit(0)

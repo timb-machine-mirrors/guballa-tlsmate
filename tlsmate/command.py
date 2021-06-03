@@ -67,8 +67,6 @@ def main():
     tlsmate.work_manager.run(tlsmate)
 
 
-CliManager.reset()
-
 # And now load the plugins which are shipped by default with tlsmate...
 from tlsmate.plugins import scan, version  # NOQA
 
