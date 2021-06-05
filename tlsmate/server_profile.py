@@ -747,7 +747,11 @@ class SPCertExtension(SPObject):
         logging.error("Certificate extensions InhibitAnyPolicy not implemented")
 
     def _ext_policy_constraints(self, value):
-        logging.error("Certificate extensions PolicyConstraints not implemented")
+        if value.require_explicit_policy is not None:
+            self.require_explicit_policy = value.require_explicit_policy
+
+        if value.inhibit_policy_mapping is not None:
+            self.inhibit_policy_mapping = value.inhibit_policy_mapping
 
     def _ext_crl_number(self, value):
         logging.error("Certificate extensions CrlNumber not implemented")
@@ -1041,6 +1045,8 @@ class SPCertExtPolicyConstraintsSchema(ProfileSchema):
     name = fields.String()
     oid = fields.String()
     criticality = FieldsEnumString(enum_class=tls.SPBool)
+    require_explicit_policy = fields.Integer()
+    inhibit_policy_mapping = fields.Integer()
 
 
 class SPCertExtCRLNumberSchema(ProfileSchema):
