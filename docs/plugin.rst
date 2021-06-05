@@ -269,8 +269,9 @@ snippet:
     class SPVulnExtensions(ProfileSchema):
         poodle = fields.Nested(SPPoodleSchema)
 
-This basically extends the existing vulnerability schema class ``SPVulnerabilitiesSchema``
-by the field ``poodle``, which refers to the nested schema ``SPPoodleSchema``.
+Through the decorator ``ProfileSchema.augment`` the existing vulnerability
+schema class ``SPVulnerabilitiesSchema`` is extended by the field ``poodle``,
+which refers to the nested schema ``SPPoodleSchema``.
 
 .. note::
 

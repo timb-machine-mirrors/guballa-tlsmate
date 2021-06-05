@@ -138,48 +138,49 @@ features: {}
 scan_info: {}
 server: {}
 versions:
-- cipher_suites:
-  - id: 49200
-    name: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-  - id: 49199
-    name: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-  - id: 159
-    name: TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
-  - id: 158
-    name: TLS_DHE_RSA_WITH_AES_128_GCM_SHA256
-  - id: 157
-    name: TLS_RSA_WITH_AES_256_GCM_SHA384
-  - id: 156
-    name: TLS_RSA_WITH_AES_128_GCM_SHA256
-  - id: 52392
-    name: TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
-  - id: 52394
-    name: TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256
-  - id: 49191
-    name: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
-  - id: 49192
-    name: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384
-  - id: 49172
-    name: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
-  - id: 49171
-    name: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
-  - id: 107
-    name: TLS_DHE_RSA_WITH_AES_256_CBC_SHA256
-  - id: 103
-    name: TLS_DHE_RSA_WITH_AES_128_CBC_SHA256
-  - id: 57
-    name: TLS_DHE_RSA_WITH_AES_256_CBC_SHA
-  - id: 51
-    name: TLS_DHE_RSA_WITH_AES_128_CBC_SHA
-  - id: 61
-    name: TLS_RSA_WITH_AES_256_CBC_SHA256
-  - id: 60
-    name: TLS_RSA_WITH_AES_128_CBC_SHA256
-  - id: 53
-    name: TLS_RSA_WITH_AES_256_CBC_SHA
-  - id: 47
-    name: TLS_RSA_WITH_AES_128_CBC_SHA
-  server_preference: C_TRUE
+- ciphers:
+    cipher_suites:
+    - id: 49200
+      name: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+    - id: 49199
+      name: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+    - id: 159
+      name: TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
+    - id: 158
+      name: TLS_DHE_RSA_WITH_AES_128_GCM_SHA256
+    - id: 157
+      name: TLS_RSA_WITH_AES_256_GCM_SHA384
+    - id: 156
+      name: TLS_RSA_WITH_AES_128_GCM_SHA256
+    - id: 52392
+      name: TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+    - id: 52394
+      name: TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+    - id: 49191
+      name: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+    - id: 49192
+      name: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384
+    - id: 49172
+      name: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+    - id: 49171
+      name: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+    - id: 107
+      name: TLS_DHE_RSA_WITH_AES_256_CBC_SHA256
+    - id: 103
+      name: TLS_DHE_RSA_WITH_AES_128_CBC_SHA256
+    - id: 57
+      name: TLS_DHE_RSA_WITH_AES_256_CBC_SHA
+    - id: 51
+      name: TLS_DHE_RSA_WITH_AES_128_CBC_SHA
+    - id: 61
+      name: TLS_RSA_WITH_AES_256_CBC_SHA256
+    - id: 60
+      name: TLS_RSA_WITH_AES_128_CBC_SHA256
+    - id: 53
+      name: TLS_RSA_WITH_AES_256_CBC_SHA
+    - id: 47
+      name: TLS_RSA_WITH_AES_128_CBC_SHA
+    server_preference: C_TRUE
   signature_algorithms:
     algorithms:
     - id: 1025

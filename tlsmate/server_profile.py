@@ -1304,6 +1304,20 @@ class SPCipherSuiteSchema(ProfileEnumSchema):
     __profile_class__ = tls.CipherSuite
 
 
+class SPCiphers(SPObject):
+    """Data class for ciphers
+    """
+
+
+class SPCiphersSchema(ProfileSchema):
+    """Schema for ciphers
+    """
+
+    __profile_class__ = SPCiphers
+    cipher_suites = fields.List(fields.Nested(SPCipherSuiteSchema))
+    server_preference = FieldsEnumString(enum_class=tls.SPBool)
+
+
 class SPCipherKindSchema(ProfileEnumSchema):
     """Schema for an SSL2 cipher kind (enum).
     """
@@ -1369,9 +1383,8 @@ class SPVersionSchema(ProfileSchema):
 
     __profile_class__ = SPVersion
     cipher_kinds = fields.List(fields.Nested(SPCipherKindSchema))
-    cipher_suites = fields.List(fields.Nested(SPCipherSuiteSchema))
+    ciphers = fields.Nested(SPCiphersSchema)
     dh_group = fields.Nested(SPDhGroupSchema)
-    server_preference = FieldsEnumString(enum_class=tls.SPBool)
     supported_groups = fields.Nested(SPSupportedGroupsSchema)
     signature_algorithms = fields.Nested(SPSignatureAlgorithmsSchema)
     version = fields.Nested(SPVersionEnumSchema)
@@ -1480,7 +1493,7 @@ class ServerProfile(SPObject):
                 return version_prof.cipher_kinds
 
             else:
-                return version_prof.cipher_suites
+                return version_prof.ciphers.cipher_suites
 
         return None
 

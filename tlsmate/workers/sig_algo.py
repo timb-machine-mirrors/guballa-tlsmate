@@ -182,7 +182,7 @@ class ScanSigAlgs(WorkerPlugin):
         self.client.profile.versions = [tls.Version.TLS13]
 
         self._scan_auth_method(
-            prof_version.cipher_suites,
+            prof_version.ciphers.cipher_suites,
             tls.SignatureScheme.all(),
             self.server_profile.get_cert_sig_algos(),
             prof_sig_algo,

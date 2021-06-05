@@ -9,7 +9,7 @@ from tlsmate import msg
 from tlsmate import tls
 from tlsmate.plugin import WorkerPlugin
 from tlsmate import utils
-from tlsmate.server_profile import SPVersion
+from tlsmate.server_profile import SPVersion, SPCiphers
 
 # import other stuff
 
@@ -143,12 +143,11 @@ class ScanCipherSuites(WorkerPlugin):
                     # are ordered according to the binary representation
                     supported_cs.insert(0, supported_cs.pop())
 
+            ciphers = SPCiphers(
+                server_preference=server_prio, cipher_suites=supported_cs
+            )
             self.server_profile.versions.append(
-                SPVersion(
-                    version=version,
-                    server_preference=server_prio,
-                    cipher_suites=supported_cs,
-                )
+                SPVersion(version=version, ciphers=ciphers)
             )
 
         logging.info(f"enumeration for {version} finished")
