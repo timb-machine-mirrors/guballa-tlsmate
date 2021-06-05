@@ -221,3 +221,73 @@ from the given parsed arguments. Note, that in
 already a value populated, either taken from the ini-file or from an
 environment variable. Using :meth:`tlsmate.config.Configuration.set` with the
 value None will actually not overwrite the current value.
+
+Extending the server profile
+----------------------------
+
+Especially when extending the scanner it is typically desired to extend the
+server profile as well.
+
+For example, let's say we write a plugin which scans for the POODLE
+vulnerability and its variants. The YAML part of the server profile
+shall look as follows, i.e., the vulnerability part is extended
+by the ``poodle`` block::
+
+    vulnerabilities:
+        ccs_injection: C_NA
+        heartbleed: NOT_APPLICABLE
+        poodle:
+            golden_poodle: C_FALSE
+            poodle: C_FALSE
+            poodle_tls: C_FLASE
+            zombie_poodle: C_FALSE
+        robot: NOT_APPLICABLE
+
+Therefore, the CLI plugin should contain something similar to this code
+snippet:
+
+.. code-block:: python
+
+    from tlsmate.server_profile import (
+        ProfileSchema, SPVulnerabilitiesSchema, FieldsEnumString, SPObject
+    )
+    from tlsmate import tls
+
+    class SPPoodle(SPObject):
+        """Data class for Poodle vulnerabilitites"""
+
+    class SPPoodleSchema(ProfileSchema):
+        """Schema class for Poodle vulnerabilitites"""
+        __profile_class__ = SPPoodle
+        golden_poodle = FieldsEnumString(enum_class=tls.SPBool)
+        poodle = FieldsEnumString(enum_class=tls.SPBool)
+        poodle_tls = FieldsEnumString(enum_class=tls.SPBool)
+        zombie_poodle = FieldsEnumString(enum_class=tls.SPBool)
+
+    # extend the schema ``SPVulnerabilitiesSchema`` by one additional field
+    @ProfileSchema.augment(SPVulnerabilitiesSchema)
+    class SPVulnExtensions(ProfileSchema):
+        poodle = fields.Nested(SPPoodleSchema)
+
+This basically extends the existing vulnerability schema class ``SPVulnerabilitiesSchema``
+by the field ``poodle``, which refers to the nested schema ``SPPoodleSchema``.
+
+.. note::
+
+    The attribute ``__profile_class__`` must not be present in the class
+    ``SPVulnExtensions``, as it is defined in the ``SPVulnerabilitiesSchema`` class.
+
+The code in the worker can look like this (note, we are using hard-coded values here
+for simplification):
+
+.. code-block:: python
+
+    poodle = SPPoodle()
+    poodle.golden_poodle = tls.SPBool.C_FALSE
+    poodle.poodle = tls.SPBool.C_FALSE
+    poodle.poodle_tls = tls.SPBool.C_FALSE
+    poodle.zombie_poodle = tls.SPBool.C_FALSE
+    self.server_profile.vulnerabilities.poodle = poodle
+
+Using the mechanism described above ensures that serialization and deserialization
+of the server profile considers the defined extension.
