@@ -12,7 +12,6 @@ versions:
     name: SSL_CK_IDEA_128_CBC_WITH_MD5
   - id: 458944
     name: SSL_CK_DES_192_EDE3_CBC_WITH_MD5
-  server_preference: C_UNDETERMINED
   version:
     id: 512
     name: SSL20

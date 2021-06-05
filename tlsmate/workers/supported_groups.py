@@ -120,7 +120,7 @@ class _TLS12_Scan(_Scan):
     _offered_groups = tls.SupportedGroups.all()
 
     def _get_cipher_suites(self):
-        cipher_suites = self._version_prof.cipher_suites
+        cipher_suites = self._version_prof.ciphers.cipher_suites
         return utils.filter_cipher_suites(
             cipher_suites,
             key_algo=[
@@ -166,7 +166,7 @@ class _TLS13_Scan(_Scan):
     ]
 
     def _get_cipher_suites(self):
-        return self._version_prof.cipher_suites
+        return self._version_prof.ciphers.cipher_suites
 
     def _get_share_from_server(self, offered_groups):
         self._client.profile.supported_groups = offered_groups

@@ -497,14 +497,16 @@ class TextProfileWorker(WorkerPlugin):
         print(apply_mood("Cipher suites", Mood.HEADLINE))
         for version in self._prof_values.versions:
             version_prof = self.server_profile.get_version_profile(version)
-            order = version_prof.server_preference
-            txt = _cipher_order["text"][order]
-            mood = _cipher_order["mood"][version][order.value]
-            mood_txt = apply_mood(txt, mood)
             if version is tls.Version.SSL20:
                 cipher_list = version_prof.cipher_kinds
+                txt = ""
+                mood_txt = ""
             else:
-                cipher_list = version_prof.cipher_suites
+                cipher_list = version_prof.ciphers.cipher_suites
+                order = version_prof.ciphers.server_preference
+                txt = _cipher_order["text"][order]
+                mood = _cipher_order["mood"][version][order.value]
+                mood_txt = apply_mood(txt, mood)
 
             hashed = hash((mood_txt, tuple(cipher_list)))
             if hashed in cipher_hash:
