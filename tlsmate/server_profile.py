@@ -50,7 +50,7 @@ import yaml
 from cryptography.hazmat.primitives.asymmetric import rsa, ed25519, ed448, dsa, ec
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography import x509
-from marshmallow import fields, Schema, post_load, post_dump, pre_dump
+from marshmallow import fields, Schema, post_load, post_dump, pre_dump, INCLUDE
 from marshmallow_oneofschema import OneOfSchema
 
 # #### Helper classes
@@ -156,6 +156,12 @@ class ProfileSchema(Schema):
     """Wrapper class for easier deserialization to objects
     """
 
+    _augments = []
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.unknown = INCLUDE
+
     @post_load
     def deserialize(self, data, **kwargs):
         """Instantiate an object and define the properties according to the given dict.
@@ -169,11 +175,26 @@ class ProfileSchema(Schema):
             __profile_class__ class property), or the original dict.
         """
 
-        cls = getattr(self, "__profile_class__")
-        if cls is not None:
-            return cls(data=data)
+        cls = getattr(self, "__profile_class__", None)
+        if cls is None:
+            return data
 
-        return data
+        cls_data = self._get_schema_data(data)
+        obj = cls(data=cls_data)
+        for base_cls, ext_cls in self._augments:
+            if base_cls is self.__class__:
+                cls_data = ext_cls._get_schema_data(data)
+                ext_data = ext_cls().load(cls_data)
+                for key, val in ext_data.items():
+                    setattr(obj, key, val)
+
+        if data:
+            fields = ", ".join(data.keys())
+            raise ValueError(
+                f"fields not defined in schema {self.__class__.__name__}: {fields}"
+            )
+
+        return obj
 
     @post_dump(pass_original=True)
     def serialize(self, data, orig, **kwargs):
@@ -187,11 +208,36 @@ class ProfileSchema(Schema):
             dict: the final dict representing the serialized object
         """
 
-        for key in orig.__dict__:
-            if not key.startswith("_") and key not in data:
-                data[key] = orig.__dict__[key]
-
+        for base_cls, ext_cls in self._augments:
+            if base_cls is self.__class__:
+                data.update(ext_cls().dump(orig))
         return data
+
+    @classmethod
+    def _get_schema_data(cls, data):
+        cls_data = {}
+        for key in cls._declared_fields.keys():
+            if key in data:
+                cls_data[key] = data[key]
+                del data[key]
+        return cls_data
+
+    @staticmethod
+    def augment(base_cls):
+        """Decorator to register scheme extensions.
+
+        Arguments:
+            base_cls (:class:`ProfileSchema`): the schema class to extend
+
+        Returns:
+            the class used to extend the base_cls class
+        """
+
+        def inner(ext_cls):
+            ProfileSchema._augments.append((base_cls, ext_cls))
+            return ext_cls
+
+        return inner
 
 
 class ProfileEnumSchema(Schema):
