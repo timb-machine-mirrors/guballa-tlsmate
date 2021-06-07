@@ -17,12 +17,6 @@ A plugin is provided which scans a TLS server for its configurations (i.e.,
 support of TLS protocol versions, cipher suites, and much more) as well as for
 some commonly known TLS vulnerabilities.
 
-State of the project
---------------------
-
-The project is still in an alpha phase. Consequently the interfaces (CLI,
-python APIs) provided might change significantly.
-
 A word of warning
 -----------------
 
