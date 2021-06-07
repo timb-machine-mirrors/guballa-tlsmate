@@ -65,7 +65,7 @@ Now let's create the file ``~/myplugin/tlsmate_myplugin.py`` with the following 
 
     @CliManager.register
     class MyPlugin(CliConnectionPlugin):
-        name = "cipher-suite-dumper"
+        name = "cipher-printer"
         prio = 100
 
         def register_config(self, config):
@@ -94,16 +94,15 @@ First let's check if the newly defined subcommand is recognized by ``tlsmate``::
     $ tlsmate --help
     usage: tlsmate [-h] [--config CONFIG_FILE]
                    [--logging {critical,error,warning,info,debug}]
-                   {scan,version,cipher-suite-dumper} ...
+                   {scan,version,cipher-printer} ...
 
     ...
 
     commands:
-      {scan,version,cipher-suite-dumper}
+      {scan,version,cipher-printer}
         scan                performs a TLS server scan
         version             prints the version of tlsmate
-        cipher-suite-dumper
-                            prints the negotiated cipher suite
+        cipher-printer      prints the negotiated cipher suite
 
 Ok. Now let's give it a try::
 

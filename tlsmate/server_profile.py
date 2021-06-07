@@ -1573,7 +1573,7 @@ class ServerProfile(SPObject):
                 for which a full handshake is supported. Defaults to False.
 
         Returns:
-            :obj:`tlsmate.structures.ProfileValues`: a structure that provides a list of
+            :obj:`tlsmate.structs.ProfileValues`: a structure that provides a list of
             the versions, the cipher suites, the supported groups and the
             signature algorithms
         """
