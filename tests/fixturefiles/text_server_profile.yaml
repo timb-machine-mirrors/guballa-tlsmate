@@ -1,6 +1,6 @@
 cert_chains:
 -   cert_chain:
-    -   crl_revokation_status: NOT_REVOKED
+    -   crl_revocation_status: NOT_REVOKED
         extensions:
         -   ca: C_FALSE
             criticality: C_TRUE
@@ -212,7 +212,7 @@ cert_chains:
     id: 1
     successful_validation: C_TRUE
 -   cert_chain:
-    -   crl_revokation_status: NOT_REVOKED
+    -   crl_revocation_status: NOT_REVOKED
         extensions:
         -   ca: C_FALSE
             criticality: C_TRUE
@@ -442,153 +442,148 @@ versions:
         name: SSL_CK_RC4_128_WITH_MD5
     -   id: 458944
         name: SSL_CK_DES_192_EDE3_CBC_WITH_MD5
-    server_preference: C_UNDETERMINED
     version:
         id: 512
         name: SSL20
--   cipher_suites:
-    -   id: 10
-        name: TLS_RSA_WITH_3DES_EDE_CBC_SHA
-    -   id: 5
-        name: TLS_RSA_WITH_RC4_128_SHA
-    -   id: 4
-        name: TLS_RSA_WITH_RC4_128_MD5
-    dh_groups: []
-    server_preference: C_TRUE
+-   ciphers:
+        cipher_suites:
+        -   id: 10
+            name: TLS_RSA_WITH_3DES_EDE_CBC_SHA
+        -   id: 5
+            name: TLS_RSA_WITH_RC4_128_SHA
+        -   id: 4
+            name: TLS_RSA_WITH_RC4_128_MD5
+        server_preference: C_TRUE
     supported_groups: {}
     version:
         id: 768
         name: SSL30
--   cipher_suites:
-    -   id: 47
-        name: TLS_RSA_WITH_AES_128_CBC_SHA
-    -   id: 51
-        name: TLS_DHE_RSA_WITH_AES_128_CBC_SHA
-    -   id: 53
-        name: TLS_RSA_WITH_AES_256_CBC_SHA
-    -   id: 57
-        name: TLS_DHE_RSA_WITH_AES_256_CBC_SHA
-    -   id: 60
-        name: TLS_RSA_WITH_AES_128_CBC_SHA256
-    -   id: 61
-        name: TLS_RSA_WITH_AES_256_CBC_SHA256
-    -   id: 65
-        name: TLS_RSA_WITH_CAMELLIA_128_CBC_SHA
-    -   id: 69
-        name: TLS_DHE_RSA_WITH_CAMELLIA_128_CBC_SHA
-    -   id: 103
-        name: TLS_DHE_RSA_WITH_AES_128_CBC_SHA256
-    -   id: 107
-        name: TLS_DHE_RSA_WITH_AES_256_CBC_SHA256
-    -   id: 132
-        name: TLS_RSA_WITH_CAMELLIA_256_CBC_SHA
-    -   id: 136
-        name: TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA
-    -   id: 156
-        name: TLS_RSA_WITH_AES_128_GCM_SHA256
-    -   id: 157
-        name: TLS_RSA_WITH_AES_256_GCM_SHA384
-    -   id: 158
-        name: TLS_DHE_RSA_WITH_AES_128_GCM_SHA256
-    -   id: 159
-        name: TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
-    -   id: 186
-        name: TLS_RSA_WITH_CAMELLIA_128_CBC_SHA256
-    -   id: 190
-        name: TLS_DHE_RSA_WITH_CAMELLIA_128_CBC_SHA256
-    -   id: 192
-        name: TLS_RSA_WITH_CAMELLIA_256_CBC_SHA256
-    -   id: 196
-        name: TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA256
-    -   id: 49161
-        name: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
-    -   id: 49162
-        name: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
-    -   id: 49171
-        name: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
-    -   id: 49172
-        name: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
-    -   id: 49187
-        name: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
-    -   id: 49188
-        name: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384
-    -   id: 49191
-        name: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
-    -   id: 49192
-        name: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384
-    -   id: 49195
-        name: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
-    -   id: 49196
-        name: TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
-    -   id: 49199
-        name: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-    -   id: 49200
-        name: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
-    -   id: 49232
-        name: TLS_RSA_WITH_ARIA_128_GCM_SHA256
-    -   id: 49233
-        name: TLS_RSA_WITH_ARIA_256_GCM_SHA384
-    -   id: 49234
-        name: TLS_DHE_RSA_WITH_ARIA_128_GCM_SHA256
-    -   id: 49235
-        name: TLS_DHE_RSA_WITH_ARIA_256_GCM_SHA384
-    -   id: 49244
-        name: TLS_ECDHE_ECDSA_WITH_ARIA_128_GCM_SHA256
-    -   id: 49245
-        name: TLS_ECDHE_ECDSA_WITH_ARIA_256_GCM_SHA384
-    -   id: 49248
-        name: TLS_ECDHE_RSA_WITH_ARIA_128_GCM_SHA256
-    -   id: 49249
-        name: TLS_ECDHE_RSA_WITH_ARIA_256_GCM_SHA384
-    -   id: 49266
-        name: TLS_ECDHE_ECDSA_WITH_CAMELLIA_128_CBC_SHA256
-    -   id: 49267
-        name: TLS_ECDHE_ECDSA_WITH_CAMELLIA_256_CBC_SHA384
-    -   id: 49270
-        name: TLS_ECDHE_RSA_WITH_CAMELLIA_128_CBC_SHA256
-    -   id: 49271
-        name: TLS_ECDHE_RSA_WITH_CAMELLIA_256_CBC_SHA384
-    -   id: 49308
-        name: TLS_RSA_WITH_AES_128_CCM
-    -   id: 49309
-        name: TLS_RSA_WITH_AES_256_CCM
-    -   id: 49310
-        name: TLS_DHE_RSA_WITH_AES_128_CCM
-    -   id: 49311
-        name: TLS_DHE_RSA_WITH_AES_256_CCM
-    -   id: 49312
-        name: TLS_RSA_WITH_AES_128_CCM_8
-    -   id: 49313
-        name: TLS_RSA_WITH_AES_256_CCM_8
-    -   id: 49314
-        name: TLS_DHE_RSA_WITH_AES_128_CCM_8
-    -   id: 49315
-        name: TLS_DHE_RSA_WITH_AES_256_CCM_8
-    -   id: 49324
-        name: TLS_ECDHE_ECDSA_WITH_AES_128_CCM
-    -   id: 49325
-        name: TLS_ECDHE_ECDSA_WITH_AES_256_CCM
-    -   id: 49326
-        name: TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8
-    -   id: 49327
-        name: TLS_ECDHE_ECDSA_WITH_AES_256_CCM_8
-    -   id: 52392
-        name: TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
-    -   id: 52393
-        name: TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
-    -   id: 52394
-        name: TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256
-    dh_groups:
-    -   cipher_suites:
-        -   id: 57
-            name: TLS_DHE_RSA_WITH_AES_256_CBC_SHA
+-   ciphers:
+        cipher_suites:
+        -   id: 47
+            name: TLS_RSA_WITH_AES_128_CBC_SHA
         -   id: 51
             name: TLS_DHE_RSA_WITH_AES_128_CBC_SHA
+        -   id: 53
+            name: TLS_RSA_WITH_AES_256_CBC_SHA
+        -   id: 57
+            name: TLS_DHE_RSA_WITH_AES_256_CBC_SHA
+        -   id: 60
+            name: TLS_RSA_WITH_AES_128_CBC_SHA256
+        -   id: 61
+            name: TLS_RSA_WITH_AES_256_CBC_SHA256
+        -   id: 65
+            name: TLS_RSA_WITH_CAMELLIA_128_CBC_SHA
+        -   id: 69
+            name: TLS_DHE_RSA_WITH_CAMELLIA_128_CBC_SHA
+        -   id: 103
+            name: TLS_DHE_RSA_WITH_AES_128_CBC_SHA256
+        -   id: 107
+            name: TLS_DHE_RSA_WITH_AES_256_CBC_SHA256
+        -   id: 132
+            name: TLS_RSA_WITH_CAMELLIA_256_CBC_SHA
+        -   id: 136
+            name: TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA
+        -   id: 156
+            name: TLS_RSA_WITH_AES_128_GCM_SHA256
+        -   id: 157
+            name: TLS_RSA_WITH_AES_256_GCM_SHA384
+        -   id: 158
+            name: TLS_DHE_RSA_WITH_AES_128_GCM_SHA256
+        -   id: 159
+            name: TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
+        -   id: 186
+            name: TLS_RSA_WITH_CAMELLIA_128_CBC_SHA256
+        -   id: 190
+            name: TLS_DHE_RSA_WITH_CAMELLIA_128_CBC_SHA256
+        -   id: 192
+            name: TLS_RSA_WITH_CAMELLIA_256_CBC_SHA256
+        -   id: 196
+            name: TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA256
+        -   id: 49161
+            name: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
+        -   id: 49162
+            name: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+        -   id: 49171
+            name: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA
+        -   id: 49172
+            name: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+        -   id: 49187
+            name: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+        -   id: 49188
+            name: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384
+        -   id: 49191
+            name: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+        -   id: 49192
+            name: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384
+        -   id: 49195
+            name: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+        -   id: 49196
+            name: TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+        -   id: 49199
+            name: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        -   id: 49200
+            name: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        -   id: 49232
+            name: TLS_RSA_WITH_ARIA_128_GCM_SHA256
+        -   id: 49233
+            name: TLS_RSA_WITH_ARIA_256_GCM_SHA384
+        -   id: 49234
+            name: TLS_DHE_RSA_WITH_ARIA_128_GCM_SHA256
+        -   id: 49235
+            name: TLS_DHE_RSA_WITH_ARIA_256_GCM_SHA384
+        -   id: 49244
+            name: TLS_ECDHE_ECDSA_WITH_ARIA_128_GCM_SHA256
+        -   id: 49245
+            name: TLS_ECDHE_ECDSA_WITH_ARIA_256_GCM_SHA384
+        -   id: 49248
+            name: TLS_ECDHE_RSA_WITH_ARIA_128_GCM_SHA256
+        -   id: 49249
+            name: TLS_ECDHE_RSA_WITH_ARIA_256_GCM_SHA384
+        -   id: 49266
+            name: TLS_ECDHE_ECDSA_WITH_CAMELLIA_128_CBC_SHA256
+        -   id: 49267
+            name: TLS_ECDHE_ECDSA_WITH_CAMELLIA_256_CBC_SHA384
+        -   id: 49270
+            name: TLS_ECDHE_RSA_WITH_CAMELLIA_128_CBC_SHA256
+        -   id: 49271
+            name: TLS_ECDHE_RSA_WITH_CAMELLIA_256_CBC_SHA384
+        -   id: 49308
+            name: TLS_RSA_WITH_AES_128_CCM
+        -   id: 49309
+            name: TLS_RSA_WITH_AES_256_CCM
+        -   id: 49310
+            name: TLS_DHE_RSA_WITH_AES_128_CCM
+        -   id: 49311
+            name: TLS_DHE_RSA_WITH_AES_256_CCM
+        -   id: 49312
+            name: TLS_RSA_WITH_AES_128_CCM_8
+        -   id: 49313
+            name: TLS_RSA_WITH_AES_256_CCM_8
+        -   id: 49314
+            name: TLS_DHE_RSA_WITH_AES_128_CCM_8
+        -   id: 49315
+            name: TLS_DHE_RSA_WITH_AES_256_CCM_8
+        -   id: 49324
+            name: TLS_ECDHE_ECDSA_WITH_AES_128_CCM
+        -   id: 49325
+            name: TLS_ECDHE_ECDSA_WITH_AES_256_CCM
+        -   id: 49326
+            name: TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8
+        -   id: 49327
+            name: TLS_ECDHE_ECDSA_WITH_AES_256_CCM_8
+        -   id: 52392
+            name: TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+        -   id: 52393
+            name: TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+        -   id: 52394
+            name: TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256
+        server_preference: C_FALSE
+    dh_group:
         g_value: 2
         name: 'RFC2409: 2nd Oakley Group'
         p_value: ff:ff:ff:ff:ff:ff:ff:ff:c9:0f:da:a2:21:68:c2:34:c4:c6:62:8b:80:dc:1c:d1:29:02:4e:08:8a:67:cc:74:02:0b:be:a6:3b:13:9b:22:51:4a:08:79:8e:34:04:dd:ef:95:19:b3:cd:3a:43:1b:30:2b:0a:6d:f2:5f:14:37:4f:e1:35:6d:6d:51:c2:45:e4:85:b5:76:62:5e:7e:c6:f4:4c:42:e9:a6:37:ed:6b:0b:ff:5c:b6:f4:06:b7:ed:ee:38:6b:fb:5a:89:9f:a5:ae:9f:24:11:7c:4b:1f:e6:49:28:66:51:ec:e6:53:81:ff:ff:ff:ff:ff:ff:ff:ff
         size: 1024
-    server_preference: C_FALSE
     signature_algorithms:
         algorithms:
         -   id: 1025
@@ -607,7 +602,6 @@ versions:
             name: ECDSA_SECP521R1_SHA512
         -   id: 771
             name: ECDSA_SECP224R1_SHA224
-        server_preference: C_FALSE
     supported_groups:
         extension_supported: C_TRUE
         groups:
@@ -626,14 +620,15 @@ versions:
     version:
         id: 771
         name: TLS12
--   cipher_suites:
-    -   id: 4865
-        name: TLS_AES_128_GCM_SHA256
-    -   id: 4866
-        name: TLS_AES_256_GCM_SHA384
-    -   id: 4867
-        name: TLS_CHACHA20_POLY1305_SHA256
-    server_preference: C_FALSE
+-   ciphers:
+        cipher_suites:
+        -   id: 4865
+            name: TLS_AES_128_GCM_SHA256
+        -   id: 4866
+            name: TLS_AES_256_GCM_SHA384
+        -   id: 4867
+            name: TLS_CHACHA20_POLY1305_SHA256
+        server_preference: C_FALSE
     signature_algorithms:
         algorithms:
         -   id: 1027
@@ -644,7 +639,6 @@ versions:
             name: RSA_PSS_RSAE_SHA384
         -   id: 2054
             name: RSA_PSS_RSAE_SHA512
-        server_preference: C_FALSE
     supported_groups:
         extension_supported: C_TRUE
         groups:

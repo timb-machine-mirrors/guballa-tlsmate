@@ -285,7 +285,7 @@ class TlsConnection(object):
             by the server is unknown (Heartbeat, NewSessionTicket).
 
             Currently, this attribute defaults to
-            [tls.HandshakeType.NEW_SESSION_TICKET].
+            [tls.HandshakeType.NEW_SESSION_TICKET, tls.HeartbeatType.HEARTBEAT_REQUEST]
         msg (:obj:`TlsConnectionMsgs`): an object which contains all messages received
             and send during a handshake. Can also be used outside the context manager,
             e.g., when the handshake method was used. If the same message is sent or
@@ -322,6 +322,15 @@ class TlsConnection(object):
     """
 
     _cert_chain_digests = []
+
+    @classmethod
+    def reset(cls):
+        """Reset class attributes.
+
+        Required for pytest, as between two test cases the cert_chain_digest
+        must be reset.
+        """
+        cls._cert_chain_digests = []
 
     def __init__(self, tlsmate, endpoint):
         self._tlsmate = tlsmate
@@ -386,11 +395,11 @@ class TlsConnection(object):
         self._secure_reneg_ext = False
         self._secure_reneg_scsv = False
 
-        if self.client.support_secure_renegotiation:
+        if self.client.profile.support_secure_renegotiation:
             self._secure_reneg_request = True
             self._secure_reneg_ext = True
 
-        if self.client.support_scsv_renegotiation:
+        if self.client.profile.support_scsv_renegotiation:
             self._secure_reneg_request = True
             self._secure_reneg_scsv = True
 
@@ -1283,14 +1292,12 @@ class TlsConnection(object):
                 if sni is None:
                     raise ValueError("No SNI defined")
 
-            msg.chain.validate(
-                timestamp,
-                sni,
-                self._tlsmate.trust_store,
-                self._tlsmate.crl_manager,
-                self.client.alert_on_invalid_cert,
-                not self._tlsmate.config.get("no_crl"),
-            )
+            try:
+                msg.chain.validate(timestamp, sni, self.client.alert_on_invalid_cert)
+
+            except Exception as exc:
+                if self.client.alert_on_invalid_cert:
+                    raise exc
 
     def _on_certificate_request_received(self, msg):
         if self.version is tls.Version.TLS13:
@@ -1339,7 +1346,7 @@ class TlsConnection(object):
             method(self, msg)
 
     def _auto_heartbeat_request(self, message):
-        if self.client.heartbeat_mode is tls.HeartbeatMode.PEER_ALLOWED_TO_SEND:
+        if self.client.profile.heartbeat_mode is tls.HeartbeatMode.PEER_ALLOWED_TO_SEND:
             response = msg.HeartbeatResponse()
             response.payload_length = message.payload_length
             response.payload = message.payload
@@ -1415,7 +1422,9 @@ class TlsConnection(object):
         self.msg.store_msg(message, received=True)
         return message, mb.msg
 
-    def wait_msg_bytes(self, msg_class, optional=False, max_nbr=1, timeout=5000):
+    def wait_msg_bytes(
+        self, msg_class, optional=False, max_nbr=1, timeout=5000, fail_on_timeout=True
+    ):
         """Interface to wait for a message from the peer.
 
         Arguments:
@@ -1425,14 +1434,17 @@ class TlsConnection(object):
             max_nbr (int): the number of identical message types to wait for. Well
                 suitable for NewSessionTicket messages. Defaults to 1.
             timeout (int): the message timeout in milliseconds
+            fail_on_timeout (bool): if True, in case of a timeout raise an exception,
+                otherwise return (None, None)
 
         Returns:
             tuple(:obj:`tlsmate.msg.TlsMessage`, bytearray):
             the message received and the message as bytes. In case of a timeout
-            (None, None) is returned.
+            (None, None) is returned if fail_on_timeout is False
 
         Raises:
             FatalAlert: In case an unexpected message is received
+            TlsMsgTimeoutError: In case fail_on_timeout is True and a timeout occured.
         """
         ultimo = time.time() + (timeout / 1000)
         min_nbr = 0 if optional else 1
@@ -1457,8 +1469,11 @@ class TlsConnection(object):
                     elif cnt >= min_nbr:
                         return expected_msg, expected_bytes
 
-                    else:
+                    elif fail_on_timeout:
                         raise exc
+
+                    else:
+                        return None, None
 
             if (msg_class == msg.Any) or isinstance(message, msg_class):
                 self._on_msg_received(message)
@@ -1500,13 +1515,16 @@ class TlsConnection(object):
             max_nbr (int): the number of identical message types to wait for. Well
                 suitable for NewSessionTicket messages. Defaults to 1.
             timeout (int): the message timeout in milliseconds
+            fail_on_timeout (bool): if True, in case of a timeout raise an exception,
+                otherwise return (None, None)
 
         Returns:
             :obj:`tlsmate.msg.TlsMessage`: the message received or None in case
-            of a timeout.
+            of a timeout and fail_on_timeout is False.
 
         Raises:
             FatalAlert: In case an unexpected message is received
+            TlsMsgTimeoutError: In case fail_on_timeout is True and a timeout occured.
         """
 
         return self.wait_msg_bytes(msg_class, **kwargs)[0]
@@ -1735,8 +1753,8 @@ class TlsConnection(object):
                 expected.
         """
         self.send(msg.ClientHello, pre_serialization=ch_pre_serialization)
-        if self.client.early_data is not None:
-            self.send(msg.AppData(self.client.early_data))
+        if self.client.profile.early_data is not None:
+            self.send(msg.AppData(self.client.profile.early_data))
 
         self.wait(msg.ServerHello)
         if self.version is tls.Version.TLS13:

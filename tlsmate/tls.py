@@ -127,6 +127,13 @@ class Version(ExtendedIntEnum):
     TLS12 = 0x0303
     TLS13 = 0x0304
 
+    @classmethod
+    def tls_only(cls):
+        """Comfortable method to get all TLS versions 1.0 .. 1.3, excluding SSLv2/v3.
+        """
+
+        return [cls.TLS10, cls.TLS11, cls.TLS12, cls.TLS13]
+
 
 class ContentType(ExtendedEnum):
     """Enum representing the TLS-Handshake protocols.
@@ -973,12 +980,14 @@ class HeartbeatMode(ExtendedEnum):
 class SPBool(ExtendedEnum):
     """Enum representing a pseudo-boolean value in the server profile.
 
-    In addition to True and false the two values are defined:
-        - C_UNDETERMINED: Used when tlsmate has not even tried to determine the
-            value or if the value could not determined at all (for whatever reason).
-        - C_NA: Used as an indication this the boolean value is not applicable, e.g.
-            when the server does not support any CBC-cipher suite, support for the
-            extension ENCRYPT_THEN_MAC is not applicable.
+    In addition to True and False the two values are defined:
+
+    * C_UNDETERMINED - used when tlsmate has not even tried to determine the
+      value or if the value could not determined at all (for whatever reason).
+
+    * C_NA - Used as an indication this the boolean value is not applicable, e.g.
+      when the server does not support any CBC-cipher suite, support for the
+      extension ENCRYPT_THEN_MAC is not applicable.
     """
 
     C_FALSE = 0
@@ -1074,7 +1083,7 @@ class CertKeyUsage(ExtendedEnum):
 
 
 class CertCrlStatus(ExtendedEnum):
-    """CRL Revokation Status
+    """CRL Revocation Status
     """
 
     UNDETERMINED = enum.auto()
@@ -1082,7 +1091,22 @@ class CertCrlStatus(ExtendedEnum):
     REVOKED = enum.auto()
     CRL_DOWNLOAD_FAILED = enum.auto()
     WRONG_CRL_ISSUER = enum.auto()
+    INVALID_TIMESTAMP = enum.auto()
     CRL_SIGNATURE_INVALID = enum.auto()
+
+
+class OcspStatus(ExtendedEnum):
+    """OCSP revocation status
+    """
+
+    UNDETERMINED = enum.auto()
+    NOT_REVOKED = enum.auto()
+    REVOKED = enum.auto()
+    UNKNOWN = enum.auto()
+    TIMEOUT = enum.auto()
+    INVALID_RESPONSE = enum.auto()
+    SIGNATURE_INVALID = enum.auto()
+    INVALID_TIMESTAMP = enum.auto()
 
 
 class Profile(ExtendedEnum):
@@ -1114,6 +1138,18 @@ class RobotVulnerability(ExtendedEnum):
     WEAK_ORACLE = enum.auto()
     STRONG_ORACLE = enum.auto()
     NOT_VULNERABLE = enum.auto()
+
+
+class HeartbleedStatus(ExtendedEnum):
+    """Status for heartbleed vulnerability
+    """
+
+    NOT_APPLICABLE = enum.auto()
+    UNDETERMINED = enum.auto()
+    VULNERABLE = enum.auto()
+    NOT_VULNERABLE = enum.auto()
+    TIMEOUT = enum.auto()
+    CONNECTION_CLOSED = enum.auto()
 
 
 class SPHeartbeat(ExtendedEnum):

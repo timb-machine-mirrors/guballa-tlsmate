@@ -1,4 +1,5 @@
 #!/bin/bash
+SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
 usage() {
     cat <<EOF
@@ -8,19 +9,17 @@ Starts a openssl server.
 
 List of options:
     -h, --help          Print this help
-    --prefix <str>      The prefix to the "bin/openssl" executable
-    --cipher <str>      The list of ciphers passed to openssl
-    -p, --port <int>    The listening port for the openssl server
-    -c, --cert <str>    The type of the certificate to use. Valid values:
-                            rsa, ecdsa, dsa, x25519, x448
-                        The keys, certificate and certificate chains are
-                        must be located under the directory specified by
-                        the --certdir parameter.
-    -d, --cert2 <str>   An optional alternative to --cert allowing to offer
-                        two different certificates by the openssl server.
-                        The same rules than for --cert apply.
-    --certdir <str>     The base directory to look for the certificates.
-                        Defaults to "$server_dir".
+    --port <int>        The listening port for the openssl server.
+                        Can be set as well via the environment variable
+                        TLSMATE_SERVER_PORT. Defaults to 44330.
+    --cert1 <str>       The certificate, key and certificate chain files to select.
+                        key file: $TLSMATE_DIR/ca/private/<str>.key
+                        certificate file: $TLSMATE_DIR/ca/certs/<str>.crt
+                        cert chain file: $TLSMATE_DIR/ca/chains/<str>.chn
+    --cert2 <str>       Same as --cert1. It is a secondary option to select
+                        another certificate.
+    --ca-file <str>     The trust store file to pass to openssl via the -CAfile
+                        option. File: $TLSMATE_DIR/certs/<str>.pem
     --                  Indicates the end of the options for this script.
                         All following options will be passed transparently
                         to the openssl command.
@@ -28,52 +27,39 @@ EOF
     exit 1
 }
 
+ca_dir=$SCRIPTPATH/../ca
+port=44333
 
-openssl_prefix=/usr
-auth1=rsa
-port=44330
+libressl_path=/opt/libressl/
 cipher=ALL
-server_dir=~/project/private-ca/server
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         -h|--help) usage ;;
-        --prefix) openssl_prefix="$2"; shift ;;
-        --cipher) cipher="$2"; shift ;;
-        -p|--port) port="$2"; shift ;;
-        -c|--cert) auth1="$2"; shift ;;
-        -d|--cert2) auth2="$2"; shift ;;
-        -e|--cert3) auth3="$2"; shift ;;
-        --certdir) server_dir="$2"; shift ;;
+        --port) port="$2"; shift;;
+        --cert1) cert1="$2"; shift;;
+        --cert2) cert2="$2"; shift;;
+        --ca-file) ca_file="-CAfile $ca_dir/certs/$2.pem"; shift;;
         --) shift; break ;;
         *) echo "Unknown option $1"; usage; exit 1 ;;
     esac
     shift
 done
 
-
-key1=$server_dir/private/server-$auth1.key
-key2=$server_dir/private/server-$auth2.key
-key3=$server_dir/private/server-$auth3.key
-cert1=$server_dir/certs/server-$auth1.crt
-cert2=$server_dir/certs/server-$auth2.crt
-cert3=$server_dir/certs/server-$auth3.crt
-#chain1=$server_dir/chains/server-$auth1.pem
-#chain2=$server_dir/chains/server-$auth2.pem
-#chain3=$server_dir/chains/server-$auth3.pem
-cafile=$server_dir/../cafile.pem
+if [ -n "$cert1" ]; then
+    cert_params1=" -key $ca_dir/private/$cert1.key -cert $ca_dir/certs/$cert1.crt"
+fi
+if [ -n "$cert2" ]; then
+    cert_params2=" -dkey $ca_dir/private/$cert2.key -dcert $ca_dir/certs/$cert2.crt"
+fi
 
 cert_params=" -key $key1 -cert $cert1"
 if [ -n "$auth2" ]; then
     cert_params2=" -key2 $key2 -cert2 $cert2"
 fi
-if [ -n "$auth3" ]; then
-    cert_params2=" -dkey $key3 -dcert $cert3"
-fi
 
 kill `lsof -t -i :$port`
 
-export OPENSSL_TRACE=TLS
-export LD_LIBRARY_PATH=$openssl_prefix/lib:$LD_LIBRARY_PATH
-cmd="$openssl_prefix/bin/openssl s_server $cert_params $cert_params2 $cert_params3 -CAfile $cafile -accept $port -www -cipher $cipher $@"
+export LD_LIBRARY_PATH=$libressl_path/lib:$LD_LIBRARY_PATH
+cmd="$libressl_path/bin/openssl s_server $cert_params1 $cert_params2 $ca_file -accept $port $@"
 echo $cmd
 $cmd

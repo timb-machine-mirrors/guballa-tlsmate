@@ -6,7 +6,7 @@ import logging
 from tests.cipher_suite_tester import CipherSuiteTester
 from tlsmate import tls
 from tlsmate import msg
-from tlsmate.tlssuite import OpensslVersion
+from tlsmate.tlssuite import TlsLibrary
 
 
 class TestCase(CipherSuiteTester):
@@ -18,10 +18,11 @@ class TestCase(CipherSuiteTester):
     name = "Legacy_Renegotiation_Client"
     path = pathlib.Path(__file__)
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
-        "--mode www -- -legacy_renegotiation"
+        "utils/start_openssl --version {library} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa "
+        "-- -www -cipher ALL -legacy_renegotiation"
     )
-    openssl_version = OpensslVersion.v1_1_1
+    library = TlsLibrary.openssl1_1_1
 
     # Uncomment the line below if you do not want to use the default version and
     # adapt it to your needs.
@@ -31,16 +32,16 @@ class TestCase(CipherSuiteTester):
         client = tlsmate.client
         client.init_profile()
 
-        client.versions = [tls.Version.TLS12]
-        client.cipher_suites = [tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384]
-        client.support_supported_groups = True
-        client.support_signature_algorithms = True
-        client.supported_groups = [
+        client.profile.versions = [tls.Version.TLS12]
+        client.profile.cipher_suites = [
+            tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        ]
+        client.profile.supported_groups = [
             tls.SupportedGroups.SECP256R1,
             tls.SupportedGroups.SECP384R1,
             tls.SupportedGroups.SECP521R1,
         ]
-        client.signature_algorithms = [tls.SignatureScheme.RSA_PKCS1_SHA256]
+        client.profile.signature_algorithms = [tls.SignatureScheme.RSA_PKCS1_SHA256]
         end_of_tc_reached = False
         with client.create_connection() as conn:
             conn.handshake()

@@ -6,7 +6,7 @@ import logging
 from tests.cipher_suite_tester import CipherSuiteTester
 from tlsmate import tls
 from tlsmate import msg
-from tlsmate.tlssuite import OpensslVersion
+from tlsmate.tlssuite import TlsLibrary
 
 
 class TestCase(CipherSuiteTester):
@@ -18,10 +18,11 @@ class TestCase(CipherSuiteTester):
     name = "ResumptionById"
     path = pathlib.Path(__file__)
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
-        "--mode www"
+        "utils/start_openssl --version {library} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa "
+        "-- -www -cipher ALL"
     )
-    openssl_version = OpensslVersion.v1_1_1
+    library = TlsLibrary.openssl1_1_1
 
     # Uncomment the line below if you do not want to use the default version and
     # adapt it to your needs.
@@ -31,9 +32,11 @@ class TestCase(CipherSuiteTester):
         client = tlsmate.client
         client.init_profile()
 
-        client.versions = [tls.Version.TLS12]
-        client.cipher_suites = [tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA]
-        client.supported_groups = [
+        client.profile.versions = [tls.Version.TLS12]
+        client.profile.cipher_suites = [
+            tls.CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+        ]
+        client.profile.supported_groups = [
             tls.SupportedGroups.X25519,
             tls.SupportedGroups.X448,
             tls.SupportedGroups.SECT163K1,
@@ -57,7 +60,7 @@ class TestCase(CipherSuiteTester):
             tls.SupportedGroups.FFDHE2048,
             tls.SupportedGroups.FFDHE4096,
         ]
-        client.signature_algorithms = [
+        client.profile.signature_algorithms = [
             tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
             tls.SupportedGroups.X448,
             tls.SupportedGroups.SECT163K1,
@@ -99,7 +102,7 @@ class TestCase(CipherSuiteTester):
                     logging.debug("openssl_command: " + line)
                     conn.recorder.trace(openssl_command=line)
 
-        client.support_session_id = True
+        client.profile.support_session_id = True
         end_of_tc_reached = False
         with client.create_connection() as conn:
             conn.send(msg.ClientHello)

@@ -4,7 +4,7 @@
 import pathlib
 from tlsmate.workers.eval_cipher_suites import ScanCipherSuites
 from tlsmate.tlssuite import TlsSuiteTester
-from tlsmate.tlssuite import OpensslVersion
+from tlsmate.tlssuite import TlsLibrary
 
 
 tls10_cs = [
@@ -125,10 +125,11 @@ class TestCase(TlsSuiteTester):
     recorder_yaml = "recorder_eval_cipher_suites_server_prio_openssl1_0_2"
     path = pathlib.Path(__file__)
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
-        "--mode www -- -cipher ALL -serverpref"
+        "utils/start_openssl --version {library} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa "
+        "-- -www -cipher ALL -serverpref"
     )
-    openssl_version = OpensslVersion.v1_0_2
+    library = TlsLibrary.openssl1_0_2
 
     server = "localhost"
 
@@ -136,26 +137,26 @@ class TestCase(TlsSuiteTester):
         assert len(cert_chain) == 2
         assert cert_chain[0]["id"] == 1
         assert cert_chain[1]["id"] == 2
-        assert len(cert_chain[0]["cert_chain"]) == 3
-        assert len(cert_chain[1]["cert_chain"]) == 3
+        assert len(cert_chain[0]["cert_chain"]) == 2
+        assert len(cert_chain[1]["cert_chain"]) == 2
 
     def check_versions(self, versions):
         assert len(versions) == 4
         assert versions[0]["version"]["name"] == "SSL30"
-        assert versions[0]["server_preference"] == "C_TRUE"
+        assert versions[0]["ciphers"]["server_preference"] == "C_TRUE"
         assert versions[1]["version"]["name"] == "TLS10"
-        assert versions[1]["server_preference"] == "C_TRUE"
+        assert versions[1]["ciphers"]["server_preference"] == "C_TRUE"
         assert versions[2]["version"]["name"] == "TLS11"
-        assert versions[2]["server_preference"] == "C_TRUE"
+        assert versions[2]["ciphers"]["server_preference"] == "C_TRUE"
         assert versions[3]["version"]["name"] == "TLS12"
-        assert versions[3]["server_preference"] == "C_TRUE"
-        for a, b in zip(tls10_cs, versions[0]["cipher_suites"]):
+        assert versions[3]["ciphers"]["server_preference"] == "C_TRUE"
+        for a, b in zip(tls10_cs, versions[0]["ciphers"]["cipher_suites"]):
             assert a == b["name"]
-        for a, b in zip(tls10_cs, versions[1]["cipher_suites"]):
+        for a, b in zip(tls10_cs, versions[1]["ciphers"]["cipher_suites"]):
             assert a == b["name"]
-        for a, b in zip(tls10_cs, versions[2]["cipher_suites"]):
+        for a, b in zip(tls10_cs, versions[2]["ciphers"]["cipher_suites"]):
             assert a == b["name"]
-        for a, b in zip(tls12_cs, versions[3]["cipher_suites"]):
+        for a, b in zip(tls12_cs, versions[3]["ciphers"]["cipher_suites"]):
             assert a == b["name"]
 
     def check_profile(self, profile):

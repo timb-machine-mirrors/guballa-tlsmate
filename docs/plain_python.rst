@@ -34,7 +34,9 @@ prints the cipher suite selected by the server.
     # here explicitly to demonstrate how to implement a typical TLS1.0 - TLS1.2
     # handshake scenario.
     tlsmate.client.set_profile(tls.Profile.INTEROPERABILITY)
-    tlsmate.client.versions = [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]
+    tlsmate.client.profile.versions = [
+        tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12
+    ]
 
     # Now open a TLS connection and execute a typical TLS handshake. Print the
     # cipher suite selected by the server.

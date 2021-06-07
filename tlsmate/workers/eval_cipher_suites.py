@@ -9,7 +9,7 @@ from tlsmate import msg
 from tlsmate import tls
 from tlsmate.plugin import WorkerPlugin
 from tlsmate import utils
-from tlsmate.server_profile import SPVersion
+from tlsmate.server_profile import SPVersion, SPCiphers
 
 # import other stuff
 
@@ -80,12 +80,12 @@ class ScanCipherSuites(WorkerPlugin):
             list of :obj:`tlsmate.tls.CipherSuite`: the cipher suites supported by
                 the server in the order of preference.
         """
-        self.client.cipher_suites = cipher_suites
+        self.client.profile.cipher_suites = cipher_suites
         server_pref = []
-        while self.client.cipher_suites:
+        while self.client.profile.cipher_suites:
             server_cs = self._get_server_cs()
             server_pref.append(server_cs)
-            self.client.cipher_suites.remove(server_cs)
+            self.client.profile.cipher_suites.remove(server_cs)
         return server_pref
 
     def _tls_enum_version(self, version):
@@ -102,7 +102,7 @@ class ScanCipherSuites(WorkerPlugin):
             tls.CipherSuite.all(), version=version
         )
         logging.info(f"starting to enumerate {version.name}")
-        self.client.versions = [version]
+        self.client.profile.versions = [version]
         supported_cs = []
 
         # get a list of all supported cipher suites, don't send more than
@@ -113,7 +113,7 @@ class ScanCipherSuites(WorkerPlugin):
             cipher_suites = cipher_suites[max_items:]
 
             while sub_set:
-                self.client.cipher_suites = sub_set
+                self.client.profile.cipher_suites = sub_set
                 cipher_suite = self._get_server_cs_and_cert(version)
                 if cipher_suite not in (None, tls.CipherSuite.TLS_NULL_WITH_NULL_NULL):
                     sub_set.remove(cipher_suite)
@@ -127,7 +127,7 @@ class ScanCipherSuites(WorkerPlugin):
             else:
                 server_prio = tls.SPBool.C_FALSE
                 # check if server enforce the cipher suite prio
-                self.client.cipher_suites = supported_cs
+                self.client.profile.cipher_suites = supported_cs
                 if self._get_server_cs() != supported_cs[0]:
                     server_prio = tls.SPBool.C_TRUE
                 else:
@@ -143,12 +143,11 @@ class ScanCipherSuites(WorkerPlugin):
                     # are ordered according to the binary representation
                     supported_cs.insert(0, supported_cs.pop())
 
+            ciphers = SPCiphers(
+                server_preference=server_prio, cipher_suites=supported_cs
+            )
             self.server_profile.versions.append(
-                SPVersion(
-                    version=version,
-                    server_preference=server_prio,
-                    cipher_suites=supported_cs,
-                )
+                SPVersion(version=version, ciphers=ciphers)
             )
 
         logging.info(f"enumeration for {version} finished")
@@ -188,8 +187,8 @@ class ScanCipherSuites(WorkerPlugin):
         """
 
         self.client.alert_on_invalid_cert = False
-        self.client.versions = [tls.Version.TLS12]
-        self.client.supported_groups = [
+        self.client.profile.versions = [tls.Version.TLS12]
+        self.client.profile.supported_groups = [
             tls.SupportedGroups.X25519,
             tls.SupportedGroups.X448,
             tls.SupportedGroups.SECT163K1,
@@ -213,8 +212,8 @@ class ScanCipherSuites(WorkerPlugin):
             tls.SupportedGroups.FFDHE2048,
             tls.SupportedGroups.FFDHE4096,
         ]
-        self.client.key_shares = tls.SupportedGroups.all_tls13()
-        self.client.signature_algorithms = [
+        self.client.profile.key_shares = tls.SupportedGroups.all_tls13()
+        self.client.profile.signature_algorithms = [
             tls.SignatureScheme.ED25519,
             tls.SignatureScheme.ED448,
             tls.SignatureScheme.ECDSA_SECP384R1_SHA384,

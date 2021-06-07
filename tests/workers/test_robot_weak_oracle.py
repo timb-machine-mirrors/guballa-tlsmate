@@ -3,7 +3,7 @@
 """
 import pathlib
 from tlsmate.workers.robot import ScanRobot
-from tlsmate.tlssuite import TlsSuiteTester
+from tlsmate.tlssuite import TlsSuiteTester, TlsLibrary
 
 
 class TestCaseWeakOracle(TlsSuiteTester):
@@ -12,17 +12,12 @@ class TestCaseWeakOracle(TlsSuiteTester):
     For more information refer to the documentation of the TcRecorder class.
     """
 
-    sp_in_yaml = "profile_basic_wolfssl"
+    sp_in_yaml = "profile_basic_wolfssl3_12_0"
     recorder_yaml = "recorder_robot_weak_oracle"
     path = pathlib.Path(__file__)
-    server_cmd = None
-    # We set this command to None, as we have tested the weak ROBOT oracle
-    # by using wolfssl.
-    # Config: tag v3.12.0-stable was used (vulnerable version),
-    # -DWOLFSSL_STATIC_RSA was added to Makefile
-    # ./examples/server/server -C 5000 -x -p 44330 -d
+    server_cmd = "utils/start_wolfssl --version {library} --port {server_port}"
 
-    openssl_version = None
+    library = TlsLibrary.wolfssl3_12_0
 
     server = "localhost"
 

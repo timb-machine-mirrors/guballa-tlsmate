@@ -4,7 +4,7 @@
 import pathlib
 from tlsmate.workers.eval_cipher_suites import ScanCipherSuites
 from tlsmate.tlssuite import TlsSuiteTester
-from tlsmate.tlssuite import OpensslVersion
+from tlsmate.tlssuite import TlsLibrary
 
 ssl2_ck = [
     "SSL_CK_RC4_128_WITH_MD5",
@@ -24,16 +24,17 @@ class TestCase(TlsSuiteTester):
     recorder_yaml = "recorder_eval_cipher_suites_ssl2"
     path = pathlib.Path(__file__)
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --mode www --sslv2"
+        "utils/start_openssl --version {library} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa --no-cert-chain "
+        "-- -www -cipher ALL -ssl2"
     )
-    openssl_version = OpensslVersion.v1_0_2
+    library = TlsLibrary.openssl1_0_2
 
     server = "localhost"
 
     def check_versions(self, versions):
         assert len(versions) == 1
         assert versions[0]["version"]["name"] == "SSL20"
-        assert versions[0]["server_preference"] == "C_UNDETERMINED"
         for a, b in zip(ssl2_ck, versions[0]["cipher_kinds"]):
             assert a == b["name"]
 

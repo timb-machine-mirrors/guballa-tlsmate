@@ -65,8 +65,8 @@ class ScanError(TlsmateException):
         self.message = message
 
 
-class CertValidationError(TlsmateException):
-    """Exception for certificate validation errors
+class OcspError(TlsmateException):
+    """Exception for OCSP errors
 
     Attributes:
         issue (str): A human readable string describing the cause.
@@ -76,8 +76,8 @@ class CertValidationError(TlsmateException):
         self.issue = issue
 
 
-class CertChainValidationError(TlsmateException):
-    """Exception for certificate chain validation errors
+class UntrustedCertificate(TlsmateException):
+    """Exception for unsuccessful certificate (chain) validation.
 
     Attributes:
         issue (str): A human readable string describing the cause.

@@ -6,8 +6,117 @@ import logging
 import abc
 
 # import own stuff
+from tlsmate import utils
 
 # import other stuff
+
+
+def _add_basic_arguments(parser):
+    """Add basic arguments to a parser
+
+    Arguments:
+        parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
+    """
+
+    parser.add_argument(
+        "--interval",
+        default=0,
+        help="the interval in milliseconds between two handshakes.",
+        type=int,
+    )
+    parser.add_argument(
+        "--key-log-file",
+        default=None,
+        help=(
+            "write to a key log file which can be used by wireshark to decode "
+            "encrypted traffic."
+        ),
+    )
+
+    parser.add_argument(
+        "--progress",
+        help="provides a progress indicator. Defaults to False.",
+        action=utils.BooleanOptionalAction,
+    )
+
+    parser.add_argument(
+        "--sni",
+        type=str,
+        help=(
+            "the server name indication, i.e., the domain name of the server to "
+            "contact. If not given, the value will be taken from the host parameter "
+            "(after stripping of the port number, if present). This parameter is "
+            "useful, if the host is given as an IP address."
+        ),
+    )
+
+    parser.add_argument(
+        "host",
+        help=(
+            "the host to scan. May optionally have the port number appended, "
+            "separated by a colon. The port defaults to 443."
+        ),
+        type=str,
+    )
+
+
+def _add_args_authentication(parser):
+    """Add basic arguments for authentication to a parser
+
+    Arguments:
+        parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
+    """
+
+    group = parser.add_argument_group(title="X509 certificates options")
+    group.add_argument(
+        "--ca-certs",
+        nargs="*",
+        type=str,
+        help=(
+            "list of root-ca certificate files. Each file may contain multiple "
+            "root-CA certificates in PEM format. Certificate chains received from "
+            "the server will be validated against this set of root certificates."
+        ),
+    )
+
+    group.add_argument(
+        "--client-key",
+        type=str,
+        nargs="*",
+        help=(
+            "a list of files containing the client private keys in PEM format. "
+            "Used for client authentication."
+        ),
+        default=None,
+    )
+    group.add_argument(
+        "--client-chain",
+        type=str,
+        nargs="*",
+        help=(
+            "a list of files containing the certificate chain used for client "
+            "authentication in PEM format. The number of given files must be the "
+            "same than the number of given client key files. This first given "
+            "chain file corresponds to the first given client key file, and so on."
+        ),
+    )
+
+    group.add_argument(
+        "--crl",
+        help=(
+            "download the CRL to check for the certificate revocation status. "
+            "Defaults to True."
+        ),
+        action=utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--ocsp",
+        help=(
+            "query the OCSP servers for checking the certificate revocation status. "
+            "Defaults to True."
+        ),
+        action=utils.BooleanOptionalAction,
+    )
 
 
 class CliPlugin(metaclass=abc.ABCMeta):
@@ -20,17 +129,10 @@ class CliPlugin(metaclass=abc.ABCMeta):
             relevant for displaying the command help with ``--help``: The sequence
             of parameters in the help is determined according to the prio of the CLI
             plugin.
-        cli_name (str): The command line argument which causes the CLI plugin to be
-            activated. Includes the two dashes, e.g., ``--scan``. If set to
-            None, the plugin will always be activated.
-        cli_help (str): The help text used on the CLI for the cli_name option.
     """
 
     name = None
     prio = 50
-
-    cli_name = None
-    cli_help = None
 
     def register_config(self, config):
         """A callback method which can be used to extend ``tlsmate``'s configuration
@@ -41,7 +143,16 @@ class CliPlugin(metaclass=abc.ABCMeta):
 
         return
 
-    def add_args(self, parser):
+    def add_subcommand(self, subparsers):
+        """Adds a subcommand to the CLI parser object.
+
+        Arguments:
+            subparser (:obj:`argparse.Action`): the CLI subparsers object
+        """
+
+        return
+
+    def add_args(self, parser, subcommand):
         """A callback method used to add arguments to the CLI parser object.
 
         This method is called to allow the CLI plugin to add additional command line
@@ -49,11 +160,13 @@ class CliPlugin(metaclass=abc.ABCMeta):
 
         Arguments:
             parser (:obj:`argparse.Parser`): the CLI parser object
+            subcommand (str): the subcommand for which arguments can be added. If None,
+                the global arguments (valid for all subcommands) can be added.
         """
 
         return
 
-    def args_parsed(self, args, parser, config):
+    def args_parsed(self, args, parser, subcommand, config):
         """A callback method called after the arguments have been parsed.
 
         This is the point where the CLI plugin evaluates the given command line
@@ -64,10 +177,61 @@ class CliPlugin(metaclass=abc.ABCMeta):
             args: the object holding the parsed CLI arguments
             parser (:obj:`argparse.Parser`): the parser object, can be used to issue
                 consistency errors
+            subcommand (str): the subcommand that was given
             config (:obj:`tlsmate.config.Configuration`): the configuration object
         """
 
         return
+
+
+class CliConnectionPlugin(CliPlugin):
+    """Base class for plugins which is using TLS connections.
+
+    This class basically provides the common CLI arguments.
+    """
+
+    def add_args(self, parser, subcommand):
+        """A callback method used to add arguments to the CLI parser object.
+
+        This method is called to allow the CLI plugin to add additional command line
+        argument to the parser.
+
+        Arguments:
+            parser (:obj:`argparse.Parser`): the CLI parser object
+            subcommand (str): the subcommand for which arguments can be added. If None,
+                the global arguments (valid for all subcommands) can be added.
+        """
+
+        if subcommand == self.name:
+            _add_basic_arguments(parser)
+            _add_args_authentication(parser)
+
+    def args_parsed(self, args, parser, subcommand, config):
+        """A callback method called after the arguments have been parsed.
+
+        This is the point where the CLI plugin evaluates the given command line
+        arguments, adapts the configuration object accordingly and registers
+        the workers accordingly.
+
+        Arguments:
+            args: the object holding the parsed CLI arguments
+            parser (:obj:`argparse.Parser`): the parser object, can be used to issue
+                consistency errors
+            subcommand (str): the subcommand that was given
+            config (:obj:`tlsmate.config.Configuration`): the configuration object
+        """
+
+        if subcommand == self.name:
+            config.set("ca_certs", args.ca_certs)
+            config.set("client_chain", args.client_chain)
+            config.set("client_key", args.client_key)
+            config.set("crl", args.crl)
+            config.set("endpoint", args.host)
+            config.set("interval", args.interval)
+            config.set("key_log_file", args.key_log_file)
+            config.set("ocsp", args.ocsp)
+            config.set("progress", args.progress)
+            config.set("sni", args.sni)
 
 
 class CliManager(object):
@@ -116,7 +280,7 @@ class CliManager(object):
         return plugin
 
     @classmethod
-    def add_args(cls, parser):
+    def extend_parser(cls, parser):
         """Adds the command line options for all registered CLI plugins.
 
         At this point the CLI plugin classes are instantiated as well.
@@ -125,21 +289,20 @@ class CliManager(object):
             parser (:obj:`argparse.Parser`): the parser object to add the arguments to.
         """
 
-        group = parser.add_argument_group(title="Available plugins")
-        for plugin in sorted(cls._plugins.values(), key=lambda x: x.prio):
-            if plugin.cli_name is not None:
-                cls._cli_names.append(plugin.cli_name[2:])
-                group.add_argument(
-                    plugin.cli_name,
-                    help=plugin.cli_help,
-                    action="store_true",
-                    default=False,
-                )
+        # required=True supported from Python3.7 on. Don't use it,
+        # and implement a consitency check
+        subparsers = parser.add_subparsers(title="commands", dest="subcommand")
 
-            cls._objects.append(plugin())
+        cls._objects = []
+        for plugin_cls in sorted(cls._plugins.values(), key=lambda x: x.prio):
+            plugin = plugin_cls()
+            plugin.add_subcommand(subparsers)
+            cls._objects.append(plugin)
 
         for plugin in cls._objects:
-            plugin.add_args(parser)
+            plugin.add_args(parser, subcommand=None)
+            for subcommand, subparser in subparsers.choices.items():
+                plugin.add_args(subparser, subcommand=subcommand)
 
     @classmethod
     def register_config(cls, config):
@@ -166,12 +329,11 @@ class CliManager(object):
             config (:obj:`tlsmate.config.Configuration`): the configuration object
         """
 
-        if not any([getattr(args, name.replace("-", "_")) for name in cls._cli_names]):
-            cli_names = ",".join(["--" + name for name in cls._cli_names])
-            parser.error(f"specify at least one of the following options: {cli_names}")
+        if args.subcommand is None:
+            parser.error("Subcommand is mandatory")
 
         for plugin in cls._objects:
-            plugin.args_parsed(args, parser, config)
+            plugin.args_parsed(args, parser, args.subcommand, config)
 
 
 def register_cli_plugin(plugin):

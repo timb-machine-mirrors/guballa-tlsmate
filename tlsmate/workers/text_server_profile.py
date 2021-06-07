@@ -259,20 +259,6 @@ _supported_groups = {
 }
 
 _sig_algo = {
-    "preference_txt": {
-        tls.SPBool.C_FALSE: "server does not enforce order of signature algorithms",
-        tls.SPBool.C_TRUE: "server enforces order of signature algorithms",
-        tls.SPBool.C_NA: None,
-        tls.SPBool.C_UNDETERMINED: "server preference for signature algorithms unknown",
-    },
-    "preference_mood": {
-        tls.Version.SSL20: (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL),
-        tls.Version.SSL30: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.NEUTRAL),
-        tls.Version.TLS10: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS11: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS12: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS13: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-    },
     "algos": {
         tls.SignatureScheme.RSA_PKCS1_SHA1: Mood.SOSO,
         tls.SignatureScheme.ECDSA_SHA1: Mood.SOSO,
@@ -360,8 +346,11 @@ _cert = {
         tls.SPBool.C_UNDETERMINED: ("validation status undetermined", Mood.SOSO),
     },
     "root_transmitted": {
-        False: ("root certificate was not provided by the server", Mood.GOOD),
-        True: ("root certificate was provided by the server", Mood.SOSO),
+        tls.SPBool.C_FALSE: (
+            "root certificate was not provided by the server",
+            Mood.GOOD,
+        ),
+        tls.SPBool.C_TRUE: ("root certificate was provided by the server", Mood.SOSO),
     },
     "subject_matches": {
         tls.SPBool.C_FALSE: ("no, URI not matched against subject/SAN", Mood.BAD),
@@ -377,6 +366,25 @@ _cert = {
         tls.CertCrlStatus.WRONG_CRL_ISSUER: ("wrong CRL issuer", Mood.BAD),
         tls.CertCrlStatus.CRL_SIGNATURE_INVALID: ("CRL signature invalid", Mood.BAD),
     },
+    "ocsp_status": {
+        tls.OcspStatus.UNDETERMINED: ("not checked", Mood.NEUTRAL),
+        tls.OcspStatus.NOT_REVOKED: ("certificate not revoked", Mood.GOOD),
+        tls.OcspStatus.REVOKED: ("certificate revoked", Mood.BAD),
+        tls.OcspStatus.UNKNOWN: ("certificate unknwon", Mood.BAD),
+        tls.OcspStatus.TIMEOUT: ("OCSP server timeout", Mood.BAD),
+        tls.OcspStatus.INVALID_RESPONSE: (
+            "invalid response from OCSP server",
+            Mood.BAD,
+        ),
+        tls.OcspStatus.SIGNATURE_INVALID: (
+            "OCSP response has invalid signature",
+            Mood.BAD,
+        ),
+        tls.OcspStatus.INVALID_TIMESTAMP: (
+            "OCSP response has invalid timestamp",
+            Mood.BAD,
+        ),
+    },
 }
 
 _cert_sig_algo = {}
@@ -386,6 +394,18 @@ _vulnerabilities = {
     tls.SPBool.C_TRUE: ("vulnerable", Mood.BAD),
     tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
     tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
+}
+
+_heartbleed = {
+    tls.HeartbleedStatus.NOT_APPLICABLE: ("not applicable", Mood.NEUTRAL),
+    tls.HeartbleedStatus.UNDETERMINED: ("undetermined", Mood.SOSO),
+    tls.HeartbleedStatus.VULNERABLE: ("vulnerable", Mood.BAD),
+    tls.HeartbleedStatus.NOT_VULNERABLE: ("not vulnerable", Mood.GOOD),
+    tls.HeartbleedStatus.TIMEOUT: ("timeout, probably not vulnerable", Mood.GOOD),
+    tls.HeartbleedStatus.CONNECTION_CLOSED: (
+        "not vulnerable (connection closed)",
+        Mood.GOOD,
+    ),
 }
 
 _robot = {
@@ -477,14 +497,16 @@ class TextProfileWorker(WorkerPlugin):
         print(apply_mood("Cipher suites", Mood.HEADLINE))
         for version in self._prof_values.versions:
             version_prof = self.server_profile.get_version_profile(version)
-            order = version_prof.server_preference
-            txt = _cipher_order["text"][order]
-            mood = _cipher_order["mood"][version][order.value]
-            mood_txt = apply_mood(txt, mood)
             if version is tls.Version.SSL20:
                 cipher_list = version_prof.cipher_kinds
+                txt = ""
+                mood_txt = ""
             else:
-                cipher_list = version_prof.cipher_suites
+                cipher_list = version_prof.ciphers.cipher_suites
+                order = version_prof.ciphers.server_preference
+                txt = _cipher_order["text"][order]
+                mood = _cipher_order["mood"][version][order.value]
+                mood_txt = apply_mood(txt, mood)
 
             hashed = hash((mood_txt, tuple(cipher_list)))
             if hashed in cipher_hash:
@@ -621,45 +643,22 @@ class TextProfileWorker(WorkerPlugin):
                 continue
 
             algo_prof = version_prof.signature_algorithms
-            preference = getattr(algo_prof, "server_preference", None)
-            if preference is None:
-                pref_txt = None
-
-            else:
-                pref_txt = _sig_algo["preference_txt"][preference]
-                if pref_txt is not None:
-                    if all(
-                        [
-                            _sig_algo["algos"][algo] is Mood.GOOD
-                            for algo in algo_prof.algorithms
-                        ]
-                    ):
-                        pref_mood = Mood.NEUTRAL
-
-                    else:
-                        pref_mood = _sig_algo["preference_mood"][version][
-                            preference.value
-                        ]
-
-                    pref_txt = apply_mood(pref_txt, pref_mood)
-
-            combined = (pref_txt, tuple(algo_prof.algorithms))
-            hashed = hash(combined)
+            hashed = hash(tuple(algo_prof.algorithms))
             if hashed in algo_hash:
                 algo_hash[hashed]["versions"].append(str(version))
 
             else:
-                algo_hash[hashed] = {"versions": [str(version)], "combined": combined}
+                algo_hash[hashed] = {
+                    "versions": [str(version)],
+                    "algos": algo_prof.algorithms,
+                }
 
         for algo in algo_hash.values():
             versions = ", ".join(algo["versions"])
             print(f"\n  {apply_mood(versions, Mood.BOLD)}:")
-            pref_txt, algos = algo["combined"]
-            if pref_txt is not None:
-                print(f"    {pref_txt}")
 
             print("    signature algorithms:")
-            for alg in algos:
+            for alg in algo["algos"]:
                 alg_txt = apply_mood(alg, _sig_algo["algos"][alg])
                 print(f"      0x{alg.value:04x} {alg_txt}")
         print()
@@ -668,22 +667,21 @@ class TextProfileWorker(WorkerPlugin):
         dh_groups = {}
         for version in self._prof_values.versions:
             version_prof = self.server_profile.get_version_profile(version)
-            dh_prof = getattr(version_prof, "dh_groups", None)
+            dh_prof = getattr(version_prof, "dh_group", None)
             if dh_prof is None:
                 continue
 
-            for group in dh_prof:
-                name = getattr(group, "name", None)
-                combined = (name, group.size)
-                hashed = hash(combined)
-                if hashed in dh_groups:
-                    dh_groups[hashed]["versions"].append(str(version))
+            name = getattr(dh_prof, "name", None)
+            combined = (name, dh_prof.size)
+            hashed = hash(combined)
+            if hashed in dh_groups:
+                dh_groups[hashed]["versions"].append(str(version))
 
-                else:
-                    dh_groups[hashed] = {
-                        "versions": [str(version)],
-                        "combined": combined,
-                    }
+            else:
+                dh_groups[hashed] = {
+                    "versions": [str(version)],
+                    "combined": combined,
+                }
 
         if dh_groups:
             print(apply_mood("DH groups (finite field)", Mood.HEADLINE))
@@ -851,6 +849,17 @@ class TextProfileWorker(WorkerPlugin):
         print(f'  Certificate #{idx}: {", ".join(items)}')
         table = utils.Table(indent=4, sep="  ")
 
+        issues = getattr(cert, "issues", None)
+        if issues:
+            issue_txt = []
+            for issue in issues:
+                folded_lines = utils.fold_string(issue, max_length=100)
+                issue_txt.append("- " + folded_lines.pop(0))
+                issue_txt.extend(["  " + item for item in folded_lines])
+            table.row("Issues", apply_mood(issue_txt[0], Mood.BAD))
+            for line in issue_txt[1:]:
+                table.row("", apply_mood(line, Mood.BAD))
+
         table.row("Serial number", f"{cert.serial_number_int} (integer)")
         table.row("", f"{pdu.string(cert.serial_number_bytes)} (hex)")
         lines = utils.fold_string(cert.subject, max_length=100, sep=",")
@@ -953,10 +962,15 @@ class TextProfileWorker(WorkerPlugin):
             for crl in crls:
                 table.row("", crl)
 
-        crl_status = getattr(cert, "crl_revokation_status", None)
+        crl_status = getattr(cert, "crl_revocation_status", None)
         if crl_status is not None:
             txt, mood = _cert["crl_status"][crl_status]
             table.row("CRL revocation status", apply_mood(txt, mood))
+
+        ocsp_status = getattr(cert, "ocsp_revocation_status", None)
+        if ocsp_status is not None:
+            txt, mood = _cert["ocsp_status"][ocsp_status]
+            table.row("OCSP revocation status", apply_mood(txt, mood))
 
         if hasattr(cert, "fingerprint_sha1"):
             table.row("Fingerprint SHA1", pdu.string(cert.fingerprint_sha1))
@@ -991,17 +1005,17 @@ class TextProfileWorker(WorkerPlugin):
                     txt = "    - " + "\n      ".join(lines)
                     print(apply_mood(txt, Mood.BAD))
 
-            root_transmitted = not hasattr(cert_chain, "root_certificate")
-            txt, mood = _cert["root_transmitted"][root_transmitted]
-            print(f"    {apply_mood(txt, mood)}")
+            if hasattr(cert_chain, "root_cert_transmitted"):
+                root_transmitted = cert_chain.root_cert_transmitted
+                txt, mood = _cert["root_transmitted"][root_transmitted]
+                print(f"    {apply_mood(txt, mood)}")
 
             for idx, cert in enumerate(cert_chain.cert_chain, start=1):
                 self._print_cert(cert, idx)
 
-            if not root_transmitted:
-                self._print_cert(
-                    cert_chain.root_certificate, len(cert_chain.cert_chain) + 1
-                )
+            root_cert = getattr(cert_chain, "root_certificate", None)
+            if root_cert:
+                self._print_cert(root_cert, len(cert_chain.cert_chain) + 1)
 
     def _print_vulnerabilities(self):
         vuln_prof = getattr(self.server_profile, "vulnerabilities", None)
@@ -1018,7 +1032,7 @@ class TextProfileWorker(WorkerPlugin):
 
         hb = getattr(vuln_prof, "heartbleed", None)
         if hb is not None:
-            txt, mood = _vulnerabilities[hb]
+            txt, mood = _heartbleed[hb]
             table.row("Heartbleed (CVE-2014-0160)", apply_mood(txt, mood))
 
         robot = getattr(vuln_prof, "robot", None)
@@ -1032,7 +1046,7 @@ class TextProfileWorker(WorkerPlugin):
         print()
 
     def run(self):
-        init(strip=self.config.get("no_color"))
+        init(strip=not self.config.get("color"))
         self._prof_values = self.server_profile.get_profile_values(tls.Version.all())
         self._print_tlsmate()
         self._print_scan_info()

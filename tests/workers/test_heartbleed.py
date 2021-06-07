@@ -4,7 +4,7 @@
 import pathlib
 from tlsmate.workers.heartbleed import ScanHeartbleed
 from tlsmate.tlssuite import TlsSuiteTester
-from tlsmate.tlssuite import OpensslVersion
+from tlsmate.tlssuite import TlsLibrary
 
 
 class TestHeartbleed(TlsSuiteTester):
@@ -13,14 +13,16 @@ class TestHeartbleed(TlsSuiteTester):
     For more information refer to the documentation of the TcRecorder class.
     """
 
-    sp_in_yaml = "profile_heartbeat_openssl1_0_1e"
+    sp_in_yaml = "profile_heartbeat_openssl1_0_2"
     recorder_yaml = "recorder_heartbleed"
     path = pathlib.Path(__file__)
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
-        "--mode www --ccs-inject"
+        "utils/start_openssl --version {library} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa --no-cert-chain "
+        "--ca-file ca-certificates "
+        "-- -www -cipher ALL"
     )
-    openssl_version = OpensslVersion.v1_0_1e
+    library = TlsLibrary.openssl1_0_1e
 
     server = "localhost"
 
@@ -28,7 +30,7 @@ class TestHeartbleed(TlsSuiteTester):
         server_profile = tlsmate.server_profile
         ScanHeartbleed(tlsmate).run()
         profile = server_profile.make_serializable()
-        assert profile["vulnerabilities"]["heartbleed"] == "C_TRUE"
+        assert profile["vulnerabilities"]["heartbleed"] == "VULNERABLE"
 
 
 if __name__ == "__main__":

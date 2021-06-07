@@ -16,15 +16,16 @@ from tlsmate.server_profile import SPSignatureAlgorithms
 
 class _Backend(metaclass=abc.ABCMeta):
     @staticmethod
-    def get_sig_alg_from_server(client, sig_algs):
+    def get_sig_alg_from_server(client, sig_algs, cert_algs):
         raise NotImplementedError
 
 
 class _BackendTls12(_Backend):
     @staticmethod
-    def get_sig_alg_from_server(client, sig_algs):
+    def get_sig_alg_from_server(client, sig_algs, cert_algs):
         sig_alg = None
         cert_chain = None
+        client.profile.signature_algorithms = sig_algs + cert_algs
         with client.create_connection() as conn:
             conn.send(msg.ClientHello)
             conn.wait(msg.ServerHello)
@@ -41,9 +42,10 @@ class _BackendTls12(_Backend):
 
 class _BackendTls13(_Backend):
     @staticmethod
-    def get_sig_alg_from_server(client, sig_algs):
+    def get_sig_alg_from_server(client, sig_algs, cert_algs):
         sig_alg = None
         cert_chain = None
+        client.profile.signature_algorithms = sig_algs + cert_algs
         with client.create_connection() as conn:
             conn.send(msg.ClientHello)
             conn.wait(msg.ServerHello)
@@ -60,17 +62,21 @@ class ScanSigAlgs(WorkerPlugin):
     descr = "check signature algorithms"
     prio = 20
 
-    def _scan_auth_method(self, cipher_suites, sig_algs, prof_sig_algo, backend):
+    def _scan_auth_method(
+        self, cipher_suites, sig_algs, cert_algs, prof_sig_algo, backend
+    ):
+        cert_algs = [alg for alg in cert_algs if alg not in sig_algs]
         sig_alg_supported = []
         if not cipher_suites:
             return sig_alg_supported
-        self.client.cipher_suites = cipher_suites
-        self.client.support_signature_algorithms = True
-        self.client.signature_algorithms = sig_algs
+        self.client.profile.cipher_suites = cipher_suites
+        self.client.profile.signature_algorithms = sig_algs
 
         while sig_algs:
-            sig_alg, cert_chain = backend.get_sig_alg_from_server(self.client, sig_algs)
-            if sig_alg is None:
+            sig_alg, cert_chain = backend.get_sig_alg_from_server(
+                self.client, sig_algs, cert_algs
+            )
+            if sig_alg is None or sig_alg in cert_algs:
                 break
 
             self.server_profile.append_unique_cert_chain(cert_chain)
@@ -86,20 +92,6 @@ class ScanSigAlgs(WorkerPlugin):
 
             sig_alg_supported.append(sig_alg)
             sig_algs.remove(sig_alg)
-
-        if len(sig_alg_supported) > 1:
-            ref_sig_algo = sig_alg_supported[0]
-            sig_alg_supported.append(sig_alg_supported.pop(0))
-            sig_alg = backend.get_sig_alg_from_server(self.client, sig_alg_supported)
-            sig_alg_supported.insert(0, sig_alg_supported.pop())
-
-            if sig_alg is ref_sig_algo:
-                prof_sig_algo.server_preference = tls.SPBool.C_TRUE
-
-            else:
-                prof_sig_algo.server_preference = tls.SPBool.C_FALSE
-        else:
-            prof_sig_algo.server_preference = tls.SPBool.C_NA
 
         for sig_algo in sig_alg_supported:
             prof_sig_algo.algorithms.append(sig_algo)
@@ -128,7 +120,12 @@ class ScanSigAlgs(WorkerPlugin):
                 sigalg_list,
             )
         ]
-        self._scan_auth_method(rsa_ciphers, rsa_sigalgs, prof_sig_algo, _BackendTls12)
+        cert_sig_algs = self.server_profile.get_cert_sig_algos(
+            key_types=[tls.SignatureAlgorithm.RSA]
+        )
+        self._scan_auth_method(
+            rsa_ciphers, rsa_sigalgs, cert_sig_algs, prof_sig_algo, _BackendTls12
+        )
 
         dsa_ciphers = utils.filter_cipher_suites(
             values.cipher_suites, key_auth=[tls.KeyAuthentication.DSS]
@@ -140,7 +137,12 @@ class ScanSigAlgs(WorkerPlugin):
                 sigalg_list,
             )
         ]
-        self._scan_auth_method(dsa_ciphers, dsa_sigalgs, prof_sig_algo, _BackendTls12)
+        cert_sig_algs = self.server_profile.get_cert_sig_algos(
+            key_types=[tls.SignatureAlgorithm.DSA]
+        )
+        self._scan_auth_method(
+            dsa_ciphers, dsa_sigalgs, cert_sig_algs, prof_sig_algo, _BackendTls12
+        )
 
         ecdsa_ciphers = utils.filter_cipher_suites(
             values.cipher_suites, key_algo=[tls.KeyExchangeAlgorithm.ECDHE_ECDSA]
@@ -153,8 +155,15 @@ class ScanSigAlgs(WorkerPlugin):
             )
         ]
         ecdsa_sigalgs.extend([tls.SignatureScheme.ED25519, tls.SignatureScheme.ED448])
+        cert_sig_algs = self.server_profile.get_cert_sig_algos(
+            key_types=[
+                tls.SignatureAlgorithm.ECDSA,
+                tls.SignatureAlgorithm.ED25519,
+                tls.SignatureAlgorithm.ED448,
+            ]
+        )
         self._scan_auth_method(
-            ecdsa_ciphers, ecdsa_sigalgs, prof_sig_algo, _BackendTls12
+            ecdsa_ciphers, ecdsa_sigalgs, cert_sig_algs, prof_sig_algo, _BackendTls12
         )
 
     def _scan_tls13(self):
@@ -168,14 +177,14 @@ class ScanSigAlgs(WorkerPlugin):
         values = self.server_profile.get_profile_values([tls.Version.TLS12])
         self.client.init_profile(profile_values=values)
         prof_sig_algo = prof_version.signature_algorithms
-        self.client.support_supported_groups = True
-        self.client.supported_groups = prof_version.supported_groups.groups
-        self.client.key_shares = tls.SupportedGroups.all_tls13()
-        self.client.versions = [tls.Version.TLS13]
+        self.client.profile.supported_groups = prof_version.supported_groups.groups
+        self.client.profile.key_shares = tls.SupportedGroups.all_tls13()
+        self.client.profile.versions = [tls.Version.TLS13]
 
         self._scan_auth_method(
-            prof_version.cipher_suites,
+            prof_version.ciphers.cipher_suites,
             tls.SignatureScheme.all(),
+            self.server_profile.get_cert_sig_algos(),
             prof_sig_algo,
             _BackendTls13,
         )

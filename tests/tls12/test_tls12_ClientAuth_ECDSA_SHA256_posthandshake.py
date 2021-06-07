@@ -5,7 +5,7 @@ import pathlib
 from tests.cipher_suite_tester import CipherSuiteTester
 from tlsmate import tls
 from tlsmate import msg
-from tlsmate.tlssuite import OpensslVersion
+from tlsmate.tlssuite import TlsLibrary
 
 
 class TestCase(CipherSuiteTester):
@@ -18,10 +18,11 @@ class TestCase(CipherSuiteTester):
     name = "ClientAuth_ECDSA_SHA256_posthandshake"
     cipher_suite = tls.CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
+        "utils/start_openssl --version {library} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa "
         "-- -client_sigalgs ECDSA+SHA256 -legacy_renegotiation"
     )
-    openssl_version = OpensslVersion.v1_1_1
+    library = TlsLibrary.openssl1_1_1
 
     # Uncomment the line below if you do not want to use the default version and
     # adapt it to your needs.
@@ -33,10 +34,10 @@ class TestCase(CipherSuiteTester):
         client = tlsmate.client
         client.init_profile()
 
-        client.versions = [self.version]
-        client.cipher_suites = [self.cipher_suite]
-        client.supported_groups = self.supported_groups
-        client.signature_algorithms = self.signature_algorithms
+        client.profile.versions = [self.version]
+        client.profile.cipher_suites = [self.cipher_suite]
+        client.profile.supported_groups = self.supported_groups
+        client.profile.signature_algorithms = self.signature_algorithms
 
         end_of_tc_reached = False
         with client.create_connection() as conn:

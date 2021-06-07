@@ -146,7 +146,7 @@ Extensions
 The following TLS extensions are supported:
 
 SERVER_NAME
------------
+^^^^^^^^^^^
 
 Any server name can be used.
 
@@ -282,7 +282,7 @@ All TLS1.3 named groups are supported:
 RENEGOTIATION_INFO
 ^^^^^^^^^^^^^^^^^^
 
-Renegotiation (client.initiated and server-initiated, secure and insecure) is supported.
+Renegotiation (secure and insecure and server-initiated) is supported.
 
 HEARTBEAT
 ^^^^^^^^^
@@ -293,23 +293,26 @@ Sending and receiving Heartbeat messages (requests and responses) is supported.
 Certificates and certificate chains
 -----------------------------------
 
-``tlsmate`` performs basics checks to validate certificate chains received from the server.
+``tlsmate`` performs basic checks to validate certificate chains received from the server.
 The results are cached, i.e., if the same certificate chain is received multiple times,
 the validation will only be done once. The following checks are currently implemented:
 
 * for the server certificate the domain name must match the subject common name or
   one of the SANs (Subject Alternate Names). Wildcard domain names are supported.
-* for each certificate of the chain the validity period is checked.
-* for each certificate the issuer's certificate must be in the chain or in the trust store.
-* for each certificate the issuer's signature is validated
-* for each certificate its associated CRL (if defined) is downloaded to check the revocation
-  status. CRLs are cached. This check can be disabled, as it adds additional delay to a
-  TLS handshake.
+* the chain is checked for gratuitous certificates
+* a trust path is determined, taking alternate trust paths into account (but the
+  certificates must be in the chain or in the trust store)
 * the root certificate of the chain must be present in the trust store. Note, that root
   certificates are not required to be sent by the server.
+* for each certificate of the trust path the following checks are done:
 
-.. note:: Revocation check using OCSP is currently not implemented but will be
-   added in the future.
+  * the validity period is checked.
+  * its signature signed by the issuer is validated
+  * the associated CRLs (if defined) are downloaded to check the revocation status.
+    This check can be disabled by a command line argument. Note, that CRLs are
+    cached.
+  * if defined, the OCSP server is queried, and the revocation status is determined
+    from the response. This check can be disabled by a command line argument.
 
 Received certificate chains from the server are stored in the server profile, but not
 all certificate extensions are supported (yet).

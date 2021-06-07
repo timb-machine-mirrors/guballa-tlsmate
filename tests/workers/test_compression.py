@@ -4,7 +4,7 @@
 import pathlib
 from tlsmate.workers.compression import ScanCompression
 from tlsmate.tlssuite import TlsSuiteTester
-from tlsmate.tlssuite import OpensslVersion
+from tlsmate.tlssuite import TlsLibrary
 
 
 class TestCase(TlsSuiteTester):
@@ -17,10 +17,11 @@ class TestCase(TlsSuiteTester):
     recorder_yaml = "recorder_compression"
     path = pathlib.Path(__file__)
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
-        "--mode www -- -cipher ALL"
+        "utils/start_openssl --version {library} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa "
+        "-- -www -cipher ALL"
     )
-    openssl_version = OpensslVersion.v1_0_2
+    library = TlsLibrary.openssl1_0_2
 
     server = "localhost"
 
