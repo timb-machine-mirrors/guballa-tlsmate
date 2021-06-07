@@ -293,7 +293,7 @@ Sending and receiving Heartbeat messages (requests and responses) is supported.
 Certificates and certificate chains
 -----------------------------------
 
-``tlsmate`` performs basics checks to validate certificate chains received from the server.
+``tlsmate`` performs basic checks to validate certificate chains received from the server.
 The results are cached, i.e., if the same certificate chain is received multiple times,
 the validation will only be done once. The following checks are currently implemented:
 

@@ -3,9 +3,10 @@
 Welcome to tlsmate's documentation!
 ===================================
 
-This project provides a Python implementation for creating arbitrary TLS scenarios.
-The project is hosted on `GitLab <https://gitlab.com/guballa/tlsmate>`_.
+This project provides a TLS server scanner written in Python. It supports
+creating arbitrary TLS scenarios in a comfortable way as well.
 
+The project is hosted on `GitLab <https://gitlab.com/guballa/tlsmate>`_.
 
 .. toctree::
    :caption: General
@@ -30,6 +31,7 @@ The project is hosted on `GitLab <https://gitlab.com/guballa/tlsmate>`_.
    plain_python
    plugin
    class_description
+   testcase
 
 .. toctree::
    :caption: Python Modules

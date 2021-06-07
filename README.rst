@@ -49,7 +49,7 @@ The following basic features are supported:
 * arbitrary L4-ports are supported
 * customized trust store for root certificates
 * client authentication
-* certificate revocation check by CRL
+* certificate revocation check by CRL and via OCSP
 * scan result is provided as JSON/Yaml format to simplify tool-based post-processing
 * plugin concept for either proprietary test cases or for extending the scanner plugin
 * writing keying material to a key logging file to allow wireshark to decode encrypted packets
@@ -102,7 +102,7 @@ Basic usage
 ===========
 
 For a full documentation of the ``tlsmate`` command refer to the `documentation
-here <https://guballa.gitlab.io/tlsmate/cli.html>`_. There you will find also a
+here <https://guballa.gitlab.io/tlsmate/cli.html>`_. There you will find a
 detailed description how to use the package directly from other python
 applications.
 
@@ -110,8 +110,10 @@ In the following only some basic examples for using the CLI are
 given. Use the ``tlsmate --help`` command to get all supported subcommands.
 Well, currently there are not that many.
 
-Note, that in the examples the URL ``mytlsmatedomain.net`` is used, a
-domain name which is currently not registered.
+.. note::
+
+    In the example the domain name "mytlsmatedomain.net" is used, which is
+    currently not registered. Replace it with the domain name you want to use.
 
 .. code-block:: console
 

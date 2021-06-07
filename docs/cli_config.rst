@@ -55,7 +55,7 @@ Boolean configuration options
 -----------------------------
 
 On the command line a boolean option is set to True by providing its name, e.g. ``--heartbeat``.
-Setting it to False requires to use the ``--no-`` prefix, e.g. ``--no-hearbeat``.
+Setting it to False requires to use the ``--no-`` prefix, e.g. ``--no-heartbeat``.
 
 For environment variables as well as for ini-files different rules apply: if
 the value is ``0``, ``off``, ``no`` or ``false`` (case insensitive) it is

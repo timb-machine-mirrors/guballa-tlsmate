@@ -43,7 +43,7 @@ def _add_basic_arguments(parser):
         "--sni",
         type=str,
         help=(
-            "the server name indication, i.e., the domain name of for the server to "
+            "the server name indication, i.e., the domain name of the server to "
             "contact. If not given, the value will be taken from the host parameter "
             "(after stripping of the port number, if present). This parameter is "
             "useful, if the host is given as an IP address."
@@ -54,7 +54,7 @@ def _add_basic_arguments(parser):
         "host",
         help=(
             "the host to scan. May optionally have the port number appended, "
-            "separated by a colon."
+            "separated by a colon. The port defaults to 443."
         ),
         type=str,
     )
