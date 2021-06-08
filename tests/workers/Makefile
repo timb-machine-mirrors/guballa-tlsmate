@@ -5,6 +5,7 @@ all: \
 	recordings/recorder_supported_groups_openssl1_0_2.yaml \
 	recordings/recorder_sig_algos_openssl1_0_2.yaml \
 	recordings/recorder_eval_cipher_suites_openssl3_0_0.yaml \
+	recordings/recorder_eval_cipher_suites_chacha20_pref_openssl3_0_0.yaml \
 	recordings/recorder_supported_groups_openssl3_0_0.yaml \
 	recordings/recorder_sig_algos_openssl3_0_0.yaml \
 	recordings/recorder_eval_cipher_suites_server_prio_openssl1_0_2.yaml \
