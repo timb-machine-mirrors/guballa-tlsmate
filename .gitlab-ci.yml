@@ -11,7 +11,7 @@ test/python36:
   image: python:3.6
   script:
   - apt update --yes && apt upgrade --yes
-  - apt install --yes build-essential libssl-dev libffi-dev python-dev libgmp-dev libmpfr-dev libmpc-dev
+  - apt install --yes build-essential libssl-dev libffi-dev python-dev
   - pip install tox
   - tox -e py36
 
@@ -20,7 +20,7 @@ test/python37:
   image: python:3.7
   script:
   - apt update --yes && apt upgrade --yes
-  - apt install --yes build-essential libssl-dev libffi-dev python-dev libgmp-dev libmpfr-dev libmpc-dev
+  - apt install --yes build-essential libssl-dev libffi-dev python-dev
   - pip install tox
   - tox -e py37
 
@@ -29,9 +29,18 @@ test/python38:
   image: python:3.8
   script:
   - apt update --yes && apt upgrade --yes
-  - apt install --yes build-essential libssl-dev libffi-dev python-dev libgmp-dev libmpfr-dev libmpc-dev
+  - apt install --yes build-essential libssl-dev libffi-dev python-dev
   - pip install tox
   - tox -e py38
+
+test/python39:
+  stage: test
+  image: python:3.9
+  script:
+  - apt update --yes && apt upgrade --yes
+  - apt install --yes build-essential libssl-dev libffi-dev python-dev
+  - pip install tox
+  - tox -e py39
 
 sast:
   stage: test
