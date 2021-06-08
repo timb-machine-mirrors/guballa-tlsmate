@@ -163,6 +163,22 @@ _cipher_order = {
     },
 }
 
+_chacha_pref = {
+    tls.SPBool.C_TRUE: (
+        "server respects client preference for CHACHA20 cipher suites",
+        Mood.GOOD,
+    ),
+    tls.SPBool.C_FALSE: (
+        "server does not respect client preference for CHACHA20 cipher suites",
+        Mood.NEUTRAL,
+    ),
+    tls.SPBool.C_NA: ("", Mood.NEUTRAL,),
+    tls.SPBool.C_UNDETERMINED: (
+        "undetermined if server respects client preference for CHACHA20 cipher suites",
+        Mood.BAD,
+    ),
+}
+
 _supported_groups = {
     "support_txt": {
         tls.SPBool.C_FALSE: 'extension "supported_groups" not supported',
@@ -501,6 +517,7 @@ class TextProfileWorker(WorkerPlugin):
                 cipher_list = version_prof.cipher_kinds
                 txt = ""
                 mood_txt = ""
+                chacha_txt = ""
             else:
                 cipher_list = version_prof.ciphers.cipher_suites
                 order = version_prof.ciphers.server_preference
@@ -508,7 +525,17 @@ class TextProfileWorker(WorkerPlugin):
                 mood = _cipher_order["mood"][version][order.value]
                 mood_txt = apply_mood(txt, mood)
 
-            hashed = hash((mood_txt, tuple(cipher_list)))
+                chacha_pref = getattr(
+                    version_prof.ciphers, "chacha_poly_preference", None
+                )
+                if chacha_pref:
+                    txt, mood = _chacha_pref[chacha_pref]
+                    chacha_txt = apply_mood(txt, mood)
+
+                else:
+                    chacha_txt = ""
+
+            hashed = hash((mood_txt, chacha_txt, tuple(cipher_list)))
             if hashed in cipher_hash:
                 cipher_hash[hashed]["versions"].append(str(version))
 
@@ -517,12 +544,13 @@ class TextProfileWorker(WorkerPlugin):
                     "versions": [str(version)],
                     "lines": [],
                     "preference": mood_txt,
+                    "chacha_preference": chacha_txt,
                 }
                 all_good = True
                 for cs in cipher_list:
                     if version is tls.Version.SSL20:
                         cipher_hash[hashed]["lines"].append(
-                            f"    0x{cs.value:06x} {apply_mood(cs, Mood.BAD)}"
+                            f"      0x{cs.value:06x} {apply_mood(cs, Mood.BAD)}"
                         )
                     else:
                         det = utils.get_cipher_suite_details(cs)
@@ -541,7 +569,11 @@ class TextProfileWorker(WorkerPlugin):
 
         for values in cipher_hash.values():
             versions = apply_mood(", ".join(values["versions"]), Mood.BOLD)
-            print(f'\n  {versions}: {values["preference"]}')
+            print(f"\n  {versions}:")
+            print(f'    {values["preference"]}')
+            if values["chacha_preference"] != "":
+                print(f'    {values["chacha_preference"]}')
+
             for line in values["lines"]:
                 print(line)
 
