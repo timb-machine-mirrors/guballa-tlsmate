@@ -88,6 +88,40 @@ class ScanCipherSuites(WorkerPlugin):
             self.client.profile.cipher_suites.remove(server_cs)
         return server_pref
 
+    def _chacha_poly_pref(self, server_pref, ciphers):
+        if server_pref is not tls.SPBool.C_TRUE:
+            return tls.SPBool.C_NA
+
+        tmp_cs = ciphers.cipher_suites[:]
+        chacha_cs = utils.filter_cipher_suites(
+            tmp_cs, cipher_prim=[tls.CipherPrimitive.CHACHA], remove=True
+        )
+        if not chacha_cs:
+            return tls.SPBool.C_NA
+
+        check_chacha_pref = False
+        for idx, cs in enumerate(ciphers.cipher_suites):
+            if cs not in chacha_cs:
+                if idx < len(chacha_cs):
+                    check_chacha_pref = True
+                break
+
+        if not check_chacha_pref:
+            return tls.SPBool.C_NA
+
+        chacha_cs.extend(tmp_cs)
+        self.client.profile.cipher_suites = chacha_cs
+        with self.client.create_connection() as conn:
+            conn.send(msg.ClientHello)
+            server_hello = conn.wait(msg.ServerHello)
+            if server_hello.cipher_suite in chacha_cs:
+                return tls.SPBool.C_TRUE
+
+            else:
+                return tls.SPBool.C_FALSE
+
+        return tls.SPBool.C_UNDETERMINED
+
     def _tls_enum_version(self, version):
         """Determines the supported cipher suites and other stuff for a given version.
 
@@ -101,6 +135,15 @@ class ScanCipherSuites(WorkerPlugin):
         cipher_suites = utils.filter_cipher_suites(
             tls.CipherSuite.all(), version=version
         )
+
+        if version is tls.Version.TLS12:
+            # put all CHACHA_POLY cipher suites at the end, so that there is no
+            # interference with potential "chacha_poly_preference".
+            chacha_cs = utils.filter_cipher_suites(
+                cipher_suites, cipher_prim=[tls.CipherPrimitive.CHACHA], remove=True
+            )
+            cipher_suites.extend(chacha_cs)
+
         logging.info(f"starting to enumerate {version.name}")
         self.client.profile.versions = [version]
         supported_cs = []
@@ -146,6 +189,11 @@ class ScanCipherSuites(WorkerPlugin):
             ciphers = SPCiphers(
                 server_preference=server_prio, cipher_suites=supported_cs
             )
+            if version is tls.Version.TLS12:
+                ciphers.chacha_poly_preference = self._chacha_poly_pref(
+                    server_prio, ciphers
+                )
+
             self.server_profile.versions.append(
                 SPVersion(version=version, ciphers=ciphers)
             )

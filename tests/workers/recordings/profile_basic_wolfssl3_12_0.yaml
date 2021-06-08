@@ -139,6 +139,7 @@ scan_info: {}
 server: {}
 versions:
 - ciphers:
+    chacha_poly_preference: C_TRUE
     cipher_suites:
     - id: 49200
       name: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384

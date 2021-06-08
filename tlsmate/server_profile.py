@@ -1322,6 +1322,7 @@ class SPCiphersSchema(ProfileSchema):
     __profile_class__ = SPCiphers
     cipher_suites = fields.List(fields.Nested(SPCipherSuiteSchema))
     server_preference = FieldsEnumString(enum_class=tls.SPBool)
+    chacha_poly_preference = FieldsEnumString(enum_class=tls.SPBool)
 
 
 class SPCipherKindSchema(ProfileEnumSchema):
