@@ -18,8 +18,8 @@ class RecordLayer(object):
     """Class implementing the record layer.
     """
 
-    def __init__(self, tlsmate, endpoint):
-        self.endpoint = endpoint
+    def __init__(self, tlsmate, l4_addr):
+        self._l4_addr = l4_addr
         self._tlsmate = tlsmate
         self._send_buffer = bytearray()
         self._receive_buffer = bytearray()
@@ -106,11 +106,14 @@ class RecordLayer(object):
         else:
             self._fragment(message)
 
-    def open_socket(self):
+    def open_socket(self, l4_addr):
         """Opens the socket
+
+        Arguments:
+            l4_addr (:obj:`tlsmate.structs.TransportEndpoint`): the l4_addr
         """
 
-        self._socket.open_socket(self.endpoint)
+        self._socket.open_socket(l4_addr)
 
     def close_socket(self):
         """Closes the socket. Obviously.

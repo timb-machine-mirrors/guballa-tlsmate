@@ -19,6 +19,12 @@ def _add_basic_arguments(parser):
     """
 
     parser.add_argument(
+        "--port",
+        default=None,
+        help="the port number of the host [0-65535]. Defaults to 443.",
+        type=int,
+    )
+    parser.add_argument(
         "--interval",
         default=0,
         help="the interval in milliseconds between two handshakes.",
@@ -53,7 +59,8 @@ def _add_basic_arguments(parser):
     parser.add_argument(
         "host",
         help=(
-            "the host to scan. May optionally have the port number appended, "
+            "the host to scan. If an IPv6 address is given, it must be enclosed in "
+            "square brackets. May optionally have the port number appended, "
             "separated by a colon. The port defaults to 443."
         ),
         type=str,
@@ -222,11 +229,15 @@ class CliConnectionPlugin(CliPlugin):
         """
 
         if subcommand == self.name:
+            if args.port is not None and (args.port < 0 or args.port > 0xffff):
+                parser.error("port must be in the range [0-65535]")
+
             config.set("ca_certs", args.ca_certs)
             config.set("client_chain", args.client_chain)
             config.set("client_key", args.client_key)
             config.set("crl", args.crl)
-            config.set("endpoint", args.host)
+            config.set("host", args.host)
+            config.set("port", args.port)
             config.set("interval", args.interval)
             config.set("key_log_file", args.key_log_file)
             config.set("ocsp", args.ocsp)

@@ -32,7 +32,9 @@ class ScanStart(WorkerPlugin):
         scan_info.version = __version__
         scan_info.start_timestamp = start_time
         scan_info.start_date = datetime.datetime.fromtimestamp(int(start_time))
-        endp = resolver.determine_transport_endpoint(self.config.get("endpoint"))
+        endp = resolver.determine_l4_addr(
+            self.config.get("host"), self.config.get("port")
+        )
         data = {"port": endp.port}
         if endp.host_type is tls.HostType.HOST:
             name_res_data = {"domain_name": endp.host}

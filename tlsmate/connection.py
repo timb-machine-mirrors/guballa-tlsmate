@@ -24,6 +24,7 @@ from tlsmate import utils
 from tlsmate import structs
 from tlsmate import key_exchange as kex
 from tlsmate import ext
+from tlsmate import resolver
 from tlsmate.kdf import Kdf
 from tlsmate.record_layer import RecordLayer
 from tlsmate.key_logging import KeyLogger
@@ -244,7 +245,7 @@ class TlsConnection(object):
         >>>     conn.handshake()
 
         The variable `conn` references the `TlsConnection` instance. When entering
-        the context manager, the endpoint's URL is resolved, and a TCP socket is
+        the context manager, the host's URL is resolved, and a TCP socket is
         opened. When leaving the context manager, the TLS-connection is always
         properly closed, e.g., by sending a closure alert and by closing the
         underlying TCP socket.
@@ -297,8 +298,8 @@ class TlsConnection(object):
             or not. A handshake is regarded as complete when the Finished message
             was received and sent.
         alert_received (bool): an indication whether an alert was received from the
-            peer endpoint during the handshake. The alert message will be available
-            via the msg attribute.
+            peer during the handshake. The alert message will be available via
+            the msg attribute.
         alert_sent (bool): an indication whether the client has sent an alert during
             the handshake. The alert message will be available via the msg attribute.
         early_data_accepted (bool): an indication whether the early data sent by the
@@ -332,10 +333,17 @@ class TlsConnection(object):
         """
         cls._cert_chain_digests = []
 
-    def __init__(self, tlsmate, endpoint):
+    def __init__(self, tlsmate, host=None, port=None):
         self._tlsmate = tlsmate
+        if host is None:
+            host = tlsmate.config.get("host")
+
+        if port is None:
+            port = tlsmate.config.get("port")
+
+        self._server_l4 = resolver.determine_l4_addr(host, port)
         self.msg = TlsConnectionMsgs()
-        self._record_layer = RecordLayer(tlsmate, endpoint)
+        self._record_layer = RecordLayer(tlsmate, self._server_l4)
         self._defragmenter = TlsDefragmenter(self._record_layer)
         self._awaited_msg = None
         self._queued_msg = None
@@ -407,7 +415,7 @@ class TlsConnection(object):
         """Context manager: open the socket (after potentially resolving the URL).
         """
 
-        self._record_layer.open_socket()
+        self._record_layer.open_socket(self._server_l4)
         return self
 
     def _send_alert(self, level, desc):

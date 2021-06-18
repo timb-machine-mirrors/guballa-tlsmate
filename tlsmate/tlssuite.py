@@ -144,17 +144,12 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
                 ini_file = None
 
         self.config = Configuration()
-        self.config.register(ConfigItem("server_port", type=int, default=44330))
-        self.config.register(ConfigItem("server", type=str, default="localhost"))
         self.config.register(ConfigItem("pytest_recorder_file", type=str))
         self.config.register(ConfigItem("pytest_recorder_replaying", type=str))
 
         if not is_replaying:
             self.config.init_from_external(ini_file)
 
-        self.config.set(
-            "endpoint", f'{self.config.get("server")}:{self.config.get("server_port")}'
-        )
         self.config.set("progress", False)
         self.config.set("read_profile", self.get_yaml_file(self.sp_in_yaml))
         self.config.set("pytest_recorder_file", self.get_yaml_file(self.recorder_yaml))
