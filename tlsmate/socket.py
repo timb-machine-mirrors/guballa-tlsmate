@@ -33,31 +33,38 @@ class Socket(object):
         self._recorder = tlsmate.recorder
         self._fragment_max_size = 16384
 
-    def open_socket(self, endpoint):
+    def open_socket(self, l4_addr):
         """Opens a socket.
 
         Arguments:
-            endpoint (str): The L4-endpoint, consisting of the IP-address and the port.
+            l4_addr (:obj:`tlsmate.structs.TransportEndpoint`): The L4-endpoint,
+                consisting of the IP-address and the port.
         """
 
-        endp = resolver.determine_transport_endpoint(endpoint)
-        if endp.host_type is tls.HostType.HOST:
-            endp = resolver.get_ip_endpoint(endp)
+        if l4_addr.host_type is tls.HostType.HOST:
+            l4_addr = resolver.get_ip_endpoint(l4_addr)
 
-        if endp.host_type is tls.HostType.IPV4:
+        if l4_addr.host_type is tls.HostType.IPV4:
             family = socket.AF_INET
+            addr_info = (l4_addr.host, l4_addr.port)
+
         else:
             family = socket.AF_INET6
+            addr_info = (l4_addr.host, l4_addr.port, 0, 0)
 
         if self._recorder.is_injecting():
             return
 
         self._socket = socket.socket(family, socket.SOCK_STREAM)
         self._socket.settimeout(5.0)
-        self._socket.connect((endp.host, endp.port))
+        self._socket.connect(addr_info)
         self._socket.settimeout(None)
-        laddr, lport = self._socket.getsockname()
-        raddr, rport = self._socket.getpeername()
+        addr = self._socket.getsockname()
+        laddr = addr[0]
+        lport = addr[1]
+        addr = self._socket.getpeername()
+        raddr = addr[0]
+        rport = addr[1]
         if self._config.get("progress"):
             sys.stderr.write(".")
             sys.stderr.flush()
