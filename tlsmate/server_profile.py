@@ -50,7 +50,7 @@ import yaml
 from cryptography.hazmat.primitives.asymmetric import rsa, ed25519, ed448, dsa, ec
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography import x509
-from marshmallow import fields, Schema, post_load, post_dump, pre_dump
+from marshmallow import fields, Schema, post_load, post_dump, pre_dump, INCLUDE
 from marshmallow_oneofschema import OneOfSchema
 
 # #### Helper classes
@@ -156,6 +156,12 @@ class ProfileSchema(Schema):
     """Wrapper class for easier deserialization to objects
     """
 
+    _augments = []
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.unknown = INCLUDE
+
     @post_load
     def deserialize(self, data, **kwargs):
         """Instantiate an object and define the properties according to the given dict.
@@ -169,11 +175,26 @@ class ProfileSchema(Schema):
             __profile_class__ class property), or the original dict.
         """
 
-        cls = getattr(self, "__profile_class__")
-        if cls is not None:
-            return cls(data=data)
+        cls = getattr(self, "__profile_class__", None)
+        if cls is None:
+            return data
 
-        return data
+        cls_data = self._get_schema_data(data)
+        obj = cls(data=cls_data)
+        for base_cls, ext_cls in self._augments:
+            if base_cls is self.__class__:
+                cls_data = ext_cls._get_schema_data(data)
+                ext_data = ext_cls().load(cls_data)
+                for key, val in ext_data.items():
+                    setattr(obj, key, val)
+
+        if data:
+            fields = ", ".join(data.keys())
+            raise ValueError(
+                f"fields not defined in schema {self.__class__.__name__}: {fields}"
+            )
+
+        return obj
 
     @post_dump(pass_original=True)
     def serialize(self, data, orig, **kwargs):
@@ -187,11 +208,36 @@ class ProfileSchema(Schema):
             dict: the final dict representing the serialized object
         """
 
-        for key in orig.__dict__:
-            if not key.startswith("_") and key not in data:
-                data[key] = orig.__dict__[key]
-
+        for base_cls, ext_cls in self._augments:
+            if base_cls is self.__class__:
+                data.update(ext_cls().dump(orig))
         return data
+
+    @classmethod
+    def _get_schema_data(cls, data):
+        cls_data = {}
+        for key in cls._declared_fields.keys():
+            if key in data:
+                cls_data[key] = data[key]
+                del data[key]
+        return cls_data
+
+    @staticmethod
+    def augment(base_cls):
+        """Decorator to register scheme extensions.
+
+        Arguments:
+            base_cls (:class:`ProfileSchema`): the schema class to extend
+
+        Returns:
+            the class used to extend the base_cls class
+        """
+
+        def inner(ext_cls):
+            ProfileSchema._augments.append((base_cls, ext_cls))
+            return ext_cls
+
+        return inner
 
 
 class ProfileEnumSchema(Schema):
@@ -701,7 +747,11 @@ class SPCertExtension(SPObject):
         logging.error("Certificate extensions InhibitAnyPolicy not implemented")
 
     def _ext_policy_constraints(self, value):
-        logging.error("Certificate extensions PolicyConstraints not implemented")
+        if value.require_explicit_policy is not None:
+            self.require_explicit_policy = value.require_explicit_policy
+
+        if value.inhibit_policy_mapping is not None:
+            self.inhibit_policy_mapping = value.inhibit_policy_mapping
 
     def _ext_crl_number(self, value):
         logging.error("Certificate extensions CrlNumber not implemented")
@@ -995,6 +1045,8 @@ class SPCertExtPolicyConstraintsSchema(ProfileSchema):
     name = fields.String()
     oid = fields.String()
     criticality = FieldsEnumString(enum_class=tls.SPBool)
+    require_explicit_policy = fields.Integer()
+    inhibit_policy_mapping = fields.Integer()
 
 
 class SPCertExtCRLNumberSchema(ProfileSchema):
@@ -1239,7 +1291,6 @@ class SPSignatureAlgorithms(SPObject):
     """
 
     def _init_from_args(self):
-        self.server_preference = tls.SPBool.C_UNDETERMINED
         self.algorithms = []
 
 
@@ -1250,7 +1301,6 @@ class SPSignatureAlgorithmsSchema(ProfileSchema):
     __profile_class__ = SPSignatureAlgorithms
     algorithms = fields.List(fields.Nested(SPSigAlgoEnumSchema))
     info = fields.List(fields.String)
-    server_preference = FieldsEnumString(enum_class=tls.SPBool)
 
 
 class SPCipherSuiteSchema(ProfileEnumSchema):
@@ -1258,6 +1308,21 @@ class SPCipherSuiteSchema(ProfileEnumSchema):
     """
 
     __profile_class__ = tls.CipherSuite
+
+
+class SPCiphers(SPObject):
+    """Data class for ciphers
+    """
+
+
+class SPCiphersSchema(ProfileSchema):
+    """Schema for ciphers
+    """
+
+    __profile_class__ = SPCiphers
+    cipher_suites = fields.List(fields.Nested(SPCipherSuiteSchema))
+    server_preference = FieldsEnumString(enum_class=tls.SPBool)
+    chacha_poly_preference = FieldsEnumString(enum_class=tls.SPBool)
 
 
 class SPCipherKindSchema(ProfileEnumSchema):
@@ -1281,7 +1346,6 @@ class SPDhGroupSchema(ProfileSchema):
     size = fields.Integer()
     g_value = fields.Integer()
     p_value = FieldsBytes()
-    cipher_suites = fields.List(fields.Nested(SPCipherSuiteSchema))
 
 
 class SPNameResolution(SPObject):
@@ -1326,9 +1390,8 @@ class SPVersionSchema(ProfileSchema):
 
     __profile_class__ = SPVersion
     cipher_kinds = fields.List(fields.Nested(SPCipherKindSchema))
-    cipher_suites = fields.List(fields.Nested(SPCipherSuiteSchema))
-    dh_groups = fields.List(fields.Nested(SPDhGroupSchema))
-    server_preference = FieldsEnumString(enum_class=tls.SPBool)
+    ciphers = fields.Nested(SPCiphersSchema)
+    dh_group = fields.Nested(SPDhGroupSchema)
     supported_groups = fields.Nested(SPSupportedGroupsSchema)
     signature_algorithms = fields.Nested(SPSignatureAlgorithmsSchema)
     version = fields.Nested(SPVersionEnumSchema)
@@ -1345,7 +1408,7 @@ class SPVulnerabilitiesSchema(ProfileSchema):
 
     __profile_class__ = SPVulnerabilities
     ccs_injection = FieldsEnumString(enum_class=tls.SPBool)
-    heartbleed = FieldsEnumString(enum_class=tls.SPBool)
+    heartbleed = FieldsEnumString(enum_class=tls.HeartbleedStatus)
     robot = FieldsEnumString(enum_class=tls.RobotVulnerability)
 
 
@@ -1437,7 +1500,7 @@ class ServerProfile(SPObject):
                 return version_prof.cipher_kinds
 
             else:
-                return version_prof.cipher_suites
+                return version_prof.ciphers.cipher_suites
 
         return None
 
@@ -1511,7 +1574,7 @@ class ServerProfile(SPObject):
                 for which a full handshake is supported. Defaults to False.
 
         Returns:
-            :obj:`tlsmate.structures.ProfileValues`: a structure that provides a list of
+            :obj:`tlsmate.structs.ProfileValues`: a structure that provides a list of
             the versions, the cipher suites, the supported groups and the
             signature algorithms
         """

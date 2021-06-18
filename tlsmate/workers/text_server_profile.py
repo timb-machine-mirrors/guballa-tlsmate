@@ -163,6 +163,22 @@ _cipher_order = {
     },
 }
 
+_chacha_pref = {
+    tls.SPBool.C_TRUE: (
+        "server respects client preference for CHACHA20 cipher suites",
+        Mood.GOOD,
+    ),
+    tls.SPBool.C_FALSE: (
+        "server does not respect client preference for CHACHA20 cipher suites",
+        Mood.NEUTRAL,
+    ),
+    tls.SPBool.C_NA: ("", Mood.NEUTRAL,),
+    tls.SPBool.C_UNDETERMINED: (
+        "undetermined if server respects client preference for CHACHA20 cipher suites",
+        Mood.BAD,
+    ),
+}
+
 _supported_groups = {
     "support_txt": {
         tls.SPBool.C_FALSE: 'extension "supported_groups" not supported',
@@ -259,20 +275,6 @@ _supported_groups = {
 }
 
 _sig_algo = {
-    "preference_txt": {
-        tls.SPBool.C_FALSE: "server does not enforce order of signature algorithms",
-        tls.SPBool.C_TRUE: "server enforces order of signature algorithms",
-        tls.SPBool.C_NA: None,
-        tls.SPBool.C_UNDETERMINED: "server preference for signature algorithms unknown",
-    },
-    "preference_mood": {
-        tls.Version.SSL20: (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL),
-        tls.Version.SSL30: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.NEUTRAL),
-        tls.Version.TLS10: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS11: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS12: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS13: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-    },
     "algos": {
         tls.SignatureScheme.RSA_PKCS1_SHA1: Mood.SOSO,
         tls.SignatureScheme.ECDSA_SHA1: Mood.SOSO,
@@ -360,7 +362,10 @@ _cert = {
         tls.SPBool.C_UNDETERMINED: ("validation status undetermined", Mood.SOSO),
     },
     "root_transmitted": {
-        tls.SPBool.C_FALSE: ("root certificate was not provided by the server", Mood.GOOD),
+        tls.SPBool.C_FALSE: (
+            "root certificate was not provided by the server",
+            Mood.GOOD,
+        ),
         tls.SPBool.C_TRUE: ("root certificate was provided by the server", Mood.SOSO),
     },
     "subject_matches": {
@@ -405,6 +410,18 @@ _vulnerabilities = {
     tls.SPBool.C_TRUE: ("vulnerable", Mood.BAD),
     tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
     tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
+}
+
+_heartbleed = {
+    tls.HeartbleedStatus.NOT_APPLICABLE: ("not applicable", Mood.NEUTRAL),
+    tls.HeartbleedStatus.UNDETERMINED: ("undetermined", Mood.SOSO),
+    tls.HeartbleedStatus.VULNERABLE: ("vulnerable", Mood.BAD),
+    tls.HeartbleedStatus.NOT_VULNERABLE: ("not vulnerable", Mood.GOOD),
+    tls.HeartbleedStatus.TIMEOUT: ("timeout, probably not vulnerable", Mood.GOOD),
+    tls.HeartbleedStatus.CONNECTION_CLOSED: (
+        "not vulnerable (connection closed)",
+        Mood.GOOD,
+    ),
 }
 
 _robot = {
@@ -496,16 +513,29 @@ class TextProfileWorker(WorkerPlugin):
         print(apply_mood("Cipher suites", Mood.HEADLINE))
         for version in self._prof_values.versions:
             version_prof = self.server_profile.get_version_profile(version)
-            order = version_prof.server_preference
-            txt = _cipher_order["text"][order]
-            mood = _cipher_order["mood"][version][order.value]
-            mood_txt = apply_mood(txt, mood)
             if version is tls.Version.SSL20:
                 cipher_list = version_prof.cipher_kinds
+                txt = ""
+                mood_txt = ""
+                chacha_txt = ""
             else:
-                cipher_list = version_prof.cipher_suites
+                cipher_list = version_prof.ciphers.cipher_suites
+                order = version_prof.ciphers.server_preference
+                txt = _cipher_order["text"][order]
+                mood = _cipher_order["mood"][version][order.value]
+                mood_txt = apply_mood(txt, mood)
 
-            hashed = hash((mood_txt, tuple(cipher_list)))
+                chacha_pref = getattr(
+                    version_prof.ciphers, "chacha_poly_preference", None
+                )
+                if chacha_pref:
+                    txt, mood = _chacha_pref[chacha_pref]
+                    chacha_txt = apply_mood(txt, mood)
+
+                else:
+                    chacha_txt = ""
+
+            hashed = hash((mood_txt, chacha_txt, tuple(cipher_list)))
             if hashed in cipher_hash:
                 cipher_hash[hashed]["versions"].append(str(version))
 
@@ -514,12 +544,13 @@ class TextProfileWorker(WorkerPlugin):
                     "versions": [str(version)],
                     "lines": [],
                     "preference": mood_txt,
+                    "chacha_preference": chacha_txt,
                 }
                 all_good = True
                 for cs in cipher_list:
                     if version is tls.Version.SSL20:
                         cipher_hash[hashed]["lines"].append(
-                            f"    0x{cs.value:06x} {apply_mood(cs, Mood.BAD)}"
+                            f"      0x{cs.value:06x} {apply_mood(cs, Mood.BAD)}"
                         )
                     else:
                         det = utils.get_cipher_suite_details(cs)
@@ -538,7 +569,11 @@ class TextProfileWorker(WorkerPlugin):
 
         for values in cipher_hash.values():
             versions = apply_mood(", ".join(values["versions"]), Mood.BOLD)
-            print(f'\n  {versions}: {values["preference"]}')
+            print(f"\n  {versions}:")
+            print(f'    {values["preference"]}')
+            if values["chacha_preference"] != "":
+                print(f'    {values["chacha_preference"]}')
+
             for line in values["lines"]:
                 print(line)
 
@@ -640,45 +675,22 @@ class TextProfileWorker(WorkerPlugin):
                 continue
 
             algo_prof = version_prof.signature_algorithms
-            preference = getattr(algo_prof, "server_preference", None)
-            if preference is None:
-                pref_txt = None
-
-            else:
-                pref_txt = _sig_algo["preference_txt"][preference]
-                if pref_txt is not None:
-                    if all(
-                        [
-                            _sig_algo["algos"][algo] is Mood.GOOD
-                            for algo in algo_prof.algorithms
-                        ]
-                    ):
-                        pref_mood = Mood.NEUTRAL
-
-                    else:
-                        pref_mood = _sig_algo["preference_mood"][version][
-                            preference.value
-                        ]
-
-                    pref_txt = apply_mood(pref_txt, pref_mood)
-
-            combined = (pref_txt, tuple(algo_prof.algorithms))
-            hashed = hash(combined)
+            hashed = hash(tuple(algo_prof.algorithms))
             if hashed in algo_hash:
                 algo_hash[hashed]["versions"].append(str(version))
 
             else:
-                algo_hash[hashed] = {"versions": [str(version)], "combined": combined}
+                algo_hash[hashed] = {
+                    "versions": [str(version)],
+                    "algos": algo_prof.algorithms,
+                }
 
         for algo in algo_hash.values():
             versions = ", ".join(algo["versions"])
             print(f"\n  {apply_mood(versions, Mood.BOLD)}:")
-            pref_txt, algos = algo["combined"]
-            if pref_txt is not None:
-                print(f"    {pref_txt}")
 
             print("    signature algorithms:")
-            for alg in algos:
+            for alg in algo["algos"]:
                 alg_txt = apply_mood(alg, _sig_algo["algos"][alg])
                 print(f"      0x{alg.value:04x} {alg_txt}")
         print()
@@ -687,22 +699,21 @@ class TextProfileWorker(WorkerPlugin):
         dh_groups = {}
         for version in self._prof_values.versions:
             version_prof = self.server_profile.get_version_profile(version)
-            dh_prof = getattr(version_prof, "dh_groups", None)
+            dh_prof = getattr(version_prof, "dh_group", None)
             if dh_prof is None:
                 continue
 
-            for group in dh_prof:
-                name = getattr(group, "name", None)
-                combined = (name, group.size)
-                hashed = hash(combined)
-                if hashed in dh_groups:
-                    dh_groups[hashed]["versions"].append(str(version))
+            name = getattr(dh_prof, "name", None)
+            combined = (name, dh_prof.size)
+            hashed = hash(combined)
+            if hashed in dh_groups:
+                dh_groups[hashed]["versions"].append(str(version))
 
-                else:
-                    dh_groups[hashed] = {
-                        "versions": [str(version)],
-                        "combined": combined,
-                    }
+            else:
+                dh_groups[hashed] = {
+                    "versions": [str(version)],
+                    "combined": combined,
+                }
 
         if dh_groups:
             print(apply_mood("DH groups (finite field)", Mood.HEADLINE))
@@ -1053,7 +1064,7 @@ class TextProfileWorker(WorkerPlugin):
 
         hb = getattr(vuln_prof, "heartbleed", None)
         if hb is not None:
-            txt, mood = _vulnerabilities[hb]
+            txt, mood = _heartbleed[hb]
             table.row("Heartbleed (CVE-2014-0160)", apply_mood(txt, mood))
 
         robot = getattr(vuln_prof, "robot", None)
@@ -1067,7 +1078,7 @@ class TextProfileWorker(WorkerPlugin):
         print()
 
     def run(self):
-        init(strip=self.config.get("no_color"))
+        init(strip=not self.config.get("color"))
         self._prof_values = self.server_profile.get_profile_values(tls.Version.all())
         self._print_tlsmate()
         self._print_scan_info()

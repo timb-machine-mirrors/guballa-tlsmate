@@ -93,20 +93,6 @@ class ScanSigAlgs(WorkerPlugin):
             sig_alg_supported.append(sig_alg)
             sig_algs.remove(sig_alg)
 
-        if len(sig_alg_supported) > 1:
-            ref_sig_algo = sig_alg_supported[0]
-            sig_alg_supported.append(sig_alg_supported.pop(0))
-            sig_alg = backend.get_sig_alg_from_server(
-                self.client, sig_alg_supported, cert_algs
-            )
-            sig_alg_supported.insert(0, sig_alg_supported.pop())
-
-            if sig_alg is ref_sig_algo:
-                prof_sig_algo.server_preference = tls.SPBool.C_TRUE
-
-            else:
-                prof_sig_algo.server_preference = tls.SPBool.C_FALSE
-
         for sig_algo in sig_alg_supported:
             prof_sig_algo.algorithms.append(sig_algo)
 
@@ -122,7 +108,6 @@ class ScanSigAlgs(WorkerPlugin):
         self.client.init_profile(profile_values=values)
 
         prof_sig_algo = prof_version.signature_algorithms
-        prof_sig_algo.server_preference = tls.SPBool.C_NA
         sigalg_list = tls.SignatureScheme.all()
 
         rsa_ciphers = utils.filter_cipher_suites(
@@ -197,7 +182,7 @@ class ScanSigAlgs(WorkerPlugin):
         self.client.profile.versions = [tls.Version.TLS13]
 
         self._scan_auth_method(
-            prof_version.cipher_suites,
+            prof_version.ciphers.cipher_suites,
             tls.SignatureScheme.all(),
             self.server_profile.get_cert_sig_algos(),
             prof_sig_algo,

@@ -980,12 +980,14 @@ class HeartbeatMode(ExtendedEnum):
 class SPBool(ExtendedEnum):
     """Enum representing a pseudo-boolean value in the server profile.
 
-    In addition to True and false the two values are defined:
-        - C_UNDETERMINED: Used when tlsmate has not even tried to determine the
-            value or if the value could not determined at all (for whatever reason).
-        - C_NA: Used as an indication this the boolean value is not applicable, e.g.
-            when the server does not support any CBC-cipher suite, support for the
-            extension ENCRYPT_THEN_MAC is not applicable.
+    In addition to True and False the two values are defined:
+
+    * C_UNDETERMINED - used when tlsmate has not even tried to determine the
+      value or if the value could not determined at all (for whatever reason).
+
+    * C_NA - Used as an indication this the boolean value is not applicable, e.g.
+      when the server does not support any CBC-cipher suite, support for the
+      extension ENCRYPT_THEN_MAC is not applicable.
     """
 
     C_FALSE = 0
@@ -1136,6 +1138,18 @@ class RobotVulnerability(ExtendedEnum):
     WEAK_ORACLE = enum.auto()
     STRONG_ORACLE = enum.auto()
     NOT_VULNERABLE = enum.auto()
+
+
+class HeartbleedStatus(ExtendedEnum):
+    """Status for heartbleed vulnerability
+    """
+
+    NOT_APPLICABLE = enum.auto()
+    UNDETERMINED = enum.auto()
+    VULNERABLE = enum.auto()
+    NOT_VULNERABLE = enum.auto()
+    TIMEOUT = enum.auto()
+    CONNECTION_CLOSED = enum.auto()
 
 
 class SPHeartbeat(ExtendedEnum):

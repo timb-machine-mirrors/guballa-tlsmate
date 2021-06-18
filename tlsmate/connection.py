@@ -285,7 +285,7 @@ class TlsConnection(object):
             by the server is unknown (Heartbeat, NewSessionTicket).
 
             Currently, this attribute defaults to
-            [tls.HandshakeType.NEW_SESSION_TICKET].
+            [tls.HandshakeType.NEW_SESSION_TICKET, tls.HeartbeatType.HEARTBEAT_REQUEST]
         msg (:obj:`TlsConnectionMsgs`): an object which contains all messages received
             and send during a handshake. Can also be used outside the context manager,
             e.g., when the handshake method was used. If the same message is sent or
@@ -1422,7 +1422,9 @@ class TlsConnection(object):
         self.msg.store_msg(message, received=True)
         return message, mb.msg
 
-    def wait_msg_bytes(self, msg_class, optional=False, max_nbr=1, timeout=5000):
+    def wait_msg_bytes(
+        self, msg_class, optional=False, max_nbr=1, timeout=5000, fail_on_timeout=True
+    ):
         """Interface to wait for a message from the peer.
 
         Arguments:
@@ -1432,14 +1434,17 @@ class TlsConnection(object):
             max_nbr (int): the number of identical message types to wait for. Well
                 suitable for NewSessionTicket messages. Defaults to 1.
             timeout (int): the message timeout in milliseconds
+            fail_on_timeout (bool): if True, in case of a timeout raise an exception,
+                otherwise return (None, None)
 
         Returns:
             tuple(:obj:`tlsmate.msg.TlsMessage`, bytearray):
             the message received and the message as bytes. In case of a timeout
-            (None, None) is returned.
+            (None, None) is returned if fail_on_timeout is False
 
         Raises:
             FatalAlert: In case an unexpected message is received
+            TlsMsgTimeoutError: In case fail_on_timeout is True and a timeout occured.
         """
         ultimo = time.time() + (timeout / 1000)
         min_nbr = 0 if optional else 1
@@ -1464,8 +1469,11 @@ class TlsConnection(object):
                     elif cnt >= min_nbr:
                         return expected_msg, expected_bytes
 
-                    else:
+                    elif fail_on_timeout:
                         raise exc
+
+                    else:
+                        return None, None
 
             if (msg_class == msg.Any) or isinstance(message, msg_class):
                 self._on_msg_received(message)
@@ -1507,13 +1515,16 @@ class TlsConnection(object):
             max_nbr (int): the number of identical message types to wait for. Well
                 suitable for NewSessionTicket messages. Defaults to 1.
             timeout (int): the message timeout in milliseconds
+            fail_on_timeout (bool): if True, in case of a timeout raise an exception,
+                otherwise return (None, None)
 
         Returns:
             :obj:`tlsmate.msg.TlsMessage`: the message received or None in case
-            of a timeout.
+            of a timeout and fail_on_timeout is False.
 
         Raises:
             FatalAlert: In case an unexpected message is received
+            TlsMsgTimeoutError: In case fail_on_timeout is True and a timeout occured.
         """
 
         return self.wait_msg_bytes(msg_class, **kwargs)[0]

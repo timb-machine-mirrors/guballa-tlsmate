@@ -35,7 +35,6 @@ class TestCase(TlsSuiteTester):
     def check_versions(self, versions):
         assert len(versions) == 1
         assert versions[0]["version"]["name"] == "SSL20"
-        assert versions[0]["server_preference"] == "C_UNDETERMINED"
         for a, b in zip(ssl2_ck, versions[0]["cipher_kinds"]):
             assert a == b["name"]
 

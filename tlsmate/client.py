@@ -172,7 +172,7 @@ class Client(object):
         """
         self._tlsmate = tlsmate
         self.config = tlsmate.config
-        self.set_profile_modern()
+        self._set_profile_modern()
         self.alert_on_invalid_cert = True
         self.session_state_ticket = None
         self.session_state_id = None
@@ -202,7 +202,7 @@ class Client(object):
             self.profile.signature_algorithms = profile_values.signature_algorithms[:]
             self.profile.key_shares = profile_values.key_shares[:]
 
-    def set_profile_interoperability(self):
+    def _set_profile_interoperability(self):
         """Define profile for interoperability, like used in modern browsers
 
         :note:
@@ -271,7 +271,7 @@ class Client(object):
             support_encrypt_then_mac=True,
         )
 
-    def set_profile_legacy(self):
+    def _set_profile_legacy(self):
         """Define profile for legacy like client
 
         :note:
@@ -337,7 +337,7 @@ class Client(object):
             support_encrypt_then_mac=True,
         )
 
-    def set_profile_modern(self):
+    def _set_profile_modern(self):
         """Define profile for "modern" configurations
 
         :note:
@@ -388,7 +388,7 @@ class Client(object):
             support_session_ticket=True,
         )
 
-    def set_profile_tls13(self):
+    def _set_profile_tls13(self):
         """Define profile for TLS1.3 only.
 
         :note:
@@ -433,18 +433,52 @@ class Client(object):
     def set_profile(self, profile):
         """Initializes the client according to the given profile.
 
+        The following profiles are supported:
+
+        - :obj:`tlsmate.tls.Profile.INTEROPERABILITY`
+
+          - TLS Versions 1.0 - 1.3
+          - ECDHE cipher & RSA-based key transport
+          - AESGCM, AES, CHACHA_POLY and 3DES as last resort
+          - Signature algorithms: ECDSA+SHA1, RSA PKCS1+SHA1 as last resort
+          - Resumption, encrypt-then-mac, extended-master-secret
+          - pskmode psk_dhe
+
+        - :obj:`tlsmate.tls.Profile.LEGACY`
+
+          - TLS Versions 1.0 - 1.2
+          - ECDHE cipher & DHE & RSA-based key transport
+          - AESGCM, AES, CHACHA_POLY and 3DES as last resort
+          - Signature algorithms: ECDSA+SHA1, RSA PKCS1+SHA1 as last resort
+          - Resumption, encrypt-then-mac, extended-master-secret
+
+        - :obj:`tlsmate.tls.Profile.MODERN`
+
+          - TLS Versions 1.2 + 1.3
+          - ECDHE cipher
+          - AESGCM, CHACHA_POLY
+          - signatures: ECDSA + PSS_RSAE
+          - Resumption, encrypt-then-mac, extended-master-secret
+          - pskmode psk_dhe
+
+        - :obj:`tlsmate.tls.Profile.TLS13`
+
+          - TLS Version 1.3
+          - AESGCM + CHACHA_POLY
+          - pskmode psk_dhe
+
         Arguments:
             profile (:obj:`tlsmate.tls.Profile`): the profile to which the client
                 shall be initialized.
         """
         if profile is tls.Profile.INTEROPERABILITY:
-            self.set_profile_interoperability()
+            self._set_profile_interoperability()
         elif profile is tls.Profile.TLS13:
-            self.set_profile_tls13()
+            self._set_profile_tls13()
         elif profile is tls.Profile.MODERN:
-            self.set_profile_modern()
+            self._set_profile_modern()
         elif profile is tls.Profile.LEGACY:
-            self.set_profile_legacy()
+            self._set_profile_legacy()
         else:
             raise ValueError(f"client profile {profile} unknown")
 

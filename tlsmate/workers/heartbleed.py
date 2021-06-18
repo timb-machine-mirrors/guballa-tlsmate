@@ -10,6 +10,7 @@ for the heartbeat request. Refer to https://heartbleed.com/
 from tlsmate import msg
 from tlsmate import tls
 from tlsmate.plugin import WorkerPlugin
+from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
 
 # import other stuff
 
@@ -24,9 +25,9 @@ class ScanHeartbleed(WorkerPlugin):
             self.server_profile.features, "heartbeat", tls.SPHeartbeat.C_UNDETERMINED
         )
 
-        state = tls.SPBool.C_UNDETERMINED
+        state = tls.HeartbleedStatus.UNDETERMINED
         if hb in (tls.SPHeartbeat.C_FALSE, tls.SPHeartbeat.C_NA):
-            state = tls.SPBool.C_NA
+            state = tls.HeartbleedStatus.NOT_APPLICABLE
 
         elif hb is tls.SPHeartbeat.C_TRUE:
             values = self.server_profile.get_profile_values(
@@ -41,12 +42,19 @@ class ScanHeartbleed(WorkerPlugin):
                 request.payload_length = 4
                 request.padding = b""
                 conn.send(request)
-                response = conn.wait(msg.HeartbeatResponse, timeout=2000)
-                if response is not None:
-                    state = (
-                        tls.SPBool.C_TRUE
-                        if response.payload_length == 4
-                        else tls.SPBool.C_FALSE
-                    )
+                try:
+                    response = conn.wait(msg.HeartbeatResponse, timeout=2000)
+                    if response is not None:
+                        state = (
+                            tls.HeartbleedStatus.VULNERABLE
+                            if response.payload_length == 4
+                            else tls.HeartbleedStatus.NOT_VULNERABLE
+                        )
+
+                except TlsMsgTimeoutError:
+                    state = tls.HeartbleedStatus.TIMEOUT
+
+                except TlsConnectionClosedError:
+                    state = tls.HeartbleedStatus.CONNECTION_CLOSED
 
         self.server_profile.vulnerabilities.heartbleed = state

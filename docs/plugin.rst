@@ -18,9 +18,9 @@ line arguments). The plugin we are writing shall be located in the directory
 
 So, here is the command we want to execute::
 
-    $ tlsmate --cipher-printer --text="Negotiated cipher suite:" mytlsmatedomain.net
+    $ tlsmate cipher-printer --text="Negotiated cipher suite:" mytlsmatedomain.net
 
-The new argument ``--cipher-printer`` is the command line argument to run our plugin.
+The new subcommand ``cipher-printer`` is the command line argument to run our plugin.
 
 Here is the expected output::
 
@@ -36,13 +36,13 @@ environment variable ``PYTHONPATH``.
 
 For our example this means we need to use the following command (bash assumed)::
 
-    $ export PYTHONPATH=~/myplugin
+    $ export PYTHONPATH=$PYTHONPATH:~/myplugin
 
 Now let's create the file ``~/myplugin/tlsmate_myplugin.py`` with the following content:
 
 .. code-block:: python
 
-    from tlsmate.plugin import CliPlugin, CliManager, WorkerPlugin, WorkManager
+    from tlsmate.plugin import CliConnectionPlugin, CliManager, WorkerPlugin, WorkManager
     from tlsmate.structs import ConfigItem
     from tlsmate import tls
 
@@ -64,45 +64,49 @@ Now let's create the file ``~/myplugin/tlsmate_myplugin.py`` with the following 
 
 
     @CliManager.register
-    class MyPlugin(CliPlugin):
-        name = "cipher_suite_dumper"
+    class MyPlugin(CliConnectionPlugin):
+        name = "cipher-printer"
         prio = 100
-        cli_name = "--cipher-printer"
-        cli_help = "prints the negotiated cipher suite"
 
         def register_config(self, config):
             # Register an additional configuration item. Note, that it can be provided
             # in an ini-file as well as via the environment variable ``TLSMATE_TEXT``.
             config.register(ConfigItem("text", type=str, default="cipher suite: "))
 
-        def add_args(self, parser):
-            # Register an additional command line argument.
+        def add_subcommand(self, subparsers):
+            # add a new subcommand and a new argument
+            parser = subparsers.add_parser(
+                self.name, help="prints the negotiated cipher suite"
+            )
             parser.add_argument("--text", help="print a user defined text", type=str)
 
-        def args_parsed(self, args, parser, config):
-            if args.cipher_printer:
-                # if ``--cipher-printer`` was given ...
+        def args_parsed(self, args, parser, subcommand, config):
+            if subcommand == self.name:
+                # if ``cipher-printer`` was given ...
+                super().args_parsed(args, parser, subcommand, config)
                 # ...register the worker
                 WorkManager.register(MyWorker)
                 # ... and set the configuration item's value to the given command line argument
                 config.set("text", args.text)
 
-First let's check if the newly defined command line arguments are recognized by ``tlsmate``::
+First let's check if the newly defined subcommand is recognized by ``tlsmate``::
 
     $ tlsmate --help
-    usage: tlsmate [-h] [--version] [--config CONFIG_FILE] [--interval INTERVAL]
+    usage: tlsmate [-h] [--config CONFIG_FILE]
+                   [--logging {critical,error,warning,info,debug}]
+                   {scan,version,cipher-printer} ...
+
     ...
-    --text TEXT           print a user defined text
-    ...
-    Available plugins:
-      --scan                scan for TLS server configurations, features and
-                            vulnerabilities
-      --cipher-printer      prints the negotiated cipher suite
-    ...
+
+    commands:
+      {scan,version,cipher-printer}
+        scan                performs a TLS server scan
+        version             prints the version of tlsmate
+        cipher-printer      prints the negotiated cipher suite
 
 Ok. Now let's give it a try::
 
-    $ tlsmate --cipher-printer --text="Negotiated cipher suite:" mytlsmatedomain.net
+    $ tlsmate cipher-printer --text="Negotiated cipher suite:" mytlsmatedomain.net
     ...
     ...
     tlsmate.exception.CertChainValidationError: issuer certificate "CN=DST Root CA X3,O=Digital Signature Trust Co." for certificate "CN=R3,O=Let's Encrypt,C=US" not found in trust store
@@ -112,7 +116,7 @@ For details refer to `CLI configuration options <cli_config.html>`__.
 In the example we assume an Ubuntu system, and we are using bash::
 
     $ export TLSMATE_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
-    $ tlsmate --cipher-printer --text="Negotiated cipher suite:" mytlsmatedomain.net
+    $ tlsmate cipher-printer --text="Negotiated cipher suite:" mytlsmatedomain.net
     Negotiated cipher suite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
 
 Perfect.
@@ -141,6 +145,7 @@ classes from that are extending the CLI. These plugins are responsible for the
 following tasks:
 
 * add additional configuration items to the :obj:`tlsmate.config.Configuration` object
+* define additional subcommands
 * define additional arguments for the CLI, i.e., extend the argument parser
 * evaluate the command line arguments parsed, map these arguments to the
   configuration items and register the worker classes as desired.
@@ -148,15 +153,22 @@ following tasks:
 CLI plugins are registered by decorating the class with the
 :meth:`tlsmate.plugin.PluginManager.register` decorator.
 
-The attributes :attr:`tlsmate.plugin.CliPlugin.cli_name` and
-:attr:`tlsmate.plugin.CliPlugin.cli_help` define the command line argument which
-is associated with the plugin. Additional command line arguments can be defined
-in the method :meth:`tlsmate.plugin.CliPlugin.add_args`.
+The methods which can be used to tailor the plugin are:
 
-The method :meth:`tlsmate.plugin.CliPlugin.register_config` is used to define
-additional configuration items including their default values. Note, that
-defining default values for command line arguments is a pitfall: In such a case
-values defined in an ini-file or via environment variables will have no effect.
+* :meth:`tlsmate.plugin.CliPlugin.register_config`, used to add new configuration
+  items to ``tlsmate``
+* :meth:`tlsmate.plugin.CliPlugin.add_subcommand`, used to add a new subcommand
+* :meth:`tlsmate.plugin.CliPlugin.add_args`, used to extend any subcommand by
+  additional arguments
+* :meth:`tlsmate.plugin.CliPlugin.args_parsed`, called after the arguments have been
+  parsed. Can be used to update the configuration and to register workers
+
+.. note::
+    For plugins which actually are opening TLS connections, the class
+    :class:`tlsmate.plugin.CliConnectionPlugin` is provided, which can be
+    used as a base class with the advantage that TLS connection related
+    arguments are provided. This class has been used in the example above.
+    To see the full benefit, use ``tlsmate cipher-printer --help``.
 
 The WorkerPlugin class
 ----------------------
@@ -208,3 +220,74 @@ from the given parsed arguments. Note, that in
 already a value populated, either taken from the ini-file or from an
 environment variable. Using :meth:`tlsmate.config.Configuration.set` with the
 value None will actually not overwrite the current value.
+
+Extending the server profile
+----------------------------
+
+Especially when extending the scanner it is typically desired to extend the
+server profile as well.
+
+For example, let's say we write a plugin which scans for the POODLE
+vulnerability and its variants. The YAML part of the server profile
+shall look as follows, i.e., the vulnerability part is extended
+by the ``poodle`` block::
+
+    vulnerabilities:
+        ccs_injection: C_NA
+        heartbleed: NOT_APPLICABLE
+        poodle:
+            golden_poodle: C_FALSE
+            poodle: C_FALSE
+            poodle_tls: C_FLASE
+            zombie_poodle: C_FALSE
+        robot: NOT_APPLICABLE
+
+Therefore, the CLI plugin should contain something similar to this code
+snippet:
+
+.. code-block:: python
+
+    from tlsmate.server_profile import (
+        ProfileSchema, SPVulnerabilitiesSchema, FieldsEnumString, SPObject
+    )
+    from tlsmate import tls
+
+    class SPPoodle(SPObject):
+        """Data class for Poodle vulnerabilitites"""
+
+    class SPPoodleSchema(ProfileSchema):
+        """Schema class for Poodle vulnerabilitites"""
+        __profile_class__ = SPPoodle
+        golden_poodle = FieldsEnumString(enum_class=tls.SPBool)
+        poodle = FieldsEnumString(enum_class=tls.SPBool)
+        poodle_tls = FieldsEnumString(enum_class=tls.SPBool)
+        zombie_poodle = FieldsEnumString(enum_class=tls.SPBool)
+
+    # extend the schema ``SPVulnerabilitiesSchema`` by one additional field
+    @ProfileSchema.augment(SPVulnerabilitiesSchema)
+    class SPVulnExtensions(ProfileSchema):
+        poodle = fields.Nested(SPPoodleSchema)
+
+Through the decorator ``ProfileSchema.augment`` the existing vulnerability
+schema class ``SPVulnerabilitiesSchema`` is extended by the field ``poodle``,
+which refers to the nested schema ``SPPoodleSchema``.
+
+.. note::
+
+    The attribute ``__profile_class__`` must not be present in the class
+    ``SPVulnExtensions``, as it is defined in the ``SPVulnerabilitiesSchema`` class.
+
+The code in the worker can look like this (note, we are using hard-coded values here
+for simplification):
+
+.. code-block:: python
+
+    poodle = SPPoodle()
+    poodle.golden_poodle = tls.SPBool.C_FALSE
+    poodle.poodle = tls.SPBool.C_FALSE
+    poodle.poodle_tls = tls.SPBool.C_FALSE
+    poodle.zombie_poodle = tls.SPBool.C_FALSE
+    self.server_profile.vulnerabilities.poodle = poodle
+
+Using the mechanism described above ensures that serialization and deserialization
+of the server profile considers the defined extension.
