@@ -5,8 +5,14 @@ import pytest
 import pathlib
 import pem
 import os
+import datetime
 
 from tlsmate.tlsmate import TlsMate
+
+
+@pytest.fixture
+def valid_time():
+    return datetime.datetime(2021, 6, 1)
 
 
 @pytest.fixture

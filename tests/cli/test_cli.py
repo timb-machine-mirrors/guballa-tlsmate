@@ -27,8 +27,11 @@ def test_version(capsys):
     assert re.match(r"^\d+\.\d+\.\d+", captured.out)
 
 
-def test_scan():
-    cmd = "tlsmate scan 127.0.0.1:100000"
+def test_scan(capsys):
+    cmd = "tlsmate scan --port=100000 127.0.0.1"
     sys.argv = cmd.split()
-    with pytest.raises(OverflowError):
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
         command.main()
+    captured = capsys.readouterr()
+    assert "tlsmate: error: port must be in the range [0-65535]" in captured.err
+    assert pytest_wrapped_e.value.code == 2
