@@ -1,6 +1,14 @@
 Changelog
 #########
 
+v1.0.1 (2021-06-18)
+===================
+
+Bugfix
+------
+
+* IPv6 addresses were not correctly. Now port is separated in the CLI (#67)
+
 v1.0.0 (2021-06-07)
 ===================
 

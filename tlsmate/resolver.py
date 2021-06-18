@@ -3,7 +3,6 @@
 """
 # import basic stuff
 import socket
-import re
 import logging
 
 # import own stuff
@@ -14,47 +13,29 @@ from tlsmate import structs
 # import other stuff
 
 
-def determine_transport_endpoint(endpoint):
-    """Evaluate an endpoint (host name or an IP-address), optionally followed by a port.
+def determine_l4_addr(host, port):
+    """Determine type of the host
 
     Arguments:
-        endpoint (str): the given transport protocol endpoint. This might be an IP
-            address or a hostname, optionally followed by a port (separated by a colon).
+        host (str): the given host. This might be an IP address or a hostname.
+        port (int): the given port.
 
     Returns:
         :obj:`tlsmate.structs.TransportEndpoint`: The structure representing a transport
         protocol endpoint.
     """
 
-    if endpoint.startswith("["):
-        # IPv6 address with port, e.g.
-        # [2a00:d0c0:200:0:b9:1a:9c:5f]:443
-        pattern = re.compile(r"\[(.*)\]:(\d+)")
-        match = pattern.match(endpoint)
-        if not match:
-            raise ValueError("invalid IPv6 address")
+    try:
+        socket.inet_pton(socket.AF_INET, host)
+        host_type = tls.HostType.IPV4
 
-        groups = match.groups()
-        host = groups[0]
-        port = groups[1]
-        host_type = tls.HostType.IPV6
-
-    else:
-        host_arg = endpoint.split(":")
-        host = host_arg.pop(0)
-        port = int(host_arg.pop(0)) if host_arg else 443
-
+    except OSError:
         try:
-            socket.inet_pton(socket.AF_INET, host)
-            host_type = tls.HostType.IPV4
+            socket.inet_pton(socket.AF_INET6, host)
+            host_type = tls.HostType.IPV6
 
         except OSError:
-            try:
-                socket.inet_pton(socket.AF_INET6, host)
-                host_type = tls.HostType.IPV6
-
-            except OSError:
-                host_type = tls.HostType.HOST
+            host_type = tls.HostType.HOST
 
     return structs.TransportEndpoint(host=host, port=port, host_type=host_type)
 
@@ -95,21 +76,21 @@ def resolve_hostname(host_name):
     return _resolved[host_name]
 
 
-def get_ip_endpoint(endpoint):
+def get_ip_endpoint(l4_addr):
     """Resolve the hostname, if applicable.
 
     Arguments:
-        endpoint (:obj:`tlsmate.structs.TransportEndpoint`): the endpoint to resolve
+        l4_addr (:obj:`tlsmate.structs.TransportEndpoint`): the l4_addr to resolve
 
     Returns:
-        :obj:`tlsmate.structs.TransportEndpoint`: the endpoint, either with an IPv4
+        :obj:`tlsmate.structs.TransportEndpoint`: the l4_addr, either with an IPv4
         or IPv6 address.
     """
 
-    if endpoint.host_type is not tls.HostType.HOST:
-        return endpoint
+    if l4_addr.host_type is not tls.HostType.HOST:
+        return l4_addr
 
-    ips = resolve_hostname(endpoint.host)
+    ips = resolve_hostname(l4_addr.host)
     if ips.ipv4_addresses:
         host = ips.ipv4_addresses[0]
         host_type = tls.HostType.IPV4
@@ -120,6 +101,6 @@ def get_ip_endpoint(endpoint):
             host_type = tls.HostType.IPV4
 
         else:
-            raise ScanError(f"No IP address available for {endpoint.host}")
+            raise ScanError(f"No IP address available for {l4_addr.host}")
 
-    return structs.TransportEndpoint(host=host, port=endpoint.port, host_type=host_type)
+    return structs.TransportEndpoint(host=host, port=l4_addr.port, host_type=host_type)

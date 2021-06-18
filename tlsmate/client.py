@@ -9,7 +9,6 @@ from typing import List
 # import own stuff
 from tlsmate import tls
 from tlsmate import ext
-from tlsmate import resolver
 from tlsmate.msg import ClientHello
 from tlsmate.connection import TlsConnection
 
@@ -177,7 +176,7 @@ class Client(object):
         self.session_state_ticket = None
         self.session_state_id = None
         self.psks = []
-        self._server = None
+        self._host = None
 
     def init_profile(self, profile_values=None):
         """Resets the client profile to a very basic state
@@ -482,26 +481,26 @@ class Client(object):
         else:
             raise ValueError(f"client profile {profile} unknown")
 
-    def create_connection(self, server=None):
+    def create_connection(self, host=None, port=None):
         """Create a new connection object
 
         Arguments:
-            server (str): the server endpoint to contact. If not given, the server
-                endpoint is taken from the configuration. The given string can be
-                a URL or an IP address, with the port optionally be appended (separated
-                by a colon).
+            host (str): the host to contact. If not given, the host
+                is taken from the configuration. The given string can be
+                a URL or an IP address.
+            port (int): the port number
 
         Returns:
             :obj:`tlsmate.connection.TlsConnection`: the created connection object
         """
 
-        self._server = server if server is not None else self.config.get("endpoint")
+        self._host = host if host is not None else self.config.get("host")
 
         interval = self.config.get("interval")
         if interval:
             time.sleep(interval / 1000)
 
-        return TlsConnection(self._tlsmate, self._server)
+        return TlsConnection(self._tlsmate, self._host)
 
     def save_session_state_id(self, session_state):
         """Save a session state
@@ -565,12 +564,11 @@ class Client(object):
         if sni is not None:
             return sni
 
-        server = self._server
-        if server is None:
-            server = self.config.get("endpoint")
-        endp = resolver.determine_transport_endpoint(server)
+        sni = self._host
+        if sni is not None:
+            return sni
 
-        return endp.host
+        return self.config.get("host")
 
     def client_hello(self):
         """Populate a ClientHello message according to the current client profile
