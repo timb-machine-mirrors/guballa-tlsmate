@@ -329,6 +329,21 @@ class SPGreaseSchema(ProfileSchema):
     psk_mode_tolerance = FieldsEnumString(enum_class=tls.SPBool)
 
 
+class SPEphemeralKeyReuse(SPObject):
+    """Data class for ephemeral key reuse
+    """
+
+class SPEphemeralKeyReuseSchema(ProfileSchema):
+    """Schema for ephemeral key reuse
+    """
+
+    __profile_class__ = SPEphemeralKeyReuse
+    tls12_dhe_reuse = FieldsEnumString(enum_class=tls.SPBool)
+    tls12_ecdhe_reuse = FieldsEnumString(enum_class=tls.SPBool)
+    tls13_dhe_reuse = FieldsEnumString(enum_class=tls.SPBool)
+    tls13_ecdhe_reuse = FieldsEnumString(enum_class=tls.SPBool)
+
+
 class SPFeatures(SPObject):
     """Data class for TLS features.
     """
@@ -353,6 +368,7 @@ class SPFeaturesSchema(ProfileSchema):
     scsv_renegotiation = FieldsEnumString(enum_class=tls.SPBool)
     heartbeat = FieldsEnumString(enum_class=tls.SPHeartbeat)
     grease = fields.Nested(SPGreaseSchema)
+    ephemeral_key_reuse = fields.Nested(SPEphemeralKeyReuseSchema)
 
 
 class SPPublicKey(SPObject):

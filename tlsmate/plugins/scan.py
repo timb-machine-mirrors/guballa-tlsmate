@@ -24,6 +24,7 @@ from tlsmate.workers.heartbleed import ScanHeartbleed
 from tlsmate.workers.grease import ScanGrease
 from tlsmate.workers.server_profile import DumpProfileWorker
 from tlsmate.workers.text_server_profile import TextProfileWorker
+from tlsmate.workers.ephemeral_key_reuse import ScanEphemeralKeyReuse
 
 # import other stuff
 
@@ -133,6 +134,11 @@ def _add_args_features(parser):
         help="scan for unknown parameter tolerance",
         action=utils.BooleanOptionalAction,
     )
+    group.add_argument(
+        "--ephemeral-key-reuse",
+        help="scan for reuse of ephemeral keys",
+        action=utils.BooleanOptionalAction,
+    )
 
 
 def _add_args_vulenerabilities(parser):
@@ -225,6 +231,7 @@ class ScanPlugin(CliConnectionPlugin):
         "resumption": ScanResumption,
         "heartbeat": ScanHeartbeat,
         "ccs_injection": ScanCcsInjection,
+        "ephemeral_key_reuse": ScanEphemeralKeyReuse,
     }
     _vulnerability_workers = {
         "robot": ScanRobot,
