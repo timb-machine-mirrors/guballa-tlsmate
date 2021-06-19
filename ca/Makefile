@@ -43,13 +43,13 @@ db/%/db/index:
 certs/root-rsa.crt:
 	make db/root-rsa/db/index
 	${OPENSSL} req -config openssl.cnf -x509 -extensions root_ext -nodes \
-	-subj "/C=DE/O=The TlsMate Company/CN=localhost Root CA RSA" \
+	-subj "/C=DE/O=The TlsMate Company/CN=localhost Root CA RSA" -days 3650 \
 	-keyout private/root-rsa.key -out certs/root-rsa.crt -newkey rsa:2048
 
 certs/root-ecdsa.crt:
 	make db/root-ecdsa/db/index
 	${OPENSSL} req -config openssl.cnf -x509 -extensions root_ext -nodes \
-	-subj "/C=DE/O=The TlsMate Company/CN=localhost Root CA ECDSA" \
+	-subj "/C=DE/O=The TlsMate Company/CN=localhost Root CA ECDSA" -days 3650 \
 	-keyout private/root-ecdsa.key -out certs/root-ecdsa.crt \
 	-newkey ec -pkeyopt ec_paramgen_curve:secp384r1
 

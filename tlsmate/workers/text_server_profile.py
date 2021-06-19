@@ -353,6 +353,12 @@ _grease = {
     },
 }
 
+_ephemeral_key_reuse = {
+    tls.SPBool.C_FALSE: ("keys not reused", Mood.GOOD),
+    tls.SPBool.C_TRUE: ("keys reused", Mood.BAD),
+    tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
+    tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
+}
 
 _cert = {
     "chain_valid": {
@@ -872,6 +878,26 @@ class TextProfileWorker(WorkerPlugin):
         if hasattr(feat_prof, "grease"):
             self._print_grease(feat_prof.grease)
 
+    def _print_ephemeral_key_reuse(self):
+        if not hasattr(self.server_profile.features, "ephemeral_key_reuse"):
+            return
+
+        ekr = self.server_profile.features.ephemeral_key_reuse
+        print(apply_mood("Ephemeral key reuse", Mood.HEADLINE))
+        print()
+        table = utils.Table(indent=4, sep="  ")
+
+        result, mood = _ephemeral_key_reuse[ekr.tls12_dhe_reuse]
+        table.row("DHE key reuse (TLS1.2 or below)", apply_mood(result, mood))
+        result, mood = _ephemeral_key_reuse[ekr.tls12_ecdhe_reuse]
+        table.row("ECDHE key reuse (TLS1.2 or below)", apply_mood(result, mood))
+        result, mood = _ephemeral_key_reuse[ekr.tls13_dhe_reuse]
+        table.row("DHE key reuse (TLS1.3)", apply_mood(result, mood))
+        result, mood = _ephemeral_key_reuse[ekr.tls13_ecdhe_reuse]
+        table.row("ECDHE key reuse (TLS1.3)", apply_mood(result, mood))
+        table.dump()
+        print()
+
     def _print_cert(self, cert, idx):
         items = [str(getattr(cert, "version", ""))]
         self_signed = getattr(cert, "self_signed", None)
@@ -1089,5 +1115,6 @@ class TextProfileWorker(WorkerPlugin):
         self._print_sig_algos()
         self._print_dh_groups()
         self._print_features()
+        self._print_ephemeral_key_reuse()
         self._print_certificates()
         self._print_vulnerabilities()

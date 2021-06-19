@@ -70,7 +70,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             str(TLSMATE_DIR)
             + "/"
             + self.server_cmd.format(
-                library=self.library.name, server_port=self.config.get("server_port"),
+                library=self.library.name, server_port=self.config.get("port"),
             )
         )
 
