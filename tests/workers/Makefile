@@ -24,7 +24,8 @@ all: \
 	recordings/recorder_robot_ok.yaml \
 	recordings/recorder_robot_weak_oracle.yaml \
 	recordings/recorder_basic_profile_wolfssl3_12_0.yaml \
-	recordings/recorder_scan_info.yaml
+	recordings/recorder_scan_info.yaml \
+	recordings/recorder_ephemeral_key_reuse.yaml
 
 recordings/recorder_supported_groups_openssl%.yaml: recordings/recorder_eval_cipher_suites_openssl$*.yaml
 
