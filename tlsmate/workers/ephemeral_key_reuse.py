@@ -43,7 +43,11 @@ class ScanEphemeralKeyReuse(WorkerPlugin):
                 server_hello = conn.wait(msg.ServerHello)
                 conn.wait(msg.Certificate)
                 ske = conn.wait(msg.ServerKeyExchange)
-                keys.append(pub_key(ske))
+                key = pub_key(ske)
+                if key in keys:
+                    return tls.SPBool.C_TRUE
+
+                keys.append(key)
                 self.client.profile.cipher_suites = [server_hello.cipher_suite]
 
         return _determine_status(keys)
@@ -75,7 +79,9 @@ class ScanEphemeralKeyReuse(WorkerPlugin):
             ],
         )
 
-        tls12_dhe = self._tls12_handshakes(dhe_cs, pub_key=lambda msg: msg.dh.public_key)
+        tls12_dhe = self._tls12_handshakes(
+            dhe_cs, pub_key=lambda msg: msg.dh.public_key
+        )
         tls12_ecdhe = self._tls12_handshakes(
             ecdhe_cs, pub_key=lambda msg: msg.ec.public
         )
@@ -97,7 +103,11 @@ class ScanEphemeralKeyReuse(WorkerPlugin):
                 if not key_share_ext:
                     return tls.SPBool.C_UNDETERMINED
 
-                keys.append(key_share_ext.key_shares[0].key_exchange)
+                key_share = key_share_ext.key_shares[0].key_exchange
+                if key_share in keys:
+                    return tls.SPBool.C_TRUE
+
+                keys.append(key_share)
                 self.client.profile.cipher_suites = [server_hello.cipher_suite]
 
         return _determine_status(keys)
