@@ -333,6 +333,7 @@ class SPEphemeralKeyReuse(SPObject):
     """Data class for ephemeral key reuse
     """
 
+
 class SPEphemeralKeyReuseSchema(ProfileSchema):
     """Schema for ephemeral key reuse
     """
