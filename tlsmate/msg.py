@@ -458,7 +458,7 @@ class Certificate(HandshakeMessage):
             if conn.version is tls.Version.TLS13:
                 ext_len, offset = pdu.unpack_uint16(fragment, offset)
                 if ext_len:
-                    extensions, offset = pdu.unpack_bytes(fragment, ext_len)
+                    extensions, offset = pdu.unpack_bytes(fragment, offset, ext_len)
 
         return self
 
@@ -954,6 +954,28 @@ class EncryptedExtensions(HandshakeMessage):
 EncryptedExtensions.get_extension.__doc__ = ClientHello.get_extension.__doc__
 
 
+class CertificateStatus(HandshakeMessage):
+    """This class represents a Certificate Status messge.
+    """
+
+    msg_type = tls.HandshakeType.CERTIFICATE_STATUS
+
+    def __init__(self, ):
+        self.status_type = tls.StatusType.OCSP
+        self.response = bytes()
+
+    def _serialize_msg_body(self, conn):
+        # TODO for server side implementation
+        return bytearray()
+
+    def _deserialize_msg_body(self, fragment, offset, conn):
+        status_type, offset = pdu.unpack_uint8(fragment, offset)
+        self.status_type = tls.StatusType.val2enum(status_type)
+        length, offset = pdu.unpack_uint24(fragment, offset)
+        self.response, offset = pdu.unpack_bytes(fragment, offset, length)
+        return self
+
+
 class ChangeCipherSpecMessage(TlsMessage):
     """A base class for all ChangeCipherSpec messages.
 
@@ -1355,6 +1377,7 @@ _hs_deserialization_map = {
     tls.HandshakeType.CERTIFICATE_VERIFY: CertificateVerify,
     # tls.HandshakeType.CLIENT_KEY_EXCHANGE = 16
     tls.HandshakeType.FINISHED: Finished,
+    tls.HandshakeType.CERTIFICATE_STATUS: CertificateStatus,
     # tls.HandshakeType.KEY_UPDATE = 24
     # tls.HandshakeType.COMPRESSED_CERTIFICATE = 25
     # tls.HandshakeType.EKT_KEY = 26

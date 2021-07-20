@@ -33,6 +33,7 @@ from tlsmate.key_logging import KeyLogger
 from cryptography.hazmat.primitives.asymmetric import padding, ec
 from cryptography.hazmat.primitives import hashes
 import cryptography.exceptions as crypto_exc
+from cryptography import x509
 
 
 class TlsDefragmenter(object):
@@ -1233,6 +1234,13 @@ class TlsConnection(object):
         self._finished_treated = True
         return self
 
+
+    def _on_certificate_status_received(self, msg):
+        ocsp_decoded = x509.ocsp.load_der_ocsp_response(msg.response)
+        pass
+
+
+
     def _on_new_session_ticket_received(self, msg):
         if self.version is tls.Version.TLS13:
             psk = self._kdf.hkdf_expand_label(
@@ -1344,6 +1352,7 @@ class TlsConnection(object):
         tls.HandshakeType.CERTIFICATE_VERIFY: _on_certificate_verify_received,
         tls.CCSType.CHANGE_CIPHER_SPEC: _on_change_cipher_spec_received,
         tls.HandshakeType.FINISHED: _on_finished_received,
+        tls.HandshakeType.CERTIFICATE_STATUS: _on_certificate_status_received,
         tls.HandshakeType.NEW_SESSION_TICKET: _on_new_session_ticket_received,
     }
 
@@ -1804,6 +1813,7 @@ class TlsConnection(object):
 
                 if cert:
                     self.wait(msg.Certificate)
+                    self.wait(msg.CertificateStatus, optional=True)
 
                 if self.cs_details.key_algo in [
                     tls.KeyExchangeAlgorithm.DHE_DSS,

@@ -428,6 +428,85 @@ class ExtSessionTicket(Extension):
         pass
 
 
+class ExtStatusRequest(Extension):
+    """Represents the status_request extension.
+
+    Attributes:
+        status_type (:obj:`tlsmate.tls.StatusType`): The status type. Defaults to
+            :obj:`tlsmate.tls.StatusType.OCSP`.
+        responder_ids (list of bytes): The list of responder ids. Defaults to an empty
+            list.
+        extensions (list of bytes): The list of extensions. Defaults to an empty
+            list.
+    """
+
+    extension_id = tls.Extension.STATUS_REQUEST
+    """:obj:`tlsmate.tls.Extension.STATUS_REQUEST`
+    """
+
+    def __init__(
+        self, status_type=tls.StatusType.OCSP, responder_ids=None, extensions=None
+    ):
+        self.status_type = status_type
+        if responder_ids is None:
+            responder_ids = []
+
+        self.reponder_ids = responder_ids
+        if extensions is None:
+            extensions = []
+
+        self.extensions = extensions
+
+    def _serialize_ext_body(self, conn):
+        ext_body = bytearray()
+        ext_body.extend(
+            pdu.pack_uint8(getattr(self.status_type, "value", self.status_type))
+        )
+
+        responders = bytearray()
+        for responder in self.reponder_ids:
+            responders.extend(pdu.pack_uint16(len(responder)))
+            responders.extend(responder)
+
+        ext_body.extend(pdu.pack_uint16(len(responders)))
+        ext_body.extend(responders)
+
+        extensions = bytearray()
+        for extension in self.extensions:
+            extensions.extend(pdu.pack_uint16(len(extension)))
+            extensions.extend(extension)
+
+        ext_body.extend(pdu.pack_uint16(len(extensions)))
+        ext_body.extend(extensions)
+        return ext_body
+
+    def _deserialize_ext_body(self, ext_body):
+        if not len(ext_body):
+            self.status_type = tls.StatusType.EMPTY
+            return
+
+        status_type, offset = pdu.unpack_uint8(ext_body, 0)
+        self.status_type = tls.StatusType.val2enum(status_type)
+        self.reponder_ids = []
+        length, offset = pdu.unpack_uint16(ext_body, offset)
+        if length:
+            responders, offset = pdu.unpack_bytes(ext_body, offset, length)
+            off2 = 0
+            while off2 < length:
+                length2, off2 = pdu.unpack_uint16(responders, off2)
+                responder, off2 = pdu.unpack_bytes(responders, off2, length2)
+                self.responder_ids.append(responder)
+
+        length, offset = pdu.unpack_uint16(ext_body, 0)
+        if length:
+            extensions, offset = pdu.unpack_bytes(ext_body, offset, length)
+            off2 = 0
+            while off2 < length:
+                length2, off2 = pdu.unpack_uint16(extensions, off2)
+                extension, off2 = pdu.unpack_bytes(extensions, off2, length2)
+                self.responder_ids.append(extension)
+
+
 class ExtSupportedVersions(Extension):
     """Represents the SupportedVersion extension.
 
@@ -630,7 +709,7 @@ deserialization_map = {
     # tls.Extension.CLIENT_CERTIFICATE_URL = 2
     # tls.Extension.TRUSTED_CA_KEYS = 3
     # tls.Extension.TRUNCATED_HMAC = 4
-    # tls.Extension.STATUS_REQUEST = 5
+    tls.Extension.STATUS_REQUEST: ExtStatusRequest,
     # tls.Extension.USER_MAPPING = 6
     # tls.Extension.CLIENT_AUTHZ = 7
     # tls.Extension.SERVER_AUTHZ = 8

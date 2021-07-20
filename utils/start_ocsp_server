@@ -56,6 +56,6 @@ if [ -z "$port" ]; then
 fi
 
 kill `lsof -t -i :$port`
-cmd="$OPENSSL ocsp -index $ca_dir/db/$ca/index -port $port -rsigner $ca_dir/certs/$ca.crt -rkey $ca_dir/private/$ca.key -CA $ca_dir/certs/$ca.crt -resp_no_certs"
+cmd="$OPENSSL ocsp -index $ca_dir/db/$ca/index -port $port -rsigner $ca_dir/certs/$ca.pem -rkey $ca_dir/private/$ca.key -CA $ca_dir/certs/$ca.pem -resp_no_certs"
 echo $cmd
 $cmd

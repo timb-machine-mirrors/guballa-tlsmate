@@ -93,6 +93,8 @@ class ClientProfile(object):
         support_psk (bool): An indication whether the client offers a PSK with
             the ClientHello (i.e. NewSessionTicket message have been received
             before). Default: False
+        support_status_request (bool): An indication, if the extensions status request
+            shall be supported. Default: False
         key_shares (list (:obj:`tlsmate.tls.SupportedGroups` or int)): The list
             of key shares supported for TLS1.3. Note, that arbitraty interger
             values are supported as well, allowing to check if the server
@@ -119,6 +121,7 @@ class ClientProfile(object):
     supported_groups: List = None
     signature_algorithms: List = None
     heartbeat_mode: tls.HeartbeatMode = None
+    support_status_request: bool = False
 
     # TLS1.2 and below
     support_session_id: bool = False
@@ -626,6 +629,9 @@ class Client(object):
                         supported_groups=self.profile.supported_groups
                     )
                 )
+
+            if self.profile.support_status_request:
+                msg.extensions.append(ext.ExtStatusRequest())
 
             # RFC5246, 7.4.1.4.1.: Clients prior to TLS12 MUST NOT send this extension
             if (

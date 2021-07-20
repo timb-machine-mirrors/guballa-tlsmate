@@ -639,6 +639,7 @@ class HandshakeType(ExtendedEnum):
     CERTIFICATE_VERIFY = 15
     CLIENT_KEY_EXCHANGE = 16
     FINISHED = 20
+    CERTIFICATE_STATUS = 22
     KEY_UPDATE = 24
     COMPRESSED_CERTIFICATE = 25
     EKT_KEY = 26
@@ -1162,3 +1163,11 @@ class SPHeartbeat(ExtendedEnum):
     C_UNDETERMINED = 3
     C_NOT_REPONDING = 3
     C_WRONG_RESPONSE = 4
+
+
+class StatusType(ExtendedEnum):
+    """Status type for TLS extension status_request
+    """
+
+    OCSP = 1
+    EMPTY = 256
