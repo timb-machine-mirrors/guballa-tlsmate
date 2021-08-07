@@ -17,7 +17,7 @@ List of options:
                         TLSMATE_SERVER_PORT. Defaults to 44330.
     --cert1 <str>       The certificate, key and certificate chain files to select.
                         key file: $TLSMATE_DIR/ca/private/<str>.key
-                        certificate file: $TLSMATE_DIR/ca/certs/<str>.crt
+                        certificate file: $TLSMATE_DIR/ca/certs/<str>.pem
                         cert chain file: $TLSMATE_DIR/ca/chains/<str>.chn
     --cert2 <str>       Same as --cert1. It is a secondary option to select
                         another certificate.
@@ -65,19 +65,19 @@ if [ -z "$OPENSSL" ]; then
     OPENSSL=$openssl_path/apps/openssl
 fi
 if [ -n "$cert1" ]; then
-    cert_params1=" -key $ca_dir/private/$cert1.key -cert $ca_dir/certs/$cert1.crt"
+    cert_params1=" -key $ca_dir/private/$cert1.key -cert $ca_dir/certs/$cert1.pem"
     if [ "$no_cert_chain" == "0" ]; then
         cert_params1="$cert_params1 -cert_chain $ca_dir/chains/$cert1.chn"
     fi
 fi
 if [ -n "$cert2" ]; then
-    cert_params2=" -dkey $ca_dir/private/$cert2.key -dcert $ca_dir/certs/$cert2.crt"
+    cert_params2=" -dkey $ca_dir/private/$cert2.key -dcert $ca_dir/certs/$cert2.pem"
     if [ "$no_cert_chain" == "0" ]; then
         cert_params2="$cert_params2 -dcert_chain $ca_dir/chains/$cert2.chn"
     fi
 fi
 if [ -n "$cert3" ]; then
-    cert_params3=" -xkey $ca_dir/private/$cert3.key -xcert $ca_dir/certs/$cert3.crt"
+    cert_params3=" -xkey $ca_dir/private/$cert3.key -xcert $ca_dir/certs/$cert3.pem"
     if [ "$no_cert_chain" == "0" ]; then
         cert_params3="$cert_params3 -xchain $ca_dir/chains/$cert3.chn"
     fi
