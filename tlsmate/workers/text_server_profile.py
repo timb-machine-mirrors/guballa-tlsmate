@@ -406,6 +406,11 @@ _cert = {
             "OCSP response has invalid timestamp",
             Mood.BAD,
         ),
+        tls.OcspStatus.NO_ISSUER: ("no certificate for issuer found", Mood.BAD),
+        tls.OcspStatus.INVALID_ISSUER_CERT: (
+            "certificate for issuer is invalid",
+            Mood.BAD,
+        ),
     },
 }
 
