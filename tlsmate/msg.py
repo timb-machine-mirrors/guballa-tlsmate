@@ -960,7 +960,7 @@ class CertificateStatus(HandshakeMessage):
 
     msg_type = tls.HandshakeType.CERTIFICATE_STATUS
 
-    def __init__(self, ):
+    def __init__(self,):
         self.status_type = tls.StatusType.OCSP
         self.response = bytes()
 

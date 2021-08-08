@@ -229,7 +229,7 @@ class CliConnectionPlugin(CliPlugin):
         """
 
         if subcommand == self.name:
-            if args.port is not None and (args.port < 0 or args.port > 0xffff):
+            if args.port is not None and (args.port < 0 or args.port > 0xFFFF):
                 parser.error("port must be in the range [0-65535]")
 
             config.set("ca_certs", args.ca_certs)

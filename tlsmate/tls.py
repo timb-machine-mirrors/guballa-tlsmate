@@ -1108,6 +1108,8 @@ class OcspStatus(ExtendedEnum):
     INVALID_RESPONSE = enum.auto()
     SIGNATURE_INVALID = enum.auto()
     INVALID_TIMESTAMP = enum.auto()
+    NO_ISSUER = enum.auto()
+    INVALID_ISSUER_CERT = enum.auto()
 
 
 class Profile(ExtendedEnum):

@@ -8,7 +8,6 @@ import logging
 import io
 import traceback as tb
 import time
-import datetime
 
 # import own stuff
 from tlsmate.exception import (
@@ -16,6 +15,7 @@ from tlsmate.exception import (
     TlsConnectionClosedError,
     TlsMsgTimeoutError,
     ServerParmsSignatureInvalid,
+    UntrustedCertificate,
 )
 from tlsmate import msg
 from tlsmate import tls
@@ -33,7 +33,6 @@ from tlsmate.key_logging import KeyLogger
 from cryptography.hazmat.primitives.asymmetric import padding, ec
 from cryptography.hazmat.primitives import hashes
 import cryptography.exceptions as crypto_exc
-from cryptography import x509
 
 
 class TlsDefragmenter(object):
@@ -403,6 +402,7 @@ class TlsConnection(object):
         self._secure_reneg_flag = False
         self._secure_reneg_ext = False
         self._secure_reneg_scsv = False
+        self.ocsp_status = None
 
         if self.client.profile.support_secure_renegotiation:
             self._secure_reneg_request = True
@@ -1234,12 +1234,20 @@ class TlsConnection(object):
         self._finished_treated = True
         return self
 
-
     def _on_certificate_status_received(self, msg):
-        ocsp_decoded = x509.ocsp.load_der_ocsp_response(msg.response)
-        pass
-
-
+        cert_chain = self.msg.server_certificate.chain
+        timestamp = self.recorder.get_timestamp()
+        issuer_cert = cert_chain.get_server_issuer()
+        self.ocsp_status = cert_chain.verify_ocsp_response(
+            msg.response, issuer_cert, timestamp
+        )
+        issue = f"OCSP status: {self.ocsp_status}"
+        logging.debug(issue)
+        if (
+            self.ocsp_status is not tls.OcspStatus.NOT_REVOKED
+            and self.client.alert_on_invalid_cert
+        ):
+            raise UntrustedCertificate(issue)
 
     def _on_new_session_ticket_received(self, msg):
         if self.version is tls.Version.TLS13:
@@ -1292,13 +1300,7 @@ class TlsConnection(object):
 
         if msg.chain.digest not in self._cert_chain_digests:
             self._cert_chain_digests.append(msg.chain.digest)
-            if self.recorder.is_injecting():
-                timestamp = self.recorder.inject(datetime=None)
-
-            else:
-                timestamp = datetime.datetime.now()
-                self.recorder.trace(datetime=timestamp)
-
+            timestamp = self.recorder.get_timestamp()
             sni_ext = self.msg.client_hello.get_extension(tls.Extension.SERVER_NAME)
             if sni_ext is not None:
                 sni = sni_ext.host_name

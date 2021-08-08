@@ -42,6 +42,7 @@ class CertChain(object):
         self._config = tlsmate.config
         self._trust_store = tlsmate.trust_store
         self._crl_manager = tlsmate.crl_manager
+        self._trust_path = None
 
     def append_bin_cert(self, bin_cert):
         """Append the chain by a certificate given in raw format.
@@ -64,15 +65,13 @@ class CertChain(object):
 
     @property
     def digest(self):
-        """bytes: a SHA256 digest of the complete chain, usable for comparison
-        """
+        """bytes: a SHA256 digest of the complete chain, usable for comparison"""
         if self._digest_value is None:
             self._digest_value = self._digest.finalize()
         return self._digest_value
 
     def _check_crl(self, cert, issuer_cert, timestamp, raise_on_failure):
-        """Check the CRL state for the given certificate.
-        """
+        """Check the CRL state for the given certificate."""
 
         if not self._config.get("crl"):
             cert.crl_status = tls.CertCrlStatus.UNDETERMINED
@@ -104,13 +103,75 @@ class CertChain(object):
         )
         logging.debug(f'CRL status for certificate "{cert}": {cert.crl_status}')
         if cert.crl_status is not tls.CertCrlStatus.NOT_REVOKED:
-            cert._raise_untrusted(
+            cert.mark_untrusted(
                 f"CRL status not ok: {cert.crl_status}", raise_on_failure
             )
 
-    def _check_ocsp(self, cert, issuer_cert, timestamp, raise_on_failure):
-        """Check the OCSP status for the given certificate.
+    def verify_ocsp_response(self, reponse, issuer_cert, timestamp):
+        """Check the status for a OCSP response
+
+        Arguments:
+            reponse (bytes): the OCSP response
+            issuer_cert (:obj:`tlsmate.cert.Certificate`): the issuer certificate of
+                the server's certificate. Note, that the CertificateStatus may provide
+                the certificate which has signed the OCSP response as well.
+            timestamp (datetime.datetime): the timestamp against that the OCSP reposnse
+                will be checked
+
+        Returns:
+            :obj:`tlsmate.tls.OcspStatus`: the status
         """
+        ocsp_decoded = x509.ocsp.load_der_ocsp_response(reponse)
+
+        if ocsp_decoded.certificates:
+            sig_cert = Certificate(x509_cert=ocsp_decoded.certificates[0], parse=True)
+            try:
+                self._validate_cert(sig_cert, -1, timestamp, None, True)
+
+            except Exception:
+                return tls.OcspStatus.INVALID_ISSUER_CERT
+
+        else:
+            sig_cert = issuer_cert
+
+        if sig_cert is None:
+            return tls.OcspStatus.NO_ISSUER
+
+        else:
+            # check signature
+            try:
+                sig_scheme = cert_utils.map_x509_sig_scheme(
+                    ocsp_decoded.signature_hash_algorithm,
+                    ocsp_decoded.signature_algorithm_oid,
+                )
+                sig_cert.validate_signature(
+                    sig_scheme, ocsp_decoded.tbs_response_bytes, ocsp_decoded.signature,
+                )
+
+            except InvalidSignature:
+                return tls.OcspStatus.SIGNATURE_INVALID
+
+        if ocsp_decoded.response_status == x509.ocsp.OCSPResponseStatus.SUCCESSFUL:
+            if ocsp_decoded.this_update > timestamp:
+                return tls.OcspStatus.INVALID_TIMESTAMP
+
+            if ocsp_decoded.next_update and ocsp_decoded.next_update < timestamp:
+                return tls.OcspStatus.INVALID_TIMESTAMP
+
+            if ocsp_decoded.certificate_status == x509.ocsp.OCSPCertStatus.GOOD:
+                return tls.OcspStatus.NOT_REVOKED
+
+            elif ocsp_decoded.certificate_status == x509.ocsp.OCSPCertStatus.REVOKED:
+                return tls.OcspStatus.REVOKED
+
+            else:
+                return tls.OcspStatus.UNKNOWN
+
+        else:
+            return tls.OcspStatus.INVALID_RESPONSE
+
+    def _check_ocsp(self, cert, issuer_cert, timestamp, raise_on_failure):
+        """Check the OCSP status for the given certificate."""
 
         if not self._config.get("ocsp"):
             cert.ocsp_status = tls.OcspStatus.UNDETERMINED
@@ -133,7 +194,7 @@ class CertChain(object):
         ocsp_url = ocsps[0].access_location.value
         builder = x509.ocsp.OCSPRequestBuilder()
 
-        # Hm, some OCSP server do not support SHA256, so let's use SHA1 until we
+        # Hm, some OCSP servers do not support SHA256, so let's use SHA1 until we
         # are told otherwise.
         builder = builder.add_certificate(
             cert.parsed, issuer_cert.parsed, hashes.SHA1()
@@ -160,7 +221,7 @@ class CertChain(object):
                 time.time() - start, recorder.SocketEvent.TIMEOUT
             )
             cert.ocsp_status = tls.OcspStatus.TIMEOUT
-            cert._raise_untrusted(
+            cert.mark_untrusted(
                 f"connection to OCSP server {ocsp_url} timed out", raise_on_failure
             )
 
@@ -169,83 +230,23 @@ class CertChain(object):
                 time.time() - start, recorder.SocketEvent.CLOSURE
             )
             cert.ocsp_status = tls.OcspStatus.INVALID_RESPONSE
-            cert._raise_untrusted(
+            cert.mark_untrusted(
                 f"connection to OCSP server {ocsp_url} failed", raise_on_failure
             )
 
         if ocsp_resp.ok:
-            ocsp_decoded = x509.ocsp.load_der_ocsp_response(ocsp_resp.content)
-
-            if ocsp_decoded.certificates:
-                sig_cert = Certificate(
-                    x509_cert=ocsp_decoded.certificates[0], parse=True
-                )
-                self._validate_cert(sig_cert, -1, timestamp, None, raise_on_failure)
-
-            else:
-                sig_cert = issuer_cert
-
-            # check signature
-            try:
-                sig_scheme = cert_utils.map_x509_sig_scheme(
-                    ocsp_decoded.signature_hash_algorithm,
-                    ocsp_decoded.signature_algorithm_oid,
-                )
-                sig_cert.validate_signature(
-                    sig_scheme, ocsp_decoded.tbs_response_bytes, ocsp_decoded.signature,
-                )
-
-            except InvalidSignature:
-                cert.ocsp_status = tls.OcspStatus.SIGNATURE_INVALID
-                cert._raise_untrusted(
-                    f"signature of OCSP server {ocsp_url} invalid", raise_on_failure
-                )
-
-            if ocsp_decoded.response_status == x509.ocsp.OCSPResponseStatus.SUCCESSFUL:
-
-                if ocsp_decoded.this_update > timestamp:
-                    cert.ocsp_status = tls.OcspStatus.INVALID_TIMESTAMP
-                    cert._raise_untrusted(
-                        "invalid timestamp in OCSP response (thisUpdate)",
-                        raise_on_failure,
-                    )
-
-                if ocsp_decoded.next_update and ocsp_decoded.next_update < timestamp:
-                    cert.ocsp_status = tls.OcspStatus.INVALID_TIMESTAMP
-                    cert._raise_untrusted(
-                        "invalid timestamp in OCSP response (nextUpdate)",
-                        raise_on_failure,
-                    )
-
-                if ocsp_decoded.certificate_status == x509.ocsp.OCSPCertStatus.GOOD:
-                    cert.ocsp_status = tls.OcspStatus.NOT_REVOKED
-                    logging.debug(f"certificate {cert}: OCSP status ok")
-                    return
-
-                if ocsp_decoded.certificate_status == x509.ocsp.OCSPCertStatus.REVOKED:
-                    cert.ocsp_status = tls.OcspStatus.REVOKED
-
-                else:
-                    cert.ocsp_status = tls.OcspStatus.UNKNOWN
-
-                cert._raise_untrusted("OCSP status not ok", raise_on_failure)
+            cert.ocsp_status = self.verify_ocsp_response(
+                ocsp_resp.content, issuer_cert, timestamp
+            )
+            issue = f"OCSP status is {cert.ocsp_status}"
+            if cert.ocsp_status is not tls.OcspStatus.NOT_REVOKED:
+                cert.mark_untrusted(issue, raise_on_failure)
 
             else:
-                cert.ocsp_status = tls.OcspStatus.INVALID_RESPONSE
-                cert._raise_untrusted(
-                    f"OCSP response not ok: {ocsp_decoded.response_status}",
-                    raise_on_failure,
-                )
-
-        cert.ocsp_status = tls.OcspStatus.INVALID_RESPONSE
-        cert._raise_untrusted(
-            f"HTTP response failed with status {ocsp_resp.status_code}",
-            raise_on_failure,
-        )
+                logging.debug(f"certificate {cert}: {issue}")
 
     def _issuer_certs(self, cert):
-        """Get a list of all potential issuers from the certificate chain.
-        """
+        """Get a list of all potential issuers from the certificate chain."""
         issuers = []
         for issuer_idx in range(1, len(self.certificates)):
             issuer_cert = self.certificates[issuer_idx]
@@ -282,6 +283,10 @@ class CertChain(object):
         Returns:
             list of int: the sequence of certificate indexes from the chain which were
             used to validate the chain. Can be used to detect gratuitous certificates.
+
+        Raises:
+            :obj:`tlsmate.exception.UntrustedCertificate`: if the certificate is
+                untrusted
         """
         track = []
         # cert already seen?
@@ -302,7 +307,7 @@ class CertChain(object):
         if cert.self_signed:
             issuers = [(idx, cert)]
             if not self._trust_store.cert_in_trust_store(cert):
-                cert._raise_untrusted(
+                cert.mark_untrusted(
                     "self-signed certificate not found in trust store", True
                 )
             else:
@@ -314,7 +319,7 @@ class CertChain(object):
             if not issuers:
                 root_cert = self._trust_store.issuer_in_trust_store(cert.parsed.issuer)
                 if root_cert is None:
-                    cert._raise_untrusted(
+                    cert.mark_untrusted(
                         f'issuer certificate "{cert.parsed.issuer.rfc4514_string()}" '
                         f"not found in trust store",
                         True,
@@ -332,7 +337,7 @@ class CertChain(object):
                     issuer_cert.validate_cert_signature(cert)
 
                 except Exception:
-                    cert._raise_untrusted("invalid signature", raise_on_failure)
+                    cert.mark_untrusted("invalid signature", raise_on_failure)
 
                 if not cert.self_signed:
                     track = self._validate_cert(
@@ -361,7 +366,7 @@ class CertChain(object):
                 raise exception
 
             else:
-                cert._raise_untrusted("no valid trust path found", raise_on_failure)
+                cert.mark_untrusted("no valid trust path found", raise_on_failure)
 
         return [idx] + track
 
@@ -383,7 +388,7 @@ class CertChain(object):
                 validated and `raise_on_failure` is True.
         """
 
-        track = self._validate_cert(
+        self._trust_path = self._validate_cert(
             self.certificates[0], 0, timestamp, domain_name, raise_on_failure
         )
 
@@ -392,10 +397,27 @@ class CertChain(object):
         # And now check for gratuitous certificate in the chain
         if not raise_on_failure:
             for idx, cert in enumerate(self.certificates):
-                if idx not in track and cert.trusted is None:
+                if idx not in self._trust_path and cert.trusted is None:
                     cert.issues.append(
                         "gratuitous certificate, not part of trust chain"
                     )
+
+    def get_server_issuer(self):
+        """Get the issuer certificate of the server certificate
+
+        Due to alternate trust paths this isn't necessarily the certificate immediately
+        following the server certificate.
+
+        Returns:
+            :obj:`tlsmate.cert.Certificate`: the issuer certificate of the server
+            certificate or None
+        """
+
+        if self._trust_path:
+            if len(self._trust_path) > 1:
+                return self.certificates[self._trust_path[1]]
+
+        return None
 
     def serialize(self):
         """Serialize the certificate chain
