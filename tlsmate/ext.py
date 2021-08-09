@@ -456,6 +456,7 @@ class ExtStatusRequest(Extension):
             extensions = []
 
         self.extensions = extensions
+        self.ocsp_response = None
 
     def _serialize_ext_body(self, conn):
         ext_body = bytearray()
@@ -487,24 +488,8 @@ class ExtStatusRequest(Extension):
 
         status_type, offset = pdu.unpack_uint8(ext_body, 0)
         self.status_type = tls.StatusType.val2enum(status_type)
-        self.reponder_ids = []
-        length, offset = pdu.unpack_uint16(ext_body, offset)
-        if length:
-            responders, offset = pdu.unpack_bytes(ext_body, offset, length)
-            off2 = 0
-            while off2 < length:
-                length2, off2 = pdu.unpack_uint16(responders, off2)
-                responder, off2 = pdu.unpack_bytes(responders, off2, length2)
-                self.responder_ids.append(responder)
-
-        length, offset = pdu.unpack_uint16(ext_body, 0)
-        if length:
-            extensions, offset = pdu.unpack_bytes(ext_body, offset, length)
-            off2 = 0
-            while off2 < length:
-                length2, off2 = pdu.unpack_uint16(extensions, off2)
-                extension, off2 = pdu.unpack_bytes(extensions, off2, length2)
-                self.responder_ids.append(extension)
+        length, offset = pdu.unpack_uint24(ext_body, offset)
+        self.ocsp_response, offset = pdu.unpack_bytes(ext_body, offset, length)
 
 
 class ExtSupportedVersions(Extension):

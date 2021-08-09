@@ -17,6 +17,7 @@ from tlsmate.exception import (
     ServerParmsSignatureInvalid,
     UntrustedCertificate,
 )
+from tlsmate.msg import get_extension
 from tlsmate import msg
 from tlsmate import tls
 from tlsmate import pdu
@@ -155,6 +156,8 @@ class TlsConnectionMsgs(object):
             ChangeCipherSpec message sent by the server
         server_finished (:obj:`tlsmate.msg.Finished`): the Finished messages
             sent by the server
+        certificate_status (:obj:`tlsmate.msg.CertificateStatus`): the
+            CertificateStatus message sent by the server
         client_alert (:obj:`tlsmate.msg.Alert`): the Alert message sent by
             the client
         server_alert (:obj:`tlsmate.msg.Alert`): the Alert messages sent by
@@ -183,6 +186,7 @@ class TlsConnectionMsgs(object):
         tls.HandshakeType.CERTIFICATE_VERIFY: "certificate_verify",
         tls.HandshakeType.CLIENT_KEY_EXCHANGE: "client_key_exchange",
         tls.HandshakeType.FINISHED: "_finished",
+        tls.HandshakeType.CERTIFICATE_STATUS: "certificate_status",
         tls.HandshakeType.KEY_UPDATE: None,
         tls.HandshakeType.COMPRESSED_CERTIFICATE: None,
         tls.HandshakeType.EKT_KEY: None,
@@ -207,6 +211,7 @@ class TlsConnectionMsgs(object):
         self.client_finished = None
         self.server_change_cipher_spec = None
         self.server_finished = None
+        self.certificate_status = None
         self.client_alert = None
         self.server_alert = None
         self.client_heartbeat_request = None
@@ -935,6 +940,24 @@ class TlsConnection(object):
         if method is not None:
             method(self)
 
+    def _validate_cert_chain(self, cert_chain):
+        timestamp = self.recorder.get_timestamp()
+        sni_ext = self.msg.client_hello.get_extension(tls.Extension.SERVER_NAME)
+        if sni_ext is not None:
+            sni = sni_ext.host_name
+
+        else:
+            sni = self.client.get_sni()
+            if sni is None:
+                raise ValueError("No SNI defined")
+
+        try:
+            cert_chain.validate(timestamp, sni, self.client.alert_on_invalid_cert)
+
+        except Exception as exc:
+            if self.client.alert_on_invalid_cert:
+                raise exc
+
     def send(self, *messages, pre_serialization=None):
         """Interface to send messages.
 
@@ -1236,6 +1259,7 @@ class TlsConnection(object):
 
     def _on_certificate_status_received(self, msg):
         cert_chain = self.msg.server_certificate.chain
+        self._validate_cert_chain(cert_chain)
         timestamp = self.recorder.get_timestamp()
         issuer_cert = cert_chain.get_server_issuer()
         self.ocsp_status = cert_chain.verify_ocsp_response(
@@ -1294,28 +1318,36 @@ class TlsConnection(object):
             self._record_layer.update_state(self.hs_write_state)
 
     def _on_certificate_received(self, msg):
-
+        verify_oscp_status = False
+        validate_chain = False
         if self.version is tls.Version.TLS13:
             self.certificate_digest = self._kdf.current_msg_digest()
+            ext_status_req = get_extension(
+                msg.chain.certificates[0].tls_extensions, tls.Extension.STATUS_REQUEST
+            )
+            if ext_status_req:
+                validate_chain = True
+                verify_oscp_status = True
 
         if msg.chain.digest not in self._cert_chain_digests:
             self._cert_chain_digests.append(msg.chain.digest)
-            timestamp = self.recorder.get_timestamp()
-            sni_ext = self.msg.client_hello.get_extension(tls.Extension.SERVER_NAME)
-            if sni_ext is not None:
-                sni = sni_ext.host_name
+            validate_chain = True
 
-            else:
-                sni = self.client.get_sni()
-                if sni is None:
-                    raise ValueError("No SNI defined")
-
-            try:
-                msg.chain.validate(timestamp, sni, self.client.alert_on_invalid_cert)
-
-            except Exception as exc:
-                if self.client.alert_on_invalid_cert:
-                    raise exc
+        if validate_chain:
+            self._validate_cert_chain(msg.chain)
+            if verify_oscp_status:
+                timestamp = self.recorder.get_timestamp()
+                issuer_cert = msg.chain.get_server_issuer()
+                self.ocsp_status = msg.chain.verify_ocsp_response(
+                    ext_status_req.ocsp_response, issuer_cert, timestamp
+                )
+                issue = f"OCSP stapling status: {self.ocsp_status}"
+                logging.debug(issue)
+                if (
+                    self.ocsp_status is not tls.OcspStatus.NOT_REVOKED
+                    and self.client.alert_on_invalid_cert
+                ):
+                    raise UntrustedCertificate(issue)
 
     def _on_certificate_request_received(self, msg):
         if self.version is tls.Version.TLS13:

@@ -25,6 +25,7 @@ from tlsmate.workers.grease import ScanGrease
 from tlsmate.workers.server_profile import DumpProfileWorker
 from tlsmate.workers.text_server_profile import TextProfileWorker
 from tlsmate.workers.ephemeral_key_reuse import ScanEphemeralKeyReuse
+from tlsmate.workers.ocsp_stapling import ScanOcspStapling
 
 # import other stuff
 
@@ -109,6 +110,11 @@ def _add_args_features(parser):
     group.add_argument(
         "--ext-master-secret",
         help="scan for extended master secret support (only TL1.0 - TLS1.2)",
+        action=utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--ocsp-stapling",
+        help="scan for OCSP stapling support",
         action=utils.BooleanOptionalAction,
     )
     group.add_argument(
@@ -232,6 +238,7 @@ class ScanPlugin(CliConnectionPlugin):
         "heartbeat": ScanHeartbeat,
         "ccs_injection": ScanCcsInjection,
         "ephemeral_key_reuse": ScanEphemeralKeyReuse,
+        "ocsp_stapling": ScanOcspStapling,
     }
     _vulnerability_workers = {
         "robot": ScanRobot,

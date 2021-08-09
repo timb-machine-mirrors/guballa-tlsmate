@@ -389,6 +389,7 @@ _cert = {
         tls.CertCrlStatus.CRL_SIGNATURE_INVALID: ("CRL signature invalid", Mood.BAD),
     },
     "ocsp_status": {
+        tls.OcspStatus.NOT_SUPPORTED: ("not supported", Mood.BAD),
         tls.OcspStatus.UNDETERMINED: ("not checked", Mood.NEUTRAL),
         tls.OcspStatus.NOT_REVOKED: ("certificate not revoked", Mood.GOOD),
         tls.OcspStatus.REVOKED: ("certificate revoked", Mood.BAD),

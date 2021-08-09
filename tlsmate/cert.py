@@ -58,6 +58,7 @@ class Certificate(object):
         self.ocsp_status = None
         self.issues = []
         self.trusted = None
+        self.tls_extensions = []
 
         if der is not None:
             self._bytes = der

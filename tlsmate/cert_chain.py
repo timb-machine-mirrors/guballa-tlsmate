@@ -43,6 +43,7 @@ class CertChain(object):
         self._trust_store = tlsmate.trust_store
         self._crl_manager = tlsmate.crl_manager
         self._trust_path = None
+        self._validated = False
 
     def append_bin_cert(self, bin_cert):
         """Append the chain by a certificate given in raw format.
@@ -388,6 +389,10 @@ class CertChain(object):
                 validated and `raise_on_failure` is True.
         """
 
+        if self._validated:
+            return
+
+        self._validated = True
         self._trust_path = self._validate_cert(
             self.certificates[0], 0, timestamp, domain_name, raise_on_failure
         )

@@ -1100,6 +1100,8 @@ class OcspStatus(ExtendedEnum):
     """OCSP revocation status
     """
 
+    NOT_APPLICABLE = enum.auto()
+    NOT_SUPPORTED = enum.auto()
     UNDETERMINED = enum.auto()
     NOT_REVOKED = enum.auto()
     REVOKED = enum.auto()

@@ -370,6 +370,7 @@ class SPFeaturesSchema(ProfileSchema):
     heartbeat = FieldsEnumString(enum_class=tls.SPHeartbeat)
     grease = fields.Nested(SPGreaseSchema)
     ephemeral_key_reuse = fields.Nested(SPEphemeralKeyReuseSchema)
+    ocsp_stapling = FieldsEnumString(enum_class=tls.OcspStatus)
 
 
 class SPPublicKey(SPObject):
