@@ -247,6 +247,7 @@ class Certificate(object):
         Raises:
             :obj:`tlsmate.exception.UntrustedCertificate`: if raise_on_failure is True
         """
+
         self.trusted = False
         issue_long = f"certificate {self}: {issue}"
         logging.debug(issue_long)

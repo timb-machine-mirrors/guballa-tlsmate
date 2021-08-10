@@ -122,6 +122,7 @@ class CertChain(object):
         Returns:
             :obj:`tlsmate.tls.OcspStatus`: the status
         """
+
         ocsp_decoded = x509.ocsp.load_der_ocsp_response(reponse)
 
         if ocsp_decoded.certificates:

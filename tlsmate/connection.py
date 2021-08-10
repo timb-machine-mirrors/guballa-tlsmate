@@ -958,6 +958,25 @@ class TlsConnection(object):
             if self.client.alert_on_invalid_cert:
                 raise exc
 
+    def _determine_ocsp_status(self, ocsp_response, cert_chain):
+        if not cert_chain.successful_validation:
+            self.ocsp_status = tls.OcspStatus.INVALID_ISSUER_CERT
+
+        else:
+            timestamp = self.recorder.get_timestamp()
+            issuer_cert = cert_chain.get_server_issuer()
+            self.ocsp_status = cert_chain.verify_ocsp_response(
+                ocsp_response, issuer_cert, timestamp
+            )
+
+        issue = f"OCSP stapling status: {self.ocsp_status}"
+        logging.debug(issue)
+        if (
+            self.ocsp_status is not tls.OcspStatus.NOT_REVOKED
+            and self.client.alert_on_invalid_cert
+        ):
+            raise UntrustedCertificate(issue)
+
     def send(self, *messages, pre_serialization=None):
         """Interface to send messages.
 
@@ -1260,18 +1279,7 @@ class TlsConnection(object):
     def _on_certificate_status_received(self, msg):
         cert_chain = self.msg.server_certificate.chain
         self._validate_cert_chain(cert_chain)
-        timestamp = self.recorder.get_timestamp()
-        issuer_cert = cert_chain.get_server_issuer()
-        self.ocsp_status = cert_chain.verify_ocsp_response(
-            msg.response, issuer_cert, timestamp
-        )
-        issue = f"OCSP status: {self.ocsp_status}"
-        logging.debug(issue)
-        if (
-            self.ocsp_status is not tls.OcspStatus.NOT_REVOKED
-            and self.client.alert_on_invalid_cert
-        ):
-            raise UntrustedCertificate(issue)
+        self._determine_ocsp_status(msg.response, cert_chain)
 
     def _on_new_session_ticket_received(self, msg):
         if self.version is tls.Version.TLS13:
@@ -1336,18 +1344,7 @@ class TlsConnection(object):
         if validate_chain:
             self._validate_cert_chain(msg.chain)
             if verify_oscp_status:
-                timestamp = self.recorder.get_timestamp()
-                issuer_cert = msg.chain.get_server_issuer()
-                self.ocsp_status = msg.chain.verify_ocsp_response(
-                    ext_status_req.ocsp_response, issuer_cert, timestamp
-                )
-                issue = f"OCSP stapling status: {self.ocsp_status}"
-                logging.debug(issue)
-                if (
-                    self.ocsp_status is not tls.OcspStatus.NOT_REVOKED
-                    and self.client.alert_on_invalid_cert
-                ):
-                    raise UntrustedCertificate(issue)
+                self._determine_ocsp_status(ext_status_req.ocsp_response, msg.chain)
 
     def _on_certificate_request_received(self, msg):
         if self.version is tls.Version.TLS13:
