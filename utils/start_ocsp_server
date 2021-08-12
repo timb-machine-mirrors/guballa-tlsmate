@@ -53,6 +53,18 @@ if [ -z "$port" ]; then
             port=$TLSMATE_CA_ECDSA_OCSP_PORT
         fi
     fi
+    if [ "$ca" == "root-rsa" ]; then
+        port=44403
+        if [ -n "$TLSMATE_ROOT_RSA_OCSP_PORT" ]; then
+            port=$TLSMATE_ROOT_RSA_OCSP_PORT
+        fi
+    fi
+    if [ "$ca" == "root-ecdsa" ]; then
+        port=44404
+        if [ -n "$TLSMATE_ROOT_ECDSA_OCSP_PORT" ]; then
+            port=$TLSMATE_ROOT_ECDSA_OCSP_PORT
+        fi
+    fi
 fi
 
 kill `lsof -t -i :$port`

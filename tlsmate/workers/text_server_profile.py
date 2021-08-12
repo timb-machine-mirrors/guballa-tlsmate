@@ -2,6 +2,7 @@
 """Module for a worker handling the server profile (de)serialization
 """
 # import basic stuff
+import sys
 
 # import own stuff
 
@@ -389,6 +390,7 @@ _cert = {
         tls.CertCrlStatus.CRL_SIGNATURE_INVALID: ("CRL signature invalid", Mood.BAD),
     },
     "ocsp_status": {
+        tls.OcspStatus.NOT_APPLICABLE: ("not applicable", Mood.NEUTRAL),
         tls.OcspStatus.NOT_SUPPORTED: ("not supported", Mood.BAD),
         tls.OcspStatus.UNDETERMINED: ("not checked", Mood.NEUTRAL),
         tls.OcspStatus.NOT_REVOKED: ("certificate not revoked", Mood.GOOD),
@@ -425,6 +427,7 @@ _vulnerabilities = {
 }
 
 _ocsp_stapling = {
+    tls.OcspStatus.NOT_APPLICABLE: ("not applicable", Mood.NEUTRAL),
     tls.OcspStatus.NOT_SUPPORTED: ("not supported", Mood.SOSO),
     tls.OcspStatus.UNDETERMINED: ("not checked", Mood.SOSO),
     tls.OcspStatus.NOT_REVOKED: (
@@ -494,6 +497,7 @@ class TextProfileWorker(WorkerPlugin):
     """
 
     name = "text_profile_dumper"
+    descr = "dump the scan results"
     prio = 1002
 
     def _print_tlsmate(self):
@@ -1152,6 +1156,9 @@ class TextProfileWorker(WorkerPlugin):
         print()
 
     def run(self):
+        if self.config.get("progress"):
+            sys.stderr.write("\n")
+
         init(strip=not self.config.get("color"))
         self._prof_values = self.server_profile.get_profile_values(tls.Version.all())
         self._print_tlsmate()

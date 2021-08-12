@@ -1174,4 +1174,5 @@ class StatusType(ExtendedEnum):
     """
 
     OCSP = 1
-    EMPTY = 256
+    OCSP_MULTI = 2
+    NONE = 256

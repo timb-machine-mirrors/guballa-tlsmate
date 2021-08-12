@@ -95,6 +95,9 @@ class ClientProfile(object):
             before). Default: False
         support_status_request (bool): An indication, if the extensions status request
             shall be supported. Default: False
+        support_status_request_v2 (:obj:`tlsmate.tls.StatusType`): The status type of
+            the request. NONE is used to suppress the extension.
+            Default: NONE
         key_shares (list (:obj:`tlsmate.tls.SupportedGroups` or int)): The list
             of key shares supported for TLS1.3. Note, that arbitraty interger
             values are supported as well, allowing to check if the server
@@ -122,6 +125,7 @@ class ClientProfile(object):
     signature_algorithms: List = None
     heartbeat_mode: tls.HeartbeatMode = None
     support_status_request: bool = False
+    support_status_request_v2: tls.StatusType = tls.StatusType.NONE
 
     # TLS1.2 and below
     support_session_id: bool = False
@@ -632,6 +636,13 @@ class Client(object):
 
             if self.profile.support_status_request:
                 msg.extensions.append(ext.ExtStatusRequest())
+
+            if self.profile.support_status_request_v2 is not tls.StatusType.NONE:
+                msg.extensions.append(
+                    ext.ExtStatusRequestV2(
+                        status_type=self.profile.support_status_request_v2
+                    )
+                )
 
             # RFC5246, 7.4.1.4.1.: Clients prior to TLS12 MUST NOT send this extension
             if (

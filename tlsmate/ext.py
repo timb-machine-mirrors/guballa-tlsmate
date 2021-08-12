@@ -483,7 +483,65 @@ class ExtStatusRequest(Extension):
 
     def _deserialize_ext_body(self, ext_body):
         if not len(ext_body):
-            self.status_type = tls.StatusType.EMPTY
+            self.status_type = tls.StatusType.NONE
+            return
+
+        status_type, offset = pdu.unpack_uint8(ext_body, 0)
+        self.status_type = tls.StatusType.val2enum(status_type)
+        length, offset = pdu.unpack_uint24(ext_body, offset)
+        self.ocsp_response, offset = pdu.unpack_bytes(ext_body, offset, length)
+
+
+class ExtStatusRequestV2(Extension):
+    """Represents the status_requestv2 extension.
+
+    Attributes:
+        status_type (:obj:`tlsmate.tls.StatusType`): The status type. Defaults to
+            :obj:`tlsmate.tls.StatusType.OCSP`.
+        responder_ids (list of bytes): The list of responder ids. Defaults to an empty
+            list.
+        extensions (list of bytes): The list of extensions. Defaults to an empty
+            list.
+    """
+
+    extension_id = tls.Extension.STATUS_REQUEST_V2
+    """:obj:`tlsmate.tls.Extension.STATUS_REQUEST_V2`
+    """
+
+    def __init__(self, status_type=tls.StatusType.OCSP_MULTI, responder_ids=None, extensions=b""):
+        self._requests = []
+        self.add_request(status_type, responder_ids, extensions)
+
+    def add_request(self, status_type, responder_ids=None, extensions=b""):
+        if responder_ids is None:
+            responder_ids = []
+
+        self._requests.append((status_type, responder_ids, extensions))
+
+    def _serialize_ext_body(self, conn):
+
+        ext_body = bytearray()
+        for status_type, responder_ids, extensions in self._requests:
+            request_item = bytearray(pdu.pack_uint8(getattr(status_type, "value", status_type)))
+            status_request = bytearray()
+            responders = bytearray()
+            for responder in responder_ids:
+                responders.extend(pdu.pack_uint16, len(responder))
+                responders.extend(responders)
+            status_request.extend(pdu.pack_uint16(len(responders)))
+            status_request.extend(responders)
+            status_request.extend(pdu.pack_uint16(len(extensions)))
+            status_request.extend(extensions)
+            request_item.extend(pdu.pack_uint16(len(status_request)))
+            request_item.extend(status_request)
+            ext_body.extend(pdu.pack_uint16(len(request_item)))
+            ext_body.extend(request_item)
+
+        return ext_body
+
+    def _deserialize_ext_body(self, ext_body):
+        if not len(ext_body):
+            self.status_type = tls.StatusType.NONE
             return
 
         status_type, offset = pdu.unpack_uint8(ext_body, 0)
@@ -706,7 +764,7 @@ deserialization_map = {
     # tls.Extension.USE_SRTP = 14
     tls.Extension.HEARTBEAT: ExtHeartbeat,
     # tls.Extension.APPLICATION_LAYER_PROTOCOL_NEGOTIATION = 16
-    # tls.Extension.STATUS_REQUEST_V2 = 17
+    tls.Extension.STATUS_REQUEST_V2: ExtStatusRequestV2,
     # tls.Extension.SIGNED_CERTIFICATE_TIMESTAMP = 18
     # tls.Extension.CLIENT_CERTIFICATE_TYPE = 19
     # tls.Extension.SERVER_CERTIFICATE_TYPE = 20

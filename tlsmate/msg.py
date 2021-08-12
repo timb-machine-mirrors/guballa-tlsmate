@@ -962,17 +962,30 @@ class CertificateStatus(HandshakeMessage):
 
     def __init__(self,):
         self.status_type = tls.StatusType.OCSP
-        self.response = bytes()
+        self.responses = []
 
     def _serialize_msg_body(self, conn):
         # TODO for server side implementation
         return bytearray()
 
+    def _unpack_ocsp_response(self, fragment, offset):
+        length, offset = pdu.unpack_uint24(fragment, offset)
+        response, offset = pdu.unpack_bytes(fragment, offset, length)
+        self.responses.append(response)
+        return offset
+
     def _deserialize_msg_body(self, fragment, offset, conn):
         status_type, offset = pdu.unpack_uint8(fragment, offset)
         self.status_type = tls.StatusType.val2enum(status_type)
-        length, offset = pdu.unpack_uint24(fragment, offset)
-        self.response, offset = pdu.unpack_bytes(fragment, offset, length)
+        if self.status_type is tls.StatusType.OCSP:
+            offset = self._unpack_ocsp_response(fragment, offset)
+
+        else:
+            length, offset = pdu.unpack_uint24(fragment, offset)
+            end = offset + length
+            while offset < end:
+                offset = self._unpack_ocsp_response(fragment, offset)
+
         return self
 
 

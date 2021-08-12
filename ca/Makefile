@@ -4,6 +4,8 @@ OPENSSL ?= $(shell which openssl)
 export TLSMATE_CA_PORT ?= 44400
 TLSMATE_CA_RSA_OCSP_PORT ?= 44401
 TLSMATE_CA_ECDSA_OCSP_PORT ?= 44402
+TLSMATE_ROOT_RSA_OCSP_PORT ?= 44403
+TLSMATE_ROOT_ECDSA_OCSP_PORT ?= 44404
 export CA_NAME = root-rsa
 export OCSP_PORT = ${TLSMATE_CA_RSA_OCSP_PORT}
 
@@ -29,9 +31,11 @@ server-revoked-rsa: certs/server-revoked-rsa.crt
 client: client-rsa client-ecdsa
 client-rsa: certs/client-rsa.crt
 client-ecdsa: certs/client-ecdsa.crt
-crl: crl-ca-rsa crl-ca-ecdsa
+crl: crl-ca-rsa crl-ca-ecdsa crl-root-rsa crl-root-ecdsa
 crl-ca-rsa: crl/ca-rsa.crl
 crl-ca-ecdsa: crl/ca-ecdsa.crl
+crl-root-rsa: crl/root-rsa.crl
+crl-root-ecdsa: crl/root-ecdsa.crl
 
 certs/%.crt: certs/%.pem
 	${OPENSSL} x509 -inform pem -in $< -outform der -out $@
@@ -57,6 +61,7 @@ certs/root-ecdsa.pem:
 	-keyout private/root-ecdsa.key -out certs/root-ecdsa.pem \
 	-newkey ec -pkeyopt ec_paramgen_curve:secp384r1
 
+certs/ca-rsa.pem: export OCSP_PORT=${TLSMATE_ROOT_RSA_OCSP_PORT}
 certs/ca-rsa.pem: export CA_NAME=root-rsa
 certs/ca-rsa.pem: certs/root-rsa.pem
 	make db/ca-rsa/db/index
@@ -64,8 +69,9 @@ certs/ca-rsa.pem: certs/root-rsa.pem
 	-subj "/C=DE/O=The TlsMate Company/CN=localhost Intermediate CA RSA" \
 	-keyout private/ca-rsa.key -out tmp/req.pem -newkey rsa:2048
 	${OPENSSL} ca -batch -notext -config openssl.cnf \
-	-extensions root_ext -in tmp/req.pem -out certs/ca-rsa.pem
+	-extensions ca_ext -in tmp/req.pem -out certs/ca-rsa.pem
 
+certs/ca-ecdsa.pem: export OCSP_PORT=${TLSMATE_ROOT_ECDSA_OCSP_PORT}
 certs/ca-ecdsa.pem: export CA_NAME=root-ecdsa
 certs/ca-ecdsa.pem: certs/root-ecdsa.crt
 	make db/ca-ecdsa/db/index
@@ -74,7 +80,7 @@ certs/ca-ecdsa.pem: certs/root-ecdsa.crt
 	-newkey ec -pkeyopt ec_paramgen_curve:secp384r1 \
 	-keyout private/ca-ecdsa.key -out tmp/req.pem
 	${OPENSSL} ca -batch -notext -config openssl.cnf \
-	-extensions root_ext -in tmp/req.pem -out certs/ca-ecdsa.pem
+	-extensions ca_ext -in tmp/req.pem -out certs/ca-ecdsa.pem
 
 certs/ca-2nd-rsa.pem: export CA_NAME=root-ecdsa
 certs/ca-2nd-rsa.pem: certs/ca-ecdsa.crt
@@ -82,7 +88,7 @@ certs/ca-2nd-rsa.pem: certs/ca-ecdsa.crt
 	-subj "/C=DE/O=The TlsMate Company/CN=localhost Intermediate CA RSA" \
 	-keyout private/ca-2nd-rsa.key -out tmp/req.pem -newkey rsa:2048
 	${OPENSSL} ca -batch -notext -config openssl.cnf \
-	-extensions root_ext -in tmp/req.pem -out certs/ca-2nd-rsa.pem
+	-extensions ca_ext -in tmp/req.pem -out certs/ca-2nd-rsa.pem
 
 certs/server-rsa.pem: export OCSP_PORT=${TLSMATE_CA_RSA_OCSP_PORT}
 certs/server-rsa.pem: export CA_NAME=ca-rsa
@@ -166,6 +172,14 @@ certs/client-ecdsa.pem: certs/ca-ecdsa.crt
 	${OPENSSL} ca -batch -notext -config openssl.cnf \
 	-extensions client_ext -in tmp/req.pem -out certs/client-ecdsa.pem
 	cat certs/client-ecdsa.pem certs/ca-ecdsa.pem > chains/client-ecdsa.chn
+
+crl/root-rsa.crl: certs/root-rsa.pem
+	${OPENSSL} ca -config openssl.cnf -gencrl -keyfile private/root-rsa.key -cert certs/root-rsa.pem -out crl/root-rsa.crl.pem
+	${OPENSSL} crl -inform PEM -in crl/root-rsa.crl.pem -outform DER -out crl/root-rsa.crl
+
+crl/root-ecdsa.crl: certs/root-ecdsa.pem
+	${OPENSSL} ca -config openssl.cnf -gencrl -keyfile private/root-ecdsa.key -cert certs/root-ecdsa.pem -out crl/root-ecdsa.crl.pem
+	${OPENSSL} crl -inform PEM -in crl/root-ecdsa.crl.pem -outform DER -out crl/root-ecdsa.crl
 
 crl/ca-rsa.crl: export CA_NAME=ca-rsa
 crl/ca-rsa.crl: certs/server-revoked-rsa.crt

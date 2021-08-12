@@ -1279,7 +1279,7 @@ class TlsConnection(object):
     def _on_certificate_status_received(self, msg):
         cert_chain = self.msg.server_certificate.chain
         self._validate_cert_chain(cert_chain)
-        self._determine_ocsp_status(msg.response, cert_chain)
+        self._determine_ocsp_status(msg.responses[0], cert_chain)
 
     def _on_new_session_ticket_received(self, msg):
         if self.version is tls.Version.TLS13:
