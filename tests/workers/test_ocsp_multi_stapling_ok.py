@@ -13,15 +13,15 @@ class TestCase(TlsSuiteTester):
     For more information refer to the documentation of the TcRecorder class.
     """
 
-    sp_in_yaml = "profile_sig_algos_openssl3_0_0"
-    recorder_yaml = "recorder_ocsp_stabpling_tls13_ok"
+    sp_in_yaml = "profile_basic_wolfssl3_12_0"
+    recorder_yaml = "recorder_ocsp_multi_stapling_ok"
     path = pathlib.Path(__file__)
-    server_cmd = (
-        "utils/start_openssl --version {library} --port {server_port} "
-        "--cert1 server-rsa --cert2 server-ecdsa --ca-file ca-certificates "
-        "-- -www -cipher ALL -status"
+    server_cmd = ("utils/start_wolfssl --version {library} --port {server_port} "
+        "-- -c ../../ca/chains/server-rsa-full.chn -k ../../ca/private/server-rsa.key -o"
     )
-    library = TlsLibrary.openssl3_0_0
+
+
+    library = TlsLibrary.wolfssl4_8_0
 
     server = "localhost"
 
@@ -29,7 +29,8 @@ class TestCase(TlsSuiteTester):
         server_profile = tlsmate.server_profile
         ScanOcspStapling(tlsmate).run()
         profile = server_profile.make_serializable()
-        assert profile["features"]["ocsp_stapling"] == "NOT_REVOKED"
+        assert profile["features"]["ocsp_stapling"] == "C_TRUE"
+        assert profile["features"]["ocsp_multi_stapling"] == "C_TRUE"
 
 
 if __name__ == "__main__":

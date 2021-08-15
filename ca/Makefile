@@ -21,11 +21,12 @@ ca: ca-rsa ca-ecdsa
 ca-rsa: certs/ca-rsa.crt
 ca-2nd-rsa: certs/ca-2nd-rsa.crt
 ca-ecdsa: certs/ca-ecdsa.crt
-server: server-rsa server-ecdsa server-ed25519 server-ed448 server-dsa server-revoked-rsa
+server: server-rsa server-ecdsa server-ed25519 server-ed448 server-dsa server-ecdsa-rsa server-revoked-rsa
 server-rsa: certs/server-rsa.crt
 server-ecdsa: certs/server-ecdsa.crt
 server-ed25519: certs/server-ed25519.crt
 server-ed448: certs/server-ed448.crt
+server-ecdsa-rsa: certs/server-ecdsa-rsa.crt
 server-dsa: certs/server-dsa.crt
 server-revoked-rsa: certs/server-revoked-rsa.crt
 client: client-rsa client-ecdsa
@@ -99,6 +100,19 @@ certs/server-rsa.pem: certs/ca-rsa.crt
 	${OPENSSL} ca -batch -notext -config openssl.cnf \
 	-extensions server_ext -in tmp/req.pem -out certs/server-rsa.pem
 	ln -s ../certs/ca-rsa.pem chains/server-rsa.chn
+	cat certs/server-rsa.pem certs/ca-rsa.pem certs/root-rsa.pem > chains/server-rsa-full.chn
+
+# server certificate signature: ECDSA, issuing ca signature: RSA
+certs/server-ecdsa-rsa.pem: export OCSP_PORT=${TLSMATE_CA_RSA_OCSP_PORT}
+certs/server-ecdsa-rsa.pem: export CA_NAME=ca-rsa
+certs/server-ecdsa-rsa.pem: certs/ca-rsa.crt
+	${OPENSSL} req -config openssl.cnf -nodes \
+	-subj "/C=DE/O=The TlsMate Company (Server side) ECDSA+RSA/CN=localhost" \
+	-newkey ec -pkeyopt ec_paramgen_curve:secp384r1 \
+	-keyout private/server-ecdsa-rsa.key -out tmp/req.pem
+	${OPENSSL} ca -batch -notext -config openssl.cnf \
+	-extensions server_ext -in tmp/req.pem -out certs/server-ecdsa-rsa.pem
+	ln -s ../certs/ca-rsa.pem chains/server-ecdsa-rsa.chn
 
 certs/server-ecdsa.pem: export OCSP_PORT=${TLSMATE_CA_ECDSA_OCSP_PORT}
 certs/server-ecdsa.pem: export CA_NAME=ca-ecdsa

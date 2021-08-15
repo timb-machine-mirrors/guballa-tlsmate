@@ -8,7 +8,7 @@ all:
 	(cd tls12 && $(MAKE) all)
 	(cd tls13 && $(MAKE) all)
 	(cd features && $(MAKE) all)
-	(cd tlssuites && $(MAKE) all)
+	(cd workers && $(MAKE) all)
 
 clean:
 	(cd ssl2 && $(MAKE) clean)
@@ -18,4 +18,4 @@ clean:
 	(cd tls12 && $(MAKE) clean)
 	(cd tls13 && $(MAKE) clean)
 	(cd features && $(MAKE) clean)
-	(cd tlssuites && $(MAKE) clean)
+	(cd workers && $(MAKE) clean)

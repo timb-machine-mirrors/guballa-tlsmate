@@ -17,8 +17,8 @@ class TestCase(CipherSuiteTester):
     name = "ClientProfiles"
     path = pathlib.Path(__file__)
     server_cmd = (
-        "utils/start_openssl --prefix {prefix} --port {port} --cert rsa --cert2 ecdsa "
-        "--mode www"
+        "utils/start_openssl --version {library} --port {server_port} "
+        "--cert1 server-rsa --cert2 server-ecdsa -- -www"
     )
     library = TlsLibrary.openssl1_1_1
 

@@ -427,39 +427,17 @@ _vulnerabilities = {
 }
 
 _ocsp_stapling = {
-    tls.OcspStatus.NOT_APPLICABLE: ("not applicable", Mood.NEUTRAL),
-    tls.OcspStatus.NOT_SUPPORTED: ("not supported", Mood.SOSO),
-    tls.OcspStatus.UNDETERMINED: ("not checked", Mood.SOSO),
-    tls.OcspStatus.NOT_REVOKED: (
-        "supported, server certificate not revoked",
-        Mood.GOOD,
-    ),
-    tls.OcspStatus.REVOKED: ("supported, but server certificate is revoked", Mood.BAD),
-    tls.OcspStatus.UNKNOWN: (
-        "supported, but revocation status for server certificate is unknown",
-        Mood.BAD,
-    ),
-    tls.OcspStatus.TIMEOUT: ("supported, but timeout received", Mood.BAD),
-    tls.OcspStatus.INVALID_RESPONSE: (
-        "supported, but invalid response from OCSP server received",
-        Mood.BAD,
-    ),
-    tls.OcspStatus.SIGNATURE_INVALID: (
-        "supported, but OCSP response has invalid signature",
-        Mood.BAD,
-    ),
-    tls.OcspStatus.INVALID_TIMESTAMP: (
-        "supported, but OCSP response has invalid timestamp",
-        Mood.BAD,
-    ),
-    tls.OcspStatus.NO_ISSUER: (
-        "supported, but no signing certificate for OCSP response found",
-        Mood.BAD,
-    ),
-    tls.OcspStatus.INVALID_ISSUER_CERT: (
-        "supported, but signing certificate for OCSP response is invalid",
-        Mood.BAD,
-    ),
+    tls.SPBool.C_FALSE: ("not supported", Mood.BAD),
+    tls.SPBool.C_TRUE: ("supported", Mood.GOOD),
+    tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
+    tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
+}
+
+_ocsp_multi_stapling = {
+    tls.SPBool.C_FALSE: ("not supported", Mood.NEUTRAL),
+    tls.SPBool.C_TRUE: ("supported", Mood.GOOD),
+    tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
+    tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
 }
 
 _heartbleed = {
@@ -790,6 +768,11 @@ class TextProfileWorker(WorkerPlugin):
         if ocsp_state is not None:
             txt, mood = _ocsp_stapling[ocsp_state]
             table.row("OCSP stapling (status_request)", apply_mood(txt, mood))
+
+        ocsp_state = getattr(feat_prof, "ocsp_multi_stapling", None)
+        if ocsp_state is not None:
+            txt, mood = _ocsp_multi_stapling[ocsp_state]
+            table.row("OCSP multi stapling (status_request_v2)", apply_mood(txt, mood))
 
         hb_state = getattr(feat_prof, "heartbeat", None)
         if hb_state is not None:

@@ -59,6 +59,7 @@ class Certificate(object):
         self.issues = []
         self.trusted = None
         self.tls_extensions = []
+        self.issuer_cert = None
 
         if der is not None:
             self._bytes = der

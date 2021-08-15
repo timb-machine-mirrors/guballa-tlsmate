@@ -14,12 +14,12 @@ class TestCase(TlsSuiteTester):
     """
 
     sp_in_yaml = "profile_sig_algos_openssl1_0_2"
-    recorder_yaml = "recorder_ocsp_stabpling_tls12_not_supported"
+    recorder_yaml = "recorder_ocsp_stapling_tls12_ok"
     path = pathlib.Path(__file__)
     server_cmd = (
         "utils/start_openssl --version {library} --port {server_port} "
         "--cert1 server-rsa --cert2 server-ecdsa --ca-file ca-certificates "
-        "-- -www -cipher ALL"
+        "-- -www -cipher ALL -status"
     )
     library = TlsLibrary.openssl1_1_1
 
@@ -29,7 +29,8 @@ class TestCase(TlsSuiteTester):
         server_profile = tlsmate.server_profile
         ScanOcspStapling(tlsmate).run()
         profile = server_profile.make_serializable()
-        assert profile["features"]["ocsp_stapling"] == "NOT_SUPPORTED"
+        assert profile["features"]["ocsp_stapling"] == "C_TRUE"
+        assert profile["features"]["ocsp_multi_stapling"] == "C_FALSE"
 
 
 if __name__ == "__main__":

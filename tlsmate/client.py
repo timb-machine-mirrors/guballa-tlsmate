@@ -634,15 +634,15 @@ class Client(object):
                     )
                 )
 
-            if self.profile.support_status_request:
-                msg.extensions.append(ext.ExtStatusRequest())
-
             if self.profile.support_status_request_v2 is not tls.StatusType.NONE:
                 msg.extensions.append(
                     ext.ExtStatusRequestV2(
                         status_type=self.profile.support_status_request_v2
                     )
                 )
+
+            if self.profile.support_status_request:
+                msg.extensions.append(ext.ExtStatusRequest())
 
             # RFC5246, 7.4.1.4.1.: Clients prior to TLS12 MUST NOT send this extension
             if (

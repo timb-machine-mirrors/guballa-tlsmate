@@ -102,28 +102,17 @@ class CertChain(object):
             issuer_cert,
             timestamp,
         )
-        logging.debug(f'CRL status for certificate "{cert}": {cert.crl_status}')
+        logging.debug(f'CRL status is {cert.crl_status} for certificate "{cert}"')
         if cert.crl_status is not tls.CertCrlStatus.NOT_REVOKED:
             cert.mark_untrusted(
                 f"CRL status not ok: {cert.crl_status}", raise_on_failure
             )
 
-    def verify_ocsp_response(self, reponse, issuer_cert, timestamp):
-        """Check the status for a OCSP response
+    def _verify_ocsp_resp(self, cert, response, timestamp, issuer_cert):
+        if not response:
+            return None
 
-        Arguments:
-            reponse (bytes): the OCSP response
-            issuer_cert (:obj:`tlsmate.cert.Certificate`): the issuer certificate of
-                the server's certificate. Note, that the CertificateStatus may provide
-                the certificate which has signed the OCSP response as well.
-            timestamp (datetime.datetime): the timestamp against that the OCSP reposnse
-                will be checked
-
-        Returns:
-            :obj:`tlsmate.tls.OcspStatus`: the status
-        """
-
-        ocsp_decoded = x509.ocsp.load_der_ocsp_response(reponse)
+        ocsp_decoded = x509.ocsp.load_der_ocsp_response(response)
 
         if ocsp_decoded.certificates:
             sig_cert = Certificate(x509_cert=ocsp_decoded.certificates[0], parse=True)
@@ -171,6 +160,42 @@ class CertChain(object):
 
         else:
             return tls.OcspStatus.INVALID_RESPONSE
+
+    def verify_ocsp_stapling(self, responses, raise_on_failure):
+        """Check the status for a OCSP response
+
+        Arguments:
+            responses (list of bytes): the OCSP response
+            raise_on_failure (bool): An indication, if the validation shall abort
+                in case exceptional cases are detected. Normally set to False for
+                server scans.
+
+        Returns:
+            list of :obj:`tlsmate.tls.OcspStatus`: the status, one for each response.
+                An list element can be None, if an empty response is provided.
+        """
+
+        ret_status = []
+        for idx, resp in enumerate(responses):
+            if not resp:
+                ret_status.append(None)
+                continue
+
+            if not self.successful_validation:
+                ocsp_status = tls.OcspStatus.INVALID_ISSUER_CERT
+
+            else:
+                cert = self.certificates[self._trust_path[idx]]
+                ocsp_status = self._verify_ocsp_resp(
+                    cert, resp, self._recorder.get_timestamp(), cert.issuer_cert,
+                )
+            ret_status.append(ocsp_status)
+            issue = f"OCSP stapling status {ocsp_status} for certificate {cert}"
+            logging.debug(issue)
+            if ocsp_status is not tls.OcspStatus.NOT_REVOKED and raise_on_failure:
+                raise UntrustedCertificate(issue)
+
+        return ret_status
 
     def _check_ocsp(self, cert, issuer_cert, timestamp, raise_on_failure):
         """Check the OCSP status for the given certificate."""
@@ -237,15 +262,15 @@ class CertChain(object):
             )
 
         if ocsp_resp.ok:
-            cert.ocsp_status = self.verify_ocsp_response(
-                ocsp_resp.content, issuer_cert, timestamp
+            cert.ocsp_status = self._verify_ocsp_resp(
+                cert, ocsp_resp.content, self._recorder.get_timestamp(), issuer_cert,
             )
             issue = f"OCSP status is {cert.ocsp_status}"
             if cert.ocsp_status is not tls.OcspStatus.NOT_REVOKED:
                 cert.mark_untrusted(issue, raise_on_failure)
 
             else:
-                logging.debug(f"certificate {cert}: {issue}")
+                logging.debug(f"{issue} for certificate {cert}")
 
     def _issuer_certs(self, cert):
         """Get a list of all potential issuers from the certificate chain."""
@@ -304,6 +329,7 @@ class CertChain(object):
 
         if idx is None:
             cert.trusted = True
+            cert.issuer_cert = cert
             return track
 
         if cert.self_signed:
@@ -358,6 +384,7 @@ class CertChain(object):
                             "certificates of the chain are not in sequence"
                         )
                 cert.trusted = True
+                cert.issuer_cert = issuer_cert
                 break
 
             except Exception as exc:
@@ -407,23 +434,6 @@ class CertChain(object):
                     cert.issues.append(
                         "gratuitous certificate, not part of trust chain"
                     )
-
-    def get_server_issuer(self):
-        """Get the issuer certificate of the server certificate
-
-        Due to alternate trust paths this isn't necessarily the certificate immediately
-        following the server certificate.
-
-        Returns:
-            :obj:`tlsmate.cert.Certificate`: the issuer certificate of the server
-            certificate or None
-        """
-
-        if self._trust_path:
-            if len(self._trust_path) > 1:
-                return self.certificates[self._trust_path[1]]
-
-        return None
 
     def serialize(self):
         """Serialize the certificate chain

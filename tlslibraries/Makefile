@@ -1,14 +1,15 @@
-.PHONY: clean all openssl1_0_1e openssl1_0_1g openssl1_0_2 openssl1_1_1 openssl3_0_0 wolfssl3_12_0
+.PHONY: clean all openssl1_0_1e openssl1_0_1g openssl1_0_2 openssl1_1_1 openssl3_0_0 wolfssl3_12_0 wolfssl4_8_0
 
 all: openssl1_0_1e \
 	openssl1_0_1g \
 	openssl1_0_2 \
 	openssl1_1_1 \
 	openssl3_0_0 \
-	wolfssl3_12_0
+	wolfssl3_12_0 \
+	wolfssl4_8_0
 
 clean:
-	rm -rf openssl1_0_1e openssl1_0_1g openssl1_0_2 openssl1_1_1 openssl3_0_0 wolfssl3_12_0
+	rm -rf openssl1_0_1e openssl1_0_1g openssl1_0_2 openssl1_1_1 openssl3_0_0 wolfssl3_12_0 wolfssl4_8_0
 
 %/config:
 	rm -rf $*
@@ -41,3 +42,15 @@ wolfssl3_12_0:
 	git clone --depth 1 --branch v3.12.0-stable https://github.com/wolfSSL/wolfssl.git wolfssl3_12_0
 	(cd wolfssl3_12_0 && ./autogen.sh && ./configure CFLAGS="-DWOLFSSL_STATIC_RSA")
 	(cd wolfssl3_12_0 && sed -i 's/-Werror //g' Makefile && make)
+
+
+wolfssl4_8_0_certs:
+	cat ../ca/certs/ca-rsa.pem ../ca/certs/root-rsa.pem > wolfssl4_8_0/certs/ocsp/intermediate1-ca-cert.pem
+	cat ../ca/certs/root-rsa.pem > wolfssl4_8_0/certs/ocsp/intermediate2-ca-cert.pem
+
+# OCSP multi stapling
+wolfssl4_8_0:
+	git clone --depth 1 --branch v4.8.0-stable https://github.com/wolfSSL/wolfssl.git wolfssl4_8_0
+	(cd wolfssl4_8_0 && ./autogen.sh && ./configure --enable-ocspstapling --enable-ocspstapling2)
+	(cd wolfssl4_8_0 && make)
+	make wolfssl4_8_0_certs

@@ -15,7 +15,6 @@ from tlsmate.exception import (
     TlsConnectionClosedError,
     TlsMsgTimeoutError,
     ServerParmsSignatureInvalid,
-    UntrustedCertificate,
 )
 from tlsmate.msg import get_extension
 from tlsmate import msg
@@ -407,7 +406,7 @@ class TlsConnection(object):
         self._secure_reneg_flag = False
         self._secure_reneg_ext = False
         self._secure_reneg_scsv = False
-        self.ocsp_status = None
+        self.stapling_status = None
 
         if self.client.profile.support_secure_renegotiation:
             self._secure_reneg_request = True
@@ -958,25 +957,6 @@ class TlsConnection(object):
             if self.client.alert_on_invalid_cert:
                 raise exc
 
-    def _determine_ocsp_status(self, ocsp_response, cert_chain):
-        if not cert_chain.successful_validation:
-            self.ocsp_status = tls.OcspStatus.INVALID_ISSUER_CERT
-
-        else:
-            timestamp = self.recorder.get_timestamp()
-            issuer_cert = cert_chain.get_server_issuer()
-            self.ocsp_status = cert_chain.verify_ocsp_response(
-                ocsp_response, issuer_cert, timestamp
-            )
-
-        issue = f"OCSP stapling status: {self.ocsp_status}"
-        logging.debug(issue)
-        if (
-            self.ocsp_status is not tls.OcspStatus.NOT_REVOKED
-            and self.client.alert_on_invalid_cert
-        ):
-            raise UntrustedCertificate(issue)
-
     def send(self, *messages, pre_serialization=None):
         """Interface to send messages.
 
@@ -1279,7 +1259,9 @@ class TlsConnection(object):
     def _on_certificate_status_received(self, msg):
         cert_chain = self.msg.server_certificate.chain
         self._validate_cert_chain(cert_chain)
-        self._determine_ocsp_status(msg.responses[0], cert_chain)
+        self.stapling_status = cert_chain.verify_ocsp_stapling(
+            msg.responses, self.client.alert_on_invalid_cert
+        )
 
     def _on_new_session_ticket_received(self, msg):
         if self.version is tls.Version.TLS13:
@@ -1344,7 +1326,9 @@ class TlsConnection(object):
         if validate_chain:
             self._validate_cert_chain(msg.chain)
             if verify_oscp_status:
-                self._determine_ocsp_status(ext_status_req.ocsp_response, msg.chain)
+                self.stapling_status = msg.chain.verify_ocsp_stapling(
+                    [ext_status_req.ocsp_response], self.client.alert_on_invalid_cert
+                )
 
     def _on_certificate_request_received(self, msg):
         if self.version is tls.Version.TLS13:
