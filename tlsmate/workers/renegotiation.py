@@ -12,7 +12,7 @@ from tlsmate.plugin import WorkerPlugin
 
 class ScanRenegotiation(WorkerPlugin):
     name = "renegotiation"
-    descr = "check which kind of renegotiations are supported by the server"
+    descr = "scan for renegotiation support"
     prio = 30
 
     def run(self):

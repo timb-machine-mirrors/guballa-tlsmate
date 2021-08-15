@@ -13,7 +13,7 @@ from tlsmate import msg
 
 class ScanResumption(WorkerPlugin):
     name = "resumption"
-    descr = "check if the server supports resumption via (session_id and ticket)"
+    descr = "scan for resumption support (session_id and ticket)"
     prio = 30
 
     def resumption_tls12(self, prof_vals, session_ticket=False):

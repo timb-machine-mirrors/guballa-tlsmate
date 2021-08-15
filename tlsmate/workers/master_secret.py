@@ -12,7 +12,7 @@ from tlsmate.plugin import WorkerPlugin
 
 class ScanExtendedMasterSecret(WorkerPlugin):
     name = "master_secret"
-    descr = "check if the extension extended_master_secret is supported"
+    descr = "scan for extension extended_master_secret support"
     prio = 30
 
     def run(self):

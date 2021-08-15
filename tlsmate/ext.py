@@ -508,7 +508,9 @@ class ExtStatusRequestV2(Extension):
     """:obj:`tlsmate.tls.Extension.STATUS_REQUEST_V2`
     """
 
-    def __init__(self, status_type=tls.StatusType.OCSP_MULTI, responder_ids=None, extensions=b""):
+    def __init__(
+        self, status_type=tls.StatusType.OCSP_MULTI, responder_ids=None, extensions=b""
+    ):
         self._requests = []
         self.add_request(status_type, responder_ids, extensions)
 
@@ -522,7 +524,9 @@ class ExtStatusRequestV2(Extension):
 
         ext_body = bytearray()
         for status_type, responder_ids, extensions in self._requests:
-            request_item = bytearray(pdu.pack_uint8(getattr(status_type, "value", status_type)))
+            request_item = bytearray(
+                pdu.pack_uint8(getattr(status_type, "value", status_type))
+            )
             status_request = bytearray()
             responders = bytearray()
             for responder in responder_ids:

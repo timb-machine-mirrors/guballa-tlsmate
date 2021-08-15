@@ -20,7 +20,8 @@ class ScanCipherSuites(WorkerPlugin):
     The results are stored in the server profile.
     """
 
-    name = "basic"
+    name = "cipher_suites"
+    descr = "scan for supported TLS versions, cipher suites and certificates"
     prio = 10
 
     def _get_server_cs_and_cert(self, version):

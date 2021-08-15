@@ -4,6 +4,7 @@
 # import basic stuff
 import logging
 import abc
+import sys
 
 # import own stuff
 from tlsmate import utils
@@ -435,6 +436,10 @@ class WorkManager(object):
 
         for prio_list in sorted(self._prio_pool.keys()):
             for cls in sorted(self._prio_pool[prio_list], key=lambda cls: cls.name):
+                if tlsmate.config.get("progress"):
+                    sys.stderr.write(f"\n{cls.descr}")
+                    sys.stderr.flush()
+
                 logging.debug(f"starting worker {cls.name}")
                 cls(tlsmate).run()
                 logging.debug(f"worker {cls.name} finished")
