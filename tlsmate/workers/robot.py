@@ -23,7 +23,7 @@ def _rsa_encrypt(msg, e, n, mod_bytes):
 
 class ScanRobot(WorkerPlugin):
     name = "robot"
-    descr = "check if server is vulnerable to ROBOT vulnerability"
+    descr = "scan for ROBOT vulnerability"
     prio = 41
 
     def _get_oracle_results(self, with_ccs):

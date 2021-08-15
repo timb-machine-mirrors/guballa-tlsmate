@@ -13,7 +13,7 @@ from tlsmate.plugin import WorkerPlugin
 
 class ScanCompression(WorkerPlugin):
     name = "compression"
-    descr = "check for compression support"
+    descr = "scan for compression support"
     prio = 30
 
     def compression(self, version):

@@ -56,7 +56,7 @@ _grease_psk_modes = [0x0B, 0x2A, 0x49, 0x68, 0x87, 0xA6, 0xC5, 0xE4]
 
 class ScanGrease(WorkerPlugin):
     name = "grease"
-    descr = "check if the server is tolerant to unknown parameter values"
+    descr = "scan for tolerance to unknown parameter values (GREASE)"
     prio = 35
 
     def _get_grease_value(self, values):

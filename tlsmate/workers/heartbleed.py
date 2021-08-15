@@ -17,7 +17,7 @@ from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
 
 class ScanHeartbleed(WorkerPlugin):
     name = "heartbleed"
-    descr = "check if server is vulnerable to Heartbleed vulnerability"
+    descr = "scan for Heartbleed vulnerability"
     prio = 41
 
     def run(self):

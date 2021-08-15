@@ -16,7 +16,7 @@ from tlsmate.server_profile import SPDhGroup
 
 class ScanDhGroups(WorkerPlugin):
     name = "dh_groups"
-    descr = "check for DH groups"
+    descr = "scan for supported DH groups"
     prio = 30
 
     def _update_profile(self, version, g_val, p_val):

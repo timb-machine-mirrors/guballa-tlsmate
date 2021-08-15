@@ -15,6 +15,7 @@ class ReadProfileWorker(WorkerPlugin):
     """
 
     name = "profile_reader"
+    descr = "read the server profile"
     prio = 1
 
     def run(self):
@@ -28,6 +29,7 @@ class DumpProfileWorker(WorkerPlugin):
     """
 
     name = "profile_dumper"
+    descr = "dump the server profile"
     prio = 1001
 
     def run(self):

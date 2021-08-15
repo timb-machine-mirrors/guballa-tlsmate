@@ -11,7 +11,7 @@ from tlsmate.plugin import WorkerPlugin
 
 class ScanOcspStapling(WorkerPlugin):
     name = "ocsp_stapling"
-    descr = "check if OCSP stapling is supported"
+    descr = "scan for OCSP stapling"
     prio = 30
 
     def _scan_stapling(self):

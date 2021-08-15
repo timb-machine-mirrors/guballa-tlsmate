@@ -28,7 +28,7 @@ def _determine_status(keys):
 
 class ScanEphemeralKeyReuse(WorkerPlugin):
     name = "ephemeral_key_reuse"
-    descr = "check if ephemeral keys are reused"
+    descr = "scan for ephemeral key reuse"
     prio = 31
 
     def _tls12_handshakes(self, cs, pub_key):
