@@ -639,6 +639,7 @@ class HandshakeType(ExtendedEnum):
     CERTIFICATE_VERIFY = 15
     CLIENT_KEY_EXCHANGE = 16
     FINISHED = 20
+    CERTIFICATE_STATUS = 22
     KEY_UPDATE = 24
     COMPRESSED_CERTIFICATE = 25
     EKT_KEY = 26
@@ -1099,6 +1100,8 @@ class OcspStatus(ExtendedEnum):
     """OCSP revocation status
     """
 
+    NOT_APPLICABLE = enum.auto()
+    NOT_SUPPORTED = enum.auto()
     UNDETERMINED = enum.auto()
     NOT_REVOKED = enum.auto()
     REVOKED = enum.auto()
@@ -1107,6 +1110,8 @@ class OcspStatus(ExtendedEnum):
     INVALID_RESPONSE = enum.auto()
     SIGNATURE_INVALID = enum.auto()
     INVALID_TIMESTAMP = enum.auto()
+    NO_ISSUER = enum.auto()
+    INVALID_ISSUER_CERT = enum.auto()
 
 
 class Profile(ExtendedEnum):
@@ -1162,3 +1167,12 @@ class SPHeartbeat(ExtendedEnum):
     C_UNDETERMINED = 3
     C_NOT_REPONDING = 3
     C_WRONG_RESPONSE = 4
+
+
+class StatusType(ExtendedEnum):
+    """Status type for TLS extension status_request
+    """
+
+    OCSP = 1
+    OCSP_MULTI = 2
+    NONE = 256

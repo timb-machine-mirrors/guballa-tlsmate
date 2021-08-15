@@ -58,6 +58,8 @@ class Certificate(object):
         self.ocsp_status = None
         self.issues = []
         self.trusted = None
+        self.tls_extensions = []
+        self.issuer_cert = None
 
         if der is not None:
             self._bytes = der
@@ -236,7 +238,17 @@ class Certificate(object):
             )
         return self._self_signed
 
-    def _raise_untrusted(self, issue, raise_on_failure):
+    def mark_untrusted(self, issue, raise_on_failure):
+        """Mark the certificate as untrusted.
+
+        Arguments:
+            issue (str): the error message containing the reason
+            raise_on_failure (bool): whether an exception shall be raised
+
+        Raises:
+            :obj:`tlsmate.exception.UntrustedCertificate`: if raise_on_failure is True
+        """
+
         self.trusted = False
         issue_long = f"certificate {self}: {issue}"
         logging.debug(issue_long)
@@ -256,15 +268,15 @@ class Certificate(object):
             bool: The validation state
 
         Raises:
-            UntrustedCertificate: if the timestamp is outside the validity period and
-            raise_on_failure is True
+            :obj:`tlsmate.exception.UntrustedCertificate`: if the timestamp is
+                outside the validity period and raise_on_failure is True
         """
 
         if datetime < self.parsed.not_valid_before:
-            self._raise_untrusted("validity period not yet reached", raise_on_failure)
+            self.mark_untrusted("validity period not yet reached", raise_on_failure)
 
         if datetime > self.parsed.not_valid_after:
-            self._raise_untrusted("validity period exceeded", raise_on_failure)
+            self.mark_untrusted("validity period exceeded", raise_on_failure)
 
     def validate_subject(self, domain, raise_on_failure=True):
         """Validate if the certificate matches the given domain
@@ -305,7 +317,7 @@ class Certificate(object):
             pass
 
         self.subject_matches = False
-        self._raise_untrusted("subject name does not match", raise_on_failure)
+        self.mark_untrusted("subject name does not match", raise_on_failure)
 
     def validate_signature(self, sig_scheme, data, signature):
         """Validate a signature using the public key from the certificate.

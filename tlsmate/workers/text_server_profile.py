@@ -2,6 +2,7 @@
 """Module for a worker handling the server profile (de)serialization
 """
 # import basic stuff
+import sys
 
 # import own stuff
 
@@ -389,6 +390,8 @@ _cert = {
         tls.CertCrlStatus.CRL_SIGNATURE_INVALID: ("CRL signature invalid", Mood.BAD),
     },
     "ocsp_status": {
+        tls.OcspStatus.NOT_APPLICABLE: ("not applicable", Mood.NEUTRAL),
+        tls.OcspStatus.NOT_SUPPORTED: ("not supported", Mood.BAD),
         tls.OcspStatus.UNDETERMINED: ("not checked", Mood.NEUTRAL),
         tls.OcspStatus.NOT_REVOKED: ("certificate not revoked", Mood.GOOD),
         tls.OcspStatus.REVOKED: ("certificate revoked", Mood.BAD),
@@ -406,6 +409,11 @@ _cert = {
             "OCSP response has invalid timestamp",
             Mood.BAD,
         ),
+        tls.OcspStatus.NO_ISSUER: ("no certificate for issuer found", Mood.BAD),
+        tls.OcspStatus.INVALID_ISSUER_CERT: (
+            "certificate for issuer is invalid",
+            Mood.BAD,
+        ),
     },
 }
 
@@ -414,6 +422,20 @@ _cert_sig_algo = {}
 _vulnerabilities = {
     tls.SPBool.C_FALSE: ("not vulnerable", Mood.GOOD),
     tls.SPBool.C_TRUE: ("vulnerable", Mood.BAD),
+    tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
+    tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
+}
+
+_ocsp_stapling = {
+    tls.SPBool.C_FALSE: ("not supported", Mood.BAD),
+    tls.SPBool.C_TRUE: ("supported", Mood.GOOD),
+    tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
+    tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
+}
+
+_ocsp_multi_stapling = {
+    tls.SPBool.C_FALSE: ("not supported", Mood.NEUTRAL),
+    tls.SPBool.C_TRUE: ("supported", Mood.GOOD),
     tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
     tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
 }
@@ -453,6 +475,7 @@ class TextProfileWorker(WorkerPlugin):
     """
 
     name = "text_profile_dumper"
+    descr = "dump the scan results"
     prio = 1002
 
     def _print_tlsmate(self):
@@ -740,6 +763,17 @@ class TextProfileWorker(WorkerPlugin):
     def _print_common_features(self, feat_prof):
         print(f'  {apply_mood("Common features", Mood.BOLD)}')
         table = utils.Table(indent=4, sep="  ")
+
+        ocsp_state = getattr(feat_prof, "ocsp_stapling", None)
+        if ocsp_state is not None:
+            txt, mood = _ocsp_stapling[ocsp_state]
+            table.row("OCSP stapling (status_request)", apply_mood(txt, mood))
+
+        ocsp_state = getattr(feat_prof, "ocsp_multi_stapling", None)
+        if ocsp_state is not None:
+            txt, mood = _ocsp_multi_stapling[ocsp_state]
+            table.row("OCSP multi stapling (status_request_v2)", apply_mood(txt, mood))
+
         hb_state = getattr(feat_prof, "heartbeat", None)
         if hb_state is not None:
             txt, mood = _heartbeat[hb_state]
@@ -1105,6 +1139,9 @@ class TextProfileWorker(WorkerPlugin):
         print()
 
     def run(self):
+        if self.config.get("progress"):
+            sys.stderr.write("\n")
+
         init(strip=not self.config.get("color"))
         self._prof_values = self.server_profile.get_profile_values(tls.Version.all())
         self._print_tlsmate()

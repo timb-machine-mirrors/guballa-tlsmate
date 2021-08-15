@@ -38,6 +38,7 @@ class TlsLibrary(enum.Enum):
     openssl1_1_1 = enum.auto()
     openssl3_0_0 = enum.auto()
     wolfssl3_12_0 = enum.auto()
+    wolfssl4_8_0 = enum.auto()
 
 
 class TlsSuiteTester(metaclass=abc.ABCMeta):

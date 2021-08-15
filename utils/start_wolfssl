@@ -43,6 +43,6 @@ done
 wolfssl_path=$SCRIPTPATH/../tlslibraries/$version
 
 kill `lsof -t -i :$port`
-cmd="./examples/server/server -C 5000 -x -p $port -d"
+cmd="./examples/server/server -C 5000 -x -p $port -d $@"
 echo $cmd
 (cd $wolfssl_path && $cmd)
