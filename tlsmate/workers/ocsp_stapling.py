@@ -9,6 +9,7 @@ from tlsmate.plugin import WorkerPlugin
 
 # import other stuff
 
+
 class ScanOcspStapling(WorkerPlugin):
     name = "ocsp_stapling"
     descr = "scan for OCSP stapling"

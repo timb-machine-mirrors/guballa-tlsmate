@@ -16,10 +16,11 @@ class TestCase(TlsSuiteTester):
     sp_in_yaml = "profile_basic_wolfssl3_12_0"
     recorder_yaml = "recorder_ocsp_multi_stapling_ok"
     path = pathlib.Path(__file__)
-    server_cmd = ("utils/start_wolfssl --version {library} --port {server_port} "
-        "-- -c ../../ca/chains/server-rsa-full.chn -k ../../ca/private/server-rsa.key -o"
+    server_cmd = (
+        "utils/start_wolfssl --version {library} --port {server_port} "
+        "-- -c ../../ca/chains/server-rsa-full.chn -k ../../ca/private/server-rsa.key "
+        "-o"
     )
-
 
     library = TlsLibrary.wolfssl4_8_0
 
