@@ -325,6 +325,13 @@ _features = {
     "early_data": (Mood.GOOD, Mood.BAD, Mood.NEUTRAL, Mood.SOSO),
 }
 
+_fallback = {
+    tls.SPBool.C_FALSE: ("no, TLS_FALLBACK_SCSV not supported", Mood.BAD),
+    tls.SPBool.C_TRUE: ("yes, TLS_FALLBACK_SCSV is supported", Mood.GOOD),
+    tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
+    tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
+}
+
 _heartbeat = {
     tls.SPHeartbeat.C_FALSE: ("not supported", Mood.GOOD),
     tls.SPHeartbeat.C_TRUE: ("supported", Mood.BAD),
@@ -779,6 +786,11 @@ class TextProfileWorker(WorkerPlugin):
         if hb_state is not None:
             txt, mood = _heartbeat[hb_state]
             table.row("Heartbeat", apply_mood(txt, mood))
+
+        fallback = getattr(feat_prof, "downgrade_attack_prevention", None)
+        if fallback is not None:
+            txt, mood = _fallback[fallback]
+            table.row("Downgrade attack prevention", apply_mood(txt, mood))
 
         table.dump()
         print()

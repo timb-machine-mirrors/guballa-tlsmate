@@ -372,6 +372,7 @@ class SPFeaturesSchema(ProfileSchema):
     ephemeral_key_reuse = fields.Nested(SPEphemeralKeyReuseSchema)
     ocsp_stapling = FieldsEnumString(enum_class=tls.SPBool)
     ocsp_multi_stapling = FieldsEnumString(enum_class=tls.SPBool)
+    downgrade_attack_prevention = FieldsEnumString(enum_class=tls.SPBool)
 
 
 class SPPublicKey(SPObject):

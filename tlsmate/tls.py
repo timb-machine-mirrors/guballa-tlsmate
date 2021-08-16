@@ -644,6 +644,9 @@ class HandshakeType(ExtendedEnum):
     COMPRESSED_CERTIFICATE = 25
     EKT_KEY = 26
     MESSAGE_HASH = 254
+    # HelloRetryRequest is identical to a ServerHello, we assign a value > 256
+    # to it for a clear separation
+    HELLO_RETRY_REQUEST = 258
 
 
 class CCSType(ExtendedEnum):
