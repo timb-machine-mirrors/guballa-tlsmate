@@ -60,6 +60,8 @@ class Certificate(object):
         self.trusted = None
         self.tls_extensions = []
         self.issuer_cert = None
+        self.ocsp_must_staple = tls.SPBool.C_FALSE
+        self.ocsp_must_staple_multi = tls.SPBool.C_FALSE
 
         if der is not None:
             self._bytes = der
@@ -216,6 +218,20 @@ class Certificate(object):
 
         except x509.ExtensionNotFound:
             self.subject_key_id = None
+
+        try:
+            tls_features = self._parsed.extensions.get_extension_for_oid(
+                ExtensionOID.TLS_FEATURE
+            ).value
+
+            if x509.TLSFeatureType.status_request in tls_features:
+                self.ocsp_must_staple = tls.SPBool.C_TRUE
+
+            if x509.TLSFeatureType.status_request_v2 in tls_features:
+                self.ocsp_must_staple_multi = tls.SPBool.C_TRUE
+
+        except x509.ExtensionNotFound:
+            pass
 
     def _common_name(self, name):
         """From a given name, extract the common name

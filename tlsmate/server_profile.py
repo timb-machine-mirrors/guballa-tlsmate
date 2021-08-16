@@ -1210,6 +1210,8 @@ class SPCertificate(SPObject):
             self.ocsp_revocation_status = cert.ocsp_status
         if cert.issues:
             self.issues = cert.issues
+        self.ocsp_must_staple = cert.ocsp_must_staple
+        self.ocsp_must_staple_multi = cert.ocsp_must_staple_multi
 
 
 class SPCertificateSchema(ProfileSchema):
@@ -1235,6 +1237,8 @@ class SPCertificateSchema(ProfileSchema):
     public_key = fields.Nested(SPPublicKeySchema)
     crl_revocation_status = FieldsEnumString(enum_class=tls.CertCrlStatus)
     ocsp_revocation_status = FieldsEnumString(enum_class=tls.OcspStatus)
+    ocsp_must_staple = FieldsEnumString(enum_class=tls.SPBool)
+    ocsp_must_staple_multi = FieldsEnumString(enum_class=tls.SPBool)
     extensions = fields.List(fields.Nested(SPCertExtensionSchema))
     issues = fields.List(fields.String())
 

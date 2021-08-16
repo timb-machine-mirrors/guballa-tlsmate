@@ -415,6 +415,7 @@ _cert = {
             Mood.BAD,
         ),
     },
+    "must_staple": {False: Mood.NEUTRAL, True: Mood.GOOD},
 }
 
 _cert_sig_algo = {}
@@ -1064,6 +1065,23 @@ class TextProfileWorker(WorkerPlugin):
         if ocsp_status is not None:
             txt, mood = _cert["ocsp_status"][ocsp_status]
             table.row("OCSP revocation status", apply_mood(txt, mood))
+            must_staple = cert.ocsp_must_staple == tls.SPBool.C_TRUE
+            must_staple_multi = cert.ocsp_must_staple_multi == tls.SPBool.C_TRUE
+            if must_staple or must_staple_multi:
+                text = []
+                if must_staple:
+                    text.append("must staple")
+
+                if must_staple_multi:
+                    text.append("must multi-staple")
+
+                txt = f"yes ({', '.join(text)})"
+
+            else:
+                txt = "no"
+
+            mood = _cert["must_staple"][must_staple or must_staple_multi]
+            table.row("OCSP must staple", apply_mood(txt, mood))
 
         if hasattr(cert, "fingerprint_sha1"):
             table.row("Fingerprint SHA1", pdu.string(cert.fingerprint_sha1))
