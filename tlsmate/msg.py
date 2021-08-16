@@ -341,6 +341,11 @@ class ServerHello(HandshakeMessage):
     """:obj:`tlsmate.tls.HandshakeType.SERVER_HELLO`
     """
 
+    HELLO_RETRY_REQ_RAND = bytes.fromhex(
+        "CF 21 AD 74 E5 9A 61 11 BE 1D 8C 02 1E 65 B8 91 "
+        "C2 A2 11 16 7A BB 8C 5E 07 9E 09 E2 C8 A8 33 9C "
+    )
+
     def __init__(self):
         self.version = None
         self.random = None
@@ -357,6 +362,9 @@ class ServerHello(HandshakeMessage):
         version, offset = pdu.unpack_uint16(fragment, offset)
         self.version = tls.Version.val2enum(version, alert_on_failure=True)
         self.random, offset = pdu.unpack_bytes(fragment, offset, 32)
+        if self.random == self.HELLO_RETRY_REQ_RAND:
+            self.msg_type = tls.HandshakeType.HELLO_RETRY_REQUEST
+
         session_id_len, offset = pdu.unpack_uint8(fragment, offset)
         self.session_id, offset = pdu.unpack_bytes(fragment, offset, session_id_len)
         cipher_suite, offset = pdu.unpack_uint16(fragment, offset)

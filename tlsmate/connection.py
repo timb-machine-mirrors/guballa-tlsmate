@@ -169,6 +169,8 @@ class TlsConnectionMsgs(object):
             heartbeat response message sent by the client
         server_heartbeat_response (:obj:`tlsmate.msg.HeartbeatResponse`): the
             heartbeat response message sent by the server
+        hello_retry_request (:obj:`tlsmate.msg.HelloRetryRequest`): the
+            HelloRetryRequest message
     """
 
     _map_msg2attr = {
@@ -194,6 +196,7 @@ class TlsConnectionMsgs(object):
         tls.ContentType.ALERT: "_alert",
         tls.HeartbeatType.HEARTBEAT_REQUEST: "_heartbeat_request",
         tls.HeartbeatType.HEARTBEAT_RESPONSE: "_heartbeat_response",
+        tls.HandshakeType.HELLO_RETRY_REQUEST: "hello_retry_request",
     }
 
     def __init__(self):
