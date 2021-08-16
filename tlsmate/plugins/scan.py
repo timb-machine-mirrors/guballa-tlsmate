@@ -26,6 +26,7 @@ from tlsmate.workers.server_profile import DumpProfileWorker
 from tlsmate.workers.text_server_profile import TextProfileWorker
 from tlsmate.workers.ephemeral_key_reuse import ScanEphemeralKeyReuse
 from tlsmate.workers.ocsp_stapling import ScanOcspStapling
+from tlsmate.workers.downgrade import ScanDowngrade
 
 # import other stuff
 
@@ -110,6 +111,11 @@ def _add_args_features(parser):
     group.add_argument(
         "--ext-master-secret",
         help="scan for extended master secret support (only TL1.0 - TLS1.2)",
+        action=utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--fallback",
+        help="scan for downgrade attack prevention (TLS_FALLBACK_SCSV)",
         action=utils.BooleanOptionalAction,
     )
     group.add_argument(
@@ -239,6 +245,7 @@ class ScanPlugin(CliConnectionPlugin):
         "ccs_injection": ScanCcsInjection,
         "ephemeral_key_reuse": ScanEphemeralKeyReuse,
         "ocsp_stapling": ScanOcspStapling,
+        "fallback": ScanDowngrade,
     }
     _vulnerability_workers = {
         "robot": ScanRobot,
