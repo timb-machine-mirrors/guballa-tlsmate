@@ -31,7 +31,9 @@ all: \
 	recordings/recorder_ocsp_stapling_tls12_not_supported.yaml \
 	recordings/recorder_ocsp_stapling_tls12_ok.yaml \
 	recordings/recorder_ocsp_stapling_tls13_not_supported.yaml \
-	recordings/recorder_ocsp_stapling_tls13_ok.yaml
+	recordings/recorder_ocsp_stapling_tls13_ok.yaml \
+	recordings/recorder_downgrade_na.yaml \
+	recordings/recorder_downgrade_ok.yaml
 
 recordings/recorder_supported_groups_openssl%.yaml: recordings/recorder_eval_cipher_suites_openssl$*.yaml
 
@@ -72,6 +74,10 @@ recordings/recorder_ocsp_stapling_tls12_ok.yaml: recordings/recorder_sig_algos_o
 recordings/recorder_ocsp_stapling_tls13_not_supported.yaml: recordings/recorder_sig_algos_openssl3_0_0.yaml
 
 recordings/recorder_ocsp_stapling_tls13_ok.yaml: recordings/recorder_sig_algos_openssl3_0_0.yaml
+
+recordings/recorder_downgrade_na.yaml: recordings/recorder_basic_profile_wolfssl3_12_0.yaml
+
+recordings/recorder_downgrade_ok.yaml: recordings/recorder_sig_algos_openssl3_0_0.yaml
 
 clean:
 	rm -f recordings/*.yaml
