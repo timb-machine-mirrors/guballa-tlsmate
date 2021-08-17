@@ -15,7 +15,7 @@ from tlsmate import pdu
 # import other stuff
 
 
-def _get_extension(extensions, ext_id):
+def get_extension(extensions, ext_id):
     """Helper function to search for an extension
 
     Arguments:
@@ -308,7 +308,7 @@ class ClientHello(HandshakeMessage):
                 The extension object or None if not present.
         """
 
-        return _get_extension(self.extensions, ext_id)
+        return get_extension(self.extensions, ext_id)
 
     def get_version(self):
         """Get the highest TLS version from the message.
@@ -341,6 +341,11 @@ class ServerHello(HandshakeMessage):
     """:obj:`tlsmate.tls.HandshakeType.SERVER_HELLO`
     """
 
+    HELLO_RETRY_REQ_RAND = bytes.fromhex(
+        "CF 21 AD 74 E5 9A 61 11 BE 1D 8C 02 1E 65 B8 91 "
+        "C2 A2 11 16 7A BB 8C 5E 07 9E 09 E2 C8 A8 33 9C "
+    )
+
     def __init__(self):
         self.version = None
         self.random = None
@@ -357,6 +362,9 @@ class ServerHello(HandshakeMessage):
         version, offset = pdu.unpack_uint16(fragment, offset)
         self.version = tls.Version.val2enum(version, alert_on_failure=True)
         self.random, offset = pdu.unpack_bytes(fragment, offset, 32)
+        if self.random == self.HELLO_RETRY_REQ_RAND:
+            self.msg_type = tls.HandshakeType.HELLO_RETRY_REQUEST
+
         session_id_len, offset = pdu.unpack_uint8(fragment, offset)
         self.session_id, offset = pdu.unpack_bytes(fragment, offset, session_id_len)
         cipher_suite, offset = pdu.unpack_uint16(fragment, offset)
@@ -381,7 +389,7 @@ class ServerHello(HandshakeMessage):
             :obj:`tlsmate.ext.Extension`: The extension or None if not present.
         """
 
-        return _get_extension(self.extensions, ext_id)
+        return get_extension(self.extensions, ext_id)
 
     def get_version(self):
         """Get the negotiated TLS version from the message.
@@ -420,6 +428,7 @@ class Certificate(HandshakeMessage):
     def __init__(self):
         self.request_context = None
         self.chain = CertChain()
+        self.extensions = []
 
     def _serialize_msg_body(self, conn):
         msg = bytearray()
@@ -454,11 +463,10 @@ class Certificate(HandshakeMessage):
             cert_len, offset = pdu.unpack_uint24(fragment, offset)
             certificate, offset = pdu.unpack_bytes(fragment, offset, cert_len)
             self.chain.append_bin_cert(certificate)
-            # TODO: save the extensions
             if conn.version is tls.Version.TLS13:
-                ext_len, offset = pdu.unpack_uint16(fragment, offset)
-                if ext_len:
-                    extensions, offset = pdu.unpack_bytes(fragment, ext_len)
+                offset = _deserialize_extensions(
+                    self.chain.certificates[-1].tls_extensions, fragment, offset
+                )
 
         return self
 
@@ -844,7 +852,7 @@ class NewSessionTicket(HandshakeMessage):
             return self
 
     def get_extension(self, ext_id):
-        return _get_extension(self.extensions, ext_id)
+        return get_extension(self.extensions, ext_id)
 
 
 NewSessionTicket.get_extension.__doc__ = ClientHello.get_extension.__doc__
@@ -920,7 +928,7 @@ class CertificateRequest(HandshakeMessage):
         if not hasattr(self, "extensions"):
             return None
 
-        return _get_extension(self.extensions, ext_id)
+        return get_extension(self.extensions, ext_id)
 
 
 CertificateRequest.get_extension.__doc__ = ClientHello.get_extension.__doc__
@@ -948,10 +956,45 @@ class EncryptedExtensions(HandshakeMessage):
         return self
 
     def get_extension(self, ext_id):
-        return _get_extension(self.extensions, ext_id)
+        return get_extension(self.extensions, ext_id)
 
 
 EncryptedExtensions.get_extension.__doc__ = ClientHello.get_extension.__doc__
+
+
+class CertificateStatus(HandshakeMessage):
+    """This class represents a Certificate Status messge.
+    """
+
+    msg_type = tls.HandshakeType.CERTIFICATE_STATUS
+
+    def __init__(self,):
+        self.status_type = tls.StatusType.OCSP
+        self.responses = []
+
+    def _serialize_msg_body(self, conn):
+        # TODO for server side implementation
+        return bytearray()
+
+    def _unpack_ocsp_response(self, fragment, offset):
+        length, offset = pdu.unpack_uint24(fragment, offset)
+        response, offset = pdu.unpack_bytes(fragment, offset, length)
+        self.responses.append(response)
+        return offset
+
+    def _deserialize_msg_body(self, fragment, offset, conn):
+        status_type, offset = pdu.unpack_uint8(fragment, offset)
+        self.status_type = tls.StatusType.val2enum(status_type)
+        if self.status_type is tls.StatusType.OCSP:
+            offset = self._unpack_ocsp_response(fragment, offset)
+
+        else:
+            length, offset = pdu.unpack_uint24(fragment, offset)
+            end = offset + length
+            while offset < end:
+                offset = self._unpack_ocsp_response(fragment, offset)
+
+        return self
 
 
 class ChangeCipherSpecMessage(TlsMessage):
@@ -1355,6 +1398,7 @@ _hs_deserialization_map = {
     tls.HandshakeType.CERTIFICATE_VERIFY: CertificateVerify,
     # tls.HandshakeType.CLIENT_KEY_EXCHANGE = 16
     tls.HandshakeType.FINISHED: Finished,
+    tls.HandshakeType.CERTIFICATE_STATUS: CertificateStatus,
     # tls.HandshakeType.KEY_UPDATE = 24
     # tls.HandshakeType.COMPRESSED_CERTIFICATE = 25
     # tls.HandshakeType.EKT_KEY = 26

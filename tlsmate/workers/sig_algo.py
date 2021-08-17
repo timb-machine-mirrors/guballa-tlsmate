@@ -59,7 +59,7 @@ class _BackendTls13(_Backend):
 
 class ScanSigAlgs(WorkerPlugin):
     name = "sigalgo"
-    descr = "check signature algorithms"
+    descr = "scan for supported signature algorithms"
     prio = 20
 
     def _scan_auth_method(

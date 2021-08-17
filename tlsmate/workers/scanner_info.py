@@ -21,6 +21,7 @@ class ScanStart(WorkerPlugin):
     """
 
     name = "scanstart"
+    descr = "determine basic settings"
     prio = 0
 
     def run(self):
@@ -63,6 +64,7 @@ class ScanEnd(WorkerPlugin):
     """
 
     name = "scanend"
+    descr = "conclude the scan"
     prio = 1000
 
     def run(self):
@@ -74,5 +76,3 @@ class ScanEnd(WorkerPlugin):
         scan_info.stop_timestamp = stop_time
         scan_info.stop_date = datetime.datetime.fromtimestamp(int(stop_time))
         scan_info.run_time = float(f"{stop_time - start_time:.3f}")
-        if self.config.get("progress"):
-            sys.stderr.write("\n")

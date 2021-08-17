@@ -424,3 +424,19 @@ class Recorder(object):
         """
 
         self.data = utils.deserialize_data(filename)
+
+    def get_timestamp(self):
+        """Return an appropriate timestamp
+
+        Returns:
+            datetime.datetime: the timestamp. If the recorder is injecting, it is the
+                recorded timestamp, else the current time (which is recorded, if the
+                recorder is active).
+        """
+        if self.is_injecting():
+            return self.inject(datetime=None)
+
+        else:
+            timestamp = datetime.datetime.now()
+            self.trace(datetime=timestamp)
+            return timestamp

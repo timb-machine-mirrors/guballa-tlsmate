@@ -22,7 +22,7 @@ from tlsmate.plugin import WorkerPlugin
 
 class ScanCcsInjection(WorkerPlugin):
     name = "ccsinjection"
-    descr = "check if server is vulnerable to CCS injection (CVE-2014-0224)"
+    descr = "scan for CCS injection vulnerability (CVE-2014-0224)"
     prio = 40
 
     def run(self):

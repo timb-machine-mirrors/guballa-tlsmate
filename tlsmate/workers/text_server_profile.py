@@ -2,6 +2,7 @@
 """Module for a worker handling the server profile (de)serialization
 """
 # import basic stuff
+import sys
 
 # import own stuff
 
@@ -324,6 +325,13 @@ _features = {
     "early_data": (Mood.GOOD, Mood.BAD, Mood.NEUTRAL, Mood.SOSO),
 }
 
+_fallback = {
+    tls.SPBool.C_FALSE: ("no, TLS_FALLBACK_SCSV not supported", Mood.BAD),
+    tls.SPBool.C_TRUE: ("yes, TLS_FALLBACK_SCSV is supported", Mood.GOOD),
+    tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
+    tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
+}
+
 _heartbeat = {
     tls.SPHeartbeat.C_FALSE: ("not supported", Mood.GOOD),
     tls.SPHeartbeat.C_TRUE: ("supported", Mood.BAD),
@@ -353,6 +361,12 @@ _grease = {
     },
 }
 
+_ephemeral_key_reuse = {
+    tls.SPBool.C_FALSE: ("keys not reused", Mood.GOOD),
+    tls.SPBool.C_TRUE: ("keys reused", Mood.BAD),
+    tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
+    tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
+}
 
 _cert = {
     "chain_valid": {
@@ -383,6 +397,8 @@ _cert = {
         tls.CertCrlStatus.CRL_SIGNATURE_INVALID: ("CRL signature invalid", Mood.BAD),
     },
     "ocsp_status": {
+        tls.OcspStatus.NOT_APPLICABLE: ("not applicable", Mood.NEUTRAL),
+        tls.OcspStatus.NOT_SUPPORTED: ("not supported", Mood.BAD),
         tls.OcspStatus.UNDETERMINED: ("not checked", Mood.NEUTRAL),
         tls.OcspStatus.NOT_REVOKED: ("certificate not revoked", Mood.GOOD),
         tls.OcspStatus.REVOKED: ("certificate revoked", Mood.BAD),
@@ -400,7 +416,13 @@ _cert = {
             "OCSP response has invalid timestamp",
             Mood.BAD,
         ),
+        tls.OcspStatus.NO_ISSUER: ("no certificate for issuer found", Mood.BAD),
+        tls.OcspStatus.INVALID_ISSUER_CERT: (
+            "certificate for issuer is invalid",
+            Mood.BAD,
+        ),
     },
+    "must_staple": {False: Mood.NEUTRAL, True: Mood.GOOD},
 }
 
 _cert_sig_algo = {}
@@ -408,6 +430,20 @@ _cert_sig_algo = {}
 _vulnerabilities = {
     tls.SPBool.C_FALSE: ("not vulnerable", Mood.GOOD),
     tls.SPBool.C_TRUE: ("vulnerable", Mood.BAD),
+    tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
+    tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
+}
+
+_ocsp_stapling = {
+    tls.SPBool.C_FALSE: ("not supported", Mood.BAD),
+    tls.SPBool.C_TRUE: ("supported", Mood.GOOD),
+    tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
+    tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
+}
+
+_ocsp_multi_stapling = {
+    tls.SPBool.C_FALSE: ("not supported", Mood.NEUTRAL),
+    tls.SPBool.C_TRUE: ("supported", Mood.GOOD),
     tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
     tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
 }
@@ -447,6 +483,7 @@ class TextProfileWorker(WorkerPlugin):
     """
 
     name = "text_profile_dumper"
+    descr = "dump the scan results"
     prio = 1002
 
     def _print_tlsmate(self):
@@ -734,10 +771,26 @@ class TextProfileWorker(WorkerPlugin):
     def _print_common_features(self, feat_prof):
         print(f'  {apply_mood("Common features", Mood.BOLD)}')
         table = utils.Table(indent=4, sep="  ")
+
+        ocsp_state = getattr(feat_prof, "ocsp_stapling", None)
+        if ocsp_state is not None:
+            txt, mood = _ocsp_stapling[ocsp_state]
+            table.row("OCSP stapling (status_request)", apply_mood(txt, mood))
+
+        ocsp_state = getattr(feat_prof, "ocsp_multi_stapling", None)
+        if ocsp_state is not None:
+            txt, mood = _ocsp_multi_stapling[ocsp_state]
+            table.row("OCSP multi stapling (status_request_v2)", apply_mood(txt, mood))
+
         hb_state = getattr(feat_prof, "heartbeat", None)
         if hb_state is not None:
             txt, mood = _heartbeat[hb_state]
             table.row("Heartbeat", apply_mood(txt, mood))
+
+        fallback = getattr(feat_prof, "downgrade_attack_prevention", None)
+        if fallback is not None:
+            txt, mood = _fallback[fallback]
+            table.row("Downgrade attack prevention", apply_mood(txt, mood))
 
         table.dump()
         print()
@@ -846,6 +899,25 @@ class TextProfileWorker(WorkerPlugin):
         table.dump()
         print()
 
+    def _print_ephemeral_key_reuse(self):
+        if not hasattr(self.server_profile.features, "ephemeral_key_reuse"):
+            return
+
+        ekr = self.server_profile.features.ephemeral_key_reuse
+        print(apply_mood("  Ephemeral key reuse", Mood.BOLD))
+        table = utils.Table(indent=4, sep="  ")
+
+        result, mood = _ephemeral_key_reuse[ekr.tls12_dhe_reuse]
+        table.row("DHE key reuse (TLS1.2 or below)", apply_mood(result, mood))
+        result, mood = _ephemeral_key_reuse[ekr.tls12_ecdhe_reuse]
+        table.row("ECDHE key reuse (TLS1.2 or below)", apply_mood(result, mood))
+        result, mood = _ephemeral_key_reuse[ekr.tls13_dhe_reuse]
+        table.row("DHE key reuse (TLS1.3)", apply_mood(result, mood))
+        result, mood = _ephemeral_key_reuse[ekr.tls13_ecdhe_reuse]
+        table.row("ECDHE key reuse (TLS1.3)", apply_mood(result, mood))
+        table.dump()
+        print()
+
     def _print_features(self):
         feat_prof = getattr(self.server_profile, "features", None)
         if feat_prof is None:
@@ -871,6 +943,8 @@ class TextProfileWorker(WorkerPlugin):
 
         if hasattr(feat_prof, "grease"):
             self._print_grease(feat_prof.grease)
+
+        self._print_ephemeral_key_reuse()
 
     def _print_cert(self, cert, idx):
         items = [str(getattr(cert, "version", ""))]
@@ -1003,6 +1077,23 @@ class TextProfileWorker(WorkerPlugin):
         if ocsp_status is not None:
             txt, mood = _cert["ocsp_status"][ocsp_status]
             table.row("OCSP revocation status", apply_mood(txt, mood))
+            must_staple = cert.ocsp_must_staple == tls.SPBool.C_TRUE
+            must_staple_multi = cert.ocsp_must_staple_multi == tls.SPBool.C_TRUE
+            if must_staple or must_staple_multi:
+                text = []
+                if must_staple:
+                    text.append("must staple")
+
+                if must_staple_multi:
+                    text.append("must multi-staple")
+
+                txt = f"yes ({', '.join(text)})"
+
+            else:
+                txt = "no"
+
+            mood = _cert["must_staple"][must_staple or must_staple_multi]
+            table.row("OCSP must staple", apply_mood(txt, mood))
 
         if hasattr(cert, "fingerprint_sha1"):
             table.row("Fingerprint SHA1", pdu.string(cert.fingerprint_sha1))
@@ -1078,6 +1169,9 @@ class TextProfileWorker(WorkerPlugin):
         print()
 
     def run(self):
+        if self.config.get("progress"):
+            sys.stderr.write("\n")
+
         init(strip=not self.config.get("color"))
         self._prof_values = self.server_profile.get_profile_values(tls.Version.all())
         self._print_tlsmate()

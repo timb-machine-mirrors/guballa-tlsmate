@@ -24,7 +24,16 @@ all: \
 	recordings/recorder_robot_ok.yaml \
 	recordings/recorder_robot_weak_oracle.yaml \
 	recordings/recorder_basic_profile_wolfssl3_12_0.yaml \
-	recordings/recorder_scan_info.yaml
+	recordings/recorder_scan_info.yaml \
+	recordings/recorder_ephemeral_key_reuse.yaml \
+	recordings/recorder_ephemeral_key_reuse_tls13.yaml \
+	recordings/recorder_ocsp_multi_stapling_ok.yaml \
+	recordings/recorder_ocsp_stapling_tls12_not_supported.yaml \
+	recordings/recorder_ocsp_stapling_tls12_ok.yaml \
+	recordings/recorder_ocsp_stapling_tls13_not_supported.yaml \
+	recordings/recorder_ocsp_stapling_tls13_ok.yaml \
+	recordings/recorder_downgrade_na.yaml \
+	recordings/recorder_downgrade_ok.yaml
 
 recordings/recorder_supported_groups_openssl%.yaml: recordings/recorder_eval_cipher_suites_openssl$*.yaml
 
@@ -55,6 +64,20 @@ recordings/recorder_robot_ok.yaml: recordings/recorder_sig_algos_openssl1_0_2.ya
 recordings/recorder_robot_weak_oracle.yaml: recordings/recorder_basic_profile_wolfssl3_12_0.yaml
 
 recordings/recorder_scan_info.yaml: recordings/recorder_sig_algos_openssl3_0_0.yaml
+
+recordings/recorder_ocsp_multi_stapling_ok.yaml: recordings/recorder_basic_profile_wolfssl3_12_0.yaml
+
+recordings/recorder_ocsp_stapling_tls12_not_supported.yaml: recordings/recorder_sig_algos_openssl1_0_2.yaml
+
+recordings/recorder_ocsp_stapling_tls12_ok.yaml: recordings/recorder_sig_algos_openssl1_0_2.yaml
+
+recordings/recorder_ocsp_stapling_tls13_not_supported.yaml: recordings/recorder_sig_algos_openssl3_0_0.yaml
+
+recordings/recorder_ocsp_stapling_tls13_ok.yaml: recordings/recorder_sig_algos_openssl3_0_0.yaml
+
+recordings/recorder_downgrade_na.yaml: recordings/recorder_basic_profile_wolfssl3_12_0.yaml
+
+recordings/recorder_downgrade_ok.yaml: recordings/recorder_sig_algos_openssl3_0_0.yaml
 
 clean:
 	rm -f recordings/*.yaml

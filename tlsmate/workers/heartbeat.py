@@ -13,7 +13,7 @@ from tlsmate.plugin import WorkerPlugin
 
 class ScanHeartbeat(WorkerPlugin):
     name = "heartbeat"
-    descr = "check if heartbeats are supported"
+    descr = "scan for heartbeat support"
     prio = 30
 
     def run(self):

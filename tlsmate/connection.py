@@ -8,7 +8,6 @@ import logging
 import io
 import traceback as tb
 import time
-import datetime
 
 # import own stuff
 from tlsmate.exception import (
@@ -17,6 +16,7 @@ from tlsmate.exception import (
     TlsMsgTimeoutError,
     ServerParmsSignatureInvalid,
 )
+from tlsmate.msg import get_extension
 from tlsmate import msg
 from tlsmate import tls
 from tlsmate import pdu
@@ -155,6 +155,8 @@ class TlsConnectionMsgs(object):
             ChangeCipherSpec message sent by the server
         server_finished (:obj:`tlsmate.msg.Finished`): the Finished messages
             sent by the server
+        certificate_status (:obj:`tlsmate.msg.CertificateStatus`): the
+            CertificateStatus message sent by the server
         client_alert (:obj:`tlsmate.msg.Alert`): the Alert message sent by
             the client
         server_alert (:obj:`tlsmate.msg.Alert`): the Alert messages sent by
@@ -167,6 +169,8 @@ class TlsConnectionMsgs(object):
             heartbeat response message sent by the client
         server_heartbeat_response (:obj:`tlsmate.msg.HeartbeatResponse`): the
             heartbeat response message sent by the server
+        hello_retry_request (:obj:`tlsmate.msg.HelloRetryRequest`): the
+            HelloRetryRequest message
     """
 
     _map_msg2attr = {
@@ -183,6 +187,7 @@ class TlsConnectionMsgs(object):
         tls.HandshakeType.CERTIFICATE_VERIFY: "certificate_verify",
         tls.HandshakeType.CLIENT_KEY_EXCHANGE: "client_key_exchange",
         tls.HandshakeType.FINISHED: "_finished",
+        tls.HandshakeType.CERTIFICATE_STATUS: "certificate_status",
         tls.HandshakeType.KEY_UPDATE: None,
         tls.HandshakeType.COMPRESSED_CERTIFICATE: None,
         tls.HandshakeType.EKT_KEY: None,
@@ -191,6 +196,7 @@ class TlsConnectionMsgs(object):
         tls.ContentType.ALERT: "_alert",
         tls.HeartbeatType.HEARTBEAT_REQUEST: "_heartbeat_request",
         tls.HeartbeatType.HEARTBEAT_RESPONSE: "_heartbeat_response",
+        tls.HandshakeType.HELLO_RETRY_REQUEST: "hello_retry_request",
     }
 
     def __init__(self):
@@ -207,6 +213,7 @@ class TlsConnectionMsgs(object):
         self.client_finished = None
         self.server_change_cipher_spec = None
         self.server_finished = None
+        self.certificate_status = None
         self.client_alert = None
         self.server_alert = None
         self.client_heartbeat_request = None
@@ -402,6 +409,7 @@ class TlsConnection(object):
         self._secure_reneg_flag = False
         self._secure_reneg_ext = False
         self._secure_reneg_scsv = False
+        self.stapling_status = None
 
         if self.client.profile.support_secure_renegotiation:
             self._secure_reneg_request = True
@@ -934,6 +942,24 @@ class TlsConnection(object):
         if method is not None:
             method(self)
 
+    def _validate_cert_chain(self, cert_chain):
+        timestamp = self.recorder.get_timestamp()
+        sni_ext = self.msg.client_hello.get_extension(tls.Extension.SERVER_NAME)
+        if sni_ext is not None:
+            sni = sni_ext.host_name
+
+        else:
+            sni = self.client.get_sni()
+            if sni is None:
+                raise ValueError("No SNI defined")
+
+        try:
+            cert_chain.validate(timestamp, sni, self.client.alert_on_invalid_cert)
+
+        except Exception as exc:
+            if self.client.alert_on_invalid_cert:
+                raise exc
+
     def send(self, *messages, pre_serialization=None):
         """Interface to send messages.
 
@@ -1233,6 +1259,13 @@ class TlsConnection(object):
         self._finished_treated = True
         return self
 
+    def _on_certificate_status_received(self, msg):
+        cert_chain = self.msg.server_certificate.chain
+        self._validate_cert_chain(cert_chain)
+        self.stapling_status = cert_chain.verify_ocsp_stapling(
+            msg.responses, self.client.alert_on_invalid_cert
+        )
+
     def _on_new_session_ticket_received(self, msg):
         if self.version is tls.Version.TLS13:
             psk = self._kdf.hkdf_expand_label(
@@ -1278,34 +1311,27 @@ class TlsConnection(object):
             self._record_layer.update_state(self.hs_write_state)
 
     def _on_certificate_received(self, msg):
-
+        verify_oscp_status = False
+        validate_chain = False
         if self.version is tls.Version.TLS13:
             self.certificate_digest = self._kdf.current_msg_digest()
+            ext_status_req = get_extension(
+                msg.chain.certificates[0].tls_extensions, tls.Extension.STATUS_REQUEST
+            )
+            if ext_status_req:
+                validate_chain = True
+                verify_oscp_status = True
 
         if msg.chain.digest not in self._cert_chain_digests:
             self._cert_chain_digests.append(msg.chain.digest)
-            if self.recorder.is_injecting():
-                timestamp = self.recorder.inject(datetime=None)
+            validate_chain = True
 
-            else:
-                timestamp = datetime.datetime.now()
-                self.recorder.trace(datetime=timestamp)
-
-            sni_ext = self.msg.client_hello.get_extension(tls.Extension.SERVER_NAME)
-            if sni_ext is not None:
-                sni = sni_ext.host_name
-
-            else:
-                sni = self.client.get_sni()
-                if sni is None:
-                    raise ValueError("No SNI defined")
-
-            try:
-                msg.chain.validate(timestamp, sni, self.client.alert_on_invalid_cert)
-
-            except Exception as exc:
-                if self.client.alert_on_invalid_cert:
-                    raise exc
+        if validate_chain:
+            self._validate_cert_chain(msg.chain)
+            if verify_oscp_status:
+                self.stapling_status = msg.chain.verify_ocsp_stapling(
+                    [ext_status_req.ocsp_response], self.client.alert_on_invalid_cert
+                )
 
     def _on_certificate_request_received(self, msg):
         if self.version is tls.Version.TLS13:
@@ -1344,6 +1370,7 @@ class TlsConnection(object):
         tls.HandshakeType.CERTIFICATE_VERIFY: _on_certificate_verify_received,
         tls.CCSType.CHANGE_CIPHER_SPEC: _on_change_cipher_spec_received,
         tls.HandshakeType.FINISHED: _on_finished_received,
+        tls.HandshakeType.CERTIFICATE_STATUS: _on_certificate_status_received,
         tls.HandshakeType.NEW_SESSION_TICKET: _on_new_session_ticket_received,
     }
 
@@ -1804,6 +1831,7 @@ class TlsConnection(object):
 
                 if cert:
                     self.wait(msg.Certificate)
+                    self.wait(msg.CertificateStatus, optional=True)
 
                 if self.cs_details.key_algo in [
                     tls.KeyExchangeAlgorithm.DHE_DSS,

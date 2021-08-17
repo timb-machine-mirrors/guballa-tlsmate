@@ -24,6 +24,9 @@ from tlsmate.workers.heartbleed import ScanHeartbleed
 from tlsmate.workers.grease import ScanGrease
 from tlsmate.workers.server_profile import DumpProfileWorker
 from tlsmate.workers.text_server_profile import TextProfileWorker
+from tlsmate.workers.ephemeral_key_reuse import ScanEphemeralKeyReuse
+from tlsmate.workers.ocsp_stapling import ScanOcspStapling
+from tlsmate.workers.downgrade import ScanDowngrade
 
 # import other stuff
 
@@ -111,6 +114,16 @@ def _add_args_features(parser):
         action=utils.BooleanOptionalAction,
     )
     group.add_argument(
+        "--fallback",
+        help="scan for downgrade attack prevention (TLS_FALLBACK_SCSV)",
+        action=utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--ocsp-stapling",
+        help="scan for OCSP stapling support",
+        action=utils.BooleanOptionalAction,
+    )
+    group.add_argument(
         "--renegotiation",
         help="scan for renegotiation support (SSL30 - TLS1.2)",
         action=utils.BooleanOptionalAction,
@@ -131,6 +144,11 @@ def _add_args_features(parser):
     group.add_argument(
         "--grease",
         help="scan for unknown parameter tolerance",
+        action=utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--ephemeral-key-reuse",
+        help="scan for reuse of ephemeral keys",
         action=utils.BooleanOptionalAction,
     )
 
@@ -225,6 +243,9 @@ class ScanPlugin(CliConnectionPlugin):
         "resumption": ScanResumption,
         "heartbeat": ScanHeartbeat,
         "ccs_injection": ScanCcsInjection,
+        "ephemeral_key_reuse": ScanEphemeralKeyReuse,
+        "ocsp_stapling": ScanOcspStapling,
+        "fallback": ScanDowngrade,
     }
     _vulnerability_workers = {
         "robot": ScanRobot,

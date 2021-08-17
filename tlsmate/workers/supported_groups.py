@@ -230,7 +230,7 @@ class _TLS13_Scan(_Scan):
 
 class ScanSupportedGroups(WorkerPlugin):
     name = "groups"
-    descr = "check for FF-DH and EC groups"
+    descr = "scan for supported groups"
     prio = 20
 
     def run(self):

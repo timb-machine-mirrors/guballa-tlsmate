@@ -13,7 +13,7 @@ from tlsmate import utils
 
 class ScanEncryptThenMac(WorkerPlugin):
     name = "encrypt_then_mac"
-    descr = "check if the extension encrypt_then_mac is supported"
+    descr = "scan for extension encrypt_then_mac support"
     prio = 30
 
     def run(self):

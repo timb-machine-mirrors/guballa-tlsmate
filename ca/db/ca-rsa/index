@@ -1,4 +1,5 @@
-V	310516180740Z		0C8483239826333D	unknown	/C=DE/O=The TlsMate Company (Server side) RSA/CN=localhost
-V	310516180741Z		0C8483239826333E	unknown	/C=DE/O=The TlsMate Company (Server side) DSA/CN=localhost
-R	310516180742Z	210518180742Z,superseded	0C8483239826333F	unknown	/C=DE/O=The TlsMate Company (Server side) RSA/CN=revoked.localhost
-V	310516180742Z		0C84832398263340	unknown	/C=DE/O=The TlsMate Company (Client side) RSA/CN=client@tlsmate.org
+V	310814161400Z		0A9AB1BEA9908A39	unknown	/C=DE/O=The TlsMate Company (Server side) RSA/CN=localhost
+V	310814161402Z		0A9AB1BEA9908A3A	unknown	/C=DE/O=The TlsMate Company (Server side) DSA/CN=localhost
+V	310814161402Z		0A9AB1BEA9908A3B	unknown	/C=DE/O=The TlsMate Company (Server side) ECDSA+RSA/CN=localhost
+R	310814161402Z	210816161402Z,superseded	0A9AB1BEA9908A3C	unknown	/C=DE/O=The TlsMate Company (Server side) RSA/CN=revoked.localhost
+V	310814161402Z		0A9AB1BEA9908A3D	unknown	/C=DE/O=The TlsMate Company (Client side) RSA/CN=client@tlsmate.org

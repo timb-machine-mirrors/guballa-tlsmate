@@ -329,6 +329,22 @@ class SPGreaseSchema(ProfileSchema):
     psk_mode_tolerance = FieldsEnumString(enum_class=tls.SPBool)
 
 
+class SPEphemeralKeyReuse(SPObject):
+    """Data class for ephemeral key reuse
+    """
+
+
+class SPEphemeralKeyReuseSchema(ProfileSchema):
+    """Schema for ephemeral key reuse
+    """
+
+    __profile_class__ = SPEphemeralKeyReuse
+    tls12_dhe_reuse = FieldsEnumString(enum_class=tls.SPBool)
+    tls12_ecdhe_reuse = FieldsEnumString(enum_class=tls.SPBool)
+    tls13_dhe_reuse = FieldsEnumString(enum_class=tls.SPBool)
+    tls13_ecdhe_reuse = FieldsEnumString(enum_class=tls.SPBool)
+
+
 class SPFeatures(SPObject):
     """Data class for TLS features.
     """
@@ -353,6 +369,10 @@ class SPFeaturesSchema(ProfileSchema):
     scsv_renegotiation = FieldsEnumString(enum_class=tls.SPBool)
     heartbeat = FieldsEnumString(enum_class=tls.SPHeartbeat)
     grease = fields.Nested(SPGreaseSchema)
+    ephemeral_key_reuse = fields.Nested(SPEphemeralKeyReuseSchema)
+    ocsp_stapling = FieldsEnumString(enum_class=tls.SPBool)
+    ocsp_multi_stapling = FieldsEnumString(enum_class=tls.SPBool)
+    downgrade_attack_prevention = FieldsEnumString(enum_class=tls.SPBool)
 
 
 class SPPublicKey(SPObject):
@@ -1191,6 +1211,8 @@ class SPCertificate(SPObject):
             self.ocsp_revocation_status = cert.ocsp_status
         if cert.issues:
             self.issues = cert.issues
+        self.ocsp_must_staple = cert.ocsp_must_staple
+        self.ocsp_must_staple_multi = cert.ocsp_must_staple_multi
 
 
 class SPCertificateSchema(ProfileSchema):
@@ -1216,6 +1238,8 @@ class SPCertificateSchema(ProfileSchema):
     public_key = fields.Nested(SPPublicKeySchema)
     crl_revocation_status = FieldsEnumString(enum_class=tls.CertCrlStatus)
     ocsp_revocation_status = FieldsEnumString(enum_class=tls.OcspStatus)
+    ocsp_must_staple = FieldsEnumString(enum_class=tls.SPBool)
+    ocsp_must_staple_multi = FieldsEnumString(enum_class=tls.SPBool)
     extensions = fields.List(fields.Nested(SPCertExtensionSchema))
     issues = fields.List(fields.String())
 
