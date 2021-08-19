@@ -423,6 +423,12 @@ _cert = {
         ),
     },
     "must_staple": {False: Mood.NEUTRAL, True: Mood.GOOD},
+    "ev": {
+        tls.SPBool.C_FALSE: ("no", Mood.NEUTRAL),
+        tls.SPBool.C_TRUE: ("yes", Mood.GOOD),
+        tls.SPBool.C_NA: ("", Mood.NEUTRAL),
+        tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
+    },
 }
 
 _cert_sig_algo = {}
@@ -984,6 +990,11 @@ class TextProfileWorker(WorkerPlugin):
         if hasattr(cert, "subject_matches"):
             txt, mood = _cert["subject_matches"][cert.subject_matches]
             table.row("URI matches", apply_mood(txt, mood))
+
+        ev = getattr(cert, "extended_validation", tls.SPBool.C_NA)
+        if ev is not tls.SPBool.C_NA:
+            txt, mood = _cert["ev"][ev]
+            table.row("Extended validation", apply_mood(txt, mood))
 
         lines = utils.fold_string(cert.issuer, max_length=100, sep=",")
         table.row("Issuer", lines.pop(0))
