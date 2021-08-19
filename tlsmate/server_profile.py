@@ -1213,6 +1213,7 @@ class SPCertificate(SPObject):
             self.issues = cert.issues
         self.ocsp_must_staple = cert.ocsp_must_staple
         self.ocsp_must_staple_multi = cert.ocsp_must_staple_multi
+        self.extended_validation = cert.extended_validation
 
 
 class SPCertificateSchema(ProfileSchema):
@@ -1241,6 +1242,7 @@ class SPCertificateSchema(ProfileSchema):
     ocsp_must_staple = FieldsEnumString(enum_class=tls.SPBool)
     ocsp_must_staple_multi = FieldsEnumString(enum_class=tls.SPBool)
     extensions = fields.List(fields.Nested(SPCertExtensionSchema))
+    extended_validation = FieldsEnumString(enum_class=tls.SPBool)
     issues = fields.List(fields.String())
 
 
