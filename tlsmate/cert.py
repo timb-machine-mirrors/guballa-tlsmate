@@ -23,6 +23,48 @@ from cryptography.hazmat.primitives.asymmetric import (
 from cryptography.hazmat.primitives.serialization import Encoding
 
 
+# list of EV OIDs. Sources:
+# - https://chromium.googlesource.com/chromium/src/net/+/refs/heads/main/cert/ev_root_ca_metadata.cc  # noqa
+# - https://hg.mozilla.org/mozilla-central/file/tip/security/certverifier/ExtendedValidation.cpp  # noqa
+_ev_oids = [
+    "1.2.156.112559.1.1.6.1",
+    "1.2.392.200091.100.721.1",
+    "1.2.616.1.113527.2.5.1.1",
+    "1.3.159.1.17.1",
+    "1.3.171.1.1.10.5.2",
+    "1.3.6.1.4.1.13177.10.1.3.10",
+    "1.3.6.1.4.1.14777.6.1.1",
+    "1.3.6.1.4.1.14777.6.1.2",
+    "1.3.6.1.4.1.17326.10.14.2.1.2",
+    "1.3.6.1.4.1.17326.10.14.2.2.2",
+    "1.3.6.1.4.1.34697.2.1",
+    "1.3.6.1.4.1.34697.2.2",
+    "1.3.6.1.4.1.34697.2.3",
+    "1.3.6.1.4.1.34697.2.4",
+    "1.3.6.1.4.1.40869.1.1.22.3",
+    "1.3.6.1.4.1.4146.1.1",
+    "1.3.6.1.4.1.4788.2.202.1",
+    "1.3.6.1.4.1.6334.1.100.1",
+    "1.3.6.1.4.1.6449.1.2.1.5.1",
+    "1.3.6.1.4.1.782.1.2.1.8.1",
+    "1.3.6.1.4.1.7879.13.24.1",
+    "1.3.6.1.4.1.8024.0.2.100.1.2",
+    "2.16.156.112554.3",
+    "2.16.528.1.1003.1.2.7",
+    "2.16.578.1.26.1.3.3",
+    "2.16.756.1.89.1.2.1.1",
+    "2.16.756.5.14.7.4.8",
+    "2.16.792.3.0.4.1.1.4",
+    "2.16.840.1.114028.10.1.2",
+    "2.16.840.1.114404.1.1.2.4.1",
+    "2.16.840.1.114412.2.1",
+    "2.16.840.1.114413.1.7.23.3",
+    "2.16.840.1.114414.1.7.23.3",
+    "2.16.840.1.114414.1.7.24.3",
+    "2.23.140.1.1",
+]
+
+
 class Certificate(object):
     """Represents a certificate.
 
@@ -62,6 +104,7 @@ class Certificate(object):
         self.issuer_cert = None
         self.ocsp_must_staple = tls.SPBool.C_FALSE
         self.ocsp_must_staple_multi = tls.SPBool.C_FALSE
+        self.extended_validation = tls.SPBool.C_NA
 
         if der is not None:
             self._bytes = der
@@ -229,6 +272,28 @@ class Certificate(object):
 
             if x509.TLSFeatureType.status_request_v2 in tls_features:
                 self.ocsp_must_staple_multi = tls.SPBool.C_TRUE
+
+        except x509.ExtensionNotFound:
+            pass
+
+        try:
+            basic_constr = self._parsed.extensions.get_extension_for_oid(
+                ExtensionOID.BASIC_CONSTRAINTS
+            ).value
+            if not basic_constr.ca:
+                try:
+                    cert_policies = self._parsed.extensions.get_extension_for_oid(
+                        ExtensionOID.CERTIFICATE_POLICIES
+                    ).value
+
+                    if any(pol.policy_identifier.dotted_string in _ev_oids for pol in cert_policies):
+                        self.extended_validation = tls.SPBool.C_TRUE
+
+                    else:
+                        self.extended_validation = tls.SPBool.C_FALSE
+
+                except x509.ExtensionNotFound:
+                    pass
 
         except x509.ExtensionNotFound:
             pass
