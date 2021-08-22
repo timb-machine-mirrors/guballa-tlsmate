@@ -217,9 +217,9 @@ class TextProfileWorker(WorkerPlugin):
         table.row("tlsmate version", f"{scan_info.version} (producing the scan)")
         table.row("scan start timestamp", str(scan_info.start_date))
         table.row("scan duration", f"{scan_info.run_time} seconds")
-        table.row("applied profile", self.style_file)
+        table.row("applied style", self.style_file)
         table.row(
-            "profile description",
+            "style description",
             get_dict_value(self._style, "description", "short", default="-"),
         )
         table.dump()

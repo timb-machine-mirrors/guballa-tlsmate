@@ -284,7 +284,9 @@ class ScanPlugin(CliConnectionPlugin):
         # config.register(ConfigItem("read_profile", type=str, default=None))
         config.register(ConfigItem("format", type=str, default="text"))
         config.register(ConfigItem("color", type=bool, default=True))
-        config.register(ConfigItem("style", type=str, default=str(self._DEFAULT_STYLE.resolve())))
+        config.register(
+            ConfigItem("style", type=str, default=str(self._DEFAULT_STYLE.resolve()))
+        )
 
     def add_subcommand(self, subparsers):
         """Adds a subcommand to the CLI parser object.
