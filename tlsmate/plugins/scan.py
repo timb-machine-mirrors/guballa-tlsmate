@@ -2,6 +2,7 @@
 """Module for the scan plugin
 """
 # import basic stuff
+from pathlib import Path
 
 # import own stuff
 from tlsmate import utils
@@ -223,6 +224,15 @@ def _add_args_server_profile(parser):
         help="use colored console output. Only used if --format=text is given.",
         action=utils.BooleanOptionalAction,
     )
+    group.add_argument(
+        "--style",
+        type=str,
+        help=(
+            "a yaml file defining the text outout and the color scheme used if "
+            "--format=text is given. If not given, the internal default file "
+            "will be used."
+        ),
+    )
 
 
 @CliManager.register
@@ -232,6 +242,8 @@ class ScanPlugin(CliConnectionPlugin):
 
     prio = 20
     name = "scan"
+
+    _DEFAULT_STYLE = Path(__file__).parent / "../styles/default.yaml"
 
     _versions = ["sslv2", "sslv3", "tls10", "tls11", "tls12", "tls13"]
     _feature_workers = {
@@ -272,6 +284,7 @@ class ScanPlugin(CliConnectionPlugin):
         # config.register(ConfigItem("read_profile", type=str, default=None))
         config.register(ConfigItem("format", type=str, default="text"))
         config.register(ConfigItem("color", type=bool, default=True))
+        config.register(ConfigItem("style", type=str, default=str(self._DEFAULT_STYLE.resolve())))
 
     def add_subcommand(self, subparsers):
         """Adds a subcommand to the CLI parser object.
@@ -385,6 +398,7 @@ class ScanPlugin(CliConnectionPlugin):
             config.set("write_profile", args.write_profile)
             # config.set("read_profile", args.read_profile)
             config.set("color", args.color)
+            config.set("style", args.style)
 
             # if args.read_profile is not None:
             #     WorkManager.register(ReadProfileWorker)
