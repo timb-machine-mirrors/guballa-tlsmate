@@ -1,0 +1,786 @@
+description:
+  short: targeting a security level of 128 bits
+  long: >-
+    Here we should explain in more detail the "features" of this profile.
+
+style:
+  good:
+    fg: green
+  neutral:
+  soso:
+    fg: yellow
+    style: bright
+  bad:
+    fg: red
+  headline:
+    fg: magenta
+    style: bright
+  bold:
+    style: bright
+  error:
+    fg: red
+    style: bright
+
+version:
+  SSL20:
+    not_supported: good
+    supported: bad
+    cipher_order: &cipher_order_neutral
+      C_FALSE: &cipher_order_false
+        txt: server does not enforce cipher suite order
+        style: neutral
+      C_TRUE: &cipher_order_true
+        txt: server enforces cipher suite order
+        style: neutral
+      C_NA: &cipher_order_na
+        txt: ""
+        style: neutral
+      C_UNDETERMINED: &cipher_order_undet
+        txt: no indication if server enforces cipher suite order
+        style: neutral
+    chacha_preference: &chacha_preference_all
+      C_FALSE:
+        txt: server does not respect client preference for CHACHA20 cipher suites
+        style: neutral
+      C_TRUE:
+        txt: server respects client preference for CHACHA20 cipher suites
+        style: good
+      C_NA:
+        txt: ""
+        style: neutral
+      C_UNDETERMINED:
+        txt: undetermined if server respects client preference for CHACHA20 cipher suites
+        style: soso
+  SSL30:
+    not_supported: good
+    supported: bad
+    cipher_order: &cipher_order_tls
+      C_FALSE:
+        <<: *cipher_order_false
+        style: bad
+      C_TRUE:
+        <<: *cipher_order_true
+        style: good
+      C_NA:
+        <<: *cipher_order_na
+        style: neutral
+      C_UNDETERMINED:
+        <<: *cipher_order_undet
+        style: soso
+    chacha_preference: *chacha_preference_all
+  TLS10:
+    not_supported: neutral
+    supported: soso
+    cipher_order: *cipher_order_tls
+    chacha_preference: *chacha_preference_all
+  TLS11:
+    not_supported: neutral
+    supported: soso
+    cipher_order: *cipher_order_tls
+    chacha_preference: *chacha_preference_all
+  TLS12:
+    not_supported: neutral
+    supported: good
+    cipher_order: *cipher_order_tls
+    chacha_preference: *chacha_preference_all
+  TLS13:
+    not_supported: neutral
+    supported: good
+    cipher_order: *cipher_order_neutral
+    chacha_preference: *chacha_preference_all
+
+key_exchange:
+  DHE_DSS: soso
+  DHE_RSA: soso
+  DH_ANON: bad
+  RSA: soso
+  DH_DSS: bad
+  DH_RSA: bad
+  ECDH_ECDSA: bad
+  ECDHE_ECDSA: good
+  ECDH_RSA: bad
+  ECDHE_RSA: good
+  TLS13_KEY_SHARE: good
+  DHE_DSS_EXPORT: bad
+  DHE_PSK: soso
+  DHE_RSA_EXPORT: bad
+  DH_ANON_EXPORT: bad
+  DH_DSS_EXPORT: bad
+  DH_RSA_EXPORT: bad
+  ECCPWD: neutral
+  ECDHE_PSK: neutral
+  ECDH_ANON: bad
+  KRB5: neutral
+  KRB5_EXPORT: bad
+  "NULL": bad
+  PSK: bad
+  PSK_DHE: soso
+  RSA_EXPORT: bad
+  RSA_PSK: neutral
+  SRP_SHA: bad
+  SRP_SHA_DSS: bad
+  SRP_SHA_RSA: bad
+
+symmetric_ciphers:
+  AES_128_CBC: soso
+  AES_256_CBC: soso
+  AES_128_GCM: good
+  AES_256_GCM: good
+  AES_128_CCM: good
+  AES_128_CCM_8: good
+  AES_256_CCM: good
+  AES_256_CCM_8: good
+  CHACHA20_POLY1305: good
+  TRIPPLE_DES_EDE_CBC: bad
+  CAMELLIA_128_CBC: soso
+  CAMELLIA_256_CBC: soso
+  IDEA_CBC: bad
+  RC4_128: bad
+  SEED_CBC: soso
+  TLS13_AES_128_GCM: good
+  TLS13_AES_256_GCM: good
+  TLS13_AES_128_CCM: good
+  TLS13_AES_128_CCM_8: good
+  ARIA_128_CBC: soso
+  ARIA_128_GCM: good
+  ARIA_256_CBC: soso
+  ARIA_256_GCM: good
+  CAMELLIA_128_GCM: good
+  CAMELLIA_256_GCM: good
+  DES40_CBC: bad
+  DES_CBC: bad
+  DES_CBC_40: bad
+  "NULL": bad
+  RC2_CBC_40: bad
+  RC4_40: bad
+
+macs:
+  SHA1: soso
+  SHA256: good
+  SHA384: good
+  SHA512: good
+  MD5: bad
+
+supported_groups:
+  SSL20: &supported_groups_ssl
+    support:
+      C_FALSE: &supported_groups_supp_false
+        txt: 'extension "supported_groups" not supported'
+        style: neutral
+      C_TRUE: &supported_groups_supp_true
+        txt: 'extension "supported_groups" supported'
+        style: neutral
+      C_NA: &supported_groups_supp_na
+        txt: ""
+        style: neutral
+      C_UNDETERMINED: &supported_groups_supp_undet
+        txt: 'support for extensions "supported_group" unknown'
+        style: neutral
+    preference:
+      C_FALSE: &supported_groups_pref_false
+        txt: server does not enforce order of supported groups
+        style: neutral
+      C_TRUE: &supported_groups_pref_true
+        txt: server enforces order of supported groups
+        style: neutral
+      C_NA: &supported_groups_pref_na
+        txt: ""
+        style: neutral
+      C_UNDETERMINED: &supported_groups_pref_undet
+        txt: server preference for supported groups unknown
+        style: neutral
+    advertised:
+      C_FALSE: &supported_groups_adv_false
+        txt: server does not advertise supported groups
+        style: neutral
+      C_TRUE: &supported_groups_adv_true
+        txt: server advertises supported groups
+        style: neutral
+      C_NA: &supported_groups_adv_na
+        txt: ""
+        style: neutral
+      C_UNDETERMINED: &supported_groups_adv_undet
+        txt: advertisement of supported groups unknown
+        style: neutral
+  SSL30:
+    <<: *supported_groups_ssl
+    preference:
+      C_FALSE:
+        <<: *supported_groups_pref_false
+        style: bad
+      C_TRUE:
+        <<: *supported_groups_pref_true
+        style: good
+      C_NA:
+        <<: *supported_groups_pref_na
+        style: neutral
+      C_UNDETERMINED:
+        <<: *supported_groups_pref_undet
+        style: neutral
+  TLS10: &supported_groups_tls
+    support:
+      C_FALSE:
+        <<: *supported_groups_supp_false
+        style: bad
+      C_TRUE:
+        <<: *supported_groups_supp_true
+        style: good
+      C_NA:
+        <<: *supported_groups_supp_na
+        style: neutral
+      C_UNDETERMINED:
+        <<: *supported_groups_supp_undet
+        style: soso
+    preference:
+      C_FALSE:
+        <<: *supported_groups_pref_false
+        style: neutral
+      C_TRUE:
+        <<: *supported_groups_pref_true
+        style: neutral
+      C_NA:
+        <<: *supported_groups_pref_na
+        style: neutral
+      C_UNDETERMINED:
+        <<: *supported_groups_pref_undet
+        style: neutral
+    advertised:
+      C_FALSE:
+        <<: *supported_groups_adv_false
+        style: neutral
+      C_TRUE:
+        <<: *supported_groups_adv_true
+        style: neutral
+      C_NA:
+        <<: *supported_groups_adv_na
+        style: neutral
+      C_UNDETERMINED:
+        <<: *supported_groups_adv_undet
+        style: neutral
+  TLS11: *supported_groups_tls
+  TLS12: *supported_groups_tls
+  TLS13: *supported_groups_tls
+  groups:
+    SECT163K1: bad
+    SECT163R1: bad
+    SECT163R2: bad
+    SECT193R1: bad
+    SECT193R2: bad
+    SECT233K1: bad
+    SECT233R1: bad
+    SECT239K1: bad
+    SECT283K1: bad
+    SECT283R1: bad
+    SECT409K1: soso
+    SECT409R1: soso
+    SECT571K1: soso
+    SECT571R1: soso
+    SECP160K1: bad
+    SECP160R1: bad
+    SECP160R2: bad
+    SECP192K1: bad
+    SECP192R1: bad
+    SECP224K1: bad
+    SECP224R1: bad
+    SECP256K1: soso
+    SECP256R1: good
+    SECP384R1: good
+    SECP521R1: good
+    BRAINPOOLP256R1: soso
+    BRAINPOOLP384R1: soso
+    BRAINPOOLP512R1: soso
+    X25519: good
+    X448: good
+    BRAINPOOLP256R1TLS13: soso
+    BRAINPOOLP384R1TLS13: soso
+    BRAINPOOLP512R1TLS13: soso
+    GC256A: bad
+    GC256B: bad
+    GC256C: bad
+    GC256D: bad
+    GC512A: bad
+    GC512B: bad
+    GC512C: bad
+    CURVESM2: bad
+    FFDHE2048: soso
+    FFDHE3072: good
+    FFDHE4096: good
+    FFDHE6144: good
+    FFDHE8192: good
+    ARBITRARY_EXPLICIT_PRIME_CURVES: bad
+    ARBITRARY_EXPLICIT_CHAR2_CURVES: bad
+
+signature_schemes:
+  RSA_PKCS1_SHA1: soso
+  ECDSA_SHA1: soso
+  RSA_PKCS1_SHA256: good
+  ECDSA_SECP256R1_SHA256: good
+  RSA_PKCS1_SHA384: good
+  ECDSA_SECP384R1_SHA384: good
+  RSA_PKCS1_SHA512: good
+  ECDSA_SECP521R1_SHA512: good
+  ECCSI_SHA256: bad
+  RSA_PSS_RSAE_SHA256: good
+  RSA_PSS_RSAE_SHA384: good
+  RSA_PSS_RSAE_SHA512: good
+  ED25519: good
+  ED448: good
+  RSA_PSS_PSS_SHA256: good
+  RSA_PSS_PSS_SHA384: good
+  RSA_PSS_PSS_SHA512: good
+  ECDSA_BRAINPOOLP256R1TLS13_SHA256: soso
+  ECDSA_BRAINPOOLP384R1TLS13_SHA384: soso
+  ECDSA_BRAINPOOLP512R1TLS13_SHA512: soso
+  RSA_PKCS1_MD5: bad
+  RSA_PKCS1_SHA224: soso
+  DSA_MD5: bad
+  DSA_SHA1: soso
+  DSA_SHA224: soso
+  DSA_SHA256: soso
+  DSA_SHA384: soso
+  DSA_SHA512: soso
+  ECDSA_SECP224R1_SHA224: soso
+
+assymetric_key_sizes:
+  - size: 3072
+    style: good
+  - size: 2048
+    style: soso
+  - size: 0
+    style: bad
+
+assymetric_ec_key_sizes:
+  - size: 256
+    style: good
+  - size: 0
+    style: bad
+
+ocsp_stapling:
+  C_FALSE:
+    txt: &txt_false not supported
+    style: bad
+  C_TRUE:
+    txt: &txt_true supported
+    style: good
+  C_NA:
+    txt: &txt_na not applicable
+    style: neutral
+  C_UNDETERMINED:
+    txt: &txt_undet undetermined
+    style: soso
+
+ocsp_multi_stapling:
+  C_FALSE:
+    txt: *txt_false
+    style: neutral
+  C_TRUE:
+    txt: *txt_true
+    style: good
+  C_NA:
+    txt: *txt_na
+    style: neutral
+  C_UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+heartbeat:
+  C_FALSE:
+    txt: *txt_false
+    style: good
+  C_TRUE:
+    txt: *txt_true
+    style: bad
+  C_NA:
+    txt: *txt_na
+    style: neutral
+  C_UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+  C_NOT_REPONDING:
+    txt: supported, but no response
+    style: bad
+  C_WRONG_RESPONSE:
+    txt: supported, but invalid response received
+    style: bad
+
+fallback:
+  C_FALSE:
+    txt: no, TLS_FALLBACK_SCSV not supported
+    style: bad
+  C_TRUE:
+    txt: yes, TLS_FALLBACK_SCSV is supported
+    style: good
+  C_NA:
+    txt: *txt_na
+    style: neutral
+  C_UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+compression:
+  C_FALSE:
+    txt: *txt_false
+    style: good
+  C_TRUE:
+    txt: *txt_true
+    style: bad
+
+scsv_renegotiation:
+  C_FALSE:
+    txt: *txt_false
+    style: soso
+  C_TRUE:
+    txt: *txt_true
+    style: good
+  C_NA:
+    txt: *txt_na
+    style: neutral
+  C_UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+encrypt_then_mac:
+  C_FALSE:
+    txt: *txt_false
+    style: bad
+  C_TRUE:
+    txt: *txt_true
+    style: good
+  C_NA:
+    txt: *txt_na
+    style: neutral
+  C_UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+extended_master_secret:
+  C_FALSE:
+    txt: *txt_false
+    style: bad
+  C_TRUE:
+    txt: *txt_true
+    style: good
+  C_NA:
+    txt: *txt_na
+    style: neutral
+  C_UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+extended_master_secret:
+  C_FALSE:
+    txt: *txt_false
+    style: bad
+  C_TRUE:
+    txt: *txt_true
+    style: good
+  C_NA:
+    txt: *txt_na
+    style: neutral
+  C_UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+insecure_renegotiation:
+  C_FALSE:
+    txt: *txt_false
+    style: good
+  C_TRUE:
+    txt: *txt_true
+    style: bad
+  C_NA:
+    txt: *txt_na
+    style: neutral
+  C_UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+secure_renegotiation:
+  C_FALSE:
+    txt: *txt_false
+    style: neutral
+  C_TRUE:
+    txt: *txt_true
+    style: neutral
+  C_NA:
+    txt: *txt_na
+    style: neutral
+  C_UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+session_id:
+  C_FALSE:
+    txt: *txt_false
+    style: neutral
+  C_TRUE:
+    txt: *txt_true
+    style: neutral
+  C_NA:
+    txt: *txt_na
+    style: neutral
+  C_UNDETERMINED:
+    txt: *txt_undet
+    style: neutral
+
+session_ticket:
+  C_FALSE:
+    txt: *txt_false
+    style: good
+  C_TRUE:
+    txt: *txt_true
+    style: soso
+  C_NA:
+    txt: *txt_na
+    style: neutral
+  C_UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+resumption_psk:
+  C_FALSE:
+    txt: *txt_false
+    style: neutral
+  C_TRUE:
+    txt: *txt_true
+    style: neutral
+  C_NA:
+    txt: *txt_na
+    style: neutral
+  C_UNDETERMINED:
+    txt: *txt_undet
+    style: neutral
+
+early_data:
+  C_FALSE:
+    txt: *txt_false
+    style: good
+  C_TRUE:
+    txt: *txt_true
+    style: bad
+  C_NA:
+    txt: *txt_na
+    style: neutral
+  C_UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+grease:
+  version: &grease_all
+    descr: protocol versions
+    C_FALSE:
+      txt: not tolerant
+      style: bad
+    C_TRUE:
+      txt: tolerant
+      style: good
+    C_NA:
+      txt: *txt_na
+      style: neutral
+    C_UNDETERMINED:
+      txt: *txt_undet
+      style: soso
+  cipher_suite:
+    <<: *grease_all
+    descr: cipher suites
+  extension:
+    <<: *grease_all
+    descr: extensions
+  group:
+    <<: *grease_all
+    descr: named groups
+  sig_algo:
+    <<: *grease_all
+    descr: signature algori
+  psk_mode:
+    <<: *grease_all
+    descr: PSK exchange modes (TLS1.3)
+
+ephemeral_key_reuse:
+  C_FALSE:
+    txt: keys not reused
+    style: good
+  C_TRUE:
+    txt: keys reused
+    style: bad
+  C_NA:
+    txt: *txt_na
+    style: neutral
+  C_UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+cert_chain:
+  issues: bad
+  validation:
+    C_FALSE:
+      txt: validation failed
+      style: bad
+    C_TRUE:
+      txt: successfully validated
+      style: good
+    C_NA:
+      txt: ""
+      style: neutral
+    C_UNDETERMINED:
+      txt: validation status undetermined
+      style: soso
+  root_cert_transmitted:
+    C_FALSE:
+      txt: root certificate was not provided by the server
+      style: good
+    C_TRUE:
+      txt: root certificate was provided by the server
+      style: soso
+
+certificate:
+  issues: bad
+  subject_matches:
+    C_FALSE:
+      txt: no, URI not matched against subject/SAN
+      style: bad
+    C_TRUE:
+      txt: yes, URI matches subject/SAN
+      style: good
+    C_NA:
+      txt: ""
+      style: neutral
+    C_UNDETERMINED:
+      txt: validation status undetermined
+      style: soso
+  crl_status:
+    UNDETERMINED:
+      txt: unknown
+      style: soso
+    NOT_REVOKED:
+      txt: certificate not revoked
+      style: good
+    REVOKED:
+      txt: certificate revoked
+      style: bad
+    CRL_DOWNLOAD_FAILED:
+      txt: CRL download failed
+      style: bad
+    WRONG_CRL_ISSUER:
+      txt: wrong CRL issuer
+      style: bad
+    CRL_SIGNATURE_INVALID:
+      txt: CRL signature invalid
+      style: bad
+  ocsp_status:
+    NOT_APPLICABLE:
+      txt: not applicable
+      style: neutral
+    NOT_SUPPORTED:
+      txt: not supported
+      style: bad
+    UNDETERMINED:
+      txt: not checked
+      style: neutral
+    NOT_REVOKED:
+      txt: certificate not revoked
+      style: good
+    REVOKED:
+      txt: certificate revoked
+      style: bad
+    UNKNOWN:
+      txt: certificate unknwon
+      style: bad
+    TIMEOUT:
+      txt: OCSP server timeout
+      style: bad
+    INVALID_RESPONSE:
+      txt: invalid response from OCSP server
+      style: bad
+    SIGNATURE_INVALID:
+      txt: OCSP response has invalid signature
+      style: bad
+    INVALID_TIMESTAMP:
+      txt: OCSP response has invalid timestamp
+      style: bad
+    NO_ISSUER:
+      txt: no certificate for issuer found
+      style: bad
+    INVALID_ISSUER_CERT:
+      txt: certificate for issuer is invalid
+      style: bad
+  extended_validation:
+    C_FALSE:
+      txt: "no"
+      style: neutral
+    C_TRUE:
+      txt: "yes"
+      style: good
+    C_NA:
+      txt: ""
+      style: neutral
+    C_UNDETERMINED:
+      txt: undetermined
+      style: soso
+  must_staple:
+    C_FALSE:
+      txt: "no"
+      style: neutral
+    C_TRUE:
+      txt: "yes"
+      style: good
+  validity:
+    C_FALSE:
+      txt: invalid period
+      style: bad
+    C_TRUE:
+      txt: valid period
+      style: good
+
+vulnerabilities:
+  ccs_injection: &vulnerabilities_common
+    C_FALSE:
+      txt: not vulnerable
+      style: good
+    C_TRUE:
+      txt: vulnerable
+      style: bad
+    C_NA:
+      txt: not applicable
+      style: neutral
+    C_UNDETERMINED:
+      txt: undetermined
+      style: soso
+  heartbleed:
+    NOT_APPLICABLE:
+      txt: not applicable
+      style: neutral
+    UNDETERMINED:
+      txt: undetermined
+      style: soso
+    VULNERABLE:
+      txt: vulnerable
+      style: bad
+    NOT_VULNERABLE:
+      txt: not vulnerable
+      style: good
+    TIMEOUT:
+      txt: timeout, probably not vulnerable
+      style: good
+    CONNECTION_CLOSED:
+      txt: not vulnerable (connection closed)
+      style: good
+  robot:
+    NOT_APPLICABLE:
+      txt: not applicable
+      style: neutral
+    UNDETERMINED:
+      txt: undetermined
+      style: neutral
+    INCONSITENT_RESULTS:
+      txt: inconsistent results
+      style: bad
+    WEAK_ORACLE:
+      txt: vulnerable, weak oracle
+      style: bad
+    STRONG_ORACLE:
+      txt: vulnerable, strong oracle
+      style: bad
+    NOT_VULNERABLE:
+      txt: not vulnerable
+      style: good
