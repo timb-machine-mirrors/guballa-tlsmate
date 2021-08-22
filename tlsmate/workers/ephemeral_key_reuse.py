@@ -39,16 +39,14 @@ class ScanEphemeralKeyReuse(WorkerPlugin):
         keys = []
         for _ in range(HANDSHAKE_COUNT):
             with self.client.create_connection() as conn:
-                conn.send(msg.ClientHello)
-                server_hello = conn.wait(msg.ServerHello)
-                conn.wait(msg.Certificate)
-                ske = conn.wait(msg.ServerKeyExchange)
-                key = pub_key(ske)
+                conn.handshake()
+
+            if conn.msg.server_key_exchange is not None:
+                key = pub_key(conn.msg.server_key_exchange)
                 if key in keys:
                     return tls.SPBool.C_TRUE
 
                 keys.append(key)
-                self.client.profile.cipher_suites = [server_hello.cipher_suite]
 
         return _determine_status(keys)
 
