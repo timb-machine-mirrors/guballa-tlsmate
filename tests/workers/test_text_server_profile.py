@@ -30,3 +30,15 @@ def test_text_server_profile(text_server_profile, style_file):
     tlsmate = TlsMate(config)
     ReadProfileWorker(tlsmate).run()
     TextProfileWorker(tlsmate).run()
+
+
+def test_full_server_profile(full_server_profile, style_file):
+    config = Configuration()
+    config.register(ConfigItem("write_profile"))
+    config.register(ConfigItem("read_profile"))
+    config.register(ConfigItem("format", type=str, default="text"))
+    config.register(ConfigItem("style", type=str, default=str(style_file)))
+    config.set("read_profile", str(full_server_profile))
+    tlsmate = TlsMate(config)
+    ReadProfileWorker(tlsmate).run()
+    TextProfileWorker(tlsmate).run()

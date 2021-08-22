@@ -116,3 +116,8 @@ def server_profile(fixturefiles_dir):
 @pytest.fixture
 def text_server_profile(fixturefiles_dir):
     return fixturefiles_dir / "text_server_profile.yaml"
+
+
+@pytest.fixture
+def full_server_profile(fixturefiles_dir):
+    return fixturefiles_dir / "full_server_profile.yaml"
