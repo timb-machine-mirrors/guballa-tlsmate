@@ -7,6 +7,7 @@ Python API reference documentation
 
     py_cert
     py_cert_chain
+    py_cert_utils
     py_client_auth
     py_client
     py_command
