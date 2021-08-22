@@ -16,6 +16,11 @@ def valid_time():
 
 
 @pytest.fixture
+def style_file():
+    return pathlib.Path(__file__).parent.resolve() / "../tlsmate/styles/default.yaml"
+
+
+@pytest.fixture
 def fixturefiles_dir():
     return pathlib.Path(__file__).parent.resolve() / "fixturefiles"
 

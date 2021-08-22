@@ -286,7 +286,10 @@ class Certificate(object):
                         ExtensionOID.CERTIFICATE_POLICIES
                     ).value
 
-                    if any(pol.policy_identifier.dotted_string in _ev_oids for pol in cert_policies):
+                    if any(
+                        pol.policy_identifier.dotted_string in _ev_oids
+                        for pol in cert_policies
+                    ):
                         self.extended_validation = tls.SPBool.C_TRUE
 
                     else:
