@@ -21,7 +21,7 @@ def get_extension(extensions, ext_id):
     Arguments:
         extensions (list of :obj:`tlsmate.tls.Extensions`): the list
             to search for the extension
-        ext_id (:obj:`tlsmate.tls.Extensions): the extension to to look for
+        ext_id (:obj:`tlsmate.tls.Extensions`): the extension to to look for
 
     Returns:
         :obj:`tlsmate.tls.Extensions`: The extension if present, or None
