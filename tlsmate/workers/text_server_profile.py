@@ -410,7 +410,7 @@ class TextProfileWorker(WorkerPlugin):
                         pref_mood = Mood.NEUTRAL
 
                     else:
-                        pref_mood = get_mood(prof, preference.name, "style")
+                        pref_mood = get_mood(prof, "style")
 
                     pref_txt = apply_mood(pref_txt, pref_mood)
 
