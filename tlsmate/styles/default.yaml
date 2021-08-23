@@ -234,16 +234,16 @@ supported_groups:
     preference:
       C_FALSE:
         <<: *supported_groups_pref_false
-        style: neutral
+        style: bad
       C_TRUE:
         <<: *supported_groups_pref_true
-        style: neutral
+        style: good
       C_NA:
         <<: *supported_groups_pref_na
         style: neutral
       C_UNDETERMINED:
         <<: *supported_groups_pref_undet
-        style: neutral
+        style: soso
     advertised:
       C_FALSE:
         <<: *supported_groups_adv_false
@@ -591,7 +591,7 @@ grease:
     descr: named groups
   sig_algo:
     <<: *grease_all
-    descr: signature algori
+    descr: signature algorithms
   psk_mode:
     <<: *grease_all
     descr: PSK exchange modes (TLS1.3)
