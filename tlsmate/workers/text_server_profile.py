@@ -1058,6 +1058,18 @@ class TextProfileWorker(WorkerPlugin):
                 get_styled_text(self._style, "vulnerabilities", "robot", robot.name),
             )
 
+        lucky_minus_20 = getattr(vuln_prof, "lucky_minus_20", None)
+        if lucky_minus_20 is not None:
+            table.row(
+                "Lucky-Minus-20 vulnerability (CVE-2016-2107)",
+                get_styled_text(
+                    self._style,
+                    "vulnerabilities",
+                    "lucky_minus_20",
+                    lucky_minus_20.name,
+                ),
+            )
+
         table.dump()
         print()
 

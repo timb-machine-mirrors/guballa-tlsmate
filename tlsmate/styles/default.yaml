@@ -784,3 +784,4 @@ vulnerabilities:
     NOT_VULNERABLE:
       txt: not vulnerable
       style: good
+  lucky_minus_20: *vulnerabilities_common

@@ -45,7 +45,7 @@ class RecordLayerState(object):
         if self._version is tls.Version.TLS13:
             self._cipher_object = param.cipher.algo
 
-    def _encrypt_cbc(self, fragment):
+    def _encrypt_cbc(self, fragment, use_padding=None, **kwargs):
         """Encrypt a fragment using a block cipher in CBC mode.
 
         Arguments:
@@ -55,10 +55,14 @@ class RecordLayerState(object):
             bytes: The encrypted fragment.
         """
 
-        # padding
-        length = len(fragment) + 1
-        missing_bytes = self._cipher.block_size - (length % self._cipher.block_size)
-        fragment += struct.pack("!B", missing_bytes) * (missing_bytes + 1)
+        if use_padding is None:
+            # padding
+            length = len(fragment) + 1
+            missing_bytes = self._cipher.block_size - (length % self._cipher.block_size)
+            fragment += struct.pack("!B", missing_bytes) * (missing_bytes + 1)
+
+        else:
+            fragment += use_padding
 
         if self._version <= tls.Version.TLS10:
             iv = self._iv
@@ -77,7 +81,7 @@ class RecordLayerState(object):
         else:
             return iv + cipher_block
 
-    def _append_mac(self, content_type, version, fragment):
+    def _append_mac(self, content_type, version, fragment, use_hmac=None, **kwargs):
         """Calculates the MAC and appends it to the fragment.
 
         Arguments:
@@ -90,18 +94,22 @@ class RecordLayerState(object):
             bytes: The fragment appended with the MAC.
         """
 
-        mac_input = (
-            pdu.pack_uint64(self._seq_nbr)
-            + pdu.pack_uint8(content_type.value)
-            + pdu.pack_uint16(version.value)
-            + pdu.pack_uint16(len(fragment))
-            + fragment
-        )
-        mac = hmac.HMAC(self._keys.mac, self._mac.hash_algo())
-        mac.update(mac_input)
-        return fragment + mac.finalize()
+        if use_hmac is None:
+            mac_input = (
+                pdu.pack_uint64(self._seq_nbr)
+                + pdu.pack_uint8(content_type.value)
+                + pdu.pack_uint16(version.value)
+                + pdu.pack_uint16(len(fragment))
+                + fragment
+            )
+            mac = hmac.HMAC(self._keys.mac, self._mac.hash_algo())
+            mac.update(mac_input)
+            return fragment + mac.finalize()
 
-    def _protect_block_cipher(self, rl_msg):
+        else:
+            return fragment + use_hmac
+
+    def _protect_block_cipher(self, rl_msg, **kwargs):
         """Protects a fragment using a block cipher.
 
         The fragment is encrypted and authenticated with a MAC. Both modes,
@@ -117,14 +125,16 @@ class RecordLayerState(object):
         """
 
         if self._enc_then_mac:
-            fragment = self._encrypt_cbc(rl_msg.fragment)
-            fragment = self._append_mac(rl_msg.content_type, rl_msg.version, fragment)
+            fragment = self._encrypt_cbc(rl_msg.fragment, **kwargs)
+            fragment = self._append_mac(
+                rl_msg.content_type, rl_msg.version, fragment, **kwargs
+            )
 
         else:
             fragment = self._append_mac(
-                rl_msg.content_type, rl_msg.version, rl_msg.fragment
+                rl_msg.content_type, rl_msg.version, rl_msg.fragment, **kwargs
             )
-            fragment = self._encrypt_cbc(fragment)
+            fragment = self._encrypt_cbc(fragment, **kwargs)
 
         self._seq_nbr += 1
         return structs.RecordLayerMsg(
@@ -217,7 +227,7 @@ class RecordLayerState(object):
             fragment=nonce_explicit + aes_aead.encrypt(nonce, rl_msg.fragment, aad),
         )
 
-    def _protect(self, rl_msg):
+    def _protect(self, rl_msg, **kwargs):
         """Protects a fragment.
 
         Supports stream ciphers, block cipher, AEAD ciphers and POLY20_CHACHA1305.
@@ -235,7 +245,7 @@ class RecordLayerState(object):
         """
 
         if self._cipher.c_type == tls.CipherType.BLOCK:
-            return self._protect_block_cipher(rl_msg)
+            return self._protect_block_cipher(rl_msg, **kwargs)
 
         elif self._cipher.c_type == tls.CipherType.STREAM:
             return self._protect_stream_cipher(rl_msg)
@@ -284,7 +294,7 @@ class RecordLayerState(object):
             fragment=cipher.encrypt(nonce, fragment, aad),
         )
 
-    def protect_msg(self, rl_msg):
+    def protect_msg(self, rl_msg, **kwargs):
         """Protects a fragment.
 
         Arguments:
@@ -301,7 +311,7 @@ class RecordLayerState(object):
 
         else:
             # Skip compression, we don't want to support it.
-            return self._protect(rl_msg)
+            return self._protect(rl_msg, **kwargs)
 
     def _verify_mac(self, content_type, version, fragment):
         """Verifies the MAC of a fragment.
