@@ -19,6 +19,7 @@ from tlsmate.workers.resumption import ScanResumption
 from tlsmate.workers.renegotiation import ScanRenegotiation
 from tlsmate.workers.ccs_injection import ScanCcsInjection
 from tlsmate.workers.robot import ScanRobot
+from tlsmate.workers.lucky_minus_20 import ScanLuckyMinus20
 from tlsmate.workers.dh_params import ScanDhGroups
 from tlsmate.workers.heartbeat import ScanHeartbeat
 from tlsmate.workers.heartbleed import ScanHeartbleed
@@ -180,6 +181,11 @@ def _add_args_vulenerabilities(parser):
         action=utils.BooleanOptionalAction,
     )
     group.add_argument(
+        "--lucky-minus-20",
+        help="scan for the Lucky-Minus-20 vulnerability CVE-2016-2107",
+        action=utils.BooleanOptionalAction,
+    )
+    group.add_argument(
         "--robot",
         help=(
             "scan for ROBOT vulnerability CVE-2017-13099, etc. (only TL1.0 " "- TLS1.2)"
@@ -263,6 +269,7 @@ class ScanPlugin(CliConnectionPlugin):
         "robot": ScanRobot,
         "heartbleed": ScanHeartbleed,
         "grease": ScanGrease,
+        "lucky_minus_20": ScanLuckyMinus20,
     }
 
     def register_config(self, config):

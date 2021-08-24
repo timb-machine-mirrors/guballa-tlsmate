@@ -1436,6 +1436,7 @@ class SPVulnerabilitiesSchema(ProfileSchema):
     ccs_injection = FieldsEnumString(enum_class=tls.SPBool)
     heartbleed = FieldsEnumString(enum_class=tls.HeartbleedStatus)
     robot = FieldsEnumString(enum_class=tls.RobotVulnerability)
+    lucky_minus_20 = FieldsEnumString(enum_class=tls.SPBool)
 
 
 class ServerProfile(SPObject):

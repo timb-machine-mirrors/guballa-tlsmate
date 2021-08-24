@@ -960,7 +960,7 @@ class TlsConnection(object):
             if self.client.alert_on_invalid_cert:
                 raise exc
 
-    def send(self, *messages, pre_serialization=None):
+    def send(self, *messages, pre_serialization=None, **kwargs):
         """Interface to send messages.
 
         Each message given here will be sent in a separate record layer record,
@@ -1006,7 +1006,8 @@ class TlsConnection(object):
                     content_type=message.content_type,
                     version=self._record_layer_version,
                     fragment=msg_data,
-                )
+                ),
+                **kwargs
             )
             self._post_sending_hook(message)
         self._record_layer.flush()
