@@ -82,7 +82,7 @@ class RecordLayerState(object):
         else:
             return iv + cipher_block
 
-    def _append_mac(self, content_type, version, fragment, hmac_cb=None, **kwargs):
+    def _append_mac(self, content_type, version, fragment, mac_cb=None, **kwargs):
         """Calculates the MAC and appends it to the fragment.
 
         Arguments:
@@ -106,8 +106,8 @@ class RecordLayerState(object):
         mac.update(mac_input)
         mac_bytes = mac.finalize()
 
-        if hmac_cb:
-            mac_bytes = hmac_cb(bytearray(mac_bytes))
+        if mac_cb:
+            mac_bytes = mac_cb(bytearray(mac_bytes))
 
         return fragment + mac_bytes
 

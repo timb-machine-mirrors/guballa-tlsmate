@@ -1,15 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Module scanning for CBC padding vulnerabilities
+"""Module scanning for CBC padding oracle vulnerabilities
 
-We will scan for the following vaulnerabilities:
+Specifically, we will scan for the following vulnerabilities:
 
 * POODLE
-    Just check if SSLV3 is supported for CBC cipher suites
-
-* TLS POODLE
-    padding bytes not checked in TLS.
-    vector: invert all padding bits
-    fingerprint: server accepts record
+    In SSL30, the content of the padding bytes was not specified. Resolved with
+    TLS1.0. Scanning for POODLE is not required, just check if SSL30 is enabled
+    with at least one CBC-cipher suite.
 
 * Lucky-Minus-20 (aka. OpenSSL Padding Oracle vuln.): CVE-2016-2107
     padding length spans the complete record, so that there is no "room" for the
@@ -19,38 +16,37 @@ We will scan for the following vaulnerabilities:
     - https://web-in-security.blogspot.com/2016/05/curious-padding-oracle-in-openssl-cve.html  # noqa
     - https://blog.cloudflare.com/yet-another-padding-oracle-in-openssl-cbc-ciphersuites/  # noqua
 
-* other padding orcales, including
-    * 0-length-Openssl vulnerability (CVE-2019-1559)
-        vector: no data, invalid mac, valid padding
-        fingerprint: Hm, according to
-        https://www.usenix.org/system/files/sec19-merget.pdf, the typical behaviour
-        is a timeout on the server (after sending two Alerts), but SSLLABS seems to
-        consider any other distinguishable behavior as well.
-    * Zombie-POODLE
-        invalid padding bits
-        vector: data (optional), valid mac, invalid padding bits
-        fingerprint: server responds with ALERT and behaves differently than to a
-        wrong MAC
-    * GOLDENDOODLE
-        invalid MAC bits
-        vector: data(optional), invalid mac, valid padding
-        fingerprint: server accepts the record
-    * Sleeping POODLE
-        In case the POODLE behaviour differs between the differen TLS record protocols
-        (handshake, app data, alert)
+For other CBC padding oracle vulnerabilities the definition is not exactly
+clear (to me).
+This includes:
+    * TLS POODLE: Is the case included, where an implementation checks only some
+      padding bits (e.g., only LSB of each byte)?
+    * Zombie POODLE: The researcher says, an alert is sent in case the padding is
+      correct, but the MAC is not. What, if instead of an alert the TCP connection
+      is closed or reset? Still Zombie POODLE?
+    * GOLDENDOODLE: Similar question here: What, if an implementation checks only
+      dedicated bits of the mac? Still GOLDENDOODLE?
+    * Sleeping POODLE: Is any different behavior for the different TLS records protocols
+      considered as sleeping, or are there specific patterns?
+    * 0-length Openssl vulnerability (CVE-2019-1559)
+      vector: no data, invalid mac, valid padding
+      fingerprint: Hm, according to
+      https://www.usenix.org/system/files/sec19-merget.pdf, the typical behaviour
+      is a timeout on the server (after sending two Alerts), but SSLLABS seems to
+      consider any other distinguishable behavior as well.
 
     As it is not exactly defined which fingerprints are related to which vulnerability,
-    we will following for any of those oracles:
+    we will use the following approach:
 
-        Report it as a POODLE-like oracle.
-        Add a note, if it is a 0-length oracle
-        Add a note, if the oracle is weak or strong
-        Add a note, if the oracle is observable (exploitable) or not
+    Base reference is https://www.usenix.org/system/files/sec19-merget.pdf.
+    We will use the four vectors #6, #7, #8, #11 from table 1. If there is any
+    difference in the response, we will in addition use #17 and a vector where each
+    bit of the MAC is flipped as a reference.
 
-
-    - https://web-in-security.blogspot.com/2016/05/curious-padding-oracle-in-openssl-cve.html  # noqa
-    - https://blog.cloudflare.com/yet-another-padding-oracle-in-openssl-cbc-ciphersuites/  # noqua
-
+    We will report, if oracles are detected for #6, #7, #8, #11. For each
+    cipher suite fingerprint we will list the affected (version, cipher suite,
+    protocol) combination, the exploitability (visible or not), and the strength
+    (based on #17).
 """
 # import basic stuff
 from typing import NamedTuple, Callable
@@ -64,12 +60,16 @@ from tlsmate import tls
 from tlsmate import utils
 from tlsmate.exception import TlsConnectionClosedError
 from tlsmate.plugin import WorkerPlugin
-from tlsmate.server_profile import SPCbcPaddingOracle, SPCipherGroup
+from tlsmate.server_profile import (
+    SPCbcPaddingOracleInfo,
+    SPCbcPaddingOracle,
+    SPCipherGroup,
+)
 
 # import other stuff
 
 
-class ResponseEvent(tls.ExtendedEnum):
+class _ResponseEvent(tls.ExtendedEnum):
     ALERT = enum.auto()
     MSG = enum.auto()
     TIMEOUT = enum.auto()
@@ -77,7 +77,7 @@ class ResponseEvent(tls.ExtendedEnum):
     TCP_RESET = enum.auto()
 
 
-class ResponseFingerprint(object):
+class _ResponseFingerprint(object):
     def __init__(self, version, cipher_suite):
         self.events = []
         self.version = version
@@ -99,26 +99,26 @@ class ResponseFingerprint(object):
 
     def no_rejection(self, protocol):
         if protocol is tls.ContentType.HANDSHAKE:
-            return self.events[0][0] is ResponseEvent.MSG
+            return self.events[0][0] is _ResponseEvent.MSG
 
         elif protocol is tls.ContentType.ALERT:
-            return self.events[0][0] is ResponseEvent.TIMEOUT
+            return self.events[0][0] is _ResponseEvent.TIMEOUT
 
         else:
-            return self.events[0][0] in (ResponseEvent.MSG, ResponseEvent.TIMEOUT)
+            return self.events[0][0] in (_ResponseEvent.MSG, _ResponseEvent.TIMEOUT)
 
     def __str__(self):
         parts = []
         for event, info in self.events:
-            if event is ResponseEvent.ALERT:
+            if event is _ResponseEvent.ALERT:
                 parts.append(f"A({info.value})")
-            elif event is ResponseEvent.MSG:
+            elif event is _ResponseEvent.MSG:
                 parts.append(f"M({info})")
-            elif event is ResponseEvent.TIMEOUT:
+            elif event is _ResponseEvent.TIMEOUT:
                 parts.append("T")
-            elif event is ResponseEvent.TCP_CLOSE:
+            elif event is _ResponseEvent.TCP_CLOSE:
                 parts.append("C")
-            elif event is ResponseEvent.TCP_RESET:
+            elif event is _ResponseEvent.TCP_RESET:
                 parts.append("R")
         return "".join(parts)
 
@@ -139,23 +139,30 @@ class CipherSuiteFingerprint(object):
         return hash((self.strong, self.exploitable, tuple(self.oracle_types)))
 
 
-class RecordLayerCallbacks(NamedTuple):
+class _RecordLayerCallbacks(NamedTuple):
     data: Callable
-    hmac: Callable
+    mac: Callable
     padding: Callable
+
+
+class _Accuracy(NamedTuple):
+    accuracy: tls.OracleScanAccuracy
+    all_versions: bool
+    all_cs: bool
+    all_protocols: bool
 
 
 # basic modifications
 
 
-def raw_bytes(bytestring):
+def _raw_bytes(bytestring):
     def cb(data):
         return bytestring
 
     return cb
 
 
-def xor_byte(pos, val):
+def _xor_byte(pos, val):
     def cb(data):
         data[pos] = data[pos] ^ val
         return data
@@ -163,7 +170,7 @@ def xor_byte(pos, val):
     return cb
 
 
-def flip_all_bits():
+def _flip_all_bits():
     def cb(data):
         return bytes([x ^ 0xFF for x in data])
 
@@ -173,25 +180,14 @@ def flip_all_bits():
 # padding modifications
 
 
-def padding_valid(length):
+def _padding_valid(length):
     def cb(padding):
         return pdu.pack_uint8(length - 1) * length
 
     return cb
 
 
-def padding_flip_all_bits(block_size):
-    def cb(padding):
-        length = padding[-1]
-        if length < block_size:
-            length += block_size
-
-        return pdu.pack_uint8(length ^ 0xFF) * length + pdu.pack_uint8(length)
-
-    return cb
-
-
-def padding_flip_msb(block_size):
+def _padding_flip_msb(block_size):
     def cb(padding):
         length = padding[-1]
         if length == 0:
@@ -207,92 +203,75 @@ def padding_flip_msb(block_size):
 # definition of test vectors
 
 
-def vector_valid_record(block_size, hmac_len):
-    """Vector used to determine the response to a valid record as a reference."""
+def _vector_invalid_mac(block_size, mac_len):
+    """Vector used to determine the invalid MAC behaviour as a reference."""
 
-    return RecordLayerCallbacks(data=None, hmac=None, padding=None)
-
-
-def vector_invalid_hmac(block_size, hmac_len):
-    """Vector used to determine the invalid HMAC behaviour as a reference."""
-
-    return RecordLayerCallbacks(data=None, hmac=flip_all_bits(), padding=None)
+    return _RecordLayerCallbacks(data=None, mac=_flip_all_bits(), padding=None)
 
 
-def vector_tls_poodle(block_size, hmac_len):
-    """Vector to check for TLS POODLE.
-
-    Data present, valid HMAC, all padding bits invalid
-    """
-
-    return RecordLayerCallbacks(
-        data=None, hmac=None, padding=padding_flip_all_bits(block_size)
-    )
-
-
-def vector_6_padding_fills_record(block_size, hmac_len):
+def _vector_6_padding_fills_record(block_size, mac_len):
     """Padding length equal to record length
 
     Reference: https://www.usenix.org/system/files/sec19-merget.pdf,
     malformed record #6
     """
 
-    return RecordLayerCallbacks(
-        data=raw_bytes(b""), hmac=raw_bytes(b""), padding=raw_bytes(b"\x4f" * 80)
+    return _RecordLayerCallbacks(
+        data=_raw_bytes(b""), mac=_raw_bytes(b""), padding=_raw_bytes(b"\x4f" * 80)
     )
 
 
-def vector_7_padding_overflow(block_size, hmac_len):
+def _vector_7_padding_overflow(block_size, mac_len):
     """Padding length exceeds record length
 
     Reference: https://www.usenix.org/system/files/sec19-merget.pdf,
     malformed record #7
     """
 
-    return RecordLayerCallbacks(
-        data=raw_bytes(b""), hmac=raw_bytes(b""), padding=raw_bytes(b"\xff" * 80)
+    return _RecordLayerCallbacks(
+        data=_raw_bytes(b""), mac=_raw_bytes(b""), padding=_raw_bytes(b"\xff" * 80)
     )
 
 
-def vector_8_invalid_padding_bit(block_size, hmac_len):
-    """No data, valid HMAC, first padding bit flipped
+def _vector_8_invalid_padding_bit(block_size, mac_len):
+    """No data, valid MAC, first padding bit flipped
 
     Reference: https://www.usenix.org/system/files/sec19-merget.pdf,
     malformed record #8
     """
 
-    pad_len = 80 - hmac_len
+    pad_len = 80 - mac_len
     pad_val = pad_len - 1
     padding = pdu.pack_uint8(pad_val ^ 0x80) + pdu.pack_uint8(pad_val) * pad_val
 
-    return RecordLayerCallbacks(
-        data=raw_bytes(b""), hmac=None, padding=raw_bytes(padding)
+    return _RecordLayerCallbacks(
+        data=_raw_bytes(b""), mac=None, padding=_raw_bytes(padding)
     )
 
 
-def vector_11_no_data_invalid_hmac_msb(block_size, hmac_len):
-    """No data, first bit of hmac flipped, valid padding
+def _vector_11_no_data_invalid_mac_msb(block_size, mac_len):
+    """No data, first bit of mac flipped, valid padding
 
     Reference: https://www.usenix.org/system/files/sec19-merget.pdf,
     malformed record #11
     """
 
-    return RecordLayerCallbacks(
-        data=raw_bytes(b""),
-        hmac=xor_byte(0, 0x80),
-        padding=padding_valid(80 - hmac_len),
+    return _RecordLayerCallbacks(
+        data=_raw_bytes(b""),
+        mac=_xor_byte(0, 0x80),
+        padding=_padding_valid(80 - mac_len),
     )
 
 
-def vector_17_invalid_short_padding_msb(block_size, hmac_len):
-    """Data present, hmac valid, 6 bytes padding, first bit flipped
+def _vector_17_invalid_short_padding_msb(block_size, mac_len):
+    """Data present, mac valid, 6 bytes padding, first bit flipped
 
     Reference: https://www.usenix.org/system/files/sec19-merget.pdf,
     malformed record #17
     """
 
-    return RecordLayerCallbacks(
-        data=None, hmac=None, padding=padding_flip_msb(block_size)
+    return _RecordLayerCallbacks(
+        data=None, mac=None, padding=_padding_flip_msb(block_size)
     )
 
 
@@ -301,36 +280,65 @@ class ScanPaddingOracle(WorkerPlugin):
     descr = "scan for CBC padding oracles"
     prio = 40
 
-    def response_fingerprint(self, conn):
+    accuracy_map = {
+        "lowest": _Accuracy(
+            accuracy=tls.OracleScanAccuracy.LOWEST,
+            all_versions=True,
+            all_cs=False,
+            all_protocols=False,
+        ),
+        "low": _Accuracy(
+            accuracy=tls.OracleScanAccuracy.LOW,
+            all_versions=False,
+            all_cs=True,
+            all_protocols=False,
+        ),
+        "medium": _Accuracy(
+            accuracy=tls.OracleScanAccuracy.MEDIUM,
+            all_versions=True,
+            all_cs=True,
+            all_protocols=False,
+        ),
+        "high": _Accuracy(
+            accuracy=tls.OracleScanAccuracy.HIGH,
+            all_versions=True,
+            all_cs=True,
+            all_protocols=True,
+        ),
+    }
 
-        fp = ResponseFingerprint(conn.version, conn.cipher_suite)
+    @staticmethod
+    def _response_fingerprint(conn):
+        fp = _ResponseFingerprint(conn.version, conn.cipher_suite)
         done = False
         while not done:
             try:
                 rec_msg = conn.wait(msg.Any, timeout=1000, fail_on_timeout=False)
                 if rec_msg is None:
-                    fp.add_event(ResponseEvent.TIMEOUT)
+                    fp.add_event(_ResponseEvent.TIMEOUT)
                     done = True
 
                 else:
                     if isinstance(rec_msg, msg.Alert):
-                        fp.add_event(ResponseEvent.ALERT, rec_msg.description)
+                        fp.add_event(_ResponseEvent.ALERT, rec_msg.description)
 
                     else:
-                        fp.add_event(ResponseEvent.MSG, rec_msg.msg_type)
+                        fp.add_event(_ResponseEvent.MSG, rec_msg.msg_type)
 
             except TlsConnectionClosedError as exc:
                 if exc.exc is None:
-                    fp.add_event(ResponseEvent.TCP_CLOSE)
+                    fp.add_event(_ResponseEvent.TCP_CLOSE)
 
                 else:
-                    fp.add_event(ResponseEvent.TCP_RESET)
+                    fp.add_event(_ResponseEvent.TCP_RESET)
 
                 done = True
 
         return fp
 
-    def handshake_scenario(self, conn, vector):
+
+    @staticmethod
+    def _handshake_scenario(conn, vector):
         conn.send(msg.ClientHello)
         conn.wait(msg.ServerHello)
         conn.wait(msg.Certificate, optional=True)
@@ -352,11 +360,12 @@ class ScanPaddingOracle(WorkerPlugin):
         conn.send(
             msg.Finished,
             data_cb=callback.data,
-            hmac_cb=callback.hmac,
+            mac_cb=callback.mac,
             padding_cb=callback.padding,
         )
 
-    def app_data_scenario(self, conn, vector):
+    @staticmethod
+    def _app_data_scenario(conn, vector):
         conn.handshake()
 
         callback = vector(
@@ -365,11 +374,12 @@ class ScanPaddingOracle(WorkerPlugin):
         conn.send(
             msg.AppData(b" "),
             data_cb=callback.data,
-            hmac_cb=callback.hmac,
+            mac_cb=callback.mac,
             padding_cb=callback.padding,
         )
 
-    def alert_scenario(self, conn, vector):
+    @staticmethod
+    def _alert_scenario(conn, vector):
         conn.handshake()
         callback = vector(
             conn.cs_details.cipher_struct.block_size, conn.cs_details.mac_struct.mac_len
@@ -380,48 +390,46 @@ class ScanPaddingOracle(WorkerPlugin):
                 description=tls.AlertDescription.CLOSE_NOTIFY,
             ),
             data_cb=callback.data,
-            hmac_cb=callback.hmac,
+            mac_cb=callback.mac,
             padding_cb=callback.padding,
         )
 
-    def vector_fingerprint(self, protocol, vector):
+    def _vector_fingerprint(self, protocol, vector):
         with self.client.create_connection() as conn:
             if protocol is tls.ContentType.HANDSHAKE:
-                self.handshake_scenario(conn, vector)
+                self._handshake_scenario(conn, vector)
 
             elif protocol is tls.ContentType.APPLICATION_DATA:
-                self.app_data_scenario(conn, vector)
+                self._app_data_scenario(conn, vector)
 
             elif protocol is tls.ContentType.ALERT:
-                self.alert_scenario(conn, vector)
+                self._alert_scenario(conn, vector)
 
-            return self.response_fingerprint(conn)
+            return self._response_fingerprint(conn)
         return None
 
-    def store_cs_fingerprint(self, fp, version, cipher_suite, protocol):
+    def _store_cs_fingerprint(self, fp, version, cipher_suite, protocol):
         fp_id = fp.get_fingerprint_id()
         if fp_id not in self.fingerprints:
             self.fingerprints[fp_id] = {"fp": fp, "entries": []}
         self.fingerprints[fp_id]["entries"].append((version, cipher_suite, protocol))
 
-    def scan_record_protocol(self, protocol):
-
+    def _scan_record_protocol(self, protocol):
         cs_fp = CipherSuiteFingerprint()
-
         fps = [
-            self.vector_fingerprint(protocol, vector)
+            self._vector_fingerprint(protocol, vector)
             for vector in [
-                vector_6_padding_fills_record,
-                vector_7_padding_overflow,
-                vector_8_invalid_padding_bit,
-                vector_11_no_data_invalid_hmac_msb,
+                _vector_6_padding_fills_record,
+                _vector_7_padding_overflow,
+                _vector_8_invalid_padding_bit,
+                _vector_11_no_data_invalid_mac_msb,
             ]
         ]
         (
             fp_6_padding_fills_record,
             fp_7_padding_overflow,
             fp_8_padding_invalid_padding_bit,
-            fp_11_padding_no_data_invalid_hmac_msb,
+            fp_11_padding_no_data_invalid_mac_msb,
         ) = fps
         logging.debug(f"fp_6_padding_fills_record {fp_6_padding_fills_record}")
         logging.debug(f"fp_7_padding_overflow {fp_7_padding_overflow}")
@@ -429,47 +437,47 @@ class ScanPaddingOracle(WorkerPlugin):
             f"fp_8_padding_invalid_padding_bit {fp_8_padding_invalid_padding_bit}"
         )
         logging.debug(
-            f"fp_11_padding_no_data_invalid_hmac_msb "
-            f"{fp_11_padding_no_data_invalid_hmac_msb}"
+            f"fp_11_padding_no_data_invalid_mac_msb "
+            f"{fp_11_padding_no_data_invalid_mac_msb}"
         )
         if not all(fps):
             return
 
         if not all(x == fps[0] for x in fps):
-            fp_invalid_hmac = self.vector_fingerprint(protocol, vector_invalid_hmac)
-            logging.debug(f"fp_invalid_hmac: {fp_invalid_hmac}")
-            if not fp_invalid_hmac:
+            fp_invalid_mac = self._vector_fingerprint(protocol, _vector_invalid_mac)
+            logging.debug(f"fp_invalid_mac: {fp_invalid_mac}")
+            if not fp_invalid_mac:
                 return
 
             if (
-                fp_6_padding_fills_record != fp_invalid_hmac
+                fp_6_padding_fills_record != fp_invalid_mac
                 and fp_6_padding_fills_record.events[0][1]
                 is tls.AlertDescription.RECORD_OVERFLOW
             ):
                 cs_fp.oracle_types.append(tls.SPCbcPaddingOracle.LUCKY_MINUS_20)
 
             else:
-                if fp_6_padding_fills_record != fp_invalid_hmac:
+                if fp_6_padding_fills_record != fp_invalid_mac:
                     cs_fp.oracle_types.append(
-                        tls.SPCbcPaddingOracle.PADDING_EQUAL_RECORD
+                        tls.SPCbcPaddingOracle.PADDING_FILLS_RECORD
                     )
 
-                if fp_7_padding_overflow != fp_invalid_hmac:
+                if fp_7_padding_overflow != fp_invalid_mac:
                     cs_fp.oracle_types.append(
                         tls.SPCbcPaddingOracle.PADDING_EXCEEDS_RECORD
                     )
 
-            if fp_8_padding_invalid_padding_bit != fp_invalid_hmac:
+            if fp_8_padding_invalid_padding_bit != fp_invalid_mac:
                 cs_fp.oracle_types.append(tls.SPCbcPaddingOracle.INVALID_PADDING)
 
-            if fp_11_padding_no_data_invalid_hmac_msb != fp_invalid_hmac:
-                cs_fp.oracle_types.append(tls.SPCbcPaddingOracle.INVALID_HMAC)
+            if fp_11_padding_no_data_invalid_mac_msb != fp_invalid_mac:
+                cs_fp.oracle_types.append(tls.SPCbcPaddingOracle.INVALID_MAC)
 
             cs_fp.exploitable = tls.SPBool(
-                any(fp_invalid_hmac.visible_difference(fp) for fp in fps)
+                any(fp_invalid_mac.visible_difference(fp) for fp in fps)
             )
-            fp_17_invalid_short_padding_msb = self.vector_fingerprint(
-                protocol, vector_17_invalid_short_padding_msb
+            fp_17_invalid_short_padding_msb = self._vector_fingerprint(
+                protocol, _vector_17_invalid_short_padding_msb
             )
             logging.debug(
                 f"fp_17_invalid_short_padding_msb {fp_17_invalid_short_padding_msb}"
@@ -478,23 +486,24 @@ class ScanPaddingOracle(WorkerPlugin):
                 cs_fp.strong = tls.SPBool.C_UNDETERMINED
             else:
                 cs_fp.strong = tls.SPBool(
-                    fp_17_invalid_short_padding_msb != fp_invalid_hmac
+                    fp_17_invalid_short_padding_msb != fp_invalid_mac
                 )
 
-            self.store_cs_fingerprint(
-                cs_fp, fp_invalid_hmac.version, fp_invalid_hmac.cipher_suite, protocol
+            self._store_cs_fingerprint(
+                cs_fp, fp_invalid_mac.version, fp_invalid_mac.cipher_suite, protocol
             )
 
-    def scan_cipher_suite(self):
+    def _scan_cipher_suite(self):
+        self.applicable = True
         if self.all_protocols:
-            self.scan_record_protocol(tls.ContentType.HANDSHAKE)
-            self.scan_record_protocol(tls.ContentType.APPLICATION_DATA)
-            self.scan_record_protocol(tls.ContentType.ALERT)
+            self._scan_record_protocol(tls.ContentType.HANDSHAKE)
+            self._scan_record_protocol(tls.ContentType.APPLICATION_DATA)
+            self._scan_record_protocol(tls.ContentType.ALERT)
 
         else:
-            self.scan_record_protocol(tls.ContentType.APPLICATION_DATA)
+            self._scan_record_protocol(tls.ContentType.APPLICATION_DATA)
 
-    def scan_version(self, values):
+    def _scan_version(self, values):
         if values.versions:
             cbc_ciphers = utils.filter_cipher_suites(
                 values.cipher_suites, cipher_type=[tls.CipherType.BLOCK], full_hs=True,
@@ -506,61 +515,67 @@ class ScanPaddingOracle(WorkerPlugin):
             if self.all_cs:
                 for cipher in cbc_ciphers:
                     self.client.profile.cipher_suites = [cipher]
-                    self.scan_cipher_suite()
+                    self._scan_cipher_suite()
 
             else:
                 self.client.profile.cipher_suites = cbc_ciphers
-                self.scan_cipher_suite()
+                self._scan_cipher_suite()
 
-    def determine_accuracy(self):
-        accuracy = self.config.get("oracle_accuracy")
-        if accuracy not in ["lowest", "low", "medium", "high"]:
-            accuracy = "medium"
-        if accuracy == "lowest":
-            self.all_versions = True
-            self.all_cs = False
-            self.all_protocols = False
-        elif accuracy == "low":
-            self.all_versions = False
-            self.all_cs = True
-            self.all_protocols = False
-        elif accuracy == "medium":
-            self.all_versions = True
-            self.all_cs = True
-            self.all_protocols = False
-        elif accuracy == "high":
-            self.all_versions = True
-            self.all_cs = True
-            self.all_protocols = True
+    def _scan_poodle(self):
+        values = self.server_profile.get_profile_values([tls.Version.SSL30])
+        cbc_ciphers = utils.filter_cipher_suites(
+            values.cipher_suites, cipher_type=[tls.CipherType.BLOCK],
+        )
+        return tls.SPBool(bool(cbc_ciphers))
+
 
     def run(self):
-        self.determine_accuracy()
+        accuracy = self.config.get("oracle_accuracy")
+        if accuracy not in self.accuracy_map:
+            accuracy = "medium"
+
+        mapping = self.accuracy_map[accuracy]
+        self.accuracy = mapping.accuracy
+        self.all_versions = mapping.all_versions
+        self.all_cs = mapping.all_cs
+        self.all_protocols = mapping.all_protocols
+
+        self.server_profile.vulnerabilities.poodle = self._scan_poodle()
         self.fingerprints = {}
+        self.applicable = False
         versions = [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]
         if self.all_versions:
             for version in versions:
                 values = self.server_profile.get_profile_values([version])
-                self.scan_version(values)
+                self._scan_version(values)
 
         else:
             values = self.server_profile.get_profile_values(versions)
-            self.scan_version(values)
+            self._scan_version(values)
 
-        if self.fingerprints:
-            oracles = []
-            for entry in self.fingerprints.values():
-                item = entry["fp"]
-                sp_oracle = SPCbcPaddingOracle(
-                    exploitable=item.exploitable, strong=item.strong
-                )
-                sp_oracle.types = item.oracle_types
-                sp_oracle.cipher_group = [
-                    SPCipherGroup(
-                        version=version,
-                        cipher_suite=cipher_suite,
-                        record_protocol=protocol,
+        oracle_info = SPCbcPaddingOracleInfo()
+        oracle_info.accuracy = self.accuracy
+        if not self.applicable:
+            oracle_info.vulnerable = tls.SPBool.C_NA
+
+        else:
+            oracle_info.vulnerable = tls.SPBool(bool(self.fingerprints))
+            oracle_info.oracles = []
+            if self.fingerprints:
+                for entry in self.fingerprints.values():
+                    item = entry["fp"]
+                    sp_oracle = SPCbcPaddingOracle(
+                        exploitable=item.exploitable, strong=item.strong
                     )
-                    for version, cipher_suite, protocol in entry["entries"]
-                ]
-                oracles.append(sp_oracle)
-            self.server_profile.vulnerabilities.cbc_padding_oracle = oracles
+                    sp_oracle.types = item.oracle_types
+                    sp_oracle.cipher_group = [
+                        SPCipherGroup(
+                            version=version,
+                            cipher_suite=cipher_suite,
+                            record_protocol=protocol,
+                        )
+                        for version, cipher_suite, protocol in entry["entries"]
+                    ]
+                    oracle_info.oracles.append(sp_oracle)
+
+        self.server_profile.vulnerabilities.cbc_padding_oracle = oracle_info
