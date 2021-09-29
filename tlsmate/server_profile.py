@@ -1461,6 +1461,21 @@ class SPCbcPaddingOracleSchema(ProfileSchema):
     cipher_group = fields.List(fields.Nested(SPCipherGroupSchema))
 
 
+class SPCbcPaddingOracleInfo(SPObject):
+    """Data class for CBC padding oracle info
+    """
+
+
+class SPCbcPaddingOracleInfoSchema(ProfileSchema):
+    """Schema for CBC padding oracle info
+    """
+
+    __profile_class__ = SPCbcPaddingOracleInfo
+    vulnerable = FieldsEnumString(enum_class=tls.SPBool)
+    accuracy = FieldsEnumString(enum_class=tls.OracleScanAccuracy)
+    oracles = fields.List(fields.Nested(SPCbcPaddingOracleSchema))
+
+
 class SPVulnerabilities(SPObject):
     """Data class for vulnerabilities
     """
@@ -1475,7 +1490,7 @@ class SPVulnerabilitiesSchema(ProfileSchema):
     heartbleed = FieldsEnumString(enum_class=tls.HeartbleedStatus)
     robot = FieldsEnumString(enum_class=tls.RobotVulnerability)
     poodle = FieldsEnumString(enum_class=tls.SPBool)
-    cbc_padding_oracle = fields.List(fields.Nested(SPCbcPaddingOracleSchema))
+    cbc_padding_oracle = fields.Nested(SPCbcPaddingOracleInfoSchema)
 
 
 class ServerProfile(SPObject):
