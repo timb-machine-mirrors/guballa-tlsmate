@@ -133,7 +133,7 @@ class _ResponseFingerprint(object):
 class CipherSuiteFingerprint(object):
     def __init__(self):
         self.strong = tls.SPBool.C_UNDETERMINED
-        self.exploitable = tls.SPBool.C_UNDETERMINED
+        self.observable = tls.SPBool.C_UNDETERMINED
         self.oracle_types = []
 
     def __eq__(self, other):
@@ -143,7 +143,7 @@ class CipherSuiteFingerprint(object):
         return not self.__eq__(other)
 
     def get_fingerprint_id(self):
-        return hash((self.strong, self.exploitable, tuple(self.oracle_types)))
+        return hash((self.strong, self.observable, tuple(self.oracle_types)))
 
 
 class _RecordLayerCallbacks(NamedTuple):
@@ -492,7 +492,7 @@ class ScanPaddingOracle(WorkerPlugin):
             if fp_11_padding_no_data_invalid_mac_msb != fp_invalid_mac:
                 cs_fp.oracle_types.append(tls.SPCbcPaddingOracle.INVALID_MAC)
 
-            cs_fp.exploitable = tls.SPBool(
+            cs_fp.observable = tls.SPBool(
                 any(fp_invalid_mac.visible_difference(fp) for fp in fps)
             )
             fp_17_invalid_short_padding_msb = self._vector_fingerprint(
@@ -608,7 +608,7 @@ class ScanPaddingOracle(WorkerPlugin):
                 for entry in self.fingerprints.values():
                     item = entry["fp"]
                     sp_oracle = SPCbcPaddingOracle(
-                        exploitable=item.exploitable, strong=item.strong
+                        observable=item.observable, strong=item.strong
                     )
                     sp_oracle.types = item.oracle_types
                     sp_oracle.cipher_group = [
