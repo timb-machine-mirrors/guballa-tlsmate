@@ -8,6 +8,15 @@ Specifically, we will scan for the following vulnerabilities:
     TLS1.0. Scanning for POODLE is not required, just check if SSL30 is enabled
     with at least one CBC-cipher suite.
 
+* TLS POODLE
+    Padding bits are not checked, even for TLS1.0 and above.
+    We will only scan for the handshake protocol (Finished), as there are
+    implementations in the wild, where AppData are not affected.
+    We won't scan every cipher suite, but we do scan each TLS protocol version.
+    There are implementations, which check only certain bits of the padding, we
+    regard those implementations as vulnerable to TLS POODLE as well, although for
+    (SSL) POODLE, no bits are checked at all.
+
 * Lucky-Minus-20 (aka. OpenSSL Padding Oracle vuln.): CVE-2016-2107
     padding length spans the complete record, so that there is no "room" for the
     MAC and the data
@@ -19,8 +28,6 @@ Specifically, we will scan for the following vulnerabilities:
 For other CBC padding oracle vulnerabilities the definition is not exactly
 clear (to me).
 This includes:
-    * TLS POODLE: Is the case included, where an implementation checks only some
-      padding bits (e.g., only LSB of each byte)?
     * Zombie POODLE: The researcher says, an alert is sent in case the padding is
       correct, but the MAC is not. What, if instead of an alert the TCP connection
       is closed or reset? Still Zombie POODLE?
@@ -189,10 +196,8 @@ def _padding_valid(length):
 
 def _padding_flip_msb(block_size):
     def cb(padding):
-        length = padding[-1]
-        if length == 0:
-            length += block_size
-            padding = bytearray(pdu.pack_uint8(length)) * (length + 1)
+        if padding == b"\0":
+            padding = pdu.pack_uint8(block_size) * (block_size + 1)
 
         padding[0] = padding[0] ^ 0x80
         return padding
@@ -207,6 +212,17 @@ def _vector_invalid_mac(block_size, mac_len):
     """Vector used to determine the invalid MAC behaviour as a reference."""
 
     return _RecordLayerCallbacks(data=None, mac=_flip_all_bits(), padding=None)
+
+
+def _vector_tls_poodle(block_size, mac_len):
+    """Vector to check for TLS POODLE.
+
+    Valid data, valid MAC, MSB of padding invalid
+    """
+
+    return _RecordLayerCallbacks(
+        data=None, mac=None, padding=_padding_flip_msb(block_size)
+    )
 
 
 def _vector_6_padding_fills_record(block_size, mac_len):
@@ -270,8 +286,11 @@ def _vector_17_invalid_short_padding_msb(block_size, mac_len):
     malformed record #17
     """
 
+    data_len = 80 - mac_len - 6
     return _RecordLayerCallbacks(
-        data=None, mac=None, padding=_padding_flip_msb(block_size)
+        data=_raw_bytes(b" " * data_len),
+        mac=None,
+        padding=_padding_flip_msb(block_size),
     )
 
 
@@ -336,7 +355,6 @@ class ScanPaddingOracle(WorkerPlugin):
 
         return fp
 
-
     @staticmethod
     def _handshake_scenario(conn, vector):
         conn.send(msg.ClientHello)
@@ -372,7 +390,7 @@ class ScanPaddingOracle(WorkerPlugin):
             conn.cs_details.cipher_struct.block_size, conn.cs_details.mac_struct.mac_len
         )
         conn.send(
-            msg.AppData(b" "),
+            msg.AppData(b""),
             data_cb=callback.data,
             mac_cb=callback.mac,
             padding_cb=callback.padding,
@@ -455,6 +473,7 @@ class ScanPaddingOracle(WorkerPlugin):
                 is tls.AlertDescription.RECORD_OVERFLOW
             ):
                 cs_fp.oracle_types.append(tls.SPCbcPaddingOracle.LUCKY_MINUS_20)
+                self.lucky_minus_20 = True
 
             else:
                 if fp_6_padding_fills_record != fp_invalid_mac:
@@ -494,7 +513,6 @@ class ScanPaddingOracle(WorkerPlugin):
             )
 
     def _scan_cipher_suite(self):
-        self.applicable = True
         if self.all_protocols:
             self._scan_record_protocol(tls.ContentType.HANDSHAKE)
             self._scan_record_protocol(tls.ContentType.APPLICATION_DATA)
@@ -503,7 +521,12 @@ class ScanPaddingOracle(WorkerPlugin):
         else:
             self._scan_record_protocol(tls.ContentType.APPLICATION_DATA)
 
-    def _scan_version(self, values):
+    def _tls_poodle_handshake(self):
+        fp = self._vector_fingerprint(tls.ContentType.HANDSHAKE, _vector_tls_poodle)
+        if fp.events[0][1] is tls.CCSType.CHANGE_CIPHER_SPEC:
+            self.tls_poodle = True
+
+    def _scan_version(self, values, tls_poodle=False):
         if values.versions:
             cbc_ciphers = utils.filter_cipher_suites(
                 values.cipher_suites, cipher_type=[tls.CipherType.BLOCK], full_hs=True,
@@ -511,8 +534,13 @@ class ScanPaddingOracle(WorkerPlugin):
             if not cbc_ciphers:
                 return
 
+            self.applicable = True
             self.client.init_profile(profile_values=values)
-            if self.all_cs:
+            if tls_poodle:
+                self.client.profile.cipher_suites = cbc_ciphers
+                self._tls_poodle_handshake()
+
+            elif self.all_cs:
                 for cipher in cbc_ciphers:
                     self.client.profile.cipher_suites = [cipher]
                     self._scan_cipher_suite()
@@ -528,6 +556,13 @@ class ScanPaddingOracle(WorkerPlugin):
         )
         return tls.SPBool(bool(cbc_ciphers))
 
+    def _scan_tls_poodle(self):
+        for version in [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]:
+            values = self.server_profile.get_profile_values([version])
+            self._scan_version(values, tls_poodle=True)
+
+            if self.tls_poodle:
+                break
 
     def run(self):
         accuracy = self.config.get("oracle_accuracy")
@@ -539,8 +574,12 @@ class ScanPaddingOracle(WorkerPlugin):
         self.all_versions = mapping.all_versions
         self.all_cs = mapping.all_cs
         self.all_protocols = mapping.all_protocols
+        self.lucky_minus_20 = False
+        self.tls_poodle = False
 
         self.server_profile.vulnerabilities.poodle = self._scan_poodle()
+        if not self.all_protocols:
+            self._scan_tls_poodle()
         self.fingerprints = {}
         self.applicable = False
         versions = [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]
@@ -556,9 +595,13 @@ class ScanPaddingOracle(WorkerPlugin):
         oracle_info = SPCbcPaddingOracleInfo()
         oracle_info.accuracy = self.accuracy
         if not self.applicable:
+            tls_poodle = tls.SPBool.C_NA
+            lucky_minus_20 = tls.SPBool.C_NA
             oracle_info.vulnerable = tls.SPBool.C_NA
 
         else:
+            tls_poodle = tls.SPBool(self.tls_poodle)
+            lucky_minus_20 = tls.SPBool(self.lucky_minus_20)
             oracle_info.vulnerable = tls.SPBool(bool(self.fingerprints))
             oracle_info.oracles = []
             if self.fingerprints:
@@ -578,4 +621,6 @@ class ScanPaddingOracle(WorkerPlugin):
                     ]
                     oracle_info.oracles.append(sp_oracle)
 
+        self.server_profile.vulnerabilities.tls_poodle = tls_poodle
+        self.server_profile.vulnerabilities.lucky_minus_20 = lucky_minus_20
         self.server_profile.vulnerabilities.cbc_padding_oracle = oracle_info
