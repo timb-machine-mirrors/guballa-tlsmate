@@ -1058,6 +1058,22 @@ class TextProfileWorker(WorkerPlugin):
                 get_styled_text(self._style, "vulnerabilities", "robot", robot.name),
             )
 
+        poodle = getattr(vuln_prof, "poodle", None)
+        if poodle is not None:
+            table.row(
+                "POODLE vulnerability (SSL30 enabled)",
+                get_styled_text(self._style, "vulnerabilities", "poodle", poodle.name),
+            )
+
+        tls_poodle = getattr(vuln_prof, "tls_poodle", None)
+        if tls_poodle is not None:
+            table.row(
+                "TLS POODLE vulnerability",
+                get_styled_text(
+                    self._style, "vulnerabilities", "tls_poodle", tls_poodle.name
+                ),
+            )
+
         lucky_minus_20 = getattr(vuln_prof, "lucky_minus_20", None)
         if lucky_minus_20 is not None:
             table.row(
@@ -1070,7 +1086,77 @@ class TextProfileWorker(WorkerPlugin):
                 ),
             )
 
+        # cbc padding oracle shall be the last vulnerability in the list
+        cbc_padding_oracle = getattr(vuln_prof, "cbc_padding_oracle", None)
+        if cbc_padding_oracle:
+            style_cbc = get_dict_value(
+                self._style, "vulnerabilities", "cbc_padding_oracle"
+            )
+            vulnerable = getattr(cbc_padding_oracle, "vulnerable", None)
+            txt = get_dict_value(
+                style_cbc, "vulnerable", vulnerable.name, "txt", default="???"
+            )
+            oracles = getattr(cbc_padding_oracle, "oracles", None)
+            if oracles:
+                txt += f", number of oracles: {len(oracles)}"
+
+            table.row(
+                "CBC padding oracle",
+                get_mood_applied(txt, style_cbc, "vulnerable", vulnerable.name, "style"),
+            )
+            accuracy = getattr(cbc_padding_oracle, "accuracy", None)
+            table.row(
+                "  scan accuracy", get_styled_text(style_cbc, "accuracy", accuracy.name)
+            )
+
         table.dump()
+        if cbc_padding_oracle and oracles:
+            style_oracle = get_dict_value(style_cbc, "oracle")
+            for oracle in oracles:
+                print("\n    oracle properties")
+                table = utils.Table(indent=6, sep="  ")
+                strong = getattr(oracle, "strong", None)
+                table.row(
+                    "strength",
+                    get_styled_text(style_oracle, "strong", strong.name),
+                )
+                observable = getattr(oracle, "observable", None)
+                table.row(
+                    "observable",
+                    get_styled_text(style_oracle, "observable", observable.name),
+                )
+                oracle_types = getattr(oracle, "types", None)
+                if oracle_types:
+                    str_types = []
+                    for oracle_type in oracle_types:
+                        str_types.append(get_dict_value(style_oracle, "type", oracle_type.name, default="???"))
+
+                    table.row("oracle type(s)", str_types.pop(0))
+                    for line in str_types:
+                        table.row("", line)
+
+                cipher_groups = getattr(oracle, "cipher_group", None)
+                if cipher_groups:
+                    str_group = []
+                    max_len = 0
+                    for group in cipher_groups:
+                        version = getattr(group, "version", None)
+                        version_str = version.name if version else "???"
+                        cs = getattr(group, "cipher_suite", None)
+                        cs_str = cs.name if cs else "???"
+                        protocol = getattr(group, "record_protocol", None)
+                        protocol_str = get_dict_value(style_oracle, "cipher_group", "record_protocol", protocol.name)
+                        str_group.append((version_str, cs_str, protocol_str))
+                        max_len = max(max_len, len(cs_str))
+                        # str_group.append(f"  {version_str} {cs_str}   {protocol_str}")
+
+                    txt = "cipher suite groups"
+                    for version, cs, prot in str_group:
+                        table.row(txt, f"{version} {cs:{max_len}} {prot}")
+                        txt = ""
+
+                table.dump()
+
         print()
 
     def run(self):

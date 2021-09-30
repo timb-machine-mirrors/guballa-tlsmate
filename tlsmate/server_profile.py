@@ -1455,7 +1455,7 @@ class SPCbcPaddingOracleSchema(ProfileSchema):
     """
 
     __profile_class__ = SPCbcPaddingOracle
-    exploitable = FieldsEnumString(enum_class=tls.SPBool)
+    observable = FieldsEnumString(enum_class=tls.SPBool)
     strong = FieldsEnumString(enum_class=tls.SPBool)
     types = fields.List(FieldsEnumString(enum_class=tls.SPCbcPaddingOracle))
     cipher_group = fields.List(fields.Nested(SPCipherGroupSchema))

@@ -191,8 +191,11 @@ def _add_args_vulenerabilities(parser):
             "the accuracy of the scan for CBC padding oracles. "
             "lowest: scan application data with one selcted cipher suite (fastest). "
             "low: scan application data records for each cipher suite (fast). "
-            "medium: scan application data records for each TLS version and cipher suite combination (slower). "
-            "high: scan application data, handshake and alert records for each TLS version and cipher suite combination (slowest)."
+            "medium: scan application data records for each TLS version and cipher "
+            "suite combination (slower). "
+            "high: scan application data, handshake and alert records for each TLS "
+            "version and cipher suite combination (slowest). "
+            "Default is medium."
         ),
         choices=["lowest", "low", "medium", "high"],
         default="medium",
