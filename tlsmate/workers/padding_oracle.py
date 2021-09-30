@@ -578,8 +578,7 @@ class ScanPaddingOracle(WorkerPlugin):
         self.tls_poodle = False
 
         self.server_profile.vulnerabilities.poodle = self._scan_poodle()
-        if not self.all_protocols:
-            self._scan_tls_poodle()
+        self._scan_tls_poodle()
         self.fingerprints = {}
         self.applicable = False
         versions = [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]
