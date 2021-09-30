@@ -1490,6 +1490,8 @@ class SPVulnerabilitiesSchema(ProfileSchema):
     heartbleed = FieldsEnumString(enum_class=tls.HeartbleedStatus)
     robot = FieldsEnumString(enum_class=tls.RobotVulnerability)
     poodle = FieldsEnumString(enum_class=tls.SPBool)
+    tls_poodle = FieldsEnumString(enum_class=tls.SPBool)
+    lucky_minus_20 = FieldsEnumString(enum_class=tls.SPBool)
     cbc_padding_oracle = fields.Nested(SPCbcPaddingOracleInfoSchema)
 
 
