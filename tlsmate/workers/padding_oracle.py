@@ -104,16 +104,6 @@ class _ResponseFingerprint(object):
             return True
         return any(i[0] != j[0] for i, j in zip(self.events, other.events))
 
-    def no_rejection(self, protocol):
-        if protocol is tls.ContentType.HANDSHAKE:
-            return self.events[0][0] is _ResponseEvent.MSG
-
-        elif protocol is tls.ContentType.ALERT:
-            return self.events[0][0] is _ResponseEvent.TIMEOUT
-
-        else:
-            return self.events[0][0] in (_ResponseEvent.MSG, _ResponseEvent.TIMEOUT)
-
     def __str__(self):
         parts = []
         for event, info in self.events:
@@ -135,12 +125,6 @@ class CipherSuiteFingerprint(object):
         self.strong = tls.SPBool.C_UNDETERMINED
         self.observable = tls.SPBool.C_UNDETERMINED
         self.oracle_types = []
-
-    def __eq__(self, other):
-        return self.get_fingerprint_id() == other.get_fingerprint_id()
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
 
     def get_fingerprint_id(self):
         return hash((self.strong, self.observable, tuple(self.oracle_types)))
@@ -300,19 +284,13 @@ class ScanPaddingOracle(WorkerPlugin):
 
     accuracy_map = {
         "low": _Accuracy(
-            accuracy=tls.OracleScanAccuracy.LOW,
-            all_cs=False,
-            all_protocols=False,
+            accuracy=tls.OracleScanAccuracy.LOW, all_cs=False, all_protocols=False,
         ),
         "medium": _Accuracy(
-            accuracy=tls.OracleScanAccuracy.MEDIUM,
-            all_cs=True,
-            all_protocols=False,
+            accuracy=tls.OracleScanAccuracy.MEDIUM, all_cs=True, all_protocols=False,
         ),
         "high": _Accuracy(
-            accuracy=tls.OracleScanAccuracy.HIGH,
-            all_cs=True,
-            all_protocols=True,
+            accuracy=tls.OracleScanAccuracy.HIGH, all_cs=True, all_protocols=True,
         ),
     }
 

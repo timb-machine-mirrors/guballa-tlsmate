@@ -1102,7 +1102,9 @@ class TextProfileWorker(WorkerPlugin):
 
             table.row(
                 "CBC padding oracle",
-                get_mood_applied(txt, style_cbc, "vulnerable", vulnerable.name, "style"),
+                get_mood_applied(
+                    txt, style_cbc, "vulnerable", vulnerable.name, "style"
+                ),
             )
             accuracy = getattr(cbc_padding_oracle, "accuracy", None)
             table.row(
@@ -1117,8 +1119,7 @@ class TextProfileWorker(WorkerPlugin):
                 table = utils.Table(indent=6, sep="  ")
                 strong = getattr(oracle, "strong", None)
                 table.row(
-                    "strength",
-                    get_styled_text(style_oracle, "strong", strong.name),
+                    "strength", get_styled_text(style_oracle, "strong", strong.name),
                 )
                 observable = getattr(oracle, "observable", None)
                 table.row(
@@ -1129,7 +1130,11 @@ class TextProfileWorker(WorkerPlugin):
                 if oracle_types:
                     str_types = []
                     for oracle_type in oracle_types:
-                        str_types.append(get_dict_value(style_oracle, "type", oracle_type.name, default="???"))
+                        str_types.append(
+                            get_dict_value(
+                                style_oracle, "type", oracle_type.name, default="???"
+                            )
+                        )
 
                     table.row("oracle type(s)", str_types.pop(0))
                     for line in str_types:
@@ -1145,7 +1150,12 @@ class TextProfileWorker(WorkerPlugin):
                         cs = getattr(group, "cipher_suite", None)
                         cs_str = cs.name if cs else "???"
                         protocol = getattr(group, "record_protocol", None)
-                        protocol_str = get_dict_value(style_oracle, "cipher_group", "record_protocol", protocol.name)
+                        protocol_str = get_dict_value(
+                            style_oracle,
+                            "cipher_group",
+                            "record_protocol",
+                            protocol.name,
+                        )
                         str_group.append((version_str, cs_str, protocol_str))
                         max_len = max(max_len, len(cs_str))
                         # str_group.append(f"  {version_str} {cs_str}   {protocol_str}")
