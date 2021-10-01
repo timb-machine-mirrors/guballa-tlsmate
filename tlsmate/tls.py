@@ -1179,3 +1179,23 @@ class StatusType(ExtendedEnum):
     OCSP = 1
     OCSP_MULTI = 2
     NONE = 256
+
+
+class SPCbcPaddingOracle(ExtendedEnum):
+    """Different types of CBC padding oracles
+    """
+
+    LUCKY_MINUS_20 = enum.auto()
+    PADDING_FILLS_RECORD = enum.auto()
+    PADDING_EXCEEDS_RECORD = enum.auto()
+    INVALID_PADDING = enum.auto()
+    INVALID_MAC = enum.auto()
+
+
+class OracleScanAccuracy(ExtendedEnum):
+    """How accurate the scan for CBC padding oracles shall be
+    """
+
+    LOW = enum.auto()
+    MEDIUM = enum.auto()
+    HIGH = enum.auto()

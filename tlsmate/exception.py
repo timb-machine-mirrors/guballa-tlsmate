@@ -24,9 +24,13 @@ class FatalAlert(TlsmateException):
 
 class TlsConnectionClosedError(TlsmateException):
     """Exception raised when the TLS connection is closed unexpectedly.
+
+    Attributes:
+        exc(Exception): the original exception
     """
 
-    pass
+    def __init__(self, exc=None):
+        self.exc = exc
 
 
 class TlsMsgTimeoutError(TlsmateException):

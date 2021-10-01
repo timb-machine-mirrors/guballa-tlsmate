@@ -19,7 +19,7 @@ from tlsmate.workers.resumption import ScanResumption
 from tlsmate.workers.renegotiation import ScanRenegotiation
 from tlsmate.workers.ccs_injection import ScanCcsInjection
 from tlsmate.workers.robot import ScanRobot
-from tlsmate.workers.lucky_minus_20 import ScanLuckyMinus20
+from tlsmate.workers.padding_oracle import ScanPaddingOracle
 from tlsmate.workers.dh_params import ScanDhGroups
 from tlsmate.workers.heartbeat import ScanHeartbeat
 from tlsmate.workers.heartbleed import ScanHeartbleed
@@ -181,9 +181,24 @@ def _add_args_vulenerabilities(parser):
         action=utils.BooleanOptionalAction,
     )
     group.add_argument(
-        "--lucky-minus-20",
-        help="scan for the Lucky-Minus-20 vulnerability CVE-2016-2107",
+        "--padding-oracle",
+        help="scan for CBC padding oracles",
         action=utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--oracle-accuracy",
+        help=(
+            "the accuracy of the scan for CBC padding oracles. "
+            "low: scan application data records for each TLS version with minimal set "
+            "of cipher suites (fastest). "
+            "medium: scan application data records for each TLS version and cipher "
+            "suite combination (slower). "
+            "high: scan application data, handshake and alert records for each TLS "
+            "version and cipher suite combination (slowest). "
+            "Default is medium."
+        ),
+        choices=["low", "medium", "high"],
+        default="medium",
     )
     group.add_argument(
         "--robot",
@@ -264,12 +279,12 @@ class ScanPlugin(CliConnectionPlugin):
         "ephemeral_key_reuse": ScanEphemeralKeyReuse,
         "ocsp_stapling": ScanOcspStapling,
         "fallback": ScanDowngrade,
+        "grease": ScanGrease,
     }
     _vulnerability_workers = {
         "robot": ScanRobot,
         "heartbleed": ScanHeartbleed,
-        "grease": ScanGrease,
-        "lucky_minus_20": ScanLuckyMinus20,
+        "padding_oracle": ScanPaddingOracle,
     }
 
     def register_config(self, config):
@@ -294,6 +309,7 @@ class ScanPlugin(CliConnectionPlugin):
         config.register(
             ConfigItem("style", type=str, default=str(self._DEFAULT_STYLE.resolve()))
         )
+        config.register(ConfigItem("oracle_accuracy", type=str, default="medium"))
 
     def add_subcommand(self, subparsers):
         """Adds a subcommand to the CLI parser object.
@@ -401,6 +417,8 @@ class ScanPlugin(CliConnectionPlugin):
             for vulnerability, worker in self._vulnerability_workers.items():
                 if config.get(vulnerability):
                     WorkManager.register(worker)
+
+            config.set("oracle_accuracy", args.oracle_accuracy)
 
             # handle server profile
             config.set("format", args.format)

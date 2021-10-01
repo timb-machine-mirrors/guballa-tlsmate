@@ -784,4 +784,61 @@ vulnerabilities:
     NOT_VULNERABLE:
       txt: not vulnerable
       style: good
-  lucky_minus_20: *vulnerabilities_common
+  lucky_minus_20:
+    <<: *vulnerabilities_common
+    C_TRUE:
+      txt: vulnerable, see CBC padding oracle details below
+      style: bad
+
+  poodle: *vulnerabilities_common
+  tls_poodle: *vulnerabilities_common
+  cbc_padding_oracle:
+    vulnerable: *vulnerabilities_common
+    accuracy:
+      LOW:
+        txt: lowest (scan with minimal set of cipher suites for each TLS version, application data only)
+        style: neutral
+      MEDIUM:
+        txt: medium (scan over all TLS versions and cipher suites, application data only)
+        style: neutral
+      HIGH:
+        txt: high (scan over all TLS versions, all cipher suites and all record layer protocols)
+        style: neutral
+    oracle:
+      observable:
+        C_FALSE:
+          txt: no, different oracle behavior hard to observe
+          style: bad
+        C_TRUE:
+          txt: yes, different oracle behavior easily observable
+          style: bad
+        C_NA:
+          txt: not applicable
+          style: neutral
+        C_UNDETERMINED:
+          txt: undetermined
+          style: soso
+      strong:
+        C_FALSE:
+          txt: weak, high number of oracle queries required for exploitation
+          style: bad
+        C_TRUE:
+          txt: strong, moderate number of oracle queries sufficient for exploitation
+          style: bad
+        C_NA:
+          txt: not applicable
+          style: neutral
+        C_UNDETERMINED:
+          txt: undetermined
+          style: soso
+      type:
+        LUCKY_MINUS_20: OpenSSL padding oracle "Lucky-Minus-20" (CVE-2016-2107)
+        PADDING_FILLS_RECORD: Oracle when padding fills complete record
+        PADDING_EXCEEDS_RECORD: Oracle when padding exceeds the record length
+        INVALID_PADDING: Oracle when padding is invalid (TLS POODLE like)
+        INVALID_MAC: Oracle when MAC is invalid
+      cipher_group:
+        record_protocol:
+          HANDSHAKE: handshake protocol
+          APPLICATION_DATA: application data
+          ALERT: alert protocol

@@ -1007,7 +1007,7 @@ class TlsConnection(object):
                     version=self._record_layer_version,
                     fragment=msg_data,
                 ),
-                **kwargs
+                **kwargs,
             )
             self._post_sending_hook(message)
         self._record_layer.flush()

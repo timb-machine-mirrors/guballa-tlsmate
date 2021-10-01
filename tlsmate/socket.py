@@ -125,16 +125,16 @@ class Socket(object):
             try:
                 data = self._socket.recv(self._fragment_max_size)
 
-            except ConnectionResetError:
+            except ConnectionResetError as exc:
                 self._recorder.trace_socket_recv(timeout, recorder.SocketEvent.CLOSURE)
                 self.close_socket()
-                raise TlsConnectionClosedError
+                raise TlsConnectionClosedError(exc)
 
             self._recorder.trace_socket_recv(
                 timeout, recorder.SocketEvent.DATA, data=data
             )
         if data == b"":
             self.close_socket()
-            raise TlsConnectionClosedError
+            raise TlsConnectionClosedError()
 
         return data

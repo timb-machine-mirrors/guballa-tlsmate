@@ -1336,6 +1336,13 @@ class SPCipherSuiteSchema(ProfileEnumSchema):
     __profile_class__ = tls.CipherSuite
 
 
+class SPRecordProtocolSchema(ProfileEnumSchema):
+    """Schema for a record protocol type.
+    """
+
+    __profile_class__ = tls.ContentType
+
+
 class SPCiphers(SPObject):
     """Data class for ciphers
     """
@@ -1423,6 +1430,52 @@ class SPVersionSchema(ProfileSchema):
     version = fields.Nested(SPVersionEnumSchema)
 
 
+class SPCipherGroup(SPObject):
+    """Data class for a cipher group (cipher suite, tls version, record protocol)
+    """
+
+
+class SPCipherGroupSchema(ProfileSchema):
+    """Schema for a cipher group (cipher suite, tls version, record protocol)
+    """
+
+    __profile_class__ = SPCipherGroup
+    version = fields.Nested(SPVersionEnumSchema)
+    cipher_suite = fields.Nested(SPCipherSuiteSchema)
+    record_protocol = fields.Nested(SPRecordProtocolSchema)
+
+
+class SPCbcPaddingOracle(SPObject):
+    """Data class for CBC padding oracles
+    """
+
+
+class SPCbcPaddingOracleSchema(ProfileSchema):
+    """Schema for CBC padding oracles
+    """
+
+    __profile_class__ = SPCbcPaddingOracle
+    observable = FieldsEnumString(enum_class=tls.SPBool)
+    strong = FieldsEnumString(enum_class=tls.SPBool)
+    types = fields.List(FieldsEnumString(enum_class=tls.SPCbcPaddingOracle))
+    cipher_group = fields.List(fields.Nested(SPCipherGroupSchema))
+
+
+class SPCbcPaddingOracleInfo(SPObject):
+    """Data class for CBC padding oracle info
+    """
+
+
+class SPCbcPaddingOracleInfoSchema(ProfileSchema):
+    """Schema for CBC padding oracle info
+    """
+
+    __profile_class__ = SPCbcPaddingOracleInfo
+    vulnerable = FieldsEnumString(enum_class=tls.SPBool)
+    accuracy = FieldsEnumString(enum_class=tls.OracleScanAccuracy)
+    oracles = fields.List(fields.Nested(SPCbcPaddingOracleSchema))
+
+
 class SPVulnerabilities(SPObject):
     """Data class for vulnerabilities
     """
@@ -1436,7 +1489,10 @@ class SPVulnerabilitiesSchema(ProfileSchema):
     ccs_injection = FieldsEnumString(enum_class=tls.SPBool)
     heartbleed = FieldsEnumString(enum_class=tls.HeartbleedStatus)
     robot = FieldsEnumString(enum_class=tls.RobotVulnerability)
+    poodle = FieldsEnumString(enum_class=tls.SPBool)
+    tls_poodle = FieldsEnumString(enum_class=tls.SPBool)
     lucky_minus_20 = FieldsEnumString(enum_class=tls.SPBool)
+    cbc_padding_oracle = fields.Nested(SPCbcPaddingOracleInfoSchema)
 
 
 class ServerProfile(SPObject):
