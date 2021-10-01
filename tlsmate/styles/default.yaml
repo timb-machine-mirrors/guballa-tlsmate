@@ -795,11 +795,8 @@ vulnerabilities:
   cbc_padding_oracle:
     vulnerable: *vulnerabilities_common
     accuracy:
-      LOWEST:
-        txt: lowest (scan with one cipher suite for each TLS version, application data only)
-        style: neutral
       LOW:
-        txt: low (scan over all cipher suites without specific TLS version, application data only)
+        txt: lowest (scan with minimal set of cipher suites for each TLS version, application data only)
         style: neutral
       MEDIUM:
         txt: medium (scan over all TLS versions and cipher suites, application data only)
@@ -838,7 +835,7 @@ vulnerabilities:
         LUCKY_MINUS_20: OpenSSL padding oracle "Lucky-Minus-20" (CVE-2016-2107)
         PADDING_FILLS_RECORD: Oracle when padding fills complete record
         PADDING_EXCEEDS_RECORD: Oracle when padding exceeds the record length
-        INVALID_PADDING: Oracle when padding is wrong (TLS POODLE like)
+        INVALID_PADDING: Oracle when padding is invalid (TLS POODLE like)
         INVALID_MAC: Oracle when MAC is invalid
       cipher_group:
         record_protocol:
