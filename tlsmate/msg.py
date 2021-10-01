@@ -917,7 +917,8 @@ class CertificateRequest(HandshakeMessage):
                 length, offset = pdu.unpack_uint16(fragment, offset)
                 end = offset + length
                 while offset < end:
-                    # TODO: here we only unpack the whole ASN.1 structure as a byte string.
+                    # TODO: here we only unpack the whole ASN.1 structure as a
+                    # byte string.
                     # Unpacking the ASN.1 structure is required.
                     length, offset = pdu.unpack_uint16(fragment, offset)
                     name, offset = pdu.unpack_bytes(fragment, offset, length)
