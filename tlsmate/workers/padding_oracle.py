@@ -154,7 +154,6 @@ class _RecordLayerCallbacks(NamedTuple):
 
 class _Accuracy(NamedTuple):
     accuracy: tls.OracleScanAccuracy
-    all_versions: bool
     all_cs: bool
     all_protocols: bool
 
@@ -300,27 +299,18 @@ class ScanPaddingOracle(WorkerPlugin):
     prio = 40
 
     accuracy_map = {
-        "lowest": _Accuracy(
-            accuracy=tls.OracleScanAccuracy.LOWEST,
-            all_versions=True,
-            all_cs=False,
-            all_protocols=False,
-        ),
         "low": _Accuracy(
             accuracy=tls.OracleScanAccuracy.LOW,
-            all_versions=False,
-            all_cs=True,
+            all_cs=False,
             all_protocols=False,
         ),
         "medium": _Accuracy(
             accuracy=tls.OracleScanAccuracy.MEDIUM,
-            all_versions=True,
             all_cs=True,
             all_protocols=False,
         ),
         "high": _Accuracy(
             accuracy=tls.OracleScanAccuracy.HIGH,
-            all_versions=True,
             all_cs=True,
             all_protocols=True,
         ),
@@ -540,14 +530,18 @@ class ScanPaddingOracle(WorkerPlugin):
                 self.client.profile.cipher_suites = cbc_ciphers
                 self._tls_poodle_handshake()
 
-            elif self.all_cs:
+            else:
+                combo_list = []
                 for cipher in cbc_ciphers:
+                    if not self.all_cs:
+                        det = utils.get_cipher_suite_details(cipher)
+                        combo = (det.cipher_struct.primitive, det.mac)
+                        if combo in combo_list:
+                            continue
+                        combo_list.append(combo)
+
                     self.client.profile.cipher_suites = [cipher]
                     self._scan_cipher_suite()
-
-            else:
-                self.client.profile.cipher_suites = cbc_ciphers
-                self._scan_cipher_suite()
 
     def _scan_poodle(self):
         values = self.server_profile.get_profile_values([tls.Version.SSL30])
@@ -566,12 +560,9 @@ class ScanPaddingOracle(WorkerPlugin):
 
     def run(self):
         accuracy = self.config.get("oracle_accuracy")
-        if accuracy not in self.accuracy_map:
-            accuracy = "medium"
+        mapping = self.accuracy_map.get(accuracy, self.accuracy_map["medium"])
 
-        mapping = self.accuracy_map[accuracy]
         self.accuracy = mapping.accuracy
-        self.all_versions = mapping.all_versions
         self.all_cs = mapping.all_cs
         self.all_protocols = mapping.all_protocols
         self.lucky_minus_20 = False
@@ -582,13 +573,8 @@ class ScanPaddingOracle(WorkerPlugin):
         self.fingerprints = {}
         self.applicable = False
         versions = [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]
-        if self.all_versions:
-            for version in versions:
-                values = self.server_profile.get_profile_values([version])
-                self._scan_version(values)
-
-        else:
-            values = self.server_profile.get_profile_values(versions)
+        for version in versions:
+            values = self.server_profile.get_profile_values([version])
             self._scan_version(values)
 
         oracle_info = SPCbcPaddingOracleInfo()

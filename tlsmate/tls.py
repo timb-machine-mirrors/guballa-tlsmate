@@ -1196,7 +1196,6 @@ class OracleScanAccuracy(ExtendedEnum):
     """How accurate the scan for CBC padding oracles shall be
     """
 
-    LOWEST = enum.auto()
     LOW = enum.auto()
     MEDIUM = enum.auto()
     HIGH = enum.auto()
