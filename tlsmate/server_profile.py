@@ -1514,11 +1514,21 @@ class ServerProfile(SPObject):
         self._hash = {}
 
         self.cert_chains = []
-        self.features = SPFeatures()
         self.scan_info = SPScanInfo()
         self.server = SPServer()
         self.versions = []
-        self.vulnerabilities = SPVulnerabilities()
+
+    def allocate_features(self):
+        """Ensure that the features property is setup.
+        """
+        if not getattr(self, "features", None):
+            self.features = SPFeatures()
+
+    def allocate_vulnerabilities(self):
+        """Ensure that the vulnerabilities property is setup.
+        """
+        if not getattr(self, "vulnerabilities", None):
+            self.vulnerabilities = SPVulnerabilities()
 
     def append_unique_cert_chain(self, chain):
         """Append a certificate chain to the profile, if not yet present.

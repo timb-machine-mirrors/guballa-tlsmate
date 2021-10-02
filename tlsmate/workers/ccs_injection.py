@@ -62,4 +62,5 @@ class ScanCcsInjection(WorkerPlugin):
                 except TlsConnectionClosedError:
                     status = tls.SPBool.C_FALSE
 
+        self.server_profile.allocate_vulnerabilities()
         self.server_profile.vulnerabilities.ccs_injection = status

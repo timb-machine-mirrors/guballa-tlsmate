@@ -134,6 +134,7 @@ class ScanEphemeralKeyReuse(WorkerPlugin):
         tls12_dhe, tls12_ecdhe = self._scan_tls12()
         tls13_dhe, tls13_ecdhe = self._scan_tls13()
 
+        self.server_profile.allocate_features()
         if not hasattr(self.server_profile.features, "ephemeral_key_reuse"):
             self.server_profile.features.ephemeral_key_reuse = SPEphemeralKeyReuse()
 
