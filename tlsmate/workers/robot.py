@@ -123,4 +123,5 @@ class ScanRobot(WorkerPlugin):
         else:
             status = tls.RobotVulnerability.NOT_APPLICABLE
 
+        self.server_profile.allocate_vulnerabilities()
         self.server_profile.vulnerabilities.robot = status

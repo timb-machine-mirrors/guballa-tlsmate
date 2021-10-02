@@ -546,6 +546,7 @@ class ScanPaddingOracle(WorkerPlugin):
         self.lucky_minus_20 = False
         self.tls_poodle = False
 
+        self.server_profile.allocate_vulnerabilities()
         self.server_profile.vulnerabilities.poodle = self._scan_poodle()
         self._scan_tls_poodle()
         self.fingerprints = {}

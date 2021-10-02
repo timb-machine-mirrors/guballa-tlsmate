@@ -57,4 +57,5 @@ class ScanHeartbleed(WorkerPlugin):
                 except TlsConnectionClosedError:
                     state = tls.HeartbleedStatus.CONNECTION_CLOSED
 
+        self.server_profile.allocate_vulnerabilities()
         self.server_profile.vulnerabilities.heartbleed = state

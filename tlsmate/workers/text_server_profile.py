@@ -544,6 +544,18 @@ class TextProfileWorker(WorkerPlugin):
             print()
 
     def _print_common_features(self, feat_prof):
+
+        if not any(
+            hasattr(feat_prof, prop)
+            for prop in [
+                "ocsp_stapling",
+                "ocsp_multi_stapling",
+                "heartbeat",
+                "downgrade_attack_prevention",
+            ]
+        ):
+            return
+
         print(f'  {apply_mood("Common features", Mood.BOLD)}')
         table = utils.Table(indent=4, sep="  ")
 
@@ -578,6 +590,21 @@ class TextProfileWorker(WorkerPlugin):
         print()
 
     def _print_features_tls12(self, feat_prof):
+        if not any(
+            hasattr(feat_prof, prop)
+            for prop in [
+                "compression",
+                "scsv_renegotiation",
+                "encrypt_then_mac",
+                "extended_master_secret",
+                "insecure_renegotiation",
+                "secure_renegotation",
+                "session_id",
+                "session_ticket",
+            ]
+        ):
+            return
+
         print(f'  {apply_mood("Features for TLS1.2 and below", Mood.BOLD)}')
         table = utils.Table(indent=4, sep="  ")
         if hasattr(feat_prof, "compression"):
@@ -650,6 +677,14 @@ class TextProfileWorker(WorkerPlugin):
         print()
 
     def _print_features_tls13(self, feat_prof):
+        if not any(
+            hasattr(feat_prof, prop)
+            for prop in [
+                "resumption_psk",
+                "early_data",
+            ]
+        ):
+            return
         print(f'  {apply_mood("Features for TLS1.3", Mood.BOLD)}')
 
         table = utils.Table(indent=4, sep="  ")
@@ -737,7 +772,7 @@ class TextProfileWorker(WorkerPlugin):
 
     def _print_features(self):
         feat_prof = getattr(self.server_profile, "features", None)
-        if feat_prof is None:
+        if not feat_prof:
             return
 
         print(apply_mood("Features", Mood.HEADLINE))
@@ -1029,7 +1064,7 @@ class TextProfileWorker(WorkerPlugin):
 
     def _print_vulnerabilities(self):
         vuln_prof = getattr(self.server_profile, "vulnerabilities", None)
-        if vuln_prof is None:
+        if not vuln_prof:
             return
 
         table = utils.Table(indent=2, sep="  ")

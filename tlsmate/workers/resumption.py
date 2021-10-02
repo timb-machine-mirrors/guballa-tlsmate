@@ -104,5 +104,6 @@ class ScanResumption(WorkerPlugin):
             self.server_profile.features.psk_lifetime = psk_lifetime
 
     def run(self):
+        self.server_profile.allocate_features()
         self.run_tls12()
         self.run_tls13()
