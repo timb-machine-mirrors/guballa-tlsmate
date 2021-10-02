@@ -210,6 +210,7 @@ class ScanGrease(WorkerPlugin):
         setattr(grease_prof, "psk_mode_tolerance", state)
 
     def run(self):
+        self.server_profile.allocate_features()
         grease_prof = getattr(self.server_profile.features, "grease", None)
         if grease_prof is None:
             grease_prof = SPGrease

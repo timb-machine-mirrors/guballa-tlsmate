@@ -45,7 +45,7 @@ def _add_args_tls_versions(parser):
         description=(
             "The following options specify the TLS protocol versions to scan. "
             "By default all versions will be scanned, but if one version is explicitly "
-            "set to True, all other versions will be defaulted to False."
+            "set to true, all other versions will be defaulted to false."
         ),
     )
     group.add_argument(
@@ -87,13 +87,17 @@ def _add_args_features(parser):
         parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
     """
 
-    group = parser.add_argument_group(
-        title="Feature to include into the scan",
-        description=(
-            "The following options specify which features to include in the scan. "
-            "By default all features will be scanned, but if one feature is explicitly "
-            "set to True, all other features will be defaulted to False."
+    group = parser.add_argument_group(title="Feature to include into the scan",)
+    group.add_argument(
+        "--features",
+        help=(
+            "specifies whether to include or exclude all features in the scan. "
+            "Per feature this behavior can be overruled by its specific command "
+            "line option below. "
+            "Defaults to true if no specific feature is enabled, otherwise it "
+            "defaults to false."
         ),
+        action=utils.BooleanOptionalAction,
     )
     group.add_argument(
         "--compression",
@@ -111,6 +115,11 @@ def _add_args_features(parser):
         action=utils.BooleanOptionalAction,
     )
     group.add_argument(
+        "--ephemeral-key-reuse",
+        help="scan for reuse of ephemeral keys",
+        action=utils.BooleanOptionalAction,
+    )
+    group.add_argument(
         "--ext-master-secret",
         help="scan for extended master secret support (only TL1.0 - TLS1.2)",
         action=utils.BooleanOptionalAction,
@@ -118,6 +127,16 @@ def _add_args_features(parser):
     group.add_argument(
         "--fallback",
         help="scan for downgrade attack prevention (TLS_FALLBACK_SCSV)",
+        action=utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--grease",
+        help="scan for unknown parameter tolerance",
+        action=utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--heartbeat",
+        help="scan for heartbeat support",
         action=utils.BooleanOptionalAction,
     )
     group.add_argument(
@@ -138,21 +157,6 @@ def _add_args_features(parser):
         ),
         action=utils.BooleanOptionalAction,
     )
-    group.add_argument(
-        "--heartbeat",
-        help="scan for heartbeat support",
-        action=utils.BooleanOptionalAction,
-    )
-    group.add_argument(
-        "--grease",
-        help="scan for unknown parameter tolerance",
-        action=utils.BooleanOptionalAction,
-    )
-    group.add_argument(
-        "--ephemeral-key-reuse",
-        help="scan for reuse of ephemeral keys",
-        action=utils.BooleanOptionalAction,
-    )
 
 
 def _add_args_vulenerabilities(parser):
@@ -161,14 +165,17 @@ def _add_args_vulenerabilities(parser):
     Arguments:
         parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
     """
-    group = parser.add_argument_group(
-        title="Vulnerabilities to scan for",
-        description=(
-            "The following options specify which vulnerabilities to scan for. "
-            "By default tlsmate will scan for all vulnerabilities, but if one "
-            "vulnerability is explicitly set to True, all other vulnerabilities will "
-            "be defaulted to False."
+    group = parser.add_argument_group(title="Vulnerabilities to scan for")
+    group.add_argument(
+        "--vulnerabilities",
+        help=(
+            "specifies whether to include or exclude all vulnerabilities in the scan. "
+            "Per vulnerability this behavior can be overruled by its specific command "
+            "line option below. "
+            "Defaults to true if no specific vulnerability is enabled, otherwise it "
+            "defaults to false."
         ),
+        action=utils.BooleanOptionalAction,
     )
     group.add_argument(
         "--ccs-injection",
@@ -256,6 +263,43 @@ def _add_args_server_profile(parser):
     )
 
 
+def _group_applicability(args, config, default, options):
+    """Applies defaults to a group of boolean-option parameters
+
+    Arguments:
+        args: the object holding the parsed CLI arguments
+        config (:obj:`tlsmate.config.Configuration`): the configuration object
+        default (boolean or None): the default to apply for unspecified options
+        options (list of str): a list with the boolean-option parameter names
+
+    Returns:
+        dict: contains for each boolean-option parameter name the applicability (bool)
+    """
+
+    opts = {key: getattr(args, key) for key in options}
+    opts = {key: config.get(key) if val is None else val for key, val in opts.items()}
+
+    if default is None:
+        default = not any(opts.values())
+
+    return {key: default if val is None else val for key, val in opts.items()}
+
+
+def _group_register_workers(config, workers, applicability):
+    """Register workers according to their applicability
+
+    Arguments:
+        config (:obj:`tlsmate.config.Configuration`): the configuration object
+        workers (dict): maps a worker name (str) to a worker class
+        applicability (dict): maps a a worker name (str) to its applicability (bool)
+    """
+
+    for key, val in applicability.items():
+        config.set(key, val)
+        if val:
+            WorkManager.register(workers[key])
+
+
 @CliManager.register
 class ScanPlugin(CliConnectionPlugin):
     """CLI plugin to perform a scan against a TLS server.
@@ -275,13 +319,13 @@ class ScanPlugin(CliConnectionPlugin):
         "renegotiation": ScanRenegotiation,
         "resumption": ScanResumption,
         "heartbeat": ScanHeartbeat,
-        "ccs_injection": ScanCcsInjection,
         "ephemeral_key_reuse": ScanEphemeralKeyReuse,
         "ocsp_stapling": ScanOcspStapling,
         "fallback": ScanDowngrade,
         "grease": ScanGrease,
     }
     _vulnerability_workers = {
+        "ccs_injection": ScanCcsInjection,
         "robot": ScanRobot,
         "heartbleed": ScanHeartbleed,
         "padding_oracle": ScanPaddingOracle,
@@ -299,7 +343,7 @@ class ScanPlugin(CliConnectionPlugin):
             + list(self._feature_workers.keys())
             + list(self._vulnerability_workers.keys())
         ):
-            config.register(ConfigItem(item, type=bool, default=False))
+            config.register(ConfigItem(item, type=bool, default=None))
 
         # config items for the server profile
         config.register(ConfigItem("write_profile", type=str, default=None))
@@ -346,6 +390,7 @@ class ScanPlugin(CliConnectionPlugin):
             args (object): the arguments parsed as an object
             parser (:obj:`argparse.ArgumentParser`): the parser object
         """
+
         if (args.client_key is not None) or (args.client_chain is not None):
             if (args.client_chain is None) or (args.client_chain is None):
                 parser.error(
@@ -377,46 +422,20 @@ class ScanPlugin(CliConnectionPlugin):
             WorkManager.register(ScanSigAlgs)
             WorkManager.register(ScanEnd)
 
-            for version in self._versions:
-                config.set(version, getattr(args, version))
+            versions = _group_applicability(args, config, None, self._versions)
+            _ = [config.set(key, val) for key, val in versions.items()]
+            if not any([config.get(key) for key in self._versions]):
+                parser.error("at least one TLS version must be given")
 
-            # if no version is given at all: scan all versions by default
-            if not any([config.get(version) for version in self._versions]):
-                for version in self._versions:
-                    config.set(version, True)
+            features = _group_applicability(
+                args, config, args.features, self._feature_workers.keys()
+            )
+            _group_register_workers(config, self._feature_workers, features)
 
-            # features
-            for feature in self._feature_workers.keys():
-                config.set(feature, getattr(args, feature))
-
-            # if no feature is given at all: scan all features by default
-            if not any(
-                [config.get(feature) for feature in self._feature_workers.keys()]
-            ):
-                for feature in self._feature_workers.keys():
-                    config.set(feature, True)
-
-            for feature, worker in self._feature_workers.items():
-                if config.get(feature):
-                    WorkManager.register(worker)
-
-            # vulnerabilities
-            for vulnerability in self._vulnerability_workers.keys():
-                config.set(vulnerability, getattr(args, vulnerability))
-
-            # if no vulnerability is given at all: scan all vulnerabilities by default
-            if not any(
-                [
-                    config.get(vulnerability)
-                    for vulnerability in self._vulnerability_workers.keys()
-                ]
-            ):
-                for vulnerability in self._vulnerability_workers.keys():
-                    config.set(vulnerability, True)
-
-            for vulnerability, worker in self._vulnerability_workers.items():
-                if config.get(vulnerability):
-                    WorkManager.register(worker)
+            vulns = _group_applicability(
+                args, config, args.vulnerabilities, self._vulnerability_workers.keys(),
+            )
+            _group_register_workers(config, self._vulnerability_workers, vulns)
 
             config.set("oracle_accuracy", args.oracle_accuracy)
 

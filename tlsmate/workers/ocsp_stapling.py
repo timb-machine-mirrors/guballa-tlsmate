@@ -75,6 +75,6 @@ class ScanOcspStapling(WorkerPlugin):
         self.server_profile.features.ocsp_multi_stapling = status
 
     def run(self):
-
+        self.server_profile.allocate_features()
         self._scan_stapling()
         self._scan_multi_stapling()

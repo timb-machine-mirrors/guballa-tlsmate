@@ -17,6 +17,7 @@ class ScanRenegotiation(WorkerPlugin):
 
     def run(self):
 
+        self.server_profile.allocate_features()
         versions = [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]
         prof_values = self.server_profile.get_profile_values(versions, full_hs=True)
         if not prof_values.versions:

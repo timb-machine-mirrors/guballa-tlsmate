@@ -62,4 +62,5 @@ class ScanHeartbeat(WorkerPlugin):
                     else:
                         state = tls.SPHeartbeat.C_FALSE
 
+        self.server_profile.allocate_features()
         self.server_profile.features.heartbeat = state
