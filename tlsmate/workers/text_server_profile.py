@@ -670,21 +670,21 @@ class TextProfileWorker(WorkerPlugin):
             life_time = getattr(feat_prof, "session_ticket_lifetime", None)
             if life_time is None:
                 add_txt = ""
+
             else:
                 add_txt = f", life time: {feat_prof.session_ticket_lifetime} seconds"
+
             table.row("resumption with session ticket", f"{txt}{add_txt}")
+
         table.dump()
         print()
 
     def _print_features_tls13(self, feat_prof):
         if not any(
-            hasattr(feat_prof, prop)
-            for prop in [
-                "resumption_psk",
-                "early_data",
-            ]
+            hasattr(feat_prof, prop) for prop in ["resumption_psk", "early_data"]
         ):
             return
+
         print(f'  {apply_mood("Features for TLS1.3", Mood.BOLD)}')
 
         table = utils.Table(indent=4, sep="  ")
@@ -694,8 +694,10 @@ class TextProfileWorker(WorkerPlugin):
             life_time = getattr(feat_prof, "psk_lifetime", None)
             if life_time is None:
                 add_txt = ""
+
             else:
                 add_txt = f", life time: {feat_prof.psk_lifetime} seconds"
+
             table.row("resumption with PSK", f"{txt}{add_txt}")
 
         early_data = getattr(feat_prof, "early_data", None)
@@ -815,6 +817,7 @@ class TextProfileWorker(WorkerPlugin):
                 folded_lines = utils.fold_string(issue, max_length=100)
                 issue_txt.append("- " + folded_lines.pop(0))
                 issue_txt.extend(["  " + item for item in folded_lines])
+
             table.row("Issues", apply_mood(issue_txt[0], mood))
             for line in issue_txt[1:]:
                 table.row("", apply_mood(line, mood))
