@@ -425,9 +425,7 @@ class ScanPlugin(CliConnectionPlugin):
             versions = _group_applicability(args, config, None, self._versions)
             _ = [config.set(key, val) for key, val in versions.items()]
             if not any([config.get(key) for key in self._versions]):
-                parser.error(
-                    "at least one TLS version must be given"
-                )
+                parser.error("at least one TLS version must be given")
 
             features = _group_applicability(
                 args, config, args.features, self._feature_workers.keys()
