@@ -140,10 +140,25 @@ cert_chains:
   id: 1
   root_cert_transmitted: C_FALSE
   successful_validation: C_FALSE
-features: {}
 scan_info: {}
 server: {}
 versions:
+- support: C_FALSE
+  version:
+    id: 512
+    name: SSL20
+- support: C_FALSE
+  version:
+    id: 768
+    name: SSL30
+- support: C_FALSE
+  version:
+    id: 769
+    name: TLS10
+- support: C_FALSE
+  version:
+    id: 770
+    name: TLS11
 - ciphers:
     chacha_poly_preference: C_TRUE
     cipher_suites:
@@ -194,6 +209,7 @@ versions:
       name: RSA_PKCS1_SHA256
     info:
     - server selects sig_alg RSA_PKCS1_SHA256 even when not offered
+  support: C_TRUE
   supported_groups:
     extension_supported: C_TRUE
     groups:
@@ -208,4 +224,7 @@ versions:
   version:
     id: 771
     name: TLS12
-vulnerabilities: {}
+- support: C_FALSE
+  version:
+    id: 772
+    name: TLS13

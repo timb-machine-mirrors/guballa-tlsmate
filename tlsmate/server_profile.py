@@ -1428,6 +1428,7 @@ class SPVersionSchema(ProfileSchema):
     supported_groups = fields.Nested(SPSupportedGroupsSchema)
     signature_algorithms = fields.Nested(SPSignatureAlgorithmsSchema)
     version = fields.Nested(SPVersionEnumSchema)
+    support = FieldsEnumString(enum_class=tls.SPBool)
 
 
 class SPCipherGroup(SPObject):
@@ -1559,7 +1560,11 @@ class ServerProfile(SPObject):
         if exclude is None:
             exclude = []
 
-        return [obj.version for obj in self.versions if obj.version not in exclude]
+        return [
+            obj.version
+            for obj in self.versions
+            if obj.version not in exclude and obj.support is tls.SPBool.C_TRUE
+        ]
 
     def get_version_profile(self, version):
         """Get the profile entry for a given version.
@@ -1569,9 +1574,9 @@ class ServerProfile(SPObject):
             version is not supported by the server.
         """
 
-        for version_obj in self.versions:
-            if version_obj.version is version:
-                return version_obj
+        for vers_obj in self.versions:
+            if vers_obj.version is version and vers_obj.support is tls.SPBool.C_TRUE:
+                return vers_obj
 
         return None
 

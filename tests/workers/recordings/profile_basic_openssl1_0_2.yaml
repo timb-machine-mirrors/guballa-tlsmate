@@ -515,10 +515,13 @@ cert_chains:
     validity_period_days: 3650
     version: Version.v3
   successful_validation: C_TRUE
-features: {}
 scan_info: {}
 server: {}
 versions:
+- support: C_FALSE
+  version:
+    id: 512
+    name: SSL20
 - ciphers:
     cipher_suites:
     - id: 4
@@ -598,6 +601,7 @@ versions:
     - id: 49177
       name: TLS_ECDH_ANON_WITH_AES_256_CBC_SHA
     server_preference: C_FALSE
+  support: C_TRUE
   version:
     id: 768
     name: SSL30
@@ -680,6 +684,7 @@ versions:
     - id: 49177
       name: TLS_ECDH_ANON_WITH_AES_256_CBC_SHA
     server_preference: C_FALSE
+  support: C_TRUE
   version:
     id: 769
     name: TLS10
@@ -762,6 +767,7 @@ versions:
     - id: 49177
       name: TLS_ECDH_ANON_WITH_AES_256_CBC_SHA
     server_preference: C_FALSE
+  support: C_TRUE
   version:
     id: 770
     name: TLS11
@@ -893,7 +899,11 @@ versions:
     - id: 49200
       name: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
     server_preference: C_FALSE
+  support: C_TRUE
   version:
     id: 771
     name: TLS12
-vulnerabilities: {}
+- support: C_FALSE
+  version:
+    id: 772
+    name: TLS13

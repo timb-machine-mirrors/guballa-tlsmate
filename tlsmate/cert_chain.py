@@ -383,7 +383,7 @@ class CertChain(object):
                         self.issues.append(
                             "certificates of the chain are not in sequence"
                         )
-                cert.trusted = True
+                cert.trusted = cert.trusted is not False
                 cert.issuer_cert = issuer_cert
                 break
 
