@@ -23,8 +23,19 @@ style:
 
 version:
   SSL20:
-    not_supported: good
-    supported: bad
+    supported: &version_deprecated
+      C_FALSE: &version_not_supported
+        txt: not supported
+        style: good
+      C_TRUE: &version_supported
+        txt: supported
+        style: bad
+      C_NA:
+        txt: ""
+        style: neutral
+      C_UNDETERMINED:
+        txt: skipped from scan
+        style: neutral
     cipher_order: &cipher_order_neutral
       C_FALSE: &cipher_order_false
         txt: server does not enforce cipher suite order
@@ -52,8 +63,7 @@ version:
         txt: undetermined if server respects client preference for CHACHA20 cipher suites
         style: soso
   SSL30:
-    not_supported: good
-    supported: bad
+    supported: *version_deprecated
     cipher_order: &cipher_order_tls
       C_FALSE:
         <<: *cipher_order_false
@@ -69,23 +79,30 @@ version:
         style: soso
     chacha_preference: *chacha_preference_all
   TLS10:
-    not_supported: neutral
-    supported: soso
+    supported: &version_not_recommended
+      <<: *version_deprecated
+      C_TRUE:
+        <<: *version_supported
+        style: soso
     cipher_order: *cipher_order_tls
     chacha_preference: *chacha_preference_all
   TLS11:
-    not_supported: neutral
-    supported: soso
+    supported: *version_not_recommended
     cipher_order: *cipher_order_tls
     chacha_preference: *chacha_preference_all
   TLS12:
-    not_supported: neutral
-    supported: good
+    supported: &version_recommended
+      <<: *version_not_recommended
+      C_FALSE:
+        <<: *version_not_supported
+        style: neutral
+      C_TRUE:
+        <<: *version_supported
+        style: good
     cipher_order: *cipher_order_tls
     chacha_preference: *chacha_preference_all
   TLS13:
-    not_supported: neutral
-    supported: good
+    supported: *version_recommended
     cipher_order: *cipher_order_neutral
     chacha_preference: *chacha_preference_all
 

@@ -1041,6 +1041,22 @@ features:
 scan_info: {}
 server: {}
 versions:
+- support: C_FALSE
+  version:
+    id: 512
+    name: SSL20
+- support: C_FALSE
+  version:
+    id: 768
+    name: SSL30
+- support: C_FALSE
+  version:
+    id: 769
+    name: TLS10
+- support: C_FALSE
+  version:
+    id: 770
+    name: TLS11
 - ciphers:
     chacha_poly_preference: C_NA
     cipher_suites:
@@ -1181,6 +1197,7 @@ versions:
       name: ECDSA_SECP521R1_SHA512
     - id: 771
       name: ECDSA_SECP224R1_SHA224
+  support: C_TRUE
   supported_groups:
     extension_supported: C_TRUE
     groups:
@@ -1218,6 +1235,7 @@ versions:
       name: RSA_PSS_RSAE_SHA384
     - id: 2054
       name: RSA_PSS_RSAE_SHA512
+  support: C_TRUE
   supported_groups:
     extension_supported: C_TRUE
     groups:
@@ -1246,4 +1264,3 @@ versions:
   version:
     id: 772
     name: TLS13
-vulnerabilities: {}

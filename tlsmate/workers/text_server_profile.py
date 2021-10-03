@@ -259,18 +259,16 @@ class TextProfileWorker(WorkerPlugin):
         print(apply_mood("TLS protocol versions:", Mood.HEADLINE))
         print()
         table = utils.Table(indent=2, sep="  ")
-        for version in tls.Version.all():
-            if any([vers.version is version for vers in self.server_profile.versions]):
-                key = "supported"
-                txt = "supported"
-
-            else:
-                key = "not_supported"
-                txt = "not supported"
-
+        for version_prof in self.server_profile.versions:
             table.row(
-                apply_mood(version, Mood.BOLD),
-                get_mood_applied(txt, self._style, "version", version.name, key),
+                version_prof.version.name,
+                get_styled_text(
+                    self._style,
+                    "version",
+                    version_prof.version.name,
+                    "supported",
+                    version_prof.support.name,
+                ),
             )
 
         table.dump()
@@ -283,7 +281,7 @@ class TextProfileWorker(WorkerPlugin):
         cipher_hash = {}
         print(apply_mood("Cipher suites", Mood.HEADLINE))
 
-        for version in self._prof_values.versions:
+        for version in self._prof_versions:
             version_prof = self.server_profile.get_version_profile(version)
             if version is tls.Version.SSL20:
                 cipher_list = version_prof.cipher_kinds
@@ -376,7 +374,7 @@ class TextProfileWorker(WorkerPlugin):
         prof_grps = get_dict_value(self._style, "supported_groups", "groups")
         group_hash = {}
         print(apply_mood("Supported groups", Mood.HEADLINE))
-        for version in self._prof_values.versions:
+        for version in self._prof_versions:
             prof_version = get_dict_value(self._style, "supported_groups", version.name)
             version_prof = self.server_profile.get_version_profile(version)
             group_prof = getattr(version_prof, "supported_groups", None)
@@ -464,7 +462,7 @@ class TextProfileWorker(WorkerPlugin):
 
         algo_hash = {}
         print(apply_mood("Signature algorithms", Mood.HEADLINE))
-        for version in self._prof_values.versions:
+        for version in self._prof_versions:
             version_prof = self.server_profile.get_version_profile(version)
             if not hasattr(version_prof, "signature_algorithms"):
                 continue
@@ -503,7 +501,7 @@ class TextProfileWorker(WorkerPlugin):
             return
 
         dh_groups = {}
-        for version in self._prof_values.versions:
+        for version in self._prof_versions:
             version_prof = self.server_profile.get_version_profile(version)
             dh_prof = getattr(version_prof, "dh_group", None)
             if dh_prof is None:
@@ -1214,15 +1212,16 @@ class TextProfileWorker(WorkerPlugin):
             sys.stderr.write("\n")
 
         init(strip=not self.config.get("color"))
-        self._prof_values = self.server_profile.get_profile_values(tls.Version.all())
+        self._prof_versions = self.server_profile.get_versions()
         self._print_tlsmate()
         self._print_scan_info()
         self._print_host()
         self._print_versions()
-        self._print_cipher_suites()
-        self._print_supported_groups()
-        self._print_sig_algos()
-        self._print_dh_groups()
-        self._print_features()
-        self._print_certificates()
-        self._print_vulnerabilities()
+        if self._prof_versions:
+            self._print_cipher_suites()
+            self._print_supported_groups()
+            self._print_sig_algos()
+            self._print_dh_groups()
+            self._print_features()
+            self._print_certificates()
+            self._print_vulnerabilities()

@@ -39,10 +39,10 @@ class TestCase(TlsSuiteTester):
         assert profile["groups"][0]["name"] == "SECP256R1"
 
     def check_profile(self, profile):
-        self.check_ssl30(profile["versions"][0]["supported_groups"])
-        self.check_tls(profile["versions"][1]["supported_groups"])
+        self.check_ssl30(profile["versions"][1]["supported_groups"])
         self.check_tls(profile["versions"][2]["supported_groups"])
         self.check_tls(profile["versions"][3]["supported_groups"])
+        self.check_tls(profile["versions"][4]["supported_groups"])
 
     def run(self, tlsmate, is_replaying):
         server_profile = tlsmate.server_profile

@@ -59,8 +59,8 @@ class TestCase(TlsSuiteTester):
             assert a == b["name"]
 
     def check_profile(self, profile):
-        self.check_tls12(profile["versions"][0]["supported_groups"])
-        self.check_tls13(profile["versions"][1]["supported_groups"])
+        self.check_tls12(profile["versions"][4]["supported_groups"])
+        self.check_tls13(profile["versions"][5]["supported_groups"])
 
     def run(self, tlsmate, is_replaying):
         server_profile = tlsmate.server_profile

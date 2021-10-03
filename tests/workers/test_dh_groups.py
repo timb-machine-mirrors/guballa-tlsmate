@@ -27,7 +27,7 @@ class TestCase(TlsSuiteTester):
     server = "localhost"
 
     def check_profile(self, prof):
-        group = prof["versions"][0]["dh_group"]
+        group = prof["versions"][2]["dh_group"]
         assert group["name"] == "RFC3526: 2048-bit MODP Group"
         assert group["size"] == 2048
         assert group["g_value"] == 2
