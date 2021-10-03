@@ -9,7 +9,7 @@ TLSMATE_ROOT_ECDSA_OCSP_PORT ?= 44404
 export CA_NAME = root-rsa
 export OCSP_PORT = ${TLSMATE_CA_RSA_OCSP_PORT}
 
-all: root ca server client crl certs/ca-certificates.pem certs/root-certificates.pem
+all: root ca server client crl certs/ca-certificates.pem certs/root-certificates.pem invalid-chain
 
 clean:
 	rm -rf crl certs chains private db tmp dsa_params.pem
@@ -21,7 +21,7 @@ ca: ca-rsa ca-ecdsa
 ca-rsa: certs/ca-rsa.crt
 ca-2nd-rsa: certs/ca-2nd-rsa.crt
 ca-ecdsa: certs/ca-ecdsa.crt
-server: server-rsa server-ecdsa server-ed25519 server-ed448 server-dsa server-ecdsa-rsa server-revoked-rsa
+server: server-rsa server-ecdsa server-ed25519 server-ed448 server-dsa server-ecdsa-rsa server-revoked-rsa server-expired-rsa
 server-rsa: certs/server-rsa.crt
 server-ecdsa: certs/server-ecdsa.crt
 server-ed25519: certs/server-ed25519.crt
@@ -29,6 +29,7 @@ server-ed448: certs/server-ed448.crt
 server-ecdsa-rsa: certs/server-ecdsa-rsa.crt
 server-dsa: certs/server-dsa.crt
 server-revoked-rsa: certs/server-revoked-rsa.crt
+server-expired-rsa: certs/server-expired-rsa.crt
 client: client-rsa client-ecdsa
 client-rsa: certs/client-rsa.crt
 client-ecdsa: certs/client-ecdsa.crt
@@ -37,6 +38,7 @@ crl-ca-rsa: crl/ca-rsa.crl
 crl-ca-ecdsa: crl/ca-ecdsa.crl
 crl-root-rsa: crl/root-rsa.crl
 crl-root-ecdsa: crl/root-ecdsa.crl
+invalid-chain: chains/server-invalid-sequence-rsa.chn
 
 certs/%.crt: certs/%.pem
 	${OPENSSL} x509 -inform pem -in $< -outform der -out $@
@@ -168,6 +170,16 @@ certs/server-revoked-rsa.pem: certs/ca-rsa.crt
 	-crl_reason superseded -keyfile private/ca-rsa.key -cert certs/ca-rsa.pem
 	ln -s ../certs/ca-rsa.pem chains/server-revoked-rsa.chn
 
+certs/server-expired-rsa.pem: export OCSP_PORT=${TLSMATE_CA_RSA_OCSP_PORT}
+certs/server-expired-rsa.pem: export CA_NAME=ca-rsa
+certs/server-expired-rsa.pem: certs/ca-rsa.crt
+	${OPENSSL} req -config openssl.cnf -nodes \
+	-subj "/C=DE/O=The TlsMate Company (Server side) RSA/CN=expired.localhost" \
+	-newkey rsa:2048 -keyout private/server-expired-rsa.key -out tmp/req.pem
+	${OPENSSL} ca -batch -notext -config openssl.cnf \
+	-extensions server_ext -in tmp/req.pem -out certs/server-expired-rsa.pem -startdate 200801010000Z -enddate 201001010000Z
+	ln -s ../certs/ca-rsa.pem chains/server-expired-rsa.chn
+
 certs/client-rsa.pem: export CA_NAME=ca-rsa
 certs/client-rsa.pem: certs/ca-rsa.crt
 	${OPENSSL} req -config openssl.cnf -nodes \
@@ -210,6 +222,9 @@ certs/ca-certificates.pem: certs/root-rsa.crt certs/root-ecdsa.crt certs/ca-rsa.
 
 certs/root-certificates.pem: certs/root-rsa.crt certs/root-ecdsa.crt
 	cat certs/root-rsa.pem certs/root-ecdsa.pem > certs/root-certificates.pem
+
+chains/server-invalid-sequence-rsa.chn:
+	cat certs/root-rsa.pem certs/ca-rsa.pem > chains/server-invalid-sequence-rsa.chn
 
 install:
 	mkdir -p ../tests/fixturefiles/ca/certs

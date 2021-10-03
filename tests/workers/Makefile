@@ -37,7 +37,10 @@ all: \
 	recordings/recorder_cbc_padding_oracle_high.yaml \
 	recordings/recorder_cbc_padding_oracle_medium.yaml \
 	recordings/recorder_cbc_padding_oracle_low.yaml \
-	recordings/recorder_cbc_padding_oracle_ok.yaml
+	recordings/recorder_cbc_padding_oracle_ok.yaml \
+	recordings/profile_text_ssl2.yaml \
+	recordings/profile_text_openssl1_0_1e.yaml \
+	recordings/profile_text_openssl3_0_0.yaml
 
 recordings/recorder_supported_groups_openssl%.yaml: recordings/recorder_eval_cipher_suites_openssl$*.yaml
 
@@ -90,3 +93,6 @@ clean:
 
 recordings/recorder_%.yaml:
 	python test_$*.py
+
+recordings/profile_text_%.yaml:
+	python test_text_server_profile_$*.py

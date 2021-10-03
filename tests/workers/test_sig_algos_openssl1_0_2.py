@@ -39,10 +39,10 @@ class TestCase(TlsSuiteTester):
     server = "localhost"
 
     def check_profile(self, profile):
-        assert "signature_algorithms" not in profile["versions"][0]  # SSL30
-        assert "signature_algorithms" not in profile["versions"][1]  # TLS10
-        assert "signature_algorithms" not in profile["versions"][2]  # TLS11
-        prof = profile["versions"][3]  # TLS12
+        assert "signature_algorithms" not in profile["versions"][1]  # SSL30
+        assert "signature_algorithms" not in profile["versions"][2]  # TLS10
+        assert "signature_algorithms" not in profile["versions"][3]  # TLS11
+        prof = profile["versions"][4]  # TLS12
         for a, b in zip(sig_algs, prof["signature_algorithms"]["algorithms"]):
             assert a == b["name"]
 

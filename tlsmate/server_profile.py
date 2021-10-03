@@ -1560,7 +1560,11 @@ class ServerProfile(SPObject):
         if exclude is None:
             exclude = []
 
-        return [obj.version for obj in self.versions if obj.version not in exclude and obj.support is tls.SPBool.C_TRUE]
+        return [
+            obj.version
+            for obj in self.versions
+            if obj.version not in exclude and obj.support is tls.SPBool.C_TRUE
+        ]
 
     def get_version_profile(self, version):
         """Get the profile entry for a given version.
