@@ -7,7 +7,7 @@ legacy version), which is affected by several vulnerabilities.
 
 .. raw:: html
 
- <pre style="color:white; background:black">
+ <pre style="color:white; background:black; overflow-x: auto; font-size:0.75em">
 
  <font color=green>$</font> tlsmate scan --progress localhost --port=44330 --oracle-accuracy=low
 
