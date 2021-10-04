@@ -3,6 +3,8 @@
 """
 # import basic stuff
 import sys
+import enum
+from dataclasses import dataclass
 
 # import own stuff
 
@@ -16,18 +18,54 @@ from tlsmate.version import __version__
 from colorama import init, Fore, Style
 
 
-class Mood(object):
-    """Defining the styles for a colorful text output
-    """
+class Color(tls.ExtendedEnum):
+    GREEN = enum.auto()
+    RED = enum.auto()
+    BLUE = enum.auto()
+    WHITE = enum.auto()
+    BLACK = enum.auto()
+    MAGENTA = enum.auto()
+    CYAN = enum.auto()
+    YELLOW = enum.auto()
 
-    GOOD = Fore.GREEN
-    NEUTRAL = ""
-    SOSO = Fore.YELLOW + Style.BRIGHT
-    BAD = Fore.RED
-    HEADLINE = Fore.MAGENTA + Style.BRIGHT
-    BOLD = Style.BRIGHT
-    RESET = Style.RESET_ALL
-    ERROR = Fore.RED + Style.BRIGHT
+
+class FontStyle:
+    html = False
+
+    def __init__(self, color=None, bold=False):
+        self.color = color
+        self.bold = bold
+
+    def decorate(self, txt):
+        if self.html:
+            if self.bold:
+                txt = f"<b>{txt}</b>"
+
+            if self.color:
+                txt = f"<font color={self.color.name.lower()}>{txt}</font>"
+
+        else:
+            if self.color:
+                txt = f"{getattr(Fore, self.color.name)}{txt}"
+
+            if self.bold:
+                txt = f"{Style.BRIGHT}{txt}"
+
+            if self.color or self.bold:
+                txt = f"{txt}{Style.RESET_ALL}"
+
+        return txt
+
+
+@dataclass
+class Mood:
+    GOOD: FontStyle = FontStyle(color=Color.GREEN)
+    NEUTRAL: FontStyle = FontStyle()
+    SOSO: FontStyle = FontStyle(color=Color.YELLOW, bold=True)
+    BAD: FontStyle = FontStyle(color=Color.RED)
+    HEADLINE: FontStyle = FontStyle(color=Color.MAGENTA, bold=True)
+    BOLD: FontStyle = FontStyle(bold=True)
+    ERROR: FontStyle = FontStyle(color=Color.RED, bold=True)
 
 
 def apply_mood(txt, mood):
@@ -44,7 +82,9 @@ def apply_mood(txt, mood):
     if mood == "":
         return str(txt)
 
-    return mood + str(txt) + Mood.RESET
+    return mood.format(txt=txt)
+
+    # return mood + str(txt) + Mood.RESET
 
 
 def merge_moods(moods):
@@ -116,7 +156,7 @@ def get_mood_applied(txt, profile, *keys):
         str: the given text, decorated with the found ANSI escape code.
     """
 
-    return apply_mood(txt, get_mood(profile, *keys))
+    return get_mood(profile, *keys).decorate(txt)
 
 
 def get_styled_text(data, *path):
@@ -139,7 +179,7 @@ def get_styled_text(data, *path):
     """
     prof = get_dict_value(data, *path)
     if not prof:
-        return apply_mood("???", Mood.ERROR)
+        return Mood.ERROR.decorate("???")
 
     return get_mood_applied(get_dict_value(prof, "txt"), prof, "style")
 
@@ -178,25 +218,23 @@ class TextProfileWorker(WorkerPlugin):
             return
 
         if "style" in self._style:
-            for mood in ["good", "neutral", "soso", "bad", "headline", "bold"]:
-                if mood in self._style["style"]:
-                    mood_def = self._style["style"][mood]
-                    if mood_def:
-                        string = ""
-                        if "fg" in mood_def:
-                            string += getattr(Fore, mood_def["fg"].upper())
+            for mood in ["good", "neutral", "soso", "bad", "headline", "bold", "error"]:
+                mood_def = self._style["style"].get(mood)
+                if mood_def is not None:
+                    color = None
+                    fg = mood_def.get("fg")
+                    if fg in [c.name.lower() for c in Color.all()]:
+                        color = Color.str2enum(fg.upper())
 
-                        if "style" in mood_def:
-                            string += getattr(Style, mood_def["style"].upper())
-
-                        setattr(Mood, mood.upper(), string)
+                    bold = mood_def.get("style") == "bright"
+                    setattr(Mood, mood.upper(), FontStyle(color=color, bold=bold))
 
     def _read_style(self):
         self._style = utils.deserialize_data(self.style_file)
         self._parse_style()
 
     def _print_tlsmate(self):
-        print(apply_mood("A TLS configuration scanner (and more)", Mood.HEADLINE))
+        print(Mood.HEADLINE.decorate("A TLS configuration scanner (and more)"))
         print()
         table = utils.Table(indent=2, sep="  ")
         table.row("tlsmate version", __version__)
@@ -210,7 +248,7 @@ class TextProfileWorker(WorkerPlugin):
     def _print_scan_info(self):
         scan_info = self.server_profile.scan_info
         self._start_date = scan_info.start_date
-        print(apply_mood("Basic scan information", Mood.HEADLINE))
+        print(Mood.HEADLINE.decorate("Basic scan information"))
         print()
         print(f"  command: {scan_info.command}")
         table = utils.Table(indent=2, sep="  ")
@@ -227,7 +265,7 @@ class TextProfileWorker(WorkerPlugin):
 
     def _print_host(self):
         host_info = self.server_profile.server
-        print(apply_mood("Scanned host", Mood.HEADLINE))
+        print(Mood.HEADLINE.decorate("Scanned host"))
         print()
         table = utils.Table(indent=2, sep="  ")
         name_resolution = hasattr(host_info, "name_resolution")
@@ -256,7 +294,7 @@ class TextProfileWorker(WorkerPlugin):
         if not hasattr(self.server_profile, "versions"):
             return
 
-        print(apply_mood("TLS protocol versions:", Mood.HEADLINE))
+        print(Mood.HEADLINE.decorate("TLS protocol versions:"))
         print()
         table = utils.Table(indent=2, sep="  ")
         for version_prof in self.server_profile.versions:
@@ -279,7 +317,7 @@ class TextProfileWorker(WorkerPlugin):
             return
 
         cipher_hash = {}
-        print(apply_mood("Cipher suites", Mood.HEADLINE))
+        print(Mood.HEADLINE.decorate("Cipher suites"))
 
         for version in self._prof_versions:
             version_prof = self.server_profile.get_version_profile(version)
@@ -331,7 +369,7 @@ class TextProfileWorker(WorkerPlugin):
                 for cs in cipher_list:
                     if version is tls.Version.SSL20:
                         cipher_hash[hashed]["table"].row(
-                            f"0x{cs.value:06x}", apply_mood(cs, Mood.BAD)
+                            f"0x{cs.value:06x}", Mood.BAD.decorate(cs)
                         )
 
                     else:
@@ -348,16 +386,14 @@ class TextProfileWorker(WorkerPlugin):
                             all_good = False
 
                         cipher_hash[hashed]["table"].row(
-                            f"0x{cs.value:04x}", apply_mood(cs, mood)
+                            f"0x{cs.value:04x}", mood.decorate(cs.name)
                         )
 
                 if all_good:
-                    cipher_hash[hashed]["preference"] = apply_mood(
-                        pref_txt, Mood.NEUTRAL
-                    )
+                    cipher_hash[hashed]["preference"] = Mood.NEUTRAL.decorate(pref_txt)
 
         for values in cipher_hash.values():
-            versions = apply_mood(", ".join(values["versions"]), Mood.BOLD)
+            versions = Mood.BOLD.decorate(", ".join(values["versions"]))
             print(f"\n  {versions}:")
             print(f'    {values["preference"]}')
             if values["chacha_preference"] != "":
@@ -373,7 +409,7 @@ class TextProfileWorker(WorkerPlugin):
 
         prof_grps = get_dict_value(self._style, "supported_groups", "groups")
         group_hash = {}
-        print(apply_mood("Supported groups", Mood.HEADLINE))
+        print(Mood.HEADLINE.decorate("Supported groups"))
         for version in self._prof_versions:
             prof_version = get_dict_value(self._style, "supported_groups", version.name)
             version_prof = self.server_profile.get_version_profile(version)
@@ -410,7 +446,7 @@ class TextProfileWorker(WorkerPlugin):
                     else:
                         pref_mood = get_mood(prof, "style")
 
-                    pref_txt = apply_mood(pref_txt, pref_mood)
+                    pref_txt = pref_mood.decorate(pref_txt)
 
             advertised = getattr(group_prof, "groups_advertised", None)
             if advertised is None:
@@ -432,7 +468,7 @@ class TextProfileWorker(WorkerPlugin):
 
         for group in group_hash.values():
             versions = ", ".join(group["versions"])
-            print(f"\n  {apply_mood(versions, Mood.BOLD)}:")
+            print(f"\n  {Mood.BOLD.decorate(versions)}:")
             supp_txt, pref_txt, ad_txt, groups = group["combined"]
 
             if supp_txt:
@@ -461,7 +497,7 @@ class TextProfileWorker(WorkerPlugin):
             return
 
         algo_hash = {}
-        print(apply_mood("Signature algorithms", Mood.HEADLINE))
+        print(Mood.HEADLINE.decorate("Signature algorithms"))
         for version in self._prof_versions:
             version_prof = self.server_profile.get_version_profile(version)
             if not hasattr(version_prof, "signature_algorithms"):
@@ -480,7 +516,7 @@ class TextProfileWorker(WorkerPlugin):
 
         for algo in algo_hash.values():
             versions = ", ".join(algo["versions"])
-            print(f"\n  {apply_mood(versions, Mood.BOLD)}:")
+            print(f"\n  {Mood.BOLD.decorate(versions)}:")
 
             print("    signature algorithms:")
             table = utils.Table(indent=6, sep="  ")
@@ -520,10 +556,10 @@ class TextProfileWorker(WorkerPlugin):
                 }
 
         if dh_groups:
-            print(apply_mood("DH groups (finite field)", Mood.HEADLINE))
+            print(Mood.HEADLINE.decorate("DH groups (finite field"))
             for values in dh_groups.values():
                 versions = ", ".join(values["versions"])
-                print(f"\n  {apply_mood(versions, Mood.BOLD)}:")
+                print(f"\n  {Mood.BOLD.decorate(versions)}:")
                 name, size = values["combined"]
                 if name is None:
                     name = "unknown group"
@@ -554,7 +590,7 @@ class TextProfileWorker(WorkerPlugin):
         ):
             return
 
-        print(f'  {apply_mood("Common features", Mood.BOLD)}')
+        print(f'  {Mood.BOLD.decorate("Common features")}')
         table = utils.Table(indent=4, sep="  ")
 
         ocsp_state = getattr(feat_prof, "ocsp_stapling", None)
@@ -603,7 +639,7 @@ class TextProfileWorker(WorkerPlugin):
         ):
             return
 
-        print(f'  {apply_mood("Features for TLS1.2 and below", Mood.BOLD)}')
+        print(f'  {Mood.BOLD.decorate("Features for TLS1.2 and below")}')
         table = utils.Table(indent=4, sep="  ")
         if hasattr(feat_prof, "compression"):
             if (len(feat_prof.compression) == 1) and feat_prof.compression[
@@ -683,7 +719,7 @@ class TextProfileWorker(WorkerPlugin):
         ):
             return
 
-        print(f'  {apply_mood("Features for TLS1.3", Mood.BOLD)}')
+        print(f'  {Mood.BOLD.decorate("Features for TLS1.3")}')
 
         table = utils.Table(indent=4, sep="  ")
         resumption_psk = getattr(feat_prof, "resumption_psk", None)
@@ -718,8 +754,8 @@ class TextProfileWorker(WorkerPlugin):
             ("psk_mode_tolerance", "psk_mode"),
         )
 
-        caption = apply_mood(
-            "Server tolerance to unknown values (GREASE, RFC8701)", Mood.BOLD
+        caption = Mood.BOLD.decorate(
+            "Server tolerance to unknown values (GREASE, RFC8701)"
         )
         print(f"  {caption}")
         table = utils.Table(indent=4, sep="  ")
@@ -741,7 +777,7 @@ class TextProfileWorker(WorkerPlugin):
             return
 
         ekr = self.server_profile.features.ephemeral_key_reuse
-        print(apply_mood("  Ephemeral key reuse", Mood.BOLD))
+        print(Mood.BOLD.decorate("  Ephemeral key reuse"))
         table = utils.Table(indent=4, sep="  ")
         table.row(
             "DHE key reuse (TLS1.2 or below)",
@@ -775,7 +811,7 @@ class TextProfileWorker(WorkerPlugin):
         if not feat_prof:
             return
 
-        print(apply_mood("Features", Mood.HEADLINE))
+        print(Mood.HEADLINE.decorate("Features"))
         print()
 
         self._print_common_features(feat_prof)
@@ -816,9 +852,9 @@ class TextProfileWorker(WorkerPlugin):
                 issue_txt.append("- " + folded_lines.pop(0))
                 issue_txt.extend(["  " + item for item in folded_lines])
 
-            table.row("Issues", apply_mood(issue_txt[0], mood))
+            table.row("Issues", mood.decorate(issue_txt[0]))
             for line in issue_txt[1:]:
-                table.row("", apply_mood(line, mood))
+                table.row("", mood.decorate(line))
 
         table.row("Serial number", f"{cert.serial_number_int} (integer)")
         table.row("", f"{pdu.string(cert.serial_number_bytes)} (hex)")
@@ -892,7 +928,7 @@ class TextProfileWorker(WorkerPlugin):
 
             table.row(
                 "Public key",
-                f'{pub_key.key_type}, {apply_mood(f"{key_size} bits", mood)}',
+                f'{pub_key.key_type}, {mood.decorate(f"{key_size} bits")}',
             )
 
         key_usage_ext = get_cert_ext(cert, "KeyUsage")
@@ -1023,7 +1059,7 @@ class TextProfileWorker(WorkerPlugin):
         if cert_chains is None:
             return
 
-        print(apply_mood("Certificate chains", Mood.HEADLINE))
+        print(Mood.HEADLINE.decorate("Certificate chains"))
         for cert_chain in cert_chains:
             print()
             if hasattr(cert_chain, "successful_validation"):
@@ -1037,7 +1073,7 @@ class TextProfileWorker(WorkerPlugin):
             else:
                 valid_txt = ""
 
-            head_line = apply_mood(f"Certificate chain #{cert_chain.id}:", Mood.BOLD)
+            head_line = Mood.BOLD.decorate(f"Certificate chain #{cert_chain.id}:")
             print(f"  {head_line} {valid_txt}")
             if hasattr(cert_chain, "issues"):
                 mood = get_mood(self._style, "cert_chain", "issues")
@@ -1045,7 +1081,7 @@ class TextProfileWorker(WorkerPlugin):
                 for issue in cert_chain.issues:
                     lines = utils.fold_string(issue, max_length=100)
                     txt = "    - " + "\n      ".join(lines)
-                    print(apply_mood(txt, mood))
+                    print(mood.decorate(txt))
 
             if hasattr(cert_chain, "root_cert_transmitted"):
                 txt = get_styled_text(
@@ -1069,7 +1105,7 @@ class TextProfileWorker(WorkerPlugin):
             return
 
         table = utils.Table(indent=2, sep="  ")
-        print(apply_mood("Vulnerabilities", Mood.HEADLINE))
+        print(Mood.HEADLINE.decorate("Vulnerabilities"))
         print()
         ccs = getattr(vuln_prof, "ccs_injection", None)
         if ccs is not None:
@@ -1211,7 +1247,13 @@ class TextProfileWorker(WorkerPlugin):
         if self.config.get("progress"):
             sys.stderr.write("\n")
 
-        init(strip=not self.config.get("color"))
+        if self.config.get("format") == "html":
+            FontStyle.html = True
+            print("<pre>")
+
+        else:
+            init(strip=not self.config.get("color"))
+
         self._prof_versions = self.server_profile.get_versions()
         self._print_tlsmate()
         self._print_scan_info()
@@ -1225,3 +1267,5 @@ class TextProfileWorker(WorkerPlugin):
             self._print_features()
             self._print_certificates()
             self._print_vulnerabilities()
+        if self.config.get("format") == "html":
+            print("</pre>")
