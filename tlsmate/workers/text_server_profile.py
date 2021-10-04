@@ -898,12 +898,15 @@ class TextProfileWorker(WorkerPlugin):
 
         sig_algo = getattr(cert, "signature_algorithm", None)
         if sig_algo is not None:
-            table.row(
-                "Signature algorithm",
-                get_mood_applied(
+            if self_signed is tls.SPBool.C_TRUE:
+                txt = sig_algo.name
+
+            else:
+                txt = get_mood_applied(
                     sig_algo.name, self._style, "signature_schemes", sig_algo.name
-                ),
-            )
+                )
+
+            table.row("Signature algorithm", txt)
 
         pub_key = getattr(cert, "public_key", None)
         if pub_key is not None:
