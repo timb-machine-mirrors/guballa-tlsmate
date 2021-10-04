@@ -1,7 +1,32 @@
 description:
-  short: targeting a security level of 128 bits
+  short: very strict profile targeting a security level of 128 bits
   long: >-
-    Here we should explain in more detail the "features" of this profile.
+    From a strict security perspective this profile does not provide any compromises.
+    TLS protocol versions: only TLS1.2 and TLS1.3 are considered as good.
+    Cipher suites:
+      - Key exchange: only ECDHE (RSA & ECDSA) cipher suites are considered as good.
+      - Symmetric cipher: AES and CAMELLIA ciphers in GCM, CCM or CCM_8 mode
+        are considered as good. CHACHA20_POLY1305 are considered as good as well.
+      - MAC: only SHA256 and better is considered as good
+      - All TLS1.3 cipher suites are considered as good.
+      - For TLS1.2 the server shall enforce the cipher suite order
+    Supported groups:
+      Only X25519, X448 and SECP* curves with a security level of at least 128 bits
+      are considered as good.
+      If any supported group is not considered as good the server shall enforce the
+      order of supported groups.
+    DH groups:
+      Only groups with 3072 bits or more are considered as good.
+    Signature Schemes (signing key exchange messages, applicable in certificates):
+      Considered as good: RSA_PKCS1_* with SHA256 or better, ECDSA_SECP* with SHA256 or
+      better, RSA_PSS_RSAE_*, RSA_PSS_PSS_*, ED25519, ED448
+    Required Extensions:
+      status_request, encrypt_then_mac, extended_master_secret
+    Banned extensions:
+      heartbeat, session_ticket (rationale: ticket encryption key is a long term
+      secret, but is typically protected like a short term secret, rotation frequency
+      of the ticket encryption key is another potential issue)
+    The other stuff should be rather obvious.
 
 style:
   good:
@@ -159,9 +184,9 @@ symmetric_ciphers:
   TLS13_AES_128_CCM: good
   TLS13_AES_128_CCM_8: good
   ARIA_128_CBC: soso
-  ARIA_128_GCM: good
+  ARIA_128_GCM: soso
   ARIA_256_CBC: soso
-  ARIA_256_GCM: good
+  ARIA_256_GCM: soso
   CAMELLIA_128_GCM: good
   CAMELLIA_256_GCM: good
   DES40_CBC: bad
@@ -457,20 +482,6 @@ scsv_renegotiation:
     style: soso
 
 encrypt_then_mac:
-  C_FALSE:
-    txt: *txt_false
-    style: bad
-  C_TRUE:
-    txt: *txt_true
-    style: good
-  C_NA:
-    txt: *txt_na
-    style: neutral
-  C_UNDETERMINED:
-    txt: *txt_undet
-    style: soso
-
-extended_master_secret:
   C_FALSE:
     txt: *txt_false
     style: bad

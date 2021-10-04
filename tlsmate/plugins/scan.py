@@ -243,7 +243,7 @@ def _add_args_server_profile(parser):
     )
     group.add_argument(
         "--format",
-        choices=["text", "json", "yaml", "none"],
+        choices=["text", "html", "json", "yaml", "none"],
         help=('the output format of the server profile. Defaults to "text".'),
         default=None,
     )
@@ -257,8 +257,8 @@ def _add_args_server_profile(parser):
         type=str,
         help=(
             "a yaml file defining the text outout and the color scheme used if "
-            "--format=text is given. If not given, the internal default file "
-            "will be used."
+            "--format=text or --format=html is given. If not given, the internal "
+            "default file will be used."
         ),
     )
 
@@ -450,7 +450,7 @@ class ScanPlugin(CliConnectionPlugin):
             #     WorkManager.register(ReadProfileWorker)
 
             format_type = config.get("format")
-            if format_type == "text":
+            if format_type in ["text", "html"]:
                 WorkManager.register(TextProfileWorker)
 
             elif format_type in ["json", "yaml"]:
