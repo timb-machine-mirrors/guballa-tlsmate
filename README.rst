@@ -115,12 +115,14 @@ Well, currently there are not that many.
 
 This command will perform a TLS scan against the domain ``mytlsmatedomain.net``, and the
 result will be displayed as colored console output. For an example refer to the
-`output of the scan command <docs/scanner_output.rst>`_.
+`output of the scan command`_.
 
 Using the tlsmate library from other python applications is described in the
 `Python API documentation`_.
 
 .. _`CLI documentation`: https://guballa.gitlab.io/tlsmate/cli.html
+
+.. _`output of the scan command`: https://guballa.gitlab.io/tlsmate/scanner_output.html
 
 .. _`Python API documentation`: https://guballa.gitlab.io/tlsmate/modules.html
 

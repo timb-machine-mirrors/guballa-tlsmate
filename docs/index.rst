@@ -15,6 +15,7 @@ The project is hosted on `GitLab <https://gitlab.com/guballa/tlsmate>`_.
    overview
    installation
    usage
+   scanner_output
    tlsfeatures
 
 .. toctree::
