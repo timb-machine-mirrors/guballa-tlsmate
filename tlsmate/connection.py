@@ -452,7 +452,11 @@ class TlsConnection(object):
             self._send_alert(tls.AlertLevel.WARNING, tls.AlertDescription.CLOSE_NOTIFY)
 
         self._record_layer.close_socket()
-        return True
+        if exc_type:
+            return issubclass(exc_type, Exception)
+
+        else:
+            return True
 
     def get_key_share(self, group):
         """Provide the key share for a given group.
