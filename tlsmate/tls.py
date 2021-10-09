@@ -1204,7 +1204,7 @@ class ServerIssue(ExtendedEnum):
     """
 
     PSK_OUT_OF_RANGE = "selected PSK out of range (TLS1.3)"
-    KEY_SHARE_NOT_PRESENT = "ServerHello, TLS13: extensions KEY_SHARE not present"
+    KEY_SHARE_NOT_PRESENT = "ServerHello, TLS13: extension KEY_SHARE not present"
     SECURE_RENEG_FAILED = "secure renegotiation check failed"
     VERIFY_DATA_INVALID = "received Finished: verify data does not match"
     CERT_REQ_NO_SIG_ALGO = (

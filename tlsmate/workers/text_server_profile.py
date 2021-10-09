@@ -290,11 +290,39 @@ class TextProfileWorker(WorkerPlugin):
         table.dump()
         print()
 
+    def _print_server_malfunctions(self):
+        malfunctions = getattr(self.server_profile, "server_malfunctions", None)
+        if not malfunctions:
+            return
+
+        print(Mood.HEADLINE.decorate("Severe server implementation flaws"))
+        print()
+        for malfunction in malfunctions:
+            add_info = []
+            if hasattr(malfunction, "message"):
+                add_info.append(f"message: {malfunction.message.name}")
+
+            if hasattr(malfunction, "extension"):
+                add_info.append(f"extension: {malfunction.extension.name}")
+
+            txt = "  - " + get_dict_value(
+                self._style,
+                "server_malfunction",
+                malfunction.issue.name,
+                default=malfunction.issue.description,
+            )
+            if add_info:
+                txt += f" ({'; '.join(add_info)})"
+
+            print(Mood.BAD.decorate(txt))
+
+        print()
+
     def _print_versions(self):
         if not hasattr(self.server_profile, "versions"):
             return
 
-        print(Mood.HEADLINE.decorate("TLS protocol versions:"))
+        print(Mood.HEADLINE.decorate("TLS protocol versions"))
         print()
         table = utils.Table(indent=2, sep="  ")
         for version_prof in self.server_profile.versions:
@@ -1261,6 +1289,7 @@ class TextProfileWorker(WorkerPlugin):
         self._print_tlsmate()
         self._print_scan_info()
         self._print_host()
+        self._print_server_malfunctions()
         self._print_versions()
         if self._prof_versions:
             self._print_cipher_suites()
