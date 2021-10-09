@@ -8,7 +8,7 @@ import struct
 from tlsmate import pdu
 from tlsmate import tls
 from tlsmate import structs
-from tlsmate.exception import FatalAlert
+from tlsmate.exception import ServerMalfunction
 
 # import other stuff
 from cryptography.hazmat.primitives import hmac
@@ -247,7 +247,7 @@ class RecordLayerState(object):
             The protected record layer message.
 
         Raises:
-            FatalAlert: if the cipher type is unknown.
+            ValueError: if the cipher type is unknown.
         """
 
         if self._cipher.c_type == tls.CipherType.BLOCK:
@@ -264,7 +264,7 @@ class RecordLayerState(object):
                 return self._protect_aead_cipher(rl_msg)
 
         else:
-            raise FatalAlert("Unknown cipher type", tls.AlertDescription.INTERNAL_ERROR)
+            raise ValueError("Unknown cipher type")
 
     def _tls13_protect(self, rl_msg):
         """Protects a fragment using the TLS1.3 specification.
@@ -332,13 +332,11 @@ class RecordLayerState(object):
             bytes: The fragment appended with the MAC.
 
         Raises:
-            FatalAlert: If the MAC is incorrect.
+            ServerMalfunction: If the MAC is incorrect.
         """
 
         if len(fragment) < self._mac.mac_len:
-            raise FatalAlert(
-                "Decoded fragment too short", tls.AlertDescription.BAD_RECORD_MAC
-            )
+            raise ServerMalfunction(tls.ServerIssue.RECORD_TOO_SHORT)
 
         msg_len = len(fragment) - self._mac.mac_len
         mac_received = fragment[msg_len:]
@@ -354,9 +352,7 @@ class RecordLayerState(object):
         mac.update(mac_input)
         mac_calculated = mac.finalize()
         if mac_calculated != mac_received:
-            raise FatalAlert(
-                "MAC verification failed", tls.AlertDescription.BAD_RECORD_MAC
-            )
+            raise ServerMalfunction(tls.ServerIssue.RECORD_MAC_INVALID)
 
         return msg
 
@@ -370,7 +366,7 @@ class RecordLayerState(object):
             bytes: the decoded fragment.
 
         Raises:
-            FatalAlert: If padding errors are detected.
+            ServerMalfunction: If padding errors are detected.
         """
 
         if self._version <= tls.Version.TLS10:
@@ -390,14 +386,12 @@ class RecordLayerState(object):
         pad = plain_text[-1]
         pad_start = len(plain_text) - pad - 1
         if pad_start < 0:
-            raise FatalAlert(
-                "Wrong padding length", tls.AlertDescription.BAD_RECORD_MAC
-            )
+            raise ServerMalfunction(tls.ServerIssue.RECORD_WRONG_PADDING_LENGTH)
 
         padding = plain_text[pad_start:]
         plain_text = plain_text[:pad_start]
         if (struct.pack("!B", pad) * (pad + 1)) != padding:
-            raise FatalAlert("Wrong padding bytes", tls.AlertDescription.BAD_RECORD_MAC)
+            raise ServerMalfunction(tls.ServerIssue.RECORD_WRONG_PADDING_BYTES)
 
         return plain_text
 
@@ -549,7 +543,7 @@ class RecordLayerState(object):
                 return self._unprotect_aead_cipher(rl_msg)
 
         else:
-            raise FatalAlert("Unknown cipher type", tls.AlertDescription.INTERNAL_ERROR)
+            raise ValueError("Unknown cipher type")
 
     def _tls13_unprotect(self, rl_msg):
         """Unprotects a record layer message (TLS1.3).
@@ -587,10 +581,7 @@ class RecordLayerState(object):
             idx -= 1
 
         if idx < 0:
-            raise FatalAlert(
-                "decoded record: padding not Ok",
-                tls.AlertDescription.UNEXPECTED_MESSAGE,
-            )
+            raise ServerMalfunction(tls.ServerIssue.RECORD_WRONG_PADDING_LENGTH)
 
         self._seq_nbr += 1
         return structs.RecordLayerMsg(

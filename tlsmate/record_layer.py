@@ -143,7 +143,7 @@ class RecordLayer(object):
             A complete record layer message. If a timeout occurs, None is returned.
 
         Raises:
-            FatalAlert: If anything went wrong, e.g. message could not be
+            ServerMalfunction: If anything went wrong, e.g. message could not be
                 authenticated, wrong padding, etc.
         """
 

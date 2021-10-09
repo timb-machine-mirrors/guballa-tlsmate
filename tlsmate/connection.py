@@ -11,7 +11,8 @@ import time
 
 # import own stuff
 from tlsmate.exception import (
-    FatalAlert,
+    ScanError,
+    ServerMalfunction,
     TlsConnectionClosedError,
     TlsMsgTimeoutError,
     ServerParmsSignatureInvalid,
@@ -25,6 +26,7 @@ from tlsmate import structs
 from tlsmate import key_exchange as kex
 from tlsmate import ext
 from tlsmate import resolver
+from tlsmate import mappings
 from tlsmate.kdf import Kdf
 from tlsmate.record_layer import RecordLayer
 from tlsmate.key_logging import KeyLogger
@@ -434,12 +436,18 @@ class TlsConnection(object):
         """Context manager: cleanup the TLS- and TCP-connection.
         """
 
-        if exc_type is FatalAlert:
-            logging.warning(f"FatalAlert exception: {exc_value.args[0]}")
+        if exc_type is ServerMalfunction:
+            self.client.report_server_issue(
+                exc_value.issue, exc_value.message, exc_value.extension
+            )
+            logging.warning(f"ServerMalfunction exception: {exc_value.args[0]}")
             str_io = io.StringIO()
             tb.print_exception(exc_type, exc_value, traceback, file=str_io)
             logging.debug(str_io.getvalue())
-            self._send_alert(tls.AlertLevel.FATAL, exc_value.description)
+            descr = mappings.issue_to_alert_description.get(
+                exc_value.issue, tls.AlertDescription.INTERNAL_ERROR
+            )
+            self._send_alert(tls.AlertLevel.FATAL, descr)
 
         elif exc_type in (TlsConnectionClosedError, BrokenPipeError):
             logging.warning("connected closed, probably by peer")
@@ -735,10 +743,7 @@ class TlsConnection(object):
 
     def _post_sending_cke(self):
         if not self.cs_details.full_hs:
-            raise FatalAlert(
-                f"full handshake not supported for {self.cipher_suite}",
-                tls.AlertDescription.HANDSHAKE_FAILURE,
-            )
+            raise ValueError(f"full handshake not supported for {self.cipher_suite}")
 
         self._generate_master_secret()
         self._key_derivation()
@@ -1019,10 +1024,7 @@ class TlsConnection(object):
             ch_psks = self.msg.client_hello.get_extension(tls.Extension.PRE_SHARED_KEY)
             if ch_psks is not None:
                 if psk_idx >= len(ch_psks.psks):
-                    raise FatalAlert(
-                        "selected PSK out of range",
-                        tls.AlertDescription.ILLEGAL_PARAMETER,
-                    )
+                    raise ServerMalfunction(tls.ServerIssue.PSK_OUT_OF_RANGE)
 
                 psk = ch_psks.psks[psk_idx].psk
                 self.abbreviated_hs = True
@@ -1030,10 +1032,7 @@ class TlsConnection(object):
         key_share_ext = msg.get_extension(tls.Extension.KEY_SHARE)
         if key_share_ext is None:
             if not self.abbreviated_hs:
-                raise FatalAlert(
-                    "ServerHello-TLS13: extension KEY_SHARE not present",
-                    tls.AlertDescription.HANDSHAKE_FAILURE,
-                )
+                raise ServerMalfunction(tls.ServerIssue.KEY_SHARE_NOT_PRESENT)
 
             shared_secret = None
 
@@ -1085,28 +1084,19 @@ class TlsConnection(object):
                     logging.debug("renegotiation extension successfully verified")
 
                 elif data is not None:
-                    raise FatalAlert(
-                        "secure renegotiation check failed",
-                        tls.AlertDescription.HANDSHAKE_FAILURE,
-                    )
+                    raise ServerMalfunction(tls.ServerIssue.SECURE_RENEG_FAILED)
 
             elif self._secure_reneg_flag:
                 self._secure_reneg_flag = False
                 if self._secure_reneg_cl_data and self._secure_reneg_sv_data:
                     if data != self._secure_reneg_cl_data + self._secure_reneg_sv_data:
-                        raise FatalAlert(
-                            "secure renegotiation check failed",
-                            tls.AlertDescription.HANDSHAKE_FAILURE,
-                        )
+                        raise ServerMalfunction(tls.ServerIssue.SECURE_RENEG_FAILED)
 
                     self._secure_reneg_flag = True
                     logging.debug("renegotiation extension successfully verified")
 
                 else:
-                    raise FatalAlert(
-                        "secure renegotiation check failed",
-                        tls.AlertDescription.HANDSHAKE_FAILURE,
-                    )
+                    raise ServerMalfunction(tls.ServerIssue.SECURE_RENEG_FAILED)
 
             self._secure_reneg_cl_data = None
             self._secure_reneg_sv_data = None
@@ -1130,22 +1120,37 @@ class TlsConnection(object):
         else:
             self._on_server_hello_tls12(msg)
 
+    def _handle_signed_params(self, params, string):
+        if params:
+            randoms = self.msg.client_hello.random + self.msg.server_hello.random
+            cert = self.msg.server_certificate.chain.certificates[0]
+            try:
+                kex.verify_signed_params(
+                    randoms,
+                    params,
+                    cert,
+                    self.cs_details.key_algo_struct.default_sig_scheme,
+                    self.version,
+                )
+                logging.debug(f"signed {string} parameters successfully verified")
+
+            except crypto_exc.InvalidSignature:
+                error = (
+                    f"signature of server's {string} key exchange "
+                    f"parameters is invalid"
+                )
+                cert.issues.append(error)
+                logging.debug(error)
+                if self.client.alert_on_invalid_cert:
+                    raise ServerParmsSignatureInvalid(error)
+
     def _on_server_key_exchange_received(self, msg):
+        if not (msg.ec or msg.dh):
+            return
+
         if msg.ec is not None:
             if msg.ec.signed_params is not None:
-                try:
-                    kex.verify_signed_params(
-                        msg.ec,
-                        self.msg,
-                        self.cs_details.key_algo_struct.default_sig_scheme,
-                        self.version,
-                    )
-                    logging.debug("signed ec parameters successfully verified")
-
-                except crypto_exc.InvalidSignature:
-                    raise ServerParmsSignatureInvalid(
-                        "signature for server's EC parameters is invalid"
-                    )
+                self._handle_signed_params(msg.ec, "EC")
 
             if msg.ec.named_curve is not None:
                 logging.debug(f"named curve: {msg.ec.named_curve}")
@@ -1157,19 +1162,7 @@ class TlsConnection(object):
         elif msg.dh is not None:
             dh = msg.dh
             if dh.signed_params is not None:
-                try:
-                    kex.verify_signed_params(
-                        msg.dh,
-                        self.msg,
-                        self.cs_details.key_algo_struct.default_sig_scheme,
-                        self.version,
-                    )
-                    logging.debug("signed dh parameters successfully verified")
-
-                except crypto_exc.InvalidSignature:
-                    raise ServerParmsSignatureInvalid(
-                        "signature for server's DH parameters is invalid"
-                    )
+                self._handle_signed_params(dh, "DH")
 
             logging.debug(f"DH group size: {len(dh.p_val) * 8}")
             self._key_exchange = kex.DhKeyExchange(self, self.recorder)
@@ -1199,10 +1192,8 @@ class TlsConnection(object):
             )
             logging.debug(f"calc. verify_data: {pdu.dump(calc_verify_data)}")
             if calc_verify_data != msg.verify_data:
-                raise FatalAlert(
-                    "Received Finished: verify_data does not match",
-                    tls.AlertDescription.DECRYPT_ERROR,
-                )
+                raise ServerMalfunction(tls.ServerIssue.VERIFY_DATA_INVALID)
+
             self.server_finished_digest = self._kdf.current_msg_digest()
             s_app_tr_secret = self._kdf.hkdf_expand_label(
                 self.master_secret,
@@ -1246,10 +1237,7 @@ class TlsConnection(object):
             self.recorder.trace(verify_data_finished_rec=msg.verify_data)
             self.recorder.trace(verify_data_finished_calc=val)
             if msg.verify_data != val:
-                raise FatalAlert(
-                    "Received Finidhed: verify_data does not match",
-                    tls.AlertDescription.BAD_RECORD_MAC,
-                )
+                raise ServerMalfunction(tls.ServerIssue.VERIFY_DATA_INVALID)
 
         logging.debug("Received Finished sucessfully verified")
         if self._finished_treated:
@@ -1337,9 +1325,7 @@ class TlsConnection(object):
         if self.version is tls.Version.TLS13:
             sig_algo_ext = msg.get_extension(tls.Extension.SIGNATURE_ALGORITHMS)
             if sig_algo_ext is None:
-                raise FatalAlert(
-                    "certificate request without extension SignatureAlgorithms received"
-                )
+                raise ServerMalfunction(tls.ServerIssue.CERT_REQ_NO_SIG_ALGO)
 
             algos = sig_algo_ext.signature_algorithms
 
@@ -1478,7 +1464,7 @@ class TlsConnection(object):
             (None, None) is returned if fail_on_timeout is False
 
         Raises:
-            FatalAlert: In case an unexpected message is received
+            ScanError: In case an unexpected message is received
             TlsMsgTimeoutError: In case fail_on_timeout is True and a timeout occured.
         """
         ultimo = time.time() + (timeout / 1000)
@@ -1532,12 +1518,11 @@ class TlsConnection(object):
 
                 else:
                     logging.warning("unexpected message received")
-                    raise FatalAlert(
+                    raise ScanError(
                         (
                             f"Unexpected message received: {message.msg_type}, "
                             f"expected: {msg_class.msg_type}"
-                        ),
-                        tls.AlertDescription.UNEXPECTED_MESSAGE,
+                        )
                     )
 
     def wait(self, msg_class, **kwargs):
@@ -1558,7 +1543,7 @@ class TlsConnection(object):
             of a timeout and fail_on_timeout is False.
 
         Raises:
-            FatalAlert: In case an unexpected message is received
+            ScanError: In case an unexpected message is received
             TlsMsgTimeoutError: In case fail_on_timeout is True and a timeout occured.
         """
 
@@ -1749,7 +1734,7 @@ class TlsConnection(object):
             timeout (int): the timeout in milliseconds
 
         Raises:
-            FatalAlert: In case an unexpected message is received
+            ScanError: In case an unexpected message is received
         """
         self.wait(msg.Timeout, timeout=timeout)
 
