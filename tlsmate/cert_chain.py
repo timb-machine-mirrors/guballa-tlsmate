@@ -359,11 +359,13 @@ class CertChain(object):
                     self.root_cert = issuer_cert
 
                 else:
-                    cert.mark_untrusted(
-                        f'issuer certificate "{cert.parsed.issuer.rfc4514_string()}" '
-                        f"not found in trust store",
-                        True,
-                    )
+                    if len(issuers) == 1:
+                        cert.mark_untrusted(
+                            f'issuer certificate '
+                            f'"{cert.parsed.issuer.rfc4514_string()}" not found '
+                            f'in trust store',
+                            True,
+                        )
                     break
 
             try:

@@ -192,3 +192,18 @@ def test_gratuitous_certificate(
         "gratuitous certificate, not part of trust chain"
         in chain.certificates[1].issues[0]
     )
+
+
+def test_root_not_in_chain_not_in_truststore_no_exception(
+    tlsmate, valid_time, server_rsa_cert, ca_rsa_cert
+):
+
+    # hard reset of the trust store
+    tlsmate.trust_store._ca_files = None
+
+    chain = CertChain()
+    for cert in (server_rsa_cert, ca_rsa_cert):
+        chain.append_pem_cert(cert.as_bytes())
+
+    chain.validate(valid_time, "localhost", False)
+    assert chain.successful_validation is False
