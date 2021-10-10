@@ -15,7 +15,6 @@ from tlsmate.exception import (
     ServerMalfunction,
     TlsConnectionClosedError,
     TlsMsgTimeoutError,
-    ServerParmsSignatureInvalid,
 )
 from tlsmate.msg import get_extension
 from tlsmate import msg
@@ -1141,8 +1140,14 @@ class TlsConnection(object):
                 )
                 cert.issues.append(error)
                 logging.debug(error)
+                issue = tls.ServerIssue.KEX_INVALID_SIGNATURE
                 if self.client.alert_on_invalid_cert:
-                    raise ServerParmsSignatureInvalid(error)
+                    raise ServerMalfunction(
+                        issue, message=tls.HandshakeType.SERVER_KEY_EXCHANGE
+                    )
+
+                else:
+                    self.client.report_server_issue(issue)
 
     def _on_server_key_exchange_received(self, msg):
         if not (msg.ec or msg.dh):

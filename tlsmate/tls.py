@@ -1224,3 +1224,4 @@ class ServerIssue(ExtendedEnum):
     RECORD_WRONG_PADDING_LENGTH = "wrong padding length"
     RECORD_WRONG_PADDING_BYTES = "wrong padding byte contents"
     ILLEGAL_PARAMETER_VALUE = "received parameter value is illegal"
+    KEX_INVALID_SIGNATURE = "signature of server's key exchange parameters invalid"
