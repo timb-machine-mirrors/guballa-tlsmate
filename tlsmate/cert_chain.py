@@ -436,10 +436,16 @@ class CertChain(object):
         # And now check for gratuitous certificate in the chain
         if not raise_on_failure:
             for idx, cert in enumerate(self.certificates):
-                if idx not in self._trust_path and cert.trusted is None:
-                    cert.issues.append(
-                        "gratuitous certificate, not part of trust chain"
-                    )
+                if idx not in self._trust_path:
+                    if cert.trusted is None:
+                        cert.issues.append(
+                            "gratuitous certificate, not part of trust chain"
+                        )
+
+                    else:
+                        cert.issues.append(
+                            "certificate part of untrusted alternate trust path"
+                        )
 
     def serialize(self):
         """Serialize the certificate chain
