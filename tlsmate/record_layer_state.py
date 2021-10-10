@@ -128,7 +128,7 @@ class RecordLayerState(object):
 
         fragment = rl_msg.fragment
         if data_cb:
-            fragment = data_cb(fragment)
+            fragment = data_cb(bytearray(fragment))
 
         if self._enc_then_mac:
             fragment = self._encrypt_cbc(fragment, **kwargs)
@@ -319,7 +319,7 @@ class RecordLayerState(object):
             # Skip compression, we don't want to support it.
             return self._protect(rl_msg, **kwargs)
 
-    def _verify_mac(self, content_type, version, fragment):
+    def _verify_mac(self, content_type, version, fragment, mac_cb=None, **kwargs):
         """Verifies the MAC of a fragment.
 
         Arguments:
@@ -340,6 +340,9 @@ class RecordLayerState(object):
 
         msg_len = len(fragment) - self._mac.mac_len
         mac_received = fragment[msg_len:]
+        if mac_cb:
+            mac_received = mac_cb(bytearray(mac_received))
+
         msg = fragment[:msg_len]
         mac_input = (
             pdu.pack_uint64(self._seq_nbr)
@@ -356,7 +359,7 @@ class RecordLayerState(object):
 
         return msg
 
-    def _decode_cbc(self, fragment):
+    def _decode_cbc(self, fragment, padding_cb=None, **kwargs):
         """Decodes a fragment using a block cipher in CBC mode.
 
         Arguments:
@@ -389,13 +392,16 @@ class RecordLayerState(object):
             raise ServerMalfunction(tls.ServerIssue.RECORD_WRONG_PADDING_LENGTH)
 
         padding = plain_text[pad_start:]
+        if padding_cb:
+            padding = padding_cb(bytearray(padding))
+
         plain_text = plain_text[:pad_start]
         if (struct.pack("!B", pad) * (pad + 1)) != padding:
             raise ServerMalfunction(tls.ServerIssue.RECORD_WRONG_PADDING_BYTES)
 
         return plain_text
 
-    def _unprotect_block_cipher(self, rl_msg):
+    def _unprotect_block_cipher(self, rl_msg, data_cb=None, **kwargs):
         """Unprotects a record layer message (block cipher).
 
         The message is decrypted and the authentication is verified. Both modes,
@@ -412,13 +418,18 @@ class RecordLayerState(object):
 
         if self._enc_then_mac:
             fragment = self._verify_mac(
-                rl_msg.content_type, rl_msg.version, rl_msg.fragment
+                rl_msg.content_type, rl_msg.version, rl_msg.fragment, **kwargs,
             )
-            plain_text = self._decode_cbc(fragment)
+            plain_text = self._decode_cbc(fragment, **kwargs)
 
         else:
-            fragment = self._decode_cbc(rl_msg.fragment)
-            plain_text = self._verify_mac(rl_msg.content_type, rl_msg.version, fragment)
+            fragment = self._decode_cbc(rl_msg.fragment, **kwargs)
+            plain_text = self._verify_mac(
+                rl_msg.content_type, rl_msg.version, fragment, **kwargs
+            )
+
+        if data_cb:
+            plain_text = data_cb(bytearray(plain_text))
 
         self._seq_nbr += 1
         return structs.RecordLayerMsg(
@@ -427,7 +438,7 @@ class RecordLayerState(object):
             fragment=plain_text,
         )
 
-    def _unprotect_stream_cipher(self, rl_msg):
+    def _unprotect_stream_cipher(self, rl_msg, **kwargs):
         """Unprotects a record layer message (stream cipher).
 
         The message is decrypted and the authentication is verified.
@@ -442,7 +453,9 @@ class RecordLayerState(object):
         """
 
         fragment = self._cipher_object.update(rl_msg.fragment)
-        clear_text = self._verify_mac(rl_msg.content_type, rl_msg.version, fragment)
+        clear_text = self._verify_mac(
+            rl_msg.content_type, rl_msg.version, fragment, **kwargs
+        )
         self._seq_nbr += 1
         return structs.RecordLayerMsg(
             content_type=rl_msg.content_type,
@@ -515,7 +528,7 @@ class RecordLayerState(object):
             fragment=aes_aead.decrypt(nonce, cipher_text, aad),
         )
 
-    def _unprotect(self, rl_msg):
+    def _unprotect(self, rl_msg, **kwargs):
         """Unprotects a record layer message (all ciphers, but not for TLS1.3).
 
         The message is decrypted and the authentication is verified.
@@ -530,10 +543,10 @@ class RecordLayerState(object):
         """
 
         if self._cipher.c_type == tls.CipherType.BLOCK:
-            return self._unprotect_block_cipher(rl_msg)
+            return self._unprotect_block_cipher(rl_msg, **kwargs)
 
         elif self._cipher.c_type == tls.CipherType.STREAM:
-            return self._unprotect_stream_cipher(rl_msg)
+            return self._unprotect_stream_cipher(rl_msg, **kwargs)
 
         elif self._cipher.c_type == tls.CipherType.AEAD:
             if self._cipher.primitive == tls.CipherPrimitive.CHACHA:
@@ -590,7 +603,7 @@ class RecordLayerState(object):
             fragment=decoded[:idx],
         )
 
-    def unprotect_msg(self, rl_msg):
+    def unprotect_msg(self, rl_msg, **kwargs):
         """Unprotects a record layer message.
 
         The message is decrypted and the authentication is verified.
@@ -612,4 +625,4 @@ class RecordLayerState(object):
 
         else:
             # We do not support compression.
-            return self._unprotect(rl_msg)
+            return self._unprotect(rl_msg, **kwargs)

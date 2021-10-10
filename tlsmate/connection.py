@@ -48,13 +48,13 @@ class TlsDefragmenter(object):
         self._ultimo = None
         self._record_layer = record_layer
 
-    def _get_bytes(self, nbr):
+    def _get_bytes(self, nbr, **kwargs):
         while len(self._record_bytes) < nbr:
             timeout = self._ultimo - time.time()
             if timeout <= 0:
                 raise TlsMsgTimeoutError
 
-            rl_msg = self._record_layer.wait_rl_msg(timeout)
+            rl_msg = self._record_layer.wait_rl_msg(timeout, **kwargs)
             self._content_type = rl_msg.content_type
             self._version = rl_msg.version
             self._record_bytes.extend(rl_msg.fragment)
@@ -68,7 +68,7 @@ class TlsDefragmenter(object):
         self._record_bytes = bytearray()
         return ret
 
-    def get_message(self, timeout):
+    def get_message(self, timeout, **kwargs):
         """Gets a message, constructed from the bytes received from the record layer.
 
         Arguments:
@@ -79,9 +79,9 @@ class TlsDefragmenter(object):
         """
 
         self._ultimo = time.time() + (timeout)
-        message = self._get_bytes(1)
+        message = self._get_bytes(1, **kwargs)
         if self._content_type is tls.ContentType.ALERT:
-            message.extend(self._get_bytes(1))
+            message.extend(self._get_bytes(1, **kwargs))
             msg_type = tls.ContentType.ALERT
             return structs.UpperLayerMsg(
                 content_type=self._content_type, msg_type=msg_type, msg=message
@@ -95,11 +95,11 @@ class TlsDefragmenter(object):
             )
 
         elif self._content_type is tls.ContentType.HANDSHAKE:
-            message.extend(self._get_bytes(3))
+            message.extend(self._get_bytes(3, **kwargs))
             msg_type, offset = pdu.unpack_uint8(message, 0)
             msg_type = tls.HandshakeType.val2enum(msg_type, alert_on_failure=True)
             length, offset = pdu.unpack_uint24(message, offset)
-            message.extend(self._get_bytes(length))
+            message.extend(self._get_bytes(length, **kwargs))
             return structs.UpperLayerMsg(
                 content_type=self._content_type, msg_type=msg_type, msg=bytes(message)
             )
@@ -1406,8 +1406,8 @@ class TlsConnection(object):
         if method is not None:
             method(self, msg)
 
-    def _wait_message(self, timeout=5000):
-        mb = self._defragmenter.get_message(timeout)
+    def _wait_message(self, timeout=5000, **kwargs):
+        mb = self._defragmenter.get_message(timeout, **kwargs)
         if mb is None:
             return None, None
 
@@ -1449,7 +1449,13 @@ class TlsConnection(object):
         return message, mb.msg
 
     def wait_msg_bytes(
-        self, msg_class, optional=False, max_nbr=1, timeout=5000, fail_on_timeout=True
+        self,
+        msg_class,
+        optional=False,
+        max_nbr=1,
+        timeout=5000,
+        fail_on_timeout=True,
+        **kwargs,
     ):
         """Interface to wait for a message from the peer.
 
@@ -1486,7 +1492,9 @@ class TlsConnection(object):
 
             else:
                 try:
-                    message, msg_bytes = self._wait_message(ultimo - time.time())
+                    message, msg_bytes = self._wait_message(
+                        ultimo - time.time(), **kwargs
+                    )
 
                 except TlsMsgTimeoutError as exc:
                     if msg_class is msg.Timeout:
