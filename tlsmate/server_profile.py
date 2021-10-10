@@ -1214,6 +1214,7 @@ class SPCertificate(SPObject):
         self.ocsp_must_staple = cert.ocsp_must_staple
         self.ocsp_must_staple_multi = cert.ocsp_must_staple_multi
         self.extended_validation = cert.extended_validation
+        self.from_trust_store = tls.SPBool(cert.from_trust_store)
 
 
 class SPCertificateSchema(ProfileSchema):
@@ -1244,6 +1245,7 @@ class SPCertificateSchema(ProfileSchema):
     extensions = fields.List(fields.Nested(SPCertExtensionSchema))
     extended_validation = FieldsEnumString(enum_class=tls.SPBool)
     issues = fields.List(fields.String())
+    from_trust_store = FieldsEnumString(enum_class=tls.SPBool)
 
 
 class SPCertChain(SPObject):
