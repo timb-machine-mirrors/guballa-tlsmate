@@ -840,6 +840,10 @@ class TextProfileWorker(WorkerPlugin):
         if self_signed is tls.SPBool.C_TRUE:
             items.append("self-signed")
 
+        from_trust_store = getattr(cert, "from_trust_store", tls.SPBool.C_FALSE)
+        if from_trust_store is tls.SPBool.C_TRUE:
+            items.append("certificate taken from trust store")
+
         print(f'  Certificate #{idx}: {", ".join(items)}')
         table = utils.Table(indent=4, sep="  ")
 
