@@ -344,22 +344,28 @@ class CertChain(object):
 
         else:
             issuers = self._issuer_certs(cert)
-            if not issuers:
-                root_cert = self._trust_store.issuer_in_trust_store(cert.parsed.issuer)
-                if root_cert is None:
+            # placeholder for certificate from the trust store
+            issuers.append((None, None))
+
+        exception = None
+        for issuer_idx, issuer_cert in issuers:
+            if not issuer_cert:
+                issuer_cert = self._trust_store.issuer_in_trust_store(
+                    cert.parsed.issuer
+                )
+                if issuer_cert:
+                    issuer_cert.from_trust_store = True
+                    self.root_cert_transmitted = False
+                    self.root_cert = issuer_cert
+
+                else:
                     cert.mark_untrusted(
                         f'issuer certificate "{cert.parsed.issuer.rfc4514_string()}" '
                         f"not found in trust store",
                         True,
                     )
-                else:
-                    self.root_cert_transmitted = False
-                    self.root_cert = root_cert
+                    break
 
-                issuers = [(None, root_cert)]
-
-        exception = None
-        for issuer_idx, issuer_cert in issuers:
             try:
                 try:
                     issuer_cert.validate_cert_signature(cert)
