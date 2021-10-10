@@ -5,7 +5,7 @@
 import enum
 
 # import own stuff
-from tlsmate.exception import FatalAlert
+from tlsmate.exception import ServerMalfunction
 
 # import other stuff
 
@@ -21,7 +21,7 @@ class ExtendedEnum(enum.Enum):
         Args:
             value (int): The enum value which is used to map to an enum
             alert_on_failure (bool, optional): If set to True and the value is
-                not a valid enum value, an :obj:`FatalAlert` exception will be
+                not a valid enum value, an :obj:`ServerMalfunction` exception will be
                 raised. Defaults to False.
 
         Returns:
@@ -29,14 +29,13 @@ class ExtendedEnum(enum.Enum):
             `alert_on_failure` is set to False.
 
         Raises:
-            FatalAlert: In case the given value is not a valid enum and
+            ServerMalfunction: In case the given value is not a valid enum and
                 `alert_on_failure` is True
         """
 
         enum = cls._value2member_map_.get(value)
         if (enum is None) and alert_on_failure:
-            message = f"Value {value} not defined for {cls}"
-            raise FatalAlert(message, AlertDescription.ILLEGAL_PARAMETER)
+            raise ServerMalfunction(ServerIssue.ILLEGAL_PARAMETER_VALUE)
 
         return enum
 
@@ -47,7 +46,7 @@ class ExtendedEnum(enum.Enum):
         Args:
             name (str): The name which must correspond to the name of the enum.
             alert_on_failure (bool, optional): If set to True and the name is
-                not a valid enum value, an :obj:`FatalAlert` exception will be
+                not a valid enum value, an :obj:`ServerMalfunction` exception will be
                 raised. Defaults to False.
 
         Returns:
@@ -55,14 +54,13 @@ class ExtendedEnum(enum.Enum):
             `alert_on_failure` is set to False.
 
         Raises:
-            FatalAlert: In case the given name is not a valid enum and
+            ServerMalfunction: In case the given name is not a valid enum and
                 `alert_on_failure` is True
         """
 
         enum = cls._member_map_.get(name)
         if (enum is None) and alert_on_failure:
-            message = f"Value {name} not defined for {cls}"
-            raise FatalAlert(message, AlertDescription.ILLEGAL_PARAMETER)
+            raise ValueError(f"Value {name} not defined for {cls}")
 
         return enum
 
@@ -1179,3 +1177,51 @@ class StatusType(ExtendedEnum):
     OCSP = 1
     OCSP_MULTI = 2
     NONE = 256
+
+
+class SPCbcPaddingOracle(ExtendedEnum):
+    """Different types of CBC padding oracles
+    """
+
+    LUCKY_MINUS_20 = enum.auto()
+    PADDING_FILLS_RECORD = enum.auto()
+    PADDING_EXCEEDS_RECORD = enum.auto()
+    INVALID_PADDING = enum.auto()
+    INVALID_MAC = enum.auto()
+
+
+class OracleScanAccuracy(ExtendedEnum):
+    """How accurate the scan for CBC padding oracles shall be
+    """
+
+    LOW = enum.auto()
+    MEDIUM = enum.auto()
+    HIGH = enum.auto()
+
+
+class ServerIssue(ExtendedEnum):
+    """Indication of a severe server violation
+    """
+
+    PSK_OUT_OF_RANGE = "selected PSK out of range (TLS1.3)"
+    KEY_SHARE_NOT_PRESENT = "ServerHello, TLS13: extension KEY_SHARE not present"
+    SECURE_RENEG_FAILED = "secure renegotiation check failed"
+    VERIFY_DATA_INVALID = "received Finished: verify data does not match"
+    CERT_REQ_NO_SIG_ALGO = (
+        "certificate request without extension SignatureAlgorithms received"
+    )
+    EXTENTION_LENGHT_ERROR = "extension length incorrect"
+    SNI_NO_HOSTNAME = "host_name not present"
+    FFDH_GROUP_UNKNOWN = "FF-DH group unknown"
+    MESSAGE_LENGTH_ERROR = "message length incorrect"
+    INCOMPATIBLE_KEY_EXCHANGE = (
+        "key exchange algorithm in ServerKeyExchange message incompatible with "
+        "offered cipher suite"
+    )
+    PARAMETER_LENGTH_ERROR = "message length error when unpacking parameter"
+    RECORD_TOO_SHORT = "decoded record shorter than MAC length"
+    RECORD_MAC_INVALID = "MAC verification failed"
+    RECORD_WRONG_PADDING_LENGTH = "wrong padding length"
+    RECORD_WRONG_PADDING_BYTES = "wrong padding byte contents"
+    ILLEGAL_PARAMETER_VALUE = "received parameter value is illegal"
+    KEX_INVALID_SIGNATURE = "signature of server's key exchange parameters invalid"

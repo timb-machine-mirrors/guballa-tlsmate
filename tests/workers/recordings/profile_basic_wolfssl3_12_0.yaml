@@ -1,6 +1,7 @@
 cert_chains:
 - cert_chain:
-  - extensions:
+  - extended_validation: C_NA
+    extensions:
     - criticality: C_FALSE
       digest: b3:11:32:c9:92:98:84:e2:c9:f8:d0:3b:6e:03:42:ca:1f:0e:8e:3c
       name: SubjectKeyIdentifier
@@ -24,6 +25,8 @@ cert_chains:
     - subject name does not match
     not_valid_after: '2019-05-08T20:07:37'
     not_valid_before: '2016-08-11T20:07:37'
+    ocsp_must_staple: C_FALSE
+    ocsp_must_staple_multi: C_FALSE
     pem: |
       -----BEGIN CERTIFICATE-----
       MIIEnjCCA4agAwIBAgIBATANBgkqhkiG9w0BAQsFADCBlDELMAkGA1UEBhMCVVMx
@@ -66,7 +69,8 @@ cert_chains:
     subject_matches: C_FALSE
     validity_period_days: 1000
     version: Version.v3
-  - extensions:
+  - extended_validation: C_NA
+    extensions:
     - criticality: C_FALSE
       digest: 27:8e:67:11:74:c3:26:1d:3f:ed:33:63:b3:a4:d8:1d:30:e5:e8:d5
       name: SubjectKeyIdentifier
@@ -90,6 +94,8 @@ cert_chains:
     - self-signed certificate not found in trust store
     not_valid_after: '2019-05-08T20:07:37'
     not_valid_before: '2016-08-11T20:07:37'
+    ocsp_must_staple: C_FALSE
+    ocsp_must_staple_multi: C_FALSE
     pem: |
       -----BEGIN CERTIFICATE-----
       MIIEqjCCA5KgAwIBAgIJALe2kDNmG2sjMA0GCSqGSIb3DQEBCwUAMIGUMQswCQYD
@@ -134,10 +140,25 @@ cert_chains:
   id: 1
   root_cert_transmitted: C_FALSE
   successful_validation: C_FALSE
-features: {}
 scan_info: {}
 server: {}
 versions:
+- support: C_FALSE
+  version:
+    id: 512
+    name: SSL20
+- support: C_FALSE
+  version:
+    id: 768
+    name: SSL30
+- support: C_FALSE
+  version:
+    id: 769
+    name: TLS10
+- support: C_FALSE
+  version:
+    id: 770
+    name: TLS11
 - ciphers:
     chacha_poly_preference: C_TRUE
     cipher_suites:
@@ -188,6 +209,7 @@ versions:
       name: RSA_PKCS1_SHA256
     info:
     - server selects sig_alg RSA_PKCS1_SHA256 even when not offered
+  support: C_TRUE
   supported_groups:
     extension_supported: C_TRUE
     groups:
@@ -202,4 +224,7 @@ versions:
   version:
     id: 771
     name: TLS12
-vulnerabilities: {}
+- support: C_FALSE
+  version:
+    id: 772
+    name: TLS13

@@ -39,4 +39,6 @@ class ScanEncryptThenMac(WorkerPlugin):
                     state = tls.SPBool.C_TRUE
                 else:
                     state = tls.SPBool.C_FALSE
+
+        self.server_profile.allocate_features()
         self.server_profile.features.encrypt_then_mac = state

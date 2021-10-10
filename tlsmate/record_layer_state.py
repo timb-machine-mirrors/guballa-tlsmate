@@ -8,7 +8,7 @@ import struct
 from tlsmate import pdu
 from tlsmate import tls
 from tlsmate import structs
-from tlsmate.exception import FatalAlert
+from tlsmate.exception import ServerMalfunction
 
 # import other stuff
 from cryptography.hazmat.primitives import hmac
@@ -45,7 +45,7 @@ class RecordLayerState(object):
         if self._version is tls.Version.TLS13:
             self._cipher_object = param.cipher.algo
 
-    def _encrypt_cbc(self, fragment):
+    def _encrypt_cbc(self, fragment, padding_cb=None, **kwargs):
         """Encrypt a fragment using a block cipher in CBC mode.
 
         Arguments:
@@ -58,7 +58,12 @@ class RecordLayerState(object):
         # padding
         length = len(fragment) + 1
         missing_bytes = self._cipher.block_size - (length % self._cipher.block_size)
-        fragment += struct.pack("!B", missing_bytes) * (missing_bytes + 1)
+        padding = struct.pack("!B", missing_bytes) * (missing_bytes + 1)
+
+        if padding_cb:
+            padding = padding_cb(bytearray(padding))
+
+        fragment += padding
 
         if self._version <= tls.Version.TLS10:
             iv = self._iv
@@ -77,7 +82,7 @@ class RecordLayerState(object):
         else:
             return iv + cipher_block
 
-    def _append_mac(self, content_type, version, fragment):
+    def _append_mac(self, content_type, version, fragment, mac_cb=None, **kwargs):
         """Calculates the MAC and appends it to the fragment.
 
         Arguments:
@@ -99,9 +104,14 @@ class RecordLayerState(object):
         )
         mac = hmac.HMAC(self._keys.mac, self._mac.hash_algo())
         mac.update(mac_input)
-        return fragment + mac.finalize()
+        mac_bytes = mac.finalize()
 
-    def _protect_block_cipher(self, rl_msg):
+        if mac_cb:
+            mac_bytes = mac_cb(bytearray(mac_bytes))
+
+        return fragment + mac_bytes
+
+    def _protect_block_cipher(self, rl_msg, data_cb=None, **kwargs):
         """Protects a fragment using a block cipher.
 
         The fragment is encrypted and authenticated with a MAC. Both modes,
@@ -116,15 +126,21 @@ class RecordLayerState(object):
             The protected record layer message.
         """
 
+        fragment = rl_msg.fragment
+        if data_cb:
+            fragment = data_cb(bytearray(fragment))
+
         if self._enc_then_mac:
-            fragment = self._encrypt_cbc(rl_msg.fragment)
-            fragment = self._append_mac(rl_msg.content_type, rl_msg.version, fragment)
+            fragment = self._encrypt_cbc(fragment, **kwargs)
+            fragment = self._append_mac(
+                rl_msg.content_type, rl_msg.version, fragment, **kwargs
+            )
 
         else:
             fragment = self._append_mac(
-                rl_msg.content_type, rl_msg.version, rl_msg.fragment
+                rl_msg.content_type, rl_msg.version, fragment, **kwargs
             )
-            fragment = self._encrypt_cbc(fragment)
+            fragment = self._encrypt_cbc(fragment, **kwargs)
 
         self._seq_nbr += 1
         return structs.RecordLayerMsg(
@@ -217,7 +233,7 @@ class RecordLayerState(object):
             fragment=nonce_explicit + aes_aead.encrypt(nonce, rl_msg.fragment, aad),
         )
 
-    def _protect(self, rl_msg):
+    def _protect(self, rl_msg, **kwargs):
         """Protects a fragment.
 
         Supports stream ciphers, block cipher, AEAD ciphers and POLY20_CHACHA1305.
@@ -231,11 +247,11 @@ class RecordLayerState(object):
             The protected record layer message.
 
         Raises:
-            FatalAlert: if the cipher type is unknown.
+            ValueError: if the cipher type is unknown.
         """
 
         if self._cipher.c_type == tls.CipherType.BLOCK:
-            return self._protect_block_cipher(rl_msg)
+            return self._protect_block_cipher(rl_msg, **kwargs)
 
         elif self._cipher.c_type == tls.CipherType.STREAM:
             return self._protect_stream_cipher(rl_msg)
@@ -248,7 +264,7 @@ class RecordLayerState(object):
                 return self._protect_aead_cipher(rl_msg)
 
         else:
-            raise FatalAlert("Unknown cipher type", tls.AlertDescription.INTERNAL_ERROR)
+            raise ValueError("Unknown cipher type")
 
     def _tls13_protect(self, rl_msg):
         """Protects a fragment using the TLS1.3 specification.
@@ -284,7 +300,7 @@ class RecordLayerState(object):
             fragment=cipher.encrypt(nonce, fragment, aad),
         )
 
-    def protect_msg(self, rl_msg):
+    def protect_msg(self, rl_msg, **kwargs):
         """Protects a fragment.
 
         Arguments:
@@ -301,9 +317,9 @@ class RecordLayerState(object):
 
         else:
             # Skip compression, we don't want to support it.
-            return self._protect(rl_msg)
+            return self._protect(rl_msg, **kwargs)
 
-    def _verify_mac(self, content_type, version, fragment):
+    def _verify_mac(self, content_type, version, fragment, mac_cb=None, **kwargs):
         """Verifies the MAC of a fragment.
 
         Arguments:
@@ -316,16 +332,17 @@ class RecordLayerState(object):
             bytes: The fragment appended with the MAC.
 
         Raises:
-            FatalAlert: If the MAC is incorrect.
+            ServerMalfunction: If the MAC is incorrect.
         """
 
         if len(fragment) < self._mac.mac_len:
-            raise FatalAlert(
-                "Decoded fragment too short", tls.AlertDescription.BAD_RECORD_MAC
-            )
+            raise ServerMalfunction(tls.ServerIssue.RECORD_TOO_SHORT)
 
         msg_len = len(fragment) - self._mac.mac_len
         mac_received = fragment[msg_len:]
+        if mac_cb:
+            mac_received = mac_cb(bytearray(mac_received))
+
         msg = fragment[:msg_len]
         mac_input = (
             pdu.pack_uint64(self._seq_nbr)
@@ -338,13 +355,11 @@ class RecordLayerState(object):
         mac.update(mac_input)
         mac_calculated = mac.finalize()
         if mac_calculated != mac_received:
-            raise FatalAlert(
-                "MAC verification failed", tls.AlertDescription.BAD_RECORD_MAC
-            )
+            raise ServerMalfunction(tls.ServerIssue.RECORD_MAC_INVALID)
 
         return msg
 
-    def _decode_cbc(self, fragment):
+    def _decode_cbc(self, fragment, padding_cb=None, **kwargs):
         """Decodes a fragment using a block cipher in CBC mode.
 
         Arguments:
@@ -354,7 +369,7 @@ class RecordLayerState(object):
             bytes: the decoded fragment.
 
         Raises:
-            FatalAlert: If padding errors are detected.
+            ServerMalfunction: If padding errors are detected.
         """
 
         if self._version <= tls.Version.TLS10:
@@ -374,18 +389,19 @@ class RecordLayerState(object):
         pad = plain_text[-1]
         pad_start = len(plain_text) - pad - 1
         if pad_start < 0:
-            raise FatalAlert(
-                "Wrong padding length", tls.AlertDescription.BAD_RECORD_MAC
-            )
+            raise ServerMalfunction(tls.ServerIssue.RECORD_WRONG_PADDING_LENGTH)
 
         padding = plain_text[pad_start:]
+        if padding_cb:
+            padding = padding_cb(bytearray(padding))
+
         plain_text = plain_text[:pad_start]
         if (struct.pack("!B", pad) * (pad + 1)) != padding:
-            raise FatalAlert("Wrong padding bytes", tls.AlertDescription.BAD_RECORD_MAC)
+            raise ServerMalfunction(tls.ServerIssue.RECORD_WRONG_PADDING_BYTES)
 
         return plain_text
 
-    def _unprotect_block_cipher(self, rl_msg):
+    def _unprotect_block_cipher(self, rl_msg, data_cb=None, **kwargs):
         """Unprotects a record layer message (block cipher).
 
         The message is decrypted and the authentication is verified. Both modes,
@@ -402,13 +418,18 @@ class RecordLayerState(object):
 
         if self._enc_then_mac:
             fragment = self._verify_mac(
-                rl_msg.content_type, rl_msg.version, rl_msg.fragment
+                rl_msg.content_type, rl_msg.version, rl_msg.fragment, **kwargs,
             )
-            plain_text = self._decode_cbc(fragment)
+            plain_text = self._decode_cbc(fragment, **kwargs)
 
         else:
-            fragment = self._decode_cbc(rl_msg.fragment)
-            plain_text = self._verify_mac(rl_msg.content_type, rl_msg.version, fragment)
+            fragment = self._decode_cbc(rl_msg.fragment, **kwargs)
+            plain_text = self._verify_mac(
+                rl_msg.content_type, rl_msg.version, fragment, **kwargs
+            )
+
+        if data_cb:
+            plain_text = data_cb(bytearray(plain_text))
 
         self._seq_nbr += 1
         return structs.RecordLayerMsg(
@@ -417,7 +438,7 @@ class RecordLayerState(object):
             fragment=plain_text,
         )
 
-    def _unprotect_stream_cipher(self, rl_msg):
+    def _unprotect_stream_cipher(self, rl_msg, **kwargs):
         """Unprotects a record layer message (stream cipher).
 
         The message is decrypted and the authentication is verified.
@@ -432,7 +453,9 @@ class RecordLayerState(object):
         """
 
         fragment = self._cipher_object.update(rl_msg.fragment)
-        clear_text = self._verify_mac(rl_msg.content_type, rl_msg.version, fragment)
+        clear_text = self._verify_mac(
+            rl_msg.content_type, rl_msg.version, fragment, **kwargs
+        )
         self._seq_nbr += 1
         return structs.RecordLayerMsg(
             content_type=rl_msg.content_type,
@@ -505,7 +528,7 @@ class RecordLayerState(object):
             fragment=aes_aead.decrypt(nonce, cipher_text, aad),
         )
 
-    def _unprotect(self, rl_msg):
+    def _unprotect(self, rl_msg, **kwargs):
         """Unprotects a record layer message (all ciphers, but not for TLS1.3).
 
         The message is decrypted and the authentication is verified.
@@ -520,10 +543,10 @@ class RecordLayerState(object):
         """
 
         if self._cipher.c_type == tls.CipherType.BLOCK:
-            return self._unprotect_block_cipher(rl_msg)
+            return self._unprotect_block_cipher(rl_msg, **kwargs)
 
         elif self._cipher.c_type == tls.CipherType.STREAM:
-            return self._unprotect_stream_cipher(rl_msg)
+            return self._unprotect_stream_cipher(rl_msg, **kwargs)
 
         elif self._cipher.c_type == tls.CipherType.AEAD:
             if self._cipher.primitive == tls.CipherPrimitive.CHACHA:
@@ -533,7 +556,7 @@ class RecordLayerState(object):
                 return self._unprotect_aead_cipher(rl_msg)
 
         else:
-            raise FatalAlert("Unknown cipher type", tls.AlertDescription.INTERNAL_ERROR)
+            raise ValueError("Unknown cipher type")
 
     def _tls13_unprotect(self, rl_msg):
         """Unprotects a record layer message (TLS1.3).
@@ -571,10 +594,7 @@ class RecordLayerState(object):
             idx -= 1
 
         if idx < 0:
-            raise FatalAlert(
-                "decoded record: padding not Ok",
-                tls.AlertDescription.UNEXPECTED_MESSAGE,
-            )
+            raise ServerMalfunction(tls.ServerIssue.RECORD_WRONG_PADDING_LENGTH)
 
         self._seq_nbr += 1
         return structs.RecordLayerMsg(
@@ -583,7 +603,7 @@ class RecordLayerState(object):
             fragment=decoded[:idx],
         )
 
-    def unprotect_msg(self, rl_msg):
+    def unprotect_msg(self, rl_msg, **kwargs):
         """Unprotects a record layer message.
 
         The message is decrypted and the authentication is verified.
@@ -605,4 +625,4 @@ class RecordLayerState(object):
 
         else:
             # We do not support compression.
-            return self._unprotect(rl_msg)
+            return self._unprotect(rl_msg, **kwargs)

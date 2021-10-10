@@ -7,7 +7,7 @@ import abc
 import time
 
 # import own stuff
-from tlsmate.exception import FatalAlert
+from tlsmate.exception import ServerMalfunction
 from tlsmate import tls
 from tlsmate import structs
 from tlsmate import pdu
@@ -139,9 +139,8 @@ class ExtServerNameIndication(Extension):
 
         list_length, offset = pdu.unpack_uint16(fragment, 0)
         if offset + list_length != len(fragment):
-            raise FatalAlert(
-                f"Extension {self.extension_id}: list length incorrect",
-                tls.AlertDescription.DECODE_ERROR,
+            raise ServerMalfunction(
+                tls.ServerIssue.EXTENTION_LENGHT_ERROR, self.extension_id
             )
 
         while offset < len(fragment):
@@ -152,9 +151,8 @@ class ExtServerNameIndication(Extension):
                 self.host_name = name.decode()
 
         if self.host_name is None:
-            raise FatalAlert(
-                f"{self.extension_id}: host_name not present",
-                tls.AlertDescription.DECODE_ERROR,
+            raise ServerMalfunction(
+                tls.ServerIssue.SNI_NO_HOSTNAME, extension=self.extension_id
             )
 
 
@@ -171,9 +169,8 @@ class ExtExtendedMasterSecret(Extension):
 
     def _deserialize_ext_body(self, ext_body):
         if ext_body:
-            raise FatalAlert(
-                f"Message length error for {self.extension_id}",
-                tls.AlertDescription.DECODE_ERROR,
+            raise ServerMalfunction(
+                tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
 
@@ -190,9 +187,8 @@ class ExtEncryptThenMac(Extension):
 
     def _deserialize_ext_body(self, ext_body):
         if ext_body:
-            raise FatalAlert(
-                f"Message length error for {self.extension_id}",
-                tls.AlertDescription.DECODE_ERROR,
+            raise ServerMalfunction(
+                tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
 
@@ -259,9 +255,8 @@ class ExtEcPointFormats(Extension):
         self.ec_point_formats = []
         length, offset = pdu.unpack_uint8(ext_body, 0)
         if offset + length != len(ext_body):
-            raise FatalAlert(
-                f"Message length error for {self.extension_id}",
-                tls.AlertDescription.DECODE_ERROR,
+            raise ServerMalfunction(
+                tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
         for i in range(length):
@@ -742,9 +737,8 @@ class ExtPostHandshakeAuth(Extension):
 
     def _deserialize_ext_body(self, ext_body):
         if ext_body:
-            raise FatalAlert(
-                f"Message length error for {self.extension_id}",
-                tls.AlertDescription.DECODE_ERROR,
+            raise ServerMalfunction(
+                tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
 

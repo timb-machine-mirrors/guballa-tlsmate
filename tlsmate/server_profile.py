@@ -1213,6 +1213,7 @@ class SPCertificate(SPObject):
             self.issues = cert.issues
         self.ocsp_must_staple = cert.ocsp_must_staple
         self.ocsp_must_staple_multi = cert.ocsp_must_staple_multi
+        self.extended_validation = cert.extended_validation
 
 
 class SPCertificateSchema(ProfileSchema):
@@ -1241,6 +1242,7 @@ class SPCertificateSchema(ProfileSchema):
     ocsp_must_staple = FieldsEnumString(enum_class=tls.SPBool)
     ocsp_must_staple_multi = FieldsEnumString(enum_class=tls.SPBool)
     extensions = fields.List(fields.Nested(SPCertExtensionSchema))
+    extended_validation = FieldsEnumString(enum_class=tls.SPBool)
     issues = fields.List(fields.String())
 
 
@@ -1334,6 +1336,13 @@ class SPCipherSuiteSchema(ProfileEnumSchema):
     __profile_class__ = tls.CipherSuite
 
 
+class SPRecordProtocolSchema(ProfileEnumSchema):
+    """Schema for a record protocol type.
+    """
+
+    __profile_class__ = tls.ContentType
+
+
 class SPCiphers(SPObject):
     """Data class for ciphers
     """
@@ -1419,6 +1428,53 @@ class SPVersionSchema(ProfileSchema):
     supported_groups = fields.Nested(SPSupportedGroupsSchema)
     signature_algorithms = fields.Nested(SPSignatureAlgorithmsSchema)
     version = fields.Nested(SPVersionEnumSchema)
+    support = FieldsEnumString(enum_class=tls.SPBool)
+
+
+class SPCipherGroup(SPObject):
+    """Data class for a cipher group (cipher suite, tls version, record protocol)
+    """
+
+
+class SPCipherGroupSchema(ProfileSchema):
+    """Schema for a cipher group (cipher suite, tls version, record protocol)
+    """
+
+    __profile_class__ = SPCipherGroup
+    version = fields.Nested(SPVersionEnumSchema)
+    cipher_suite = fields.Nested(SPCipherSuiteSchema)
+    record_protocol = fields.Nested(SPRecordProtocolSchema)
+
+
+class SPCbcPaddingOracle(SPObject):
+    """Data class for CBC padding oracles
+    """
+
+
+class SPCbcPaddingOracleSchema(ProfileSchema):
+    """Schema for CBC padding oracles
+    """
+
+    __profile_class__ = SPCbcPaddingOracle
+    observable = FieldsEnumString(enum_class=tls.SPBool)
+    strong = FieldsEnumString(enum_class=tls.SPBool)
+    types = fields.List(FieldsEnumString(enum_class=tls.SPCbcPaddingOracle))
+    cipher_group = fields.List(fields.Nested(SPCipherGroupSchema))
+
+
+class SPCbcPaddingOracleInfo(SPObject):
+    """Data class for CBC padding oracle info
+    """
+
+
+class SPCbcPaddingOracleInfoSchema(ProfileSchema):
+    """Schema for CBC padding oracle info
+    """
+
+    __profile_class__ = SPCbcPaddingOracleInfo
+    vulnerable = FieldsEnumString(enum_class=tls.SPBool)
+    accuracy = FieldsEnumString(enum_class=tls.OracleScanAccuracy)
+    oracles = fields.List(fields.Nested(SPCbcPaddingOracleSchema))
 
 
 class SPVulnerabilities(SPObject):
@@ -1434,6 +1490,60 @@ class SPVulnerabilitiesSchema(ProfileSchema):
     ccs_injection = FieldsEnumString(enum_class=tls.SPBool)
     heartbleed = FieldsEnumString(enum_class=tls.HeartbleedStatus)
     robot = FieldsEnumString(enum_class=tls.RobotVulnerability)
+    poodle = FieldsEnumString(enum_class=tls.SPBool)
+    tls_poodle = FieldsEnumString(enum_class=tls.SPBool)
+    lucky_minus_20 = FieldsEnumString(enum_class=tls.SPBool)
+    cbc_padding_oracle = fields.Nested(SPCbcPaddingOracleInfoSchema)
+
+
+class SPServerIssue(SPObject):
+    """Data class for a server issue
+    """
+
+    def __init__(self, issue):
+        self.name = issue.name
+        self.description = issue.value
+
+
+class SPServerIssueSchema(ProfileSchema):
+    """Schema for a TLS version (enum).
+    """
+
+    __profile_class__ = SPServerIssue
+    name = fields.String()
+    description = fields.String()
+
+
+class SPMalfunctionMessageSchema(ProfileEnumSchema):
+    """Schema for mlafunction message
+    """
+
+    __profile_class__ = tls.HandshakeType
+
+
+class SPMalfunctionExtensionSchema(ProfileEnumSchema):
+    """Schema for malfunction extension
+    """
+
+    __profile_class__ = tls.Extension
+
+
+class SPServerMalfunction(SPObject):
+    """Data class for server malfunction
+    """
+
+    def __init__(self, issue):
+        self.issue = SPServerIssue(issue)
+
+
+class SPServerMalfunctionSchema(ProfileSchema):
+    """Schema for server malfunction
+    """
+
+    __profile_class__ = SPServerMalfunction
+    issue = fields.Nested(SPServerIssueSchema)
+    message = fields.Nested(SPMalfunctionMessageSchema)
+    extension = fields.Nested(SPMalfunctionExtensionSchema)
 
 
 class ServerProfile(SPObject):
@@ -1455,11 +1565,21 @@ class ServerProfile(SPObject):
         self._hash = {}
 
         self.cert_chains = []
-        self.features = SPFeatures()
         self.scan_info = SPScanInfo()
         self.server = SPServer()
         self.versions = []
-        self.vulnerabilities = SPVulnerabilities()
+
+    def allocate_features(self):
+        """Ensure that the features property is setup.
+        """
+        if not getattr(self, "features", None):
+            self.features = SPFeatures()
+
+    def allocate_vulnerabilities(self):
+        """Ensure that the vulnerabilities property is setup.
+        """
+        if not getattr(self, "vulnerabilities", None):
+            self.vulnerabilities = SPVulnerabilities()
 
     def append_unique_cert_chain(self, chain):
         """Append a certificate chain to the profile, if not yet present.
@@ -1490,7 +1610,11 @@ class ServerProfile(SPObject):
         if exclude is None:
             exclude = []
 
-        return [obj.version for obj in self.versions if obj.version not in exclude]
+        return [
+            obj.version
+            for obj in self.versions
+            if obj.version not in exclude and obj.support is tls.SPBool.C_TRUE
+        ]
 
     def get_version_profile(self, version):
         """Get the profile entry for a given version.
@@ -1500,9 +1624,9 @@ class ServerProfile(SPObject):
             version is not supported by the server.
         """
 
-        for version_obj in self.versions:
-            if version_obj.version is version:
-                return version_obj
+        for vers_obj in self.versions:
+            if vers_obj.version is version and vers_obj.support is tls.SPBool.C_TRUE:
+                return vers_obj
 
         return None
 
@@ -1670,6 +1794,7 @@ class ServerProfileSchema(ProfileSchema):
     features = fields.Nested(SPFeaturesSchema)
     scan_info = fields.Nested(SPScanInfoSchema)
     server = fields.Nested(SPServerSchema)
+    server_malfunctions = fields.List(fields.Nested(SPServerMalfunctionSchema))
     versions = fields.List(fields.Nested(SPVersionSchema))
     vulnerabilities = fields.Nested(SPVulnerabilitiesSchema)
 

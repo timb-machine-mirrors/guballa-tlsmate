@@ -2,6 +2,7 @@
 """Module for the scan plugin
 """
 # import basic stuff
+from pathlib import Path
 
 # import own stuff
 from tlsmate import utils
@@ -18,6 +19,7 @@ from tlsmate.workers.resumption import ScanResumption
 from tlsmate.workers.renegotiation import ScanRenegotiation
 from tlsmate.workers.ccs_injection import ScanCcsInjection
 from tlsmate.workers.robot import ScanRobot
+from tlsmate.workers.padding_oracle import ScanPaddingOracle
 from tlsmate.workers.dh_params import ScanDhGroups
 from tlsmate.workers.heartbeat import ScanHeartbeat
 from tlsmate.workers.heartbleed import ScanHeartbleed
@@ -43,7 +45,7 @@ def _add_args_tls_versions(parser):
         description=(
             "The following options specify the TLS protocol versions to scan. "
             "By default all versions will be scanned, but if one version is explicitly "
-            "set to True, all other versions will be defaulted to False."
+            "set to true, all other versions will be defaulted to false."
         ),
     )
     group.add_argument(
@@ -85,13 +87,17 @@ def _add_args_features(parser):
         parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
     """
 
-    group = parser.add_argument_group(
-        title="Feature to include into the scan",
-        description=(
-            "The following options specify which features to include in the scan. "
-            "By default all features will be scanned, but if one feature is explicitly "
-            "set to True, all other features will be defaulted to False."
+    group = parser.add_argument_group(title="Feature to include into the scan",)
+    group.add_argument(
+        "--features",
+        help=(
+            "specifies whether to include or exclude all features in the scan. "
+            "Per feature this behavior can be overruled by its specific command "
+            "line option below. "
+            "Defaults to true if no specific feature is enabled, otherwise it "
+            "defaults to false."
         ),
+        action=utils.BooleanOptionalAction,
     )
     group.add_argument(
         "--compression",
@@ -109,6 +115,11 @@ def _add_args_features(parser):
         action=utils.BooleanOptionalAction,
     )
     group.add_argument(
+        "--ephemeral-key-reuse",
+        help="scan for reuse of ephemeral keys",
+        action=utils.BooleanOptionalAction,
+    )
+    group.add_argument(
         "--ext-master-secret",
         help="scan for extended master secret support (only TL1.0 - TLS1.2)",
         action=utils.BooleanOptionalAction,
@@ -116,6 +127,16 @@ def _add_args_features(parser):
     group.add_argument(
         "--fallback",
         help="scan for downgrade attack prevention (TLS_FALLBACK_SCSV)",
+        action=utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--grease",
+        help="scan for unknown parameter tolerance",
+        action=utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--heartbeat",
+        help="scan for heartbeat support",
         action=utils.BooleanOptionalAction,
     )
     group.add_argument(
@@ -136,21 +157,6 @@ def _add_args_features(parser):
         ),
         action=utils.BooleanOptionalAction,
     )
-    group.add_argument(
-        "--heartbeat",
-        help="scan for heartbeat support",
-        action=utils.BooleanOptionalAction,
-    )
-    group.add_argument(
-        "--grease",
-        help="scan for unknown parameter tolerance",
-        action=utils.BooleanOptionalAction,
-    )
-    group.add_argument(
-        "--ephemeral-key-reuse",
-        help="scan for reuse of ephemeral keys",
-        action=utils.BooleanOptionalAction,
-    )
 
 
 def _add_args_vulenerabilities(parser):
@@ -159,14 +165,17 @@ def _add_args_vulenerabilities(parser):
     Arguments:
         parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
     """
-    group = parser.add_argument_group(
-        title="Vulnerabilities to scan for",
-        description=(
-            "The following options specify which vulnerabilities to scan for. "
-            "By default tlsmate will scan for all vulnerabilities, but if one "
-            "vulnerability is explicitly set to True, all other vulnerabilities will "
-            "be defaulted to False."
+    group = parser.add_argument_group(title="Vulnerabilities to scan for")
+    group.add_argument(
+        "--vulnerabilities",
+        help=(
+            "specifies whether to include or exclude all vulnerabilities in the scan. "
+            "Per vulnerability this behavior can be overruled by its specific command "
+            "line option below. "
+            "Defaults to true if no specific vulnerability is enabled, otherwise it "
+            "defaults to false."
         ),
+        action=utils.BooleanOptionalAction,
     )
     group.add_argument(
         "--ccs-injection",
@@ -177,6 +186,26 @@ def _add_args_vulenerabilities(parser):
         "--heartbleed",
         help="scan for the Heartbleed vulnerability CVE-2014-0160",
         action=utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--padding-oracle",
+        help="scan for CBC padding oracles",
+        action=utils.BooleanOptionalAction,
+    )
+    group.add_argument(
+        "--oracle-accuracy",
+        help=(
+            "the accuracy of the scan for CBC padding oracles. "
+            "low: scan application data records for each TLS version with minimal set "
+            "of cipher suites (fastest). "
+            "medium: scan application data records for each TLS version and cipher "
+            "suite combination (slower). "
+            "high: scan application data, handshake and alert records for each TLS "
+            "version and cipher suite combination (slowest). "
+            "Default is medium."
+        ),
+        choices=["low", "medium", "high"],
+        default="medium",
     )
     group.add_argument(
         "--robot",
@@ -214,7 +243,7 @@ def _add_args_server_profile(parser):
     )
     group.add_argument(
         "--format",
-        choices=["text", "json", "yaml", "none"],
+        choices=["text", "html", "json", "yaml", "none"],
         help=('the output format of the server profile. Defaults to "text".'),
         default=None,
     )
@@ -223,6 +252,52 @@ def _add_args_server_profile(parser):
         help="use colored console output. Only used if --format=text is given.",
         action=utils.BooleanOptionalAction,
     )
+    group.add_argument(
+        "--style",
+        type=str,
+        help=(
+            "a yaml file defining the text outout and the color scheme used if "
+            "--format=text or --format=html is given. If not given, the internal "
+            "default file will be used."
+        ),
+    )
+
+
+def _group_applicability(args, config, default, options):
+    """Applies defaults to a group of boolean-option parameters
+
+    Arguments:
+        args: the object holding the parsed CLI arguments
+        config (:obj:`tlsmate.config.Configuration`): the configuration object
+        default (boolean or None): the default to apply for unspecified options
+        options (list of str): a list with the boolean-option parameter names
+
+    Returns:
+        dict: contains for each boolean-option parameter name the applicability (bool)
+    """
+
+    opts = {key: getattr(args, key) for key in options}
+    opts = {key: config.get(key) if val is None else val for key, val in opts.items()}
+
+    if default is None:
+        default = not any(opts.values())
+
+    return {key: default if val is None else val for key, val in opts.items()}
+
+
+def _group_register_workers(config, workers, applicability):
+    """Register workers according to their applicability
+
+    Arguments:
+        config (:obj:`tlsmate.config.Configuration`): the configuration object
+        workers (dict): maps a worker name (str) to a worker class
+        applicability (dict): maps a a worker name (str) to its applicability (bool)
+    """
+
+    for key, val in applicability.items():
+        config.set(key, val)
+        if val:
+            WorkManager.register(workers[key])
 
 
 @CliManager.register
@@ -233,6 +308,8 @@ class ScanPlugin(CliConnectionPlugin):
     prio = 20
     name = "scan"
 
+    _DEFAULT_STYLE = Path(__file__).parent / "../styles/default.yaml"
+
     _versions = ["sslv2", "sslv3", "tls10", "tls11", "tls12", "tls13"]
     _feature_workers = {
         "dh_groups": ScanDhGroups,
@@ -242,15 +319,16 @@ class ScanPlugin(CliConnectionPlugin):
         "renegotiation": ScanRenegotiation,
         "resumption": ScanResumption,
         "heartbeat": ScanHeartbeat,
-        "ccs_injection": ScanCcsInjection,
         "ephemeral_key_reuse": ScanEphemeralKeyReuse,
         "ocsp_stapling": ScanOcspStapling,
         "fallback": ScanDowngrade,
+        "grease": ScanGrease,
     }
     _vulnerability_workers = {
+        "ccs_injection": ScanCcsInjection,
         "robot": ScanRobot,
         "heartbleed": ScanHeartbleed,
-        "grease": ScanGrease,
+        "padding_oracle": ScanPaddingOracle,
     }
 
     def register_config(self, config):
@@ -265,13 +343,17 @@ class ScanPlugin(CliConnectionPlugin):
             + list(self._feature_workers.keys())
             + list(self._vulnerability_workers.keys())
         ):
-            config.register(ConfigItem(item, type=bool, default=False))
+            config.register(ConfigItem(item, type=bool, default=None))
 
         # config items for the server profile
         config.register(ConfigItem("write_profile", type=str, default=None))
         # config.register(ConfigItem("read_profile", type=str, default=None))
         config.register(ConfigItem("format", type=str, default="text"))
         config.register(ConfigItem("color", type=bool, default=True))
+        config.register(
+            ConfigItem("style", type=str, default=str(self._DEFAULT_STYLE.resolve()))
+        )
+        config.register(ConfigItem("oracle_accuracy", type=str, default="medium"))
 
     def add_subcommand(self, subparsers):
         """Adds a subcommand to the CLI parser object.
@@ -308,6 +390,7 @@ class ScanPlugin(CliConnectionPlugin):
             args (object): the arguments parsed as an object
             parser (:obj:`argparse.ArgumentParser`): the parser object
         """
+
         if (args.client_key is not None) or (args.client_chain is not None):
             if (args.client_chain is None) or (args.client_chain is None):
                 parser.error(
@@ -339,58 +422,35 @@ class ScanPlugin(CliConnectionPlugin):
             WorkManager.register(ScanSigAlgs)
             WorkManager.register(ScanEnd)
 
-            for version in self._versions:
-                config.set(version, getattr(args, version))
+            versions = _group_applicability(args, config, None, self._versions)
+            _ = [config.set(key, val) for key, val in versions.items()]
+            if not any([config.get(key) for key in self._versions]):
+                parser.error("at least one TLS version must be given")
 
-            # if no version is given at all: scan all versions by default
-            if not any([config.get(version) for version in self._versions]):
-                for version in self._versions:
-                    config.set(version, True)
+            features = _group_applicability(
+                args, config, args.features, self._feature_workers.keys()
+            )
+            _group_register_workers(config, self._feature_workers, features)
 
-            # features
-            for feature in self._feature_workers.keys():
-                config.set(feature, getattr(args, feature))
+            vulns = _group_applicability(
+                args, config, args.vulnerabilities, self._vulnerability_workers.keys(),
+            )
+            _group_register_workers(config, self._vulnerability_workers, vulns)
 
-            # if no feature is given at all: scan all features by default
-            if not any(
-                [config.get(feature) for feature in self._feature_workers.keys()]
-            ):
-                for feature in self._feature_workers.keys():
-                    config.set(feature, True)
-
-            for feature, worker in self._feature_workers.items():
-                if config.get(feature):
-                    WorkManager.register(worker)
-
-            # vulnerabilities
-            for vulnerability in self._vulnerability_workers.keys():
-                config.set(vulnerability, getattr(args, vulnerability))
-
-            # if no vulnerability is given at all: scan all vulnerabilities by default
-            if not any(
-                [
-                    config.get(vulnerability)
-                    for vulnerability in self._vulnerability_workers.keys()
-                ]
-            ):
-                for vulnerability in self._vulnerability_workers.keys():
-                    config.set(vulnerability, True)
-
-            for vulnerability, worker in self._vulnerability_workers.items():
-                if config.get(vulnerability):
-                    WorkManager.register(worker)
+            config.set("oracle_accuracy", args.oracle_accuracy)
 
             # handle server profile
             config.set("format", args.format)
             config.set("write_profile", args.write_profile)
             # config.set("read_profile", args.read_profile)
             config.set("color", args.color)
+            config.set("style", args.style)
 
             # if args.read_profile is not None:
             #     WorkManager.register(ReadProfileWorker)
 
             format_type = config.get("format")
-            if format_type == "text":
+            if format_type in ["text", "html"]:
                 WorkManager.register(TextProfileWorker)
 
             elif format_type in ["json", "yaml"]:

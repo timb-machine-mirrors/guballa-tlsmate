@@ -9,6 +9,7 @@ from typing import List
 # import own stuff
 from tlsmate import tls
 from tlsmate import ext
+from tlsmate import structs
 from tlsmate.msg import ClientHello
 from tlsmate.connection import TlsConnection
 
@@ -168,6 +169,8 @@ class Client(object):
             If True, the connection will be closed with a fatal alert. If False,
             the connection continues. The latter is useful for scanning a server, as
             the handshake would be aborted prematurely otherwise.
+        server_issues (list of :obj:`tlsmate.tls.ServerIssue`): a list of severe server
+            issues.
     """
 
     def __init__(self, tlsmate):
@@ -184,6 +187,23 @@ class Client(object):
         self.session_state_id = None
         self.psks = []
         self._host = None
+        self.server_issues = []
+
+    def report_server_issue(self, issue, message=None, extension=None):
+        """Store a server issue, if not done
+
+        Arguments:
+            issue (:obj:tlsmate.tls.`ServerMalfunction`): the reason for the exception
+            message (:obj:`tlsmate.tls.HandshakeType`): the message, if applicable
+            extension (:obj:`tlsmate.tls.Extension`): the extension, if applicable
+        """
+
+        malfunction = structs.Malfunction(
+            issue=issue, message=message, extension=extension
+        )
+
+        if malfunction not in self.server_issues:
+            self.server_issues.append(malfunction)
 
     def init_profile(self, profile_values=None):
         """Resets the client profile to a very basic state

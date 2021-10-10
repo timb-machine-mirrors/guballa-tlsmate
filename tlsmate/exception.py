@@ -8,25 +8,32 @@ class TlsmateException(Exception):
     """
 
 
-class FatalAlert(TlsmateException):
-    """Exception which leads to the closure of the TLS connection with a fatal alert.
+class ServerMalfunction(TlsmateException):
+    """Exception raised in case the server response contains unrecoverable errors.
+
+    This exception basically indicates a specification violation by the server.
 
     Attributes:
-        message (str): A human readable string providing the cause
-        description (:obj:`tlsmate.tls.AlertDescription`): an enum used in the
-            alert sent to the peer.
+        issue (:obj:tlsmate.tls.`ServerMalfunction`): the reason for the exception
+        message (:obj:`tlsmate.tls.HandshakeType`): the message, if applicable
+        extension (:obj:`tlsmate.tls.Extension`): the extension, if applicable
     """
 
-    def __init__(self, message, description):
-        self.description = description
+    def __init__(self, issue, message=None, extension=None):
+        self.issue = issue
         self.message = message
+        self.extension = extension
 
 
 class TlsConnectionClosedError(TlsmateException):
     """Exception raised when the TLS connection is closed unexpectedly.
+
+    Attributes:
+        exc(Exception): the original exception
     """
 
-    pass
+    def __init__(self, exc=None):
+        self.exc = exc
 
 
 class TlsMsgTimeoutError(TlsmateException):

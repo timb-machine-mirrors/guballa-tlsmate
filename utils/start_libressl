@@ -14,7 +14,7 @@ List of options:
                         TLSMATE_SERVER_PORT. Defaults to 44330.
     --cert1 <str>       The certificate, key and certificate chain files to select.
                         key file: $TLSMATE_DIR/ca/private/<str>.key
-                        certificate file: $TLSMATE_DIR/ca/certs/<str>.crt
+                        certificate file: $TLSMATE_DIR/ca/certs/<str>.pem
                         cert chain file: $TLSMATE_DIR/ca/chains/<str>.chn
     --cert2 <str>       Same as --cert1. It is a secondary option to select
                         another certificate.
@@ -46,10 +46,10 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 if [ -n "$cert1" ]; then
-    cert_params1=" -key $ca_dir/private/$cert1.key -cert $ca_dir/certs/$cert1.crt"
+    cert_params1=" -key $ca_dir/private/$cert1.key -cert $ca_dir/certs/$cert1.pem"
 fi
 if [ -n "$cert2" ]; then
-    cert_params2=" -dkey $ca_dir/private/$cert2.key -dcert $ca_dir/certs/$cert2.crt"
+    cert_params2=" -dkey $ca_dir/private/$cert2.key -dcert $ca_dir/certs/$cert2.pem"
 fi
 
 cert_params=" -key $key1 -cert $cert1"

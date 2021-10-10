@@ -211,3 +211,12 @@ class ConfigItem(NamedTuple):
     name: str
     default: Any = None
     type: Any = str
+
+
+class Malfunction(NamedTuple):
+    """Structure for server malfunction
+    """
+
+    issue: tls.ServerIssue
+    message: tls.HandshakeType = None
+    extension: tls.Extension = None

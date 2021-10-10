@@ -24,6 +24,15 @@ class ScanCipherSuites(WorkerPlugin):
     descr = "scan for supported TLS versions, cipher suites and certificates"
     prio = 10
 
+    config_mapping = {
+        tls.Version.SSL20: "sslv2",
+        tls.Version.SSL30: "sslv3",
+        tls.Version.TLS10: "tls10",
+        tls.Version.TLS11: "tls11",
+        tls.Version.TLS12: "tls12",
+        tls.Version.TLS13: "tls13",
+    }
+
     def _get_server_cs_and_cert(self, version):
         """Performs a handshake and retieves the cipher suite and certificate chain.
 
@@ -123,7 +132,7 @@ class ScanCipherSuites(WorkerPlugin):
 
         return tls.SPBool.C_UNDETERMINED
 
-    def _tls_enum_version(self, version):
+    def _tls_enum_version(self, version, vers_prof):
         """Determines the supported cipher suites and other stuff for a given version.
 
         Determines the supported cipher suites, if the server enforces the priority
@@ -131,8 +140,10 @@ class ScanCipherSuites(WorkerPlugin):
         and extracts the certificate chains and stores them in the server profile.
 
         Arguments:
-            version (:obj:`tlsmate.tls.Version`): The TLS version to enumerate.
+            version (:obj:`tlsmate.tls.Version`): the TLS version to enumerate.
+            vers_prof (:obj:`tlsmate.server_profile.SPVersion`): the version profile
         """
+
         cipher_suites = utils.filter_cipher_suites(
             tls.CipherSuite.all(), version=version
         )
@@ -195,41 +206,40 @@ class ScanCipherSuites(WorkerPlugin):
                     server_prio, ciphers
                 )
 
-            self.server_profile.versions.append(
-                SPVersion(version=version, ciphers=ciphers)
-            )
+            vers_prof.ciphers = ciphers
+            vers_prof.support = tls.SPBool.C_TRUE
+
+        else:
+            vers_prof.support = tls.SPBool.C_FALSE
 
         logging.info(f"enumeration for {version} finished")
 
-    def _ssl2_enum_version(self):
+    def _ssl2_enum_version(self, vers_prof):
         """Minimal support to determine if SSLv2 is supported.
         """
         with self.client.create_connection() as conn:
             conn.send(msg.SSL2ClientHello)
             server_hello = conn.wait(msg.SSL2ServerHello)
             if server_hello is not None:
-                if server_hello.certificate is not None:
-                    # self.server_profile.get("cert_chain").append_unique(
-                    #     [server_hello.certificate]
-                    # )
-                    """"""
+                vers_prof.cipher_kinds = server_hello.cipher_specs
+                vers_prof.server_preference = tls.SPBool.C_UNDETERMINED
+                vers_prof.version = tls.Version.SSL20
+                vers_prof.support = tls.SPBool.C_TRUE
+                return
 
-                prof_version = SPVersion()
-                prof_version.cipher_kinds = server_hello.cipher_specs
-                prof_version.server_preference = tls.SPBool.C_UNDETERMINED
-                prof_version.version = tls.Version.SSL20
-                self.server_profile.versions.append(prof_version)
+        vers_prof.support = tls.SPBool.C_FALSE
 
-    def _enum_version(self, version):
+    def _enum_version(self, version, vers_prof):
         """Scan a specific TLS version.
 
         Arguments:
             version (:obj:`tlsmate.tls.Version`): The TLS version to enumerate.
         """
         if version is tls.Version.SSL20:
-            self._ssl2_enum_version()
+            self._ssl2_enum_version(vers_prof)
+
         else:
-            self._tls_enum_version(version)
+            self._tls_enum_version(version, vers_prof)
 
     def run(self):
         """The entry point for the worker.
@@ -278,15 +288,12 @@ class ScanCipherSuites(WorkerPlugin):
             tls.SignatureScheme.RSA_PKCS1_SHA1,
         ]
 
-        mapping = {
-            tls.Version.SSL20: "sslv2",
-            tls.Version.SSL30: "sslv3",
-            tls.Version.TLS10: "tls10",
-            tls.Version.TLS11: "tls11",
-            tls.Version.TLS12: "tls12",
-            tls.Version.TLS13: "tls13",
-        }
-
         for version in tls.Version.all():
-            if self.config.get(mapping[version]):
-                self._enum_version(version)
+            vers_prof = SPVersion(version=version)
+            if self.config.get(self.config_mapping[version]):
+                self._enum_version(version, vers_prof)
+
+            else:
+                vers_prof.support = tls.SPBool.C_UNDETERMINED
+
+            self.server_profile.versions.append(vers_prof)

@@ -8,7 +8,7 @@ import os
 # import own stuff
 from tlsmate import tls
 from tlsmate import ext
-from tlsmate.exception import FatalAlert
+from tlsmate.exception import ServerMalfunction
 from tlsmate.cert_chain import CertChain
 from tlsmate import pdu
 
@@ -21,7 +21,7 @@ def get_extension(extensions, ext_id):
     Arguments:
         extensions (list of :obj:`tlsmate.tls.Extensions`): the list
             to search for the extension
-        ext_id (:obj:`tlsmate.tls.Extensions): the extension to to look for
+        ext_id (:obj:`tlsmate.tls.Extensions`): the extension to to look for
 
     Returns:
         :obj:`tlsmate.tls.Extensions`: The extension if present, or None
@@ -146,9 +146,8 @@ class HandshakeMessage(TlsMessage):
         msg_type = tls.HandshakeType.val2enum(msg_type, alert_on_failure=True)
         length, offset = pdu.unpack_uint24(fragment, offset)
         if length + offset != len(fragment):
-            raise FatalAlert(
-                "Length of {} incorrect".format(msg_type),
-                tls.AlertDescription.DECODE_ERROR,
+            raise ServerMalfunction(
+                tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=cls.msg_type
             )
 
         cls_name = _hs_deserialization_map[msg_type]
@@ -209,9 +208,8 @@ class HelloRequest(HandshakeMessage):
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         if offset != len(fragment):
-            raise FatalAlert(
-                f"Message length error for {self.msg_type}",
-                tls.AlertDescription.DECODE_ERROR,
+            raise ServerMalfunction(
+                tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=self.msg_type
             )
 
         return self
@@ -681,14 +679,7 @@ class ServerKeyExchange(HandshakeMessage):
             )
 
         else:
-            raise FatalAlert(
-                (
-                    f"Key exchange algorithm "
-                    f"{conn.cs_details.key_algo_struct.key_ex_type} is incompatible "
-                    f"with ServerKeyExchange message"
-                ),
-                tls.AlertDescription.UNEXPECTED_MESSAGE,
-            )
+            raise ServerMalfunction(tls.ServerIssue.INCOMPATIBLE_KEY_EXCHANGE)
 
         return self
 
@@ -710,9 +701,8 @@ class ServerHelloDone(HandshakeMessage):
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         if offset != len(fragment):
-            raise FatalAlert(
-                f"Message length error for {self.msg_type}",
-                tls.AlertDescription.DECODE_ERROR,
+            raise ServerMalfunction(
+                tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=self.msg_type
             )
 
         return self
@@ -799,9 +789,8 @@ class EndOfEarlyData(HandshakeMessage):
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         if offset != len(fragment):
-            raise FatalAlert(
-                f"Message length error for {self.msg_type}",
-                tls.AlertDescription.DECODE_ERROR,
+            raise ServerMalfunction(
+                tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=self.msg_type
             )
 
         return self
@@ -913,14 +902,16 @@ class CertificateRequest(HandshakeMessage):
                     tls.SignatureScheme.val2enum(algo)
                 )
 
-            length, offset = pdu.unpack_uint16(fragment, offset)
-            end = offset + length
-            while offset < end:
-                # TODO: here we only unpack the whole ASN.1 structure as a byte string.
-                # Unpacking the ASN.1 structure is required.
+            if offset < len(fragment):
                 length, offset = pdu.unpack_uint16(fragment, offset)
-                name, offset = pdu.unpack_bytes(fragment, offset, length)
-                self.certificate_authorities.append(name)
+                end = offset + length
+                while offset < end:
+                    # TODO: here we only unpack the whole ASN.1 structure as a
+                    # byte string.
+                    # Unpacking the ASN.1 structure is required.
+                    length, offset = pdu.unpack_uint16(fragment, offset)
+                    name, offset = pdu.unpack_bytes(fragment, offset, length)
+                    self.certificate_authorities.append(name)
 
         return self
 
@@ -1014,9 +1005,8 @@ class ChangeCipherSpecMessage(TlsMessage):
     @classmethod
     def deserialize(cls, fragment, conn):
         if len(fragment) != 1:
-            FatalAlert(
-                "Received ChangeCipherSpec has unexpected length",
-                tls.AlertDescription.DECODE_ERROR,
+            raise ServerMalfunction(
+                tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=cls.msg_type
             )
 
         msg_type, offset = pdu.unpack_uint8(fragment, 0)

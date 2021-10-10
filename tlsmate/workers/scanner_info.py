@@ -10,7 +10,7 @@ import datetime
 from tlsmate import tls
 from tlsmate.version import __version__
 from tlsmate.plugin import WorkerPlugin
-from tlsmate.server_profile import SPServer, SPNameResolution
+from tlsmate.server_profile import SPServer, SPNameResolution, SPServerMalfunction
 from tlsmate import resolver
 
 # import other stuff
@@ -27,6 +27,7 @@ class ScanStart(WorkerPlugin):
     def run(self):
         """The entry point for the worker.
         """
+
         scan_info = self.server_profile.scan_info
         start_time = time.time()
         scan_info.command = " ".join(sys.argv)
@@ -70,6 +71,21 @@ class ScanEnd(WorkerPlugin):
     def run(self):
         """The entry point for the worker.
         """
+
+        if self.client.server_issues:
+            if not hasattr(self.server_profile, "server_malfunctions"):
+                self.server_profile.server_malfunctions = []
+
+            for malfunction in self.client.server_issues:
+                prof_malfunc = SPServerMalfunction(issue=malfunction.issue)
+                if malfunction.message:
+                    prof_malfunc.message = malfunction.message
+
+                if malfunction.extension:
+                    prof_malfunc.extension = malfunction.extension
+
+                self.server_profile.server_malfunctions.append(prof_malfunc)
+
         scan_info = self.server_profile.scan_info
         start_time = scan_info.start_timestamp
         stop_time = time.time()

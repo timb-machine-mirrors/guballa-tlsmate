@@ -12,7 +12,7 @@ tlslibraries/openssl*
 tlslibraries/wolfssl*
 
 # private file
-TODO.txt
+notes/*
 
 # automatically generated version file
 tlsmate/_version.py

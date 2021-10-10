@@ -31,7 +31,7 @@ class RecordLayer(object):
         self._recorder = tlsmate.recorder
         self._ssl2 = False
 
-    def _send_fragment(self, rl_msg):
+    def _send_fragment(self, rl_msg, **kwargs):
         """Protects a fragment and adds it to the send queue.
 
         Arguments:
@@ -40,7 +40,7 @@ class RecordLayer(object):
         """
 
         if self._write_state is not None:
-            rl_msg = self._write_state.protect_msg(rl_msg)
+            rl_msg = self._write_state.protect_msg(rl_msg, **kwargs)
 
         self._send_buffer.extend(pdu.pack_uint8(rl_msg.content_type.value))
         self._send_buffer.extend(pdu.pack_uint16(rl_msg.version.value))
@@ -49,7 +49,7 @@ class RecordLayer(object):
         if self._flush_each_fragment:
             self.flush()
 
-    def _fragment(self, rl_msg):
+    def _fragment(self, rl_msg, **kwargs):
         """Fragments a given message according the maximum fragment size.
 
         Each fragment is then protected (if applicable) and added to the send queue.
@@ -57,8 +57,8 @@ class RecordLayer(object):
         Arguments:
             rl_msg (:obj:`tlsmate.structs.RecordLayerMsg`): The message to be sent.
         """
-        if len(rl_msg.fragment) <= self._fragment_max_size:
-            self._send_fragment(rl_msg)
+        if rl_msg is None or len(rl_msg.fragment) <= self._fragment_max_size:
+            self._send_fragment(rl_msg, **kwargs)
             return
 
         message = rl_msg.fragment
@@ -82,7 +82,7 @@ class RecordLayer(object):
                 )
             )
 
-    def send_message(self, message):
+    def send_message(self, message, **kwargs):
         """Does everything the record layer needs to do for sending a message.
 
         The message is fragmented and protected (i.e. encrypted and authenticated) if
@@ -98,13 +98,13 @@ class RecordLayer(object):
             message (:obj:`tlsmate.structs.RecordLayerMsg`): The message to send.
         """
 
-        if message.content_type is tls.ContentType.SSL2:
+        if message and message.content_type is tls.ContentType.SSL2:
             self._ssl2 = True
             self._send_buffer.extend(pdu.pack_uint16(len(message.fragment) | 0x8000))
             self._send_buffer.extend(message.fragment)
 
         else:
-            self._fragment(message)
+            self._fragment(message, **kwargs)
 
     def open_socket(self, l4_addr):
         """Opens the socket
@@ -131,7 +131,7 @@ class RecordLayer(object):
         self._socket.sendall(self._send_buffer)
         self._send_buffer = bytearray()
 
-    def wait_rl_msg(self, timeout=5):
+    def wait_rl_msg(self, timeout=5, **kwargs):
         """Wait for a record layer message to be received from the network.
 
         Arguments:
@@ -143,7 +143,7 @@ class RecordLayer(object):
             A complete record layer message. If a timeout occurs, None is returned.
 
         Raises:
-            FatalAlert: If anything went wrong, e.g. message could not be
+            ServerMalfunction: If anything went wrong, e.g. message could not be
                 authenticated, wrong padding, etc.
         """
 
@@ -196,7 +196,7 @@ class RecordLayer(object):
             return rl_msg
 
         else:
-            return self._read_state.unprotect_msg(rl_msg)
+            return self._read_state.unprotect_msg(rl_msg, **kwargs)
 
     def update_state(self, new_state):
         """Update the record layer state.

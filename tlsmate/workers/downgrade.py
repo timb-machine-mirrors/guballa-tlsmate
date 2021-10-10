@@ -37,4 +37,5 @@ class ScanDowngrade(WorkerPlugin):
                 elif isinstance(response, msg.Alert):
                     status = tls.SPBool.C_TRUE
 
+        self.server_profile.allocate_features()
         self.server_profile.features.downgrade_attack_prevention = status
