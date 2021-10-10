@@ -105,6 +105,7 @@ class Certificate(object):
         self.ocsp_must_staple = tls.SPBool.C_FALSE
         self.ocsp_must_staple_multi = tls.SPBool.C_FALSE
         self.extended_validation = tls.SPBool.C_NA
+        self.from_trust_store = False
 
         if der is not None:
             self._bytes = der
