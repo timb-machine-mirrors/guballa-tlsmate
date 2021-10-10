@@ -246,6 +246,11 @@ class ScanCipherSuites(WorkerPlugin):
         """
 
         self.client.alert_on_invalid_cert = False
+        self.client.profile.support_extended_master_secret = False
+        self.client.profile.support_encrypt_then_mac = False
+        self.client.profile.support_session_id = False
+        self.client.profile.support_session_ticket = False
+        self.client.profile.ec_point_formats = None
         self.client.profile.versions = [tls.Version.TLS12]
         self.client.profile.supported_groups = [
             tls.SupportedGroups.X25519,
