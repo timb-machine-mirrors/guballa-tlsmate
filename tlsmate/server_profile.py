@@ -1496,6 +1496,56 @@ class SPVulnerabilitiesSchema(ProfileSchema):
     cbc_padding_oracle = fields.Nested(SPCbcPaddingOracleInfoSchema)
 
 
+class SPServerIssue(SPObject):
+    """Data class for a server issue
+    """
+
+    def __init__(self, issue):
+        self.name = issue.name
+        self.description = issue.value
+
+
+class SPServerIssueSchema(ProfileSchema):
+    """Schema for a TLS version (enum).
+    """
+
+    __profile_class__ = SPServerIssue
+    name = fields.String()
+    description = fields.String()
+
+
+class SPMalfunctionMessageSchema(ProfileEnumSchema):
+    """Schema for mlafunction message
+    """
+
+    __profile_class__ = tls.HandshakeType
+
+
+class SPMalfunctionExtensionSchema(ProfileEnumSchema):
+    """Schema for malfunction extension
+    """
+
+    __profile_class__ = tls.Extension
+
+
+class SPServerMalfunction(SPObject):
+    """Data class for server malfunction
+    """
+
+    def __init__(self, issue):
+        self.issue = SPServerIssue(issue)
+
+
+class SPServerMalfunctionSchema(ProfileSchema):
+    """Schema for server malfunction
+    """
+
+    __profile_class__ = SPServerMalfunction
+    issue = fields.Nested(SPServerIssueSchema)
+    message = fields.Nested(SPMalfunctionMessageSchema)
+    extension = fields.Nested(SPMalfunctionExtensionSchema)
+
+
 class ServerProfile(SPObject):
     """Data class for the server profile.
 
@@ -1744,6 +1794,7 @@ class ServerProfileSchema(ProfileSchema):
     features = fields.Nested(SPFeaturesSchema)
     scan_info = fields.Nested(SPScanInfoSchema)
     server = fields.Nested(SPServerSchema)
+    server_malfunctions = fields.List(fields.Nested(SPServerMalfunctionSchema))
     versions = fields.List(fields.Nested(SPVersionSchema))
     vulnerabilities = fields.Nested(SPVulnerabilitiesSchema)
 

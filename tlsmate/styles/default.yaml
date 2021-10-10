@@ -870,3 +870,22 @@ vulnerabilities:
           HANDSHAKE: handshake protocol
           APPLICATION_DATA: application data
           ALERT: alert protocol
+
+server_malfunction:
+  PSK_OUT_OF_RANGE: selected PSK out of range (TLS1.3)
+  KEY_SHARE_NOT_PRESENT: "ServerHello, TLS13: extension KEY_SHARE not present"
+  SECURE_RENEG_FAILED: secure renegotiation check failed
+  VERIFY_DATA_INVALID: "received Finished: verify data does not match"
+  CERT_REQ_NO_SIG_ALGO:  certificate request without extension SignatureAlgorithms received
+  EXTENTION_LENGHT_ERROR: extension length incorrect
+  SNI_NO_HOSTNAME: host_name not present
+  FFDH_GROUP_UNKNOWN: FF-DH group unknown
+  MESSAGE_LENGTH_ERROR: message length incorrect
+  INCOMPATIBLE_KEY_EXCHANGE: key exchange algorithm in ServerKeyExchange message incompatible with offered cipher suite
+  PARAMETER_LENGTH_ERROR: message length error when unpacking parameter
+  RECORD_TOO_SHORT: decoded record shorter than MAC length
+  RECORD_MAC_INVALID: MAC verification failed
+  RECORD_WRONG_PADDING_LENGTH: wrong padding length
+  RECORD_WRONG_PADDING_BYTES: wrong padding byte contents
+  ILLEGAL_PARAMETER_VALUE: received parameter value is illegal
+  KEX_INVALID_SIGNATURE: signature of server's key exchange parameters invalid

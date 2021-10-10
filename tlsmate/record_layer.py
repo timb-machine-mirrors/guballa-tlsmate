@@ -131,7 +131,7 @@ class RecordLayer(object):
         self._socket.sendall(self._send_buffer)
         self._send_buffer = bytearray()
 
-    def wait_rl_msg(self, timeout=5):
+    def wait_rl_msg(self, timeout=5, **kwargs):
         """Wait for a record layer message to be received from the network.
 
         Arguments:
@@ -143,7 +143,7 @@ class RecordLayer(object):
             A complete record layer message. If a timeout occurs, None is returned.
 
         Raises:
-            FatalAlert: If anything went wrong, e.g. message could not be
+            ServerMalfunction: If anything went wrong, e.g. message could not be
                 authenticated, wrong padding, etc.
         """
 
@@ -196,7 +196,7 @@ class RecordLayer(object):
             return rl_msg
 
         else:
-            return self._read_state.unprotect_msg(rl_msg)
+            return self._read_state.unprotect_msg(rl_msg, **kwargs)
 
     def update_state(self, new_state):
         """Update the record layer state.

@@ -5,7 +5,7 @@
 import struct
 
 # import own stuff
-from tlsmate.exception import FatalAlert
+from tlsmate.exception import ServerMalfunction
 from tlsmate import tls
 
 # import other stuff
@@ -132,14 +132,11 @@ def unpack_uint8(data, offset):
         buffer, i.e. it points to the next byte after the unpacked value.
 
     Raises:
-        :obj:`tlsmate.exception.FatalAlert`: If the buffer boundary is exceeded.
+        :obj:`tlsmate.exception.ServerMalfunction`: If the buffer boundary is exceeded.
     """
 
     if offset >= len(data):
-        raise FatalAlert(
-            "Message length error when unpacking uint8",
-            tls.AlertDescription.DECODE_ERROR,
-        )
+        raise ServerMalfunction(tls.ServerIssue.PARAMETER_LENGTH_ERROR)
 
     return data[offset], offset + 1
 
@@ -157,14 +154,11 @@ def unpack_uint16(data, offset):
         buffer, i.e. it points to the next byte after the unpacked value.
 
     Raises:
-        :obj:`tlsmate.exception.FatalAlert`: If the buffer boundary is exceeded.
+        :obj:`tlsmate.exception.ServerMalfunction`: If the buffer boundary is exceeded.
     """
 
     if offset + 1 >= len(data):
-        raise FatalAlert(
-            "Message length error when unpacking uint16",
-            tls.AlertDescription.DECODE_ERROR,
-        )
+        raise ServerMalfunction(tls.ServerIssue.PARAMETER_LENGTH_ERROR)
 
     return struct.unpack("!H", data[offset : offset + 2])[0], offset + 2
 
@@ -182,14 +176,11 @@ def unpack_uint24(data, offset):
         buffer, i.e. it points to the next byte after the unpacked value.
 
     Raises:
-        :obj:`tlsmate.exception.FatalAlert`: If the buffer boundary is exceeded.
+        :obj:`tlsmate.exception.ServerMalfunction`: If the buffer boundary is exceeded.
     """
 
     if offset + 2 >= len(data):
-        raise FatalAlert(
-            "Message length error when unpacking uint24",
-            tls.AlertDescription.DECODE_ERROR,
-        )
+        raise ServerMalfunction(tls.ServerIssue.PARAMETER_LENGTH_ERROR)
 
     high_byte, val = struct.unpack("!BH", data[offset : offset + 3])
     return 0x10000 * high_byte + val, offset + 3
@@ -208,14 +199,11 @@ def unpack_uint32(data, offset):
         buffer, i.e. it points to the next byte after the unpacked value.
 
     Raises:
-        :obj:`tlsmate.exception.FatalAlert`: If the buffer boundary is exceeded.
+        :obj:`tlsmate.exception.ServerMalfunction`: If the buffer boundary is exceeded.
     """
 
     if offset + 3 >= len(data):
-        raise FatalAlert(
-            "Message length error when unpacking uint32",
-            tls.AlertDescription.DECODE_ERROR,
-        )
+        raise ServerMalfunction(tls.ServerIssue.PARAMETER_LENGTH_ERROR)
 
     return struct.unpack("!I", data[offset : offset + 4])[0], offset + 4
 
@@ -234,14 +222,11 @@ def unpack_bytes(data, offset, length):
         buffer, i.e. it points to the next byte after the unpacked value.
 
     Raises:
-        :obj:`tlsmate.exception.FatalAlert`: If the buffer boundary is exceeded.
+        :obj:`tlsmate.exception.ServerMalfunction`: If the buffer boundary is exceeded.
     """
 
     if offset + length > len(data):
-        raise FatalAlert(
-            "Message length error when unpacking bytes",
-            tls.AlertDescription.DECODE_ERROR,
-        )
+        raise ServerMalfunction(tls.ServerIssue.PARAMETER_LENGTH_ERROR)
 
     return data[offset : offset + length], offset + length
 
