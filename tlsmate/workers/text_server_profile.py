@@ -437,7 +437,6 @@ class TextProfileWorker(WorkerPlugin):
 
         prof_grps = get_dict_value(self._style, "supported_groups", "groups")
         group_hash = {}
-        print(Mood.HEADLINE.decorate("Supported groups"))
         for version in self._prof_versions:
             prof_version = get_dict_value(self._style, "supported_groups", version.name)
             version_prof = self.server_profile.get_version_profile(version)
@@ -494,6 +493,10 @@ class TextProfileWorker(WorkerPlugin):
             else:
                 group_hash[hashed] = {"versions": [str(version)], "combined": combined}
 
+        if not group_hash:
+            return
+
+        print(Mood.HEADLINE.decorate("Supported groups"))
         for group in group_hash.values():
             versions = ", ".join(group["versions"])
             print(f"\n  {Mood.BOLD.decorate(versions)}:")
