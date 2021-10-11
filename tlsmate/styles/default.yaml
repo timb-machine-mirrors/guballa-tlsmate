@@ -467,20 +467,6 @@ compression:
     txt: *txt_true
     style: bad
 
-scsv_renegotiation:
-  C_FALSE:
-    txt: *txt_false
-    style: soso
-  C_TRUE:
-    txt: *txt_true
-    style: good
-  C_NA:
-    txt: *txt_na
-    style: neutral
-  C_UNDETERMINED:
-    txt: *txt_undet
-    style: soso
-
 encrypt_then_mac:
   C_FALSE:
     txt: *txt_false
@@ -529,7 +515,21 @@ secure_renegotiation:
     style: neutral
   C_TRUE:
     txt: *txt_true
+    style: good
+  C_NA:
+    txt: *txt_na
     style: neutral
+  C_UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+scsv_renegotiation:
+  C_FALSE:
+    txt: *txt_false
+    style: neutral
+  C_TRUE:
+    txt: *txt_true
+    style: good
   C_NA:
     txt: *txt_na
     style: neutral
