@@ -685,13 +685,6 @@ class TextProfileWorker(WorkerPlugin):
                 "compression", get_styled_text(self._style, "compression", compr.name)
             )
 
-        scsv = getattr(feat_prof, "scsv_renegotiation", None)
-        if scsv is not None:
-            table.row(
-                "SCSV-renegotiation",
-                get_styled_text(self._style, "scsv_renegotiation", scsv.name),
-            )
-
         etm = getattr(feat_prof, "encrypt_then_mac", None)
         if etm is not None:
             table.row(
@@ -718,8 +711,15 @@ class TextProfileWorker(WorkerPlugin):
         sec_reneg = getattr(feat_prof, "secure_renegotation", None)
         if sec_reneg is not None:
             table.row(
-                "secure renegotiation",
+                "secure renegotiation (extension)",
                 get_styled_text(self._style, "secure_renegotiation", sec_reneg.name),
+            )
+
+        scsv = getattr(feat_prof, "scsv_renegotiation", None)
+        if scsv is not None:
+            table.row(
+                "secure renegotiation (SCSV)",
+                get_styled_text(self._style, "scsv_renegotiation", scsv.name),
             )
 
         session_id = getattr(feat_prof, "session_id", None)
