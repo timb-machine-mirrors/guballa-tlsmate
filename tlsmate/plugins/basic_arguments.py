@@ -155,13 +155,53 @@ class ServerProfileOptions(CliPlugin):
     _DEFAULT_STYLE = Path(__file__).parent / "../styles/default.yaml"
     _config_registered = False
 
+    cli_args = [
+        CliArg(
+            "--read-profile",
+            type=str,
+            help=(
+                "JSON/Yaml file to read the server profile from. The format will be "
+                "determined automatically."
+            ),
+        ),
+        CliArg(
+            "--write-profile",
+            type=str,
+            help=(
+                "writes the server profile to the given file. If no file is given, "
+                'the profile will be dumped to STDOUT (unless "--format=none" is '
+                "given)."
+            ),
+        ),
+        CliArg(
+            "--format",
+            choices=["text", "html", "json", "yaml", "none"],
+            help=('the output format of the server profile. Defaults to "text".'),
+            default=None,
+        ),
+        CliArg(
+            "--color",
+            help="use colored console output. Only used if --format=text is given.",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--style",
+            type=str,
+            help=(
+                "a yaml file defining the text outout and the color scheme used if "
+                "--format=text or --format=html is given. If not given, the internal "
+                "default file will be used."
+            ),
+        ),
+    ]
+
     @classmethod
     def register_config(cls, config):
         if cls._config_registered:
             return
 
         config.register(ConfigItem("write_profile", type=str, default=None))
-        # config.register(ConfigItem("read_profile", type=str, default=None))
+        config.register(ConfigItem("read_profile", type=str, default=None))
         config.register(ConfigItem("format", type=str, default="text"))
         config.register(ConfigItem("color", type=bool, default=True))
         config.register(
@@ -174,54 +214,23 @@ class ServerProfileOptions(CliPlugin):
         group = parser.add_argument_group(
             title="Server profile options", description=None
         )
-        # group.add_argument(
-        #     "--read-profile",
-        #     type=str,
-        #     help=(
-        #         "JSON/Yaml file to read the server profile from. The format will be "
-        #         "determined automatically."
-        #     ),
-        # )
-        group.add_argument(
-            "--write-profile",
-            type=str,
-            help=(
-                "writes the server profile to the given file. If no file is given, "
-                'the profile will be dumped to STDOUT (unless "--format=none" is '
-                "given)."
-            ),
-        )
-        group.add_argument(
-            "--format",
-            choices=["text", "html", "json", "yaml", "none"],
-            help=('the output format of the server profile. Defaults to "text".'),
-            default=None,
-        )
-        group.add_argument(
-            "--color",
-            help="use colored console output. Only used if --format=text is given.",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--style",
-            type=str,
-            help=(
-                "a yaml file defining the text outout and the color scheme used if "
-                "--format=text or --format=html is given. If not given, the internal "
-                "default file will be used."
-            ),
-        )
+        if exclude is None:
+            exclude = []
+
+        exclude.append("--read-profile")
+        for arg in cls.cli_args:
+            arg.add_argument(group, exclude)
 
     @classmethod
     def args_parsed(cls, args, parser, subcommand, config):
         config.set("format", args.format)
         config.set("write_profile", args.write_profile)
-        # config.set("read_profile", args.read_profile)
+        config.set("read_profile", args.read_profile)
         config.set("color", args.color)
         config.set("style", args.style)
 
-        # if args.read_profile is not None:
-        #     WorkManager.register(ReadProfileWorker)
+        if args.read_profile is not None:
+            WorkManager.register(ReadProfileWorker)
 
         format_type = config.get("format")
         if format_type in ["text", "html"]:
@@ -234,16 +243,8 @@ class X509Options(CliPlugin):
     """Class to implement CLI arguments for X509 certificate options.
     """
 
-    @classmethod
-    def add_args(cls, parser, subcommand):
-        """Add basic arguments for authentication to a parser
-
-        Arguments:
-            parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
-        """
-
-        group = parser.add_argument_group(title="X509 certificates options")
-        group.add_argument(
+    cli_args = [
+        CliArg(
             "--ca-certs",
             nargs="*",
             type=str,
@@ -252,9 +253,8 @@ class X509Options(CliPlugin):
                 "root-CA certificates in PEM format. Certificate chains received from "
                 "the server will be validated against this set of root certificates."
             ),
-        )
-
-        group.add_argument(
+        ),
+        CliArg(
             "--client-key",
             type=str,
             nargs="*",
@@ -263,8 +263,8 @@ class X509Options(CliPlugin):
                 "Used for client authentication."
             ),
             default=None,
-        )
-        group.add_argument(
+        ),
+        CliArg(
             "--client-chain",
             type=str,
             nargs="*",
@@ -274,24 +274,36 @@ class X509Options(CliPlugin):
                 "same than the number of given client key files. This first given "
                 "chain file corresponds to the first given client key file, and so on."
             ),
-        )
-
-        group.add_argument(
+        ),
+        CliArg(
             "--crl",
             help=(
                 "download the CRL to check for the certificate revocation status. "
                 "Defaults to True."
             ),
             action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
+        ),
+        CliArg(
             "--ocsp",
             help=(
                 "query the OCSP servers for checking the certificate "
                 "revocation status. Defaults to True."
             ),
             action=utils.BooleanOptionalAction,
-        )
+        ),
+    ]
+
+    @classmethod
+    def add_args(cls, parser, subcommand, exclude=None):
+        """Add basic arguments for authentication to a parser
+
+        Arguments:
+            parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
+        """
+
+        group = parser.add_argument_group(title="X509 certificates options")
+        for arg in cls.cli_args:
+            arg.add_argument(group, exclude)
 
     @classmethod
     def _args_consistency(cls, args, parser):
@@ -325,7 +337,41 @@ class X509Options(CliPlugin):
 
 
 class TlsVersions(CliPlugin):
-    _versions = ["sslv2", "sslv3", "tls10", "tls11", "tls12", "tls13"]
+
+    cli_args = [
+        CliArg(
+            "--sslv2",
+            help="scan for protocol version SSLv2",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--sslv3",
+            help="scan for protocol version SSLv3",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--tls10",
+            help="scan for protocol version TLS1.0",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--tls11",
+            help="scan for protocol version TLS1.1",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--tls12",
+            help="scan for protocol version TLS1.2",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--tls13",
+            help="scan for protocol version TLS1.3",
+            action=utils.BooleanOptionalAction,
+        ),
+    ]
+    _versions = [arg._name[2:] for arg in cli_args]
+
 
     @classmethod
     def register_config(cls, config):
@@ -333,7 +379,7 @@ class TlsVersions(CliPlugin):
             config.register(ConfigItem(vers, type=bool, default=None))
 
     @classmethod
-    def add_args(cls, parser, subcommand):
+    def add_args(cls, parser, subcommand, exclude=None):
         """Add basic arguments for TLS versions to a parser
 
         Arguments:
@@ -348,36 +394,8 @@ class TlsVersions(CliPlugin):
                 "explicitly set to true, all other versions will be defaulted to false."
             ),
         )
-        group.add_argument(
-            "--sslv2",
-            help="scan for protocol version SSLv2",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--sslv3",
-            help="scan for protocol version SSLv3",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--tls10",
-            help="scan for protocol version TLS1.0",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--tls11",
-            help="scan for protocol version TLS1.1",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--tls12",
-            help="scan for protocol version TLS1.2",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--tls13",
-            help="scan for protocol version TLS1.3",
-            action=utils.BooleanOptionalAction,
-        )
+        for arg in cls.cli_args:
+            arg.add_argument(group, exclude)
 
     @classmethod
     def args_parsed(cls, args, parser, subcommand, config):
@@ -388,6 +406,79 @@ class TlsVersions(CliPlugin):
 
 
 class Features(CliPlugin):
+
+    cli_args = [
+        CliArg(
+            "--features",
+            help=(
+                "specifies whether to include or exclude all features in the scan. "
+                "Per feature this behavior can be overruled by its specific command "
+                "line option below. "
+                "Defaults to true if no specific feature is enabled, otherwise it "
+                "defaults to false."
+            ),
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--compression",
+            help="scan for compression support",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--dh-groups",
+            help="scan for finite field DH groups (only TL1.0 - TLS1.2)",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--encrypt-then-mac",
+            help="scan for encrypt-then-mac support (only TL1.0 - TLS1.2)",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--ephemeral-key-reuse",
+            help="scan for reuse of ephemeral keys",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--ext-master-secret",
+            help="scan for extended master secret support (only TL1.0 - TLS1.2)",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--fallback",
+            help="scan for downgrade attack prevention (TLS_FALLBACK_SCSV)",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--grease",
+            help="scan for unknown parameter tolerance",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--heartbeat",
+            help="scan for heartbeat support",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--ocsp-stapling",
+            help="scan for OCSP stapling support",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--renegotiation",
+            help="scan for renegotiation support (SSL30 - TLS1.2)",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--resumption",
+            help=(
+                "scan for resumption support (SSL30 - TLS1.2) and for PSK support "
+                "(TLS1.3)"
+            ),
+            action=utils.BooleanOptionalAction,
+        ),
+    ]
+
     _feature_workers = {
         "dh_groups": ScanDhGroups,
         "compression": ScanCompression,
@@ -408,7 +499,7 @@ class Features(CliPlugin):
             config.register(ConfigItem(feature, type=bool, default=None))
 
     @classmethod
-    def add_args(cls, parser, subcommand):
+    def add_args(cls, parser, subcommand, exclude=None):
         """Add arguments for using different workers to a parser
 
         Arguments:
@@ -416,75 +507,8 @@ class Features(CliPlugin):
         """
 
         group = parser.add_argument_group(title="Feature to include into the scan",)
-        group.add_argument(
-            "--features",
-            help=(
-                "specifies whether to include or exclude all features in the scan. "
-                "Per feature this behavior can be overruled by its specific command "
-                "line option below. "
-                "Defaults to true if no specific feature is enabled, otherwise it "
-                "defaults to false."
-            ),
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--compression",
-            help="scan for compression support",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--dh-groups",
-            help="scan for finite field DH groups (only TL1.0 - TLS1.2)",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--encrypt-then-mac",
-            help="scan for encrypt-then-mac support (only TL1.0 - TLS1.2)",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--ephemeral-key-reuse",
-            help="scan for reuse of ephemeral keys",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--ext-master-secret",
-            help="scan for extended master secret support (only TL1.0 - TLS1.2)",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--fallback",
-            help="scan for downgrade attack prevention (TLS_FALLBACK_SCSV)",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--grease",
-            help="scan for unknown parameter tolerance",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--heartbeat",
-            help="scan for heartbeat support",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--ocsp-stapling",
-            help="scan for OCSP stapling support",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--renegotiation",
-            help="scan for renegotiation support (SSL30 - TLS1.2)",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--resumption",
-            help=(
-                "scan for resumption support (SSL30 - TLS1.2) and for PSK support "
-                "(TLS1.3)"
-            ),
-            action=utils.BooleanOptionalAction,
-        )
+        for arg in cls.cli_args:
+            arg.add_argument(group, exclude)
 
     @classmethod
     def args_parsed(cls, args, parser, subcommand, config):
@@ -495,6 +519,57 @@ class Features(CliPlugin):
 
 
 class Vulnerabilities(CliPlugin):
+
+    cli_args = [
+        CliArg(
+            "--vulnerabilities",
+            help=(
+                "specifies whether to include or exclude all vulnerabilities in the "
+                "scan. Per vulnerability this behavior can be overruled by its "
+                "specific command line option below. Defaults to true if no specific "
+                "vulnerability is enabled, otherwise it defaults to false."
+            ),
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--ccs-injection",
+            help="scan for vulnerability CCS-injection (only TL1.0 - TLS1.2)",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--heartbleed",
+            help="scan for the Heartbleed vulnerability CVE-2014-0160",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--padding-oracle",
+            help="scan for CBC padding oracles",
+            action=utils.BooleanOptionalAction,
+        ),
+        CliArg(
+            "--oracle-accuracy",
+            help=(
+                "the accuracy of the scan for CBC padding oracles. "
+                "low: scan application data records for each TLS version with minimal "
+                "set of cipher suites (fastest). "
+                "medium: scan application data records for each TLS version and cipher "
+                "suite combination (slower). "
+                "high: scan application data, handshake and alert records for each TLS "
+                "version and cipher suite combination (slowest). "
+                "Default is medium."
+            ),
+            choices=["low", "medium", "high"],
+            default="medium",
+        ),
+        CliArg(
+            "--robot",
+            help=(
+                "scan for ROBOT vulnerability CVE-2017-13099, etc. (only TL1.0 "
+                "- TLS1.2)"
+            ),
+            action=utils.BooleanOptionalAction,
+        )
+    ]
     _vulnerability_workers = {
         "ccs_injection": ScanCcsInjection,
         "robot": ScanRobot,
@@ -510,61 +585,15 @@ class Vulnerabilities(CliPlugin):
         config.register(ConfigItem("oracle_accuracy", type=str, default="medium"))
 
     @classmethod
-    def add_args(cls, parser, subcommand):
+    def add_args(cls, parser, subcommand, exclude=None):
         """Add arguments for vulnerabilities to a parser
 
         Arguments:
             parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
         """
         group = parser.add_argument_group(title="Vulnerabilities to scan for")
-        group.add_argument(
-            "--vulnerabilities",
-            help=(
-                "specifies whether to include or exclude all vulnerabilities in the "
-                "scan. Per vulnerability this behavior can be overruled by its "
-                "specific command line option below. Defaults to true if no specific "
-                "vulnerability is enabled, otherwise it defaults to false."
-            ),
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--ccs-injection",
-            help="scan for vulnerability CCS-injection (only TL1.0 - TLS1.2)",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--heartbleed",
-            help="scan for the Heartbleed vulnerability CVE-2014-0160",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--padding-oracle",
-            help="scan for CBC padding oracles",
-            action=utils.BooleanOptionalAction,
-        )
-        group.add_argument(
-            "--oracle-accuracy",
-            help=(
-                "the accuracy of the scan for CBC padding oracles. "
-                "low: scan application data records for each TLS version with minimal "
-                "set of cipher suites (fastest). "
-                "medium: scan application data records for each TLS version and cipher "
-                "suite combination (slower). "
-                "high: scan application data, handshake and alert records for each TLS "
-                "version and cipher suite combination (slowest). "
-                "Default is medium."
-            ),
-            choices=["low", "medium", "high"],
-            default="medium",
-        )
-        group.add_argument(
-            "--robot",
-            help=(
-                "scan for ROBOT vulnerability CVE-2017-13099, etc. (only TL1.0 "
-                "- TLS1.2)"
-            ),
-            action=utils.BooleanOptionalAction,
-        )
+        for arg in cls.cli_args:
+            arg.add_argument(group, exclude)
 
     @classmethod
     def args_parsed(cls, args, parser, subcommand, config):
