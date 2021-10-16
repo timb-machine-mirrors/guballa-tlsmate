@@ -213,6 +213,21 @@ class TextProfileWorker(WorkerPlugin):
     descr = "dump the scan results"
     prio = 1002
 
+    _callbacks = []
+
+    @classmethod
+    def augment_output(cls, callback):
+        """Decorator which can be used to register additional callbacks.
+
+        Arguments:
+            callback (callable): the callback to register. After the TextProfileWorker
+            is finished with its output, the registered callbacks will be called with
+            the TextProfileWorker object as its only argument. No return value is
+            expected from the callback.
+        """
+        cls._callbacks.append(callback)
+        return callback
+
     def _parse_style(self):
         if not self._style:
             return
@@ -1306,5 +1321,9 @@ class TextProfileWorker(WorkerPlugin):
             self._print_features()
             self._print_certificates()
             self._print_vulnerabilities()
+
+        for callback in self._callbacks:
+            callback(self)
+
         if self.config.get("format") == "html":
             print("</pre>")
