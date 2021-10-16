@@ -75,6 +75,17 @@ class CliArg(object):
         if not (exclude and self._name in exclude):
             parser.add_argument(self._name, **self._attributes)
 
+        else:
+            dest = self._attributes.get("dest")
+            if not dest:
+                dest = self._name.lower().replace("-", "_")
+
+            if dest.startswith("__"):
+                dest = dest[2:]
+
+            default = self._attributes.get("default", None)
+            parser.set_defaults(**{dest: default})
+
 class BasicOptions(CliPlugin):
 
     cli_args = [
