@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Module for the scan plugin
+"""Module for basic CLI arguments
 """
 # import basic stuff
 from pathlib import Path
@@ -66,12 +66,25 @@ def _group_register_workers(config, workers, applicability):
             WorkManager.register(workers[key])
 
 class CliArg(object):
+    """Class representing one CLI argument.
+
+    Arguments:
+        name (str): the cli name, e.g. "--progress"
+        attributes: keyword argumments, the same as used for parser.add_argument
+    """
 
     def __init__(self, name, **attributes):
         self._name = name
         self._attributes = attributes
 
     def add_argument(self, parser, exclude=None):
+        """Add itself as an argument to the given parser.
+
+        Arguments:
+            parser (:obj:argparse.Parser): The (sub)parser to add itself to.
+            exclude (list of str): a blacklist to check itself against
+        """
+
         if not (exclude and self._name in exclude):
             parser.add_argument(self._name, **self._attributes)
 
@@ -87,6 +100,8 @@ class CliArg(object):
             parser.set_defaults(**{dest: default})
 
 class BasicOptions(CliPlugin):
+    """Group of basic CLI options.
+    """
 
     cli_args = [
         CliArg(
@@ -148,6 +163,15 @@ class BasicOptions(CliPlugin):
 
     @classmethod
     def args_parsed(cls, args, parser, subcommand, config):
+        """Called after the arguments have been parsed.
+
+        Arguments:
+            args: the object holding the parsed CLI arguments
+            parser: the parser object, can be used to issue consistency errors
+            subcommand (str): the subcommand selected by the user
+            config (:obj:`tlsmate.config.Configuration`): the configuration object
+        """
+
         if args.port is not None and (args.port < 0 or args.port > 0xFFFF):
             parser.error("port must be in the range [0-65535]")
 
@@ -208,6 +232,12 @@ class ServerProfileOptions(CliPlugin):
 
     @classmethod
     def register_config(cls, config):
+        """Register configs for this plugin
+
+        Arguments:
+            config (:obj:`tlsmate.config.Configuration`): the configuration object
+        """
+
         if cls._config_registered:
             return
 
@@ -222,6 +252,12 @@ class ServerProfileOptions(CliPlugin):
 
     @classmethod
     def add_args(cls, parser, subcommand, exclude=None):
+        """Add basic arguments for authentication to a parser
+
+        Arguments:
+            parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
+        """
+
         group = parser.add_argument_group(
             title="Server profile options", description=None
         )
@@ -234,6 +270,15 @@ class ServerProfileOptions(CliPlugin):
 
     @classmethod
     def args_parsed(cls, args, parser, subcommand, config):
+        """Called after the arguments have been parsed.
+
+        Arguments:
+            args: the object holding the parsed CLI arguments
+            parser: the parser object, can be used to issue consistency errors
+            subcommand (str): the subcommand selected by the user
+            config (:obj:`tlsmate.config.Configuration`): the configuration object
+        """
+
         config.set("format", args.format)
         config.set("write_profile", args.write_profile)
         config.set("read_profile", args.read_profile)
@@ -339,6 +384,15 @@ class X509Options(CliPlugin):
 
     @classmethod
     def args_parsed(cls, args, parser, subcommand, config):
+        """Called after the arguments have been parsed.
+
+        Arguments:
+            args: the object holding the parsed CLI arguments
+            parser: the parser object, can be used to issue consistency errors
+            subcommand (str): the subcommand selected by the user
+            config (:obj:`tlsmate.config.Configuration`): the configuration object
+        """
+
         cls._args_consistency(args, parser)
         config.set("ca_certs", args.ca_certs)
         config.set("client_chain", args.client_chain)
@@ -348,6 +402,9 @@ class X509Options(CliPlugin):
 
 
 class TlsVersions(CliPlugin):
+    """Class to implement CLI arguments for the TLS protocol versions.
+    """
+
 
     cli_args = [
         CliArg(
@@ -386,6 +443,12 @@ class TlsVersions(CliPlugin):
 
     @classmethod
     def register_config(cls, config):
+        """Register configs for this plugin
+
+        Arguments:
+            config (:obj:`tlsmate.config.Configuration`): the configuration object
+        """
+
         for vers in cls._versions:
             config.register(ConfigItem(vers, type=bool, default=None))
 
@@ -410,6 +473,15 @@ class TlsVersions(CliPlugin):
 
     @classmethod
     def args_parsed(cls, args, parser, subcommand, config):
+        """Called after the arguments have been parsed.
+
+        Arguments:
+            args: the object holding the parsed CLI arguments
+            parser: the parser object, can be used to issue consistency errors
+            subcommand (str): the subcommand selected by the user
+            config (:obj:`tlsmate.config.Configuration`): the configuration object
+        """
+
         versions = _group_applicability(args, config, None, cls._versions)
         _ = [config.set(key, val) for key, val in versions.items()]
         if not any([config.get(key) for key in cls._versions]):
@@ -417,6 +489,8 @@ class TlsVersions(CliPlugin):
 
 
 class Features(CliPlugin):
+    """Class to implement CLI arguments for feature options.
+    """
 
     cli_args = [
         CliArg(
@@ -506,6 +580,12 @@ class Features(CliPlugin):
 
     @classmethod
     def register_config(cls, config):
+        """Register configs for this plugin
+
+        Arguments:
+            config (:obj:`tlsmate.config.Configuration`): the configuration object
+        """
+
         for feature in cls._feature_workers.keys():
             config.register(ConfigItem(feature, type=bool, default=None))
 
@@ -523,6 +603,15 @@ class Features(CliPlugin):
 
     @classmethod
     def args_parsed(cls, args, parser, subcommand, config):
+        """Called after the arguments have been parsed.
+
+        Arguments:
+            args: the object holding the parsed CLI arguments
+            parser: the parser object, can be used to issue consistency errors
+            subcommand (str): the subcommand selected by the user
+            config (:obj:`tlsmate.config.Configuration`): the configuration object
+        """
+
         features = _group_applicability(
             args, config, args.features, cls._feature_workers.keys()
         )
@@ -530,6 +619,8 @@ class Features(CliPlugin):
 
 
 class Vulnerabilities(CliPlugin):
+    """Class to implement CLI arguments for vulnerabilities.
+    """
 
     cli_args = [
         CliArg(
@@ -590,6 +681,12 @@ class Vulnerabilities(CliPlugin):
 
     @classmethod
     def register_config(cls, config):
+        """Register configs for this plugin
+
+        Arguments:
+            config (:obj:`tlsmate.config.Configuration`): the configuration object
+        """
+
         for vulnerability in cls._vulnerability_workers.keys():
             config.register(ConfigItem(vulnerability, type=bool, default=None))
 
@@ -608,6 +705,15 @@ class Vulnerabilities(CliPlugin):
 
     @classmethod
     def args_parsed(cls, args, parser, subcommand, config):
+        """Called after the arguments have been parsed.
+
+        Arguments:
+            args: the object holding the parsed CLI arguments
+            parser: the parser object, can be used to issue consistency errors
+            subcommand (str): the subcommand selected by the user
+            config (:obj:`tlsmate.config.Configuration`): the configuration object
+        """
+
         vulns = _group_applicability(
             args, config, args.vulnerabilities, cls._vulnerability_workers.keys(),
         )
