@@ -7,7 +7,6 @@ import abc
 import sys
 
 # import own stuff
-from tlsmate import utils
 
 # import other stuff
 

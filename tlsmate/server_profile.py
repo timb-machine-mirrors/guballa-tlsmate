@@ -248,6 +248,7 @@ class ProfileSchema(Schema):
         cls._augments.append((cls, ext_cls))
         return ext_cls
 
+
 class ProfileEnumSchema(Schema):
     """Wrapper class for simpler (de)serialization of Enums.
     """
@@ -1573,7 +1574,6 @@ class ServerProfile(SPObject):
 
     def _init_from_args(self):
         self._hash = {}
-
 
     def allocate_versions(self):
         """Ensure that the versions property and cert_chains properties are setup.

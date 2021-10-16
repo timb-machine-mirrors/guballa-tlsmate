@@ -65,6 +65,7 @@ def _group_register_workers(config, workers, applicability):
         if val:
             WorkManager.register(workers[key])
 
+
 class CliArg(object):
     """Class representing one CLI argument.
 
@@ -98,6 +99,7 @@ class CliArg(object):
 
             default = self._attributes.get("default", None)
             parser.set_defaults(**{dest: default})
+
 
 class BasicOptions(CliPlugin):
     """Group of basic CLI options.
@@ -405,7 +407,6 @@ class TlsVersions(CliPlugin):
     """Class to implement CLI arguments for the TLS protocol versions.
     """
 
-
     cli_args = [
         CliArg(
             "--sslv2",
@@ -439,7 +440,6 @@ class TlsVersions(CliPlugin):
         ),
     ]
     _versions = [arg._name[2:] for arg in cli_args]
-
 
     @classmethod
     def register_config(cls, config):
@@ -670,7 +670,7 @@ class Vulnerabilities(CliPlugin):
                 "- TLS1.2)"
             ),
             action=utils.BooleanOptionalAction,
-        )
+        ),
     ]
     _vulnerability_workers = {
         "ccs_injection": ScanCcsInjection,
