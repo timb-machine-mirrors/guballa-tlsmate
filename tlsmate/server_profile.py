@@ -222,23 +222,31 @@ class ProfileSchema(Schema):
                 del data[key]
         return cls_data
 
-    @staticmethod
-    def augment(base_cls):
+    @classmethod
+    def augment(cls, ext_cls):
         """Decorator to register scheme extensions.
 
+        cls is the class to be extended.
+
+        Examlple:
+            @SPServerProfile.augment
+            class MyExtensions(ProfileSchema):
+                client_simulation = fields.Nested(...)
+                a_number = fields.Integer()
+
+        This extends the schema class SPServerProfile by two more attributes.
+        Note, that __profile_class__ must not be given in the extension class. The
+        name of the extension class has no relevance.
+
         Arguments:
-            base_cls (:class:`ProfileSchema`): the schema class to extend
+            ext_cls (:class:`ProfileSchema`): the schema class containing the extensions
 
         Returns:
             the class used to extend the base_cls class
         """
 
-        def inner(ext_cls):
-            ProfileSchema._augments.append((base_cls, ext_cls))
-            return ext_cls
-
-        return inner
-
+        cls._augments.append((cls, ext_cls))
+        return ext_cls
 
 class ProfileEnumSchema(Schema):
     """Wrapper class for simpler (de)serialization of Enums.

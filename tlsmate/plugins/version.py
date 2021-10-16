@@ -18,16 +18,18 @@ class VersionPlugin(CliPlugin):
     prio = 30
     name = "version"
 
-    def add_subcommand(self, subparsers):
+    @classmethod
+    def add_subcommand(cls, subparsers):
         """Adds a subcommand to the CLI parser object.
 
         Arguments:
             subparser (:obj:`argparse.Action`): the CLI subparsers object
         """
 
-        subparsers.add_parser(self.name, help="prints the version of tlsmate")
+        subparsers.add_parser(cls.name, help="prints the version of tlsmate")
 
-    def args_parsed(self, args, parser, subcommand, config):
+    @classmethod
+    def args_parsed(cls, args, parser, subcommand, config):
         """Called after the arguments have been parsed.
 
         Arguments:
@@ -37,5 +39,5 @@ class VersionPlugin(CliPlugin):
             config (:obj:`tlsmate.config.Configuration`): the configuration object
         """
 
-        if subcommand == self.name:
+        if subcommand == cls.name:
             print(__version__)
