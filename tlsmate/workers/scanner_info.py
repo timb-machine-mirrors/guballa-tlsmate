@@ -10,7 +10,12 @@ import datetime
 from tlsmate import tls
 from tlsmate.version import __version__
 from tlsmate.plugin import WorkerPlugin
-from tlsmate.server_profile import SPServer, SPNameResolution, SPServerMalfunction
+from tlsmate.server_profile import (
+    SPServer,
+    SPNameResolution,
+    SPServerMalfunction,
+    SPScanInfo,
+)
 from tlsmate import resolver
 
 # import other stuff
@@ -27,6 +32,9 @@ class ScanStart(WorkerPlugin):
     def run(self):
         """The entry point for the worker.
         """
+
+        if not hasattr(self.server_profile, "scan_info"):
+            self.server_profile.scan_info = SPScanInfo()
 
         scan_info = self.server_profile.scan_info
         start_time = time.time()

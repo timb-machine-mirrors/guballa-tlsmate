@@ -293,6 +293,7 @@ class ScanCipherSuites(WorkerPlugin):
             tls.SignatureScheme.RSA_PKCS1_SHA1,
         ]
 
+        self.server_profile.allocate_versions()
         for version in tls.Version.all():
             vers_prof = SPVersion(version=version)
             if self.config.get(self.config_mapping[version]):

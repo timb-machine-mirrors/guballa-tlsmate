@@ -1574,21 +1574,29 @@ class ServerProfile(SPObject):
     def _init_from_args(self):
         self._hash = {}
 
-        self.cert_chains = []
-        self.scan_info = SPScanInfo()
-        self.server = SPServer()
-        self.versions = []
+
+    def allocate_versions(self):
+        """Ensure that the versions property and cert_chains properties are setup.
+        """
+
+        if not hasattr(self, "versions"):
+            self.versions = []
+
+        if not hasattr(self, "cert_chains"):
+            self.cert_chains = []
 
     def allocate_features(self):
         """Ensure that the features property is setup.
         """
-        if not getattr(self, "features", None):
+
+        if not hasattr(self, "features"):
             self.features = SPFeatures()
 
     def allocate_vulnerabilities(self):
         """Ensure that the vulnerabilities property is setup.
         """
-        if not getattr(self, "vulnerabilities", None):
+
+        if not hasattr(self, "vulnerabilities"):
             self.vulnerabilities = SPVulnerabilities()
 
     def append_unique_cert_chain(self, chain):
@@ -1616,6 +1624,9 @@ class ServerProfile(SPObject):
         Returns:
             list(:obj:`tlsmate.tls.Version`): A list of all supported versions.
         """
+
+        if not hasattr(self, "versions"):
+            return []
 
         if exclude is None:
             exclude = []
