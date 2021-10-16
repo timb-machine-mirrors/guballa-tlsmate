@@ -5,6 +5,7 @@
 import argparse
 import importlib
 import pkgutil
+import sys
 
 # import own stuff
 from tlsmate.config import Configuration
@@ -27,6 +28,13 @@ def build_parser():
             "Test scenarios can be defined in a simple way with great flexibility. "
             "A TLS server configuration and vulnarability scan is built in."
         )
+    )
+
+    parser.add_argument(
+        "--no-plugin",
+        default=None,
+        help="disable loading external plugins. Must be the first argument.",
+        action="store_true",
     )
 
     parser.add_argument(
@@ -71,6 +79,7 @@ def main():
 from tlsmate.plugins import scan, version  # NOQA
 
 # And now look for additional user provided plugins
-for finder, name, ispkg in pkgutil.iter_modules():
-    if name.startswith("tlsmate_"):
-        importlib.import_module(name)
+if len(sys.argv) < 2 or sys.argv[1] != "--no-plugin":
+    for finder, name, ispkg in pkgutil.iter_modules():
+        if name.startswith("tlsmate_"):
+            importlib.import_module(name)

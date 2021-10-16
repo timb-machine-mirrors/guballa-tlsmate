@@ -107,6 +107,12 @@ class BasicOptions(CliPlugin):
 
     cli_args = [
         CliArg(
+            "--no-plugin",
+            default=None,
+            help="disable loading external plugins. Must be the first argument.",
+            action="store_true",
+        ),
+        CliArg(
             "--port",
             default=None,
             help="the port number of the host [0-65535]. Defaults to 443.",
