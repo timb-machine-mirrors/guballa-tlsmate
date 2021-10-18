@@ -41,6 +41,8 @@ def main():
 
     parser = build_parser()
     args = parser.parse_args()
+    if args.subcommand is None:
+        parser.error("Subcommand is mandatory")
 
     # logging must be setup before the first log is generated.
     utils.set_logging(args.logging)
