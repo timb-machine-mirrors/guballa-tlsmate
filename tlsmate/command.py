@@ -10,7 +10,7 @@ import sys
 # import own stuff
 from tlsmate.config import Configuration
 from tlsmate.tlsmate import TlsMate
-from tlsmate.plugin import CliManager
+from tlsmate.plugin import PluginBase
 from tlsmate import utils
 
 # import other stuff
@@ -22,6 +22,7 @@ def build_parser():
     Returns:
         :obj:`argparse.ArgumentParser`: the parser object as created with argparse
     """
+
     parser = argparse.ArgumentParser(
         description=(
             "tlsmate is an application for testing and analyzing TLS servers. "
@@ -29,30 +30,8 @@ def build_parser():
             "A TLS server configuration and vulnarability scan is built in."
         )
     )
-
-    parser.add_argument(
-        "--no-plugin",
-        default=None,
-        help="disable loading external plugins. Must be the first argument.",
-        action="store_true",
-    )
-
-    parser.add_argument(
-        "--config",
-        dest="config_file",
-        default=None,
-        help="ini-file to read the configuration from.",
-    )
-
-    parser.add_argument(
-        "--logging",
-        choices=["critical", "error", "warning", "info", "debug"],
-        help="sets the logging level. Default is error.",
-        default="error",
-    )
-
-    CliManager.extend_parser(parser)
-
+    subparsers = parser.add_subparsers(title="commands", dest="subcommand")
+    PluginBase.extend_parser(parser, subparsers)
     return parser
 
 
@@ -67,10 +46,10 @@ def main():
     utils.set_logging(args.logging)
 
     config = Configuration()
-    CliManager.register_config(config)
+    PluginBase.register_config(config)
     config.init_from_external(args.config_file)
     config.set("logging", args.logging)
-    CliManager.args_parsed(args, parser, config)
+    PluginBase.args_parsed(args, parser, args.subcommand, config)
     tlsmate = TlsMate(config=config)
     tlsmate.work_manager.run(tlsmate)
 

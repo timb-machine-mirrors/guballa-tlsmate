@@ -1,43 +1,29 @@
 # -*- coding: utf-8 -*-
-"""Module for the scan plugin
+"""Module for the version plugin
 """
 # import basic stuff
 
 # import own stuff
-from tlsmate.plugin import CliPlugin, CliManager
+from tlsmate.plugin import PluginBase, Plugin, Args, WorkerPlugin
 from tlsmate.version import __version__
 
 # import other stuff
 
 
-@CliManager.register
-class VersionPlugin(CliPlugin):
+class VersionWorker(WorkerPlugin):
+    """Worker to print the version of tlsmate.
+    """
+
+    name = "version"
+
+    def run(self):
+        print(__version__)
+
+
+@PluginBase.extend
+class PluginVersion(Plugin):
     """CLI plugin to print the version of ``tlsmate``.
     """
 
-    prio = 30
-    name = "version"
-
-    @classmethod
-    def add_subcommand(cls, subparsers):
-        """Adds a subcommand to the CLI parser object.
-
-        Arguments:
-            subparser (:obj:`argparse.Action`): the CLI subparsers object
-        """
-
-        subparsers.add_parser(cls.name, help="prints the version of tlsmate")
-
-    @classmethod
-    def args_parsed(cls, args, parser, subcommand, config):
-        """Called after the arguments have been parsed.
-
-        Arguments:
-            args: the object holding the parsed CLI arguments
-            parser: the parser object, can be used to issue consistency errors
-            subcommand (str): the subcommand selected by the user
-            config (:obj:`tlsmate.config.Configuration`): the configuration object
-        """
-
-        if subcommand == cls.name:
-            print(__version__)
+    subcommand = Args("version", help="prints the version of tlsmate")
+    workers = [VersionWorker]

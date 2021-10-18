@@ -7,7 +7,7 @@ from pathlib import Path
 # import own stuff
 from tlsmate import utils
 from tlsmate.structs import ConfigItem
-from tlsmate.plugin import WorkManager, CliPlugin
+from tlsmate.plugin import WorkManager, Plugin, Args, PluginBase
 from tlsmate.workers.compression import ScanCompression
 from tlsmate.workers.encrypt_then_mac import ScanEncryptThenMac
 from tlsmate.workers.master_secret import ScanExtendedMasterSecret
@@ -23,279 +23,171 @@ from tlsmate.workers.grease import ScanGrease
 from tlsmate.workers.ephemeral_key_reuse import ScanEphemeralKeyReuse
 from tlsmate.workers.ocsp_stapling import ScanOcspStapling
 from tlsmate.workers.downgrade import ScanDowngrade
-from tlsmate.workers.server_profile import DumpProfileWorker
+from tlsmate.workers.server_profile import DumpProfileWorker, ReadProfileWorker
 from tlsmate.workers.text_server_profile import TextProfileWorker
+from tlsmate.workers.eval_cipher_suites import ScanCipherSuites
+from tlsmate.workers.scanner_info import ScanStart, ScanEnd
+from tlsmate.workers.supported_groups import ScanSupportedGroups
+from tlsmate.workers.sig_algo import ScanSigAlgs
 
 # import other stuff
 
 
-def _group_applicability(args, config, default, options):
-    """Applies defaults to a group of boolean-option parameters
-
-    Arguments:
-        args: the object holding the parsed CLI arguments
-        config (:obj:`tlsmate.config.Configuration`): the configuration object
-        default (boolean or None): the default to apply for unspecified options
-        options (list of str): a list with the boolean-option parameter names
-
-    Returns:
-        dict: contains for each boolean-option parameter name the applicability (bool)
-    """
-
-    opts = {key: getattr(args, key) for key in options}
-    opts = {key: config.get(key) if val is None else val for key, val in opts.items()}
-
-    if default is None:
-        default = not any(opts.values())
-
-    return {key: default if val is None else val for key, val in opts.items()}
+class PluginNoPlugin(Plugin):
+    cli_args = Args(
+        "--no-plugin",
+        default=None,
+        help="disable loading external plugins. Must be the first argument.",
+        action="store_true",
+    )
 
 
-def _group_register_workers(config, workers, applicability):
-    """Register workers according to their applicability
-
-    Arguments:
-        config (:obj:`tlsmate.config.Configuration`): the configuration object
-        workers (dict): maps a worker name (str) to a worker class
-        applicability (dict): maps a a worker name (str) to its applicability (bool)
-    """
-
-    for key, val in applicability.items():
-        config.set(key, val)
-        if val:
-            WorkManager.register(workers[key])
+class PluginConfig(Plugin):
+    cli_args = Args(
+        "--config",
+        dest="config_file",
+        default=None,
+        help="ini-file to read the configuration from.",
+    )
 
 
-class CliArg(object):
-    """Class representing one CLI argument.
-
-    Arguments:
-        name (str): the cli name, e.g. "--progress"
-        attributes: keyword argumments, the same as used for parser.add_argument
-    """
-
-    def __init__(self, name, **attributes):
-        self._name = name
-        self._attributes = attributes
-
-    def add_argument(self, parser, exclude=None):
-        """Add itself as an argument to the given parser.
-
-        Arguments:
-            parser (:obj:argparse.Parser): The (sub)parser to add itself to.
-            exclude (list of str): a blacklist to check itself against
-        """
-
-        if not (exclude and self._name in exclude):
-            parser.add_argument(self._name, **self._attributes)
-
-        else:
-            dest = self._attributes.get("dest")
-            if not dest:
-                dest = self._name.lower().replace("-", "_")
-
-            if dest.startswith("__"):
-                dest = dest[2:]
-
-            default = self._attributes.get("default", None)
-            parser.set_defaults(**{dest: default})
+class PluginLogging(Plugin):
+    cli_args = Args(
+        "--logging",
+        choices=["critical", "error", "warning", "info", "debug"],
+        help="sets the logging level. Default is error.",
+        default="error",
+    )
 
 
-class BasicOptions(CliPlugin):
-    """Group of basic CLI options.
-    """
+@PluginBase.extend
+class PluginCore(Plugin):
+    plugins = [PluginNoPlugin, PluginConfig, PluginLogging]
 
-    cli_args = [
-        CliArg(
-            "--no-plugin",
-            default=None,
-            help="disable loading external plugins. Must be the first argument.",
-            action="store_true",
-        ),
-        CliArg(
-            "--port",
-            default=None,
-            help="the port number of the host [0-65535]. Defaults to 443.",
-            type=int,
-        ),
-        CliArg(
-            "--interval",
-            default=0,
-            help="the interval in milliseconds between two handshakes.",
-            type=int,
-        ),
-        CliArg(
-            "--key-log-file",
-            default=None,
-            help=(
-                "write to a key log file which can be used by wireshark to decode "
-                "encrypted traffic."
-            ),
-        ),
-        CliArg(
-            "--progress",
-            help="provides a progress indicator. Defaults to False.",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--sni",
-            type=str,
-            help=(
-                "the server name indication, i.e., the domain name of the server to "
-                "contact. If not given, the value will be taken from the host "
-                "parameter (after stripping of the port number, if present). This "
-                "parameter is useful, if the host is given as an IP address."
-            ),
-        ),
-        CliArg(
-            "host",
-            help=(
-                "the host to scan. If an IPv6 address is given, it must be enclosed in "
-                "square brackets. May optionally have the port number appended, "
-                "separated by a colon. The port defaults to 443."
-            ),
-            type=str,
-        ),
-    ]
 
-    @classmethod
-    def add_args(cls, parser, subcommand, exclude=None):
-        """Add basic arguments to a parser
-
-        Arguments:
-            parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
-        """
-
-        for arg in cls.cli_args:
-            arg.add_argument(parser, exclude)
+class PluginPort(Plugin):
+    config = ConfigItem("port", type=int, default=443)
+    cli_args = Args(
+        "--port",
+        default=None,
+        help="the port number of the host [0-65535]. Defaults to 443.",
+        type=int,
+    )
 
     @classmethod
     def args_parsed(cls, args, parser, subcommand, config):
-        """Called after the arguments have been parsed.
-
-        Arguments:
-            args: the object holding the parsed CLI arguments
-            parser: the parser object, can be used to issue consistency errors
-            subcommand (str): the subcommand selected by the user
-            config (:obj:`tlsmate.config.Configuration`): the configuration object
-        """
-
         if args.port is not None and (args.port < 0 or args.port > 0xFFFF):
             parser.error("port must be in the range [0-65535]")
-
-        config.set("host", args.host)
-        config.set("port", args.port)
-        config.set("interval", args.interval)
-        config.set("key_log_file", args.key_log_file)
-        config.set("progress", args.progress)
-        config.set("sni", args.sni)
+        super().args_parsed(args, parser, subcommand, config)
 
 
-class ServerProfileOptions(CliPlugin):
-    """Class to implement CLI arguments for server profile options.
-    """
+class PluginInterval(Plugin):
+    config = ConfigItem("interval", type=int, default=0)
+    cli_args = Args(
+        "--interval",
+        default=0,
+        help="the interval in milliseconds between two handshakes.",
+        type=int,
+    )
 
-    _DEFAULT_STYLE = Path(__file__).parent / "../styles/default.yaml"
-    _config_registered = False
 
-    cli_args = [
-        CliArg(
-            "--read-profile",
-            type=str,
-            help=(
-                "JSON/Yaml file to read the server profile from. The format will be "
-                "determined automatically."
-            ),
+class PluginKeyLogFile(Plugin):
+    config = ConfigItem("key_log_file", type=str)
+    cli_args = Args(
+        "--key-log-file",
+        default=None,
+        help=(
+            "write to a key log file which can be used by wireshark to decode "
+            "encrypted traffic."
         ),
-        CliArg(
-            "--write-profile",
-            type=str,
-            help=(
-                "writes the server profile to the given file. If no file is given, "
-                'the profile will be dumped to STDOUT (unless "--format=none" is '
-                "given)."
-            ),
+    )
+
+
+class PluginProgress(Plugin):
+    config = ConfigItem("progress", type=bool, default=False)
+    cli_args = Args(
+        "--progress",
+        help="provides a progress indicator. Defaults to False.",
+        action=utils.BooleanOptionalAction,
+    )
+
+
+class PluginSni(Plugin):
+    config = ConfigItem("sni", type=str, default=None)
+    cli_args = Args(
+        "--sni",
+        type=str,
+        help=(
+            "the server name indication, i.e., the domain name of the server to "
+            "contact. If not given, the value will be taken from the host "
+            "parameter (after stripping of the port number, if present). This "
+            "parameter is useful, if the host is given as an IP address."
         ),
-        CliArg(
-            "--format",
-            choices=["text", "html", "json", "yaml", "none"],
-            help=('the output format of the server profile. Defaults to "text".'),
-            default=None,
+    )
+
+
+class PluginHost(Plugin):
+    config = ConfigItem("host", type=str, default="localhost")
+    cli_args = Args(
+        "host",
+        help=(
+            "the host to scan. If an IPv6 address is given, it must be enclosed in "
+            "square brackets. May optionally have the port number appended, "
+            "separated by a colon. The port defaults to 443."
         ),
-        CliArg(
-            "--color",
-            help="use colored console output. Only used if --format=text is given.",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--style",
-            type=str,
-            help=(
-                "a yaml file defining the text outout and the color scheme used if "
-                "--format=text or --format=html is given. If not given, the internal "
-                "default file will be used."
-            ),
-        ),
+        type=str,
+    )
+
+
+class PluginBasicScan(Plugin):
+    plugins = [
+        PluginPort,
+        PluginInterval,
+        PluginKeyLogFile,
+        PluginProgress,
+        PluginSni,
+        PluginHost,
     ]
 
-    @classmethod
-    def register_config(cls, config):
-        """Register configs for this plugin
 
-        Arguments:
-            config (:obj:`tlsmate.config.Configuration`): the configuration object
-        """
+class PluginReadProfile(Plugin):
+    config = ConfigItem("read_profile", type=str, default=None)
+    cli_args = Args(
+        "--read-profile",
+        type=str,
+        help=(
+            "JSON/Yaml file to read the server profile from. The format will be "
+            "determined automatically."
+        ),
+    )
+    workers = [ReadProfileWorker]
 
-        if cls._config_registered:
-            return
 
-        config.register(ConfigItem("write_profile", type=str, default=None))
-        config.register(ConfigItem("read_profile", type=str, default=None))
-        config.register(ConfigItem("format", type=str, default="text"))
-        config.register(ConfigItem("color", type=bool, default=True))
-        config.register(
-            ConfigItem("style", type=str, default=str(cls._DEFAULT_STYLE.resolve()))
-        )
-        cls._config_registered = True
+class PluginWriteProfile(Plugin):
+    config = ConfigItem("write_profile", type=str, default=None)
+    cli_args = Args(
+        "--write-profile",
+        type=str,
+        help=(
+            "writes the server profile to the given file. If no file is given, "
+            'the profile will be dumped to STDOUT (unless "--format=none" is '
+            "given)."
+        ),
+    )
 
-    @classmethod
-    def add_args(cls, parser, subcommand, exclude=None):
-        """Add basic arguments for authentication to a parser
 
-        Arguments:
-            parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
-        """
-
-        group = parser.add_argument_group(
-            title="Server profile options", description=None
-        )
-        if exclude is None:
-            exclude = []
-
-        exclude.append("--read-profile")
-        for arg in cls.cli_args:
-            arg.add_argument(group, exclude)
+class PluginFormat(Plugin):
+    config = ConfigItem("format", type=str, default="text")
+    cli_args = Args(
+        "--format",
+        choices=["text", "html", "json", "yaml", "none"],
+        help=('the output format of the server profile. Defaults to "text".'),
+        default=None,
+    )
 
     @classmethod
     def args_parsed(cls, args, parser, subcommand, config):
-        """Called after the arguments have been parsed.
-
-        Arguments:
-            args: the object holding the parsed CLI arguments
-            parser: the parser object, can be used to issue consistency errors
-            subcommand (str): the subcommand selected by the user
-            config (:obj:`tlsmate.config.Configuration`): the configuration object
-        """
-
-        config.set("format", args.format)
-        config.set("write_profile", args.write_profile)
-        config.set("read_profile", args.read_profile)
-        config.set("color", args.color)
-        config.set("style", args.style)
-
-        if args.read_profile is not None:
-            WorkManager.register(ReadProfileWorker)
-
+        super().args_parsed(args, parser, subcommand, config)
         format_type = config.get("format")
         if format_type in ["text", "html"]:
             WorkManager.register(TextProfileWorker)
@@ -303,81 +195,113 @@ class ServerProfileOptions(CliPlugin):
             WorkManager.register(DumpProfileWorker)
 
 
-class X509Options(CliPlugin):
-    """Class to implement CLI arguments for X509 certificate options.
-    """
+class PluginColor(Plugin):
+    config = ConfigItem("color", type=bool, default=True)
+    cli_args = Args(
+        "--color",
+        help="use colored console output. Only used if --format=text is given.",
+        action=utils.BooleanOptionalAction,
+    )
 
-    cli_args = [
-        CliArg(
-            "--ca-certs",
-            nargs="*",
-            type=str,
-            help=(
-                "list of root-ca certificate files. Each file may contain multiple "
-                "root-CA certificates in PEM format. Certificate chains received from "
-                "the server will be validated against this set of root certificates."
-            ),
+
+class PluginStyle(Plugin):
+    _DEFAULT_STYLE = Path(__file__).parent / "../styles/default.yaml"
+    config = ConfigItem("style", type=str, default=str(_DEFAULT_STYLE.resolve()))
+    cli_args = Args(
+        "--style",
+        type=str,
+        help=(
+            "a yaml file defining the text outout and the color scheme used if "
+            "--format=text or --format=html is given. If not given, the internal "
+            "default file will be used."
         ),
-        CliArg(
-            "--client-key",
-            type=str,
-            nargs="*",
-            help=(
-                "a list of files containing the client private keys in PEM format. "
-                "Used for client authentication."
-            ),
-            default=None,
-        ),
-        CliArg(
-            "--client-chain",
-            type=str,
-            nargs="*",
-            help=(
-                "a list of files containing the certificate chain used for client "
-                "authentication in PEM format. The number of given files must be the "
-                "same than the number of given client key files. This first given "
-                "chain file corresponds to the first given client key file, and so on."
-            ),
-        ),
-        CliArg(
-            "--crl",
-            help=(
-                "download the CRL to check for the certificate revocation status. "
-                "Defaults to True."
-            ),
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--ocsp",
-            help=(
-                "query the OCSP servers for checking the certificate "
-                "revocation status. Defaults to True."
-            ),
-            action=utils.BooleanOptionalAction,
-        ),
+    )
+
+
+class PluginServerProfile(Plugin):
+    group = Args(title="Server profile options")
+    plugins = [
+        PluginReadProfile,
+        PluginWriteProfile,
+        PluginFormat,
+        PluginColor,
+        PluginStyle,
     ]
 
+
+class PluginCaCerts(Plugin):
+    config = ConfigItem("ca_certs", type="file_list")
+    cli_args = Args(
+        "--ca-certs",
+        nargs="*",
+        type=str,
+        help=(
+            "list of root-ca certificate files. Each file may contain multiple "
+            "root-CA certificates in PEM format. Certificate chains received from "
+            "the server will be validated against this set of root certificates."
+        ),
+    )
+
+
+class PluginClientKey(Plugin):
+    config = ConfigItem("client_key", type="file_list")
+    cli_args = Args(
+        "--client-key",
+        type=str,
+        nargs="*",
+        help=(
+            "a list of files containing the client private keys in PEM format. "
+            "Used for client authentication."
+        ),
+        default=None,
+    )
+
+
+class PluginClientChain(Plugin):
+    config = ConfigItem("client_chain", type="file_list")
+    cli_args = Args(
+        "--client-chain",
+        type=str,
+        nargs="*",
+        help=(
+            "a list of files containing the certificate chain used for client "
+            "authentication in PEM format. The number of given files must be the "
+            "same than the number of given client key files. This first given "
+            "chain file corresponds to the first given client key file, and so on."
+        ),
+    )
+
+
+class PluginCrl(Plugin):
+    config = ConfigItem("crl", type=bool, default=True)
+    cli_args = Args(
+        "--crl",
+        help=(
+            "download the CRL to check for the certificate revocation status. "
+            "Defaults to True."
+        ),
+        action=utils.BooleanOptionalAction,
+    )
+
+
+class PluginOcsp(Plugin):
+    config = ConfigItem("ocsp", type=bool, default=True)
+    cli_args = Args(
+        "--ocsp",
+        help=(
+            "query the OCSP servers for checking the certificate "
+            "revocation status. Defaults to True."
+        ),
+        action=utils.BooleanOptionalAction,
+    )
+
+
+class PluginX509(Plugin):
+    group = Args(title="X509 certificates options")
+    plugins = [PluginCaCerts, PluginClientKey, PluginClientChain, PluginCrl, PluginOcsp]
+
     @classmethod
-    def add_args(cls, parser, subcommand, exclude=None):
-        """Add basic arguments for authentication to a parser
-
-        Arguments:
-            parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
-        """
-
-        group = parser.add_argument_group(title="X509 certificates options")
-        for arg in cls.cli_args:
-            arg.add_argument(group, exclude)
-
-    @classmethod
-    def _args_consistency(cls, args, parser):
-        """Check the consistency of the given args which cannot be checked by argparse.
-
-        Arguments:
-            args (object): the arguments parsed as an object
-            parser (:obj:`argparse.ArgumentParser`): the parser object
-        """
-
+    def args_parsed(cls, args, parser, subcommand, config):
         if (args.client_key is not None) or (args.client_chain is not None):
             if (args.client_chain is None) or (args.client_chain is None):
                 parser.error(
@@ -390,339 +314,373 @@ class X509Options(CliPlugin):
                     "be identical"
                 )
 
-    @classmethod
-    def args_parsed(cls, args, parser, subcommand, config):
-        """Called after the arguments have been parsed.
 
-        Arguments:
-            args: the object holding the parsed CLI arguments
-            parser: the parser object, can be used to issue consistency errors
-            subcommand (str): the subcommand selected by the user
-            config (:obj:`tlsmate.config.Configuration`): the configuration object
-        """
-
-        cls._args_consistency(args, parser)
-        config.set("ca_certs", args.ca_certs)
-        config.set("client_chain", args.client_chain)
-        config.set("client_key", args.client_key)
-        config.set("crl", args.crl)
-        config.set("ocsp", args.ocsp)
+class PluginSslv2(Plugin):
+    config = ConfigItem("sslv2", type=bool, default=None)
+    cli_args = Args(
+        "--sslv2",
+        help="scan for protocol version SSLv2",
+        action=utils.BooleanOptionalAction,
+    )
 
 
-class TlsVersions(CliPlugin):
-    """Class to implement CLI arguments for the TLS protocol versions.
-    """
+class PluginSslv3(Plugin):
+    config = ConfigItem("sslv3", type=bool, default=None)
+    cli_args = Args(
+        "--sslv3",
+        help="scan for protocol version SSLv3",
+        action=utils.BooleanOptionalAction,
+    )
 
-    cli_args = [
-        CliArg(
-            "--sslv2",
-            help="scan for protocol version SSLv2",
-            action=utils.BooleanOptionalAction,
+
+class PluginTls10(Plugin):
+    config = ConfigItem("tls10", type=bool, default=None)
+    cli_args = Args(
+        "--tls10",
+        help="scan for protocol version TLS1.0",
+        action=utils.BooleanOptionalAction,
+    )
+
+
+class PluginTls11(Plugin):
+    config = ConfigItem("tls11", type=bool, default=None)
+    cli_args = Args(
+        "--tls11",
+        help="scan for protocol version TLS1.1",
+        action=utils.BooleanOptionalAction,
+    )
+
+
+class PluginTls12(Plugin):
+    config = ConfigItem("tls12", type=bool, default=None)
+    cli_args = Args(
+        "--tls12",
+        help="scan for protocol version TLS1.2",
+        action=utils.BooleanOptionalAction,
+    )
+
+
+class PluginTls13(Plugin):
+    config = ConfigItem("tls13", type=bool, default=None)
+    cli_args = Args(
+        "--tls13",
+        help="scan for protocol version TLS1.3",
+        action=utils.BooleanOptionalAction,
+    )
+
+
+class PluginTlsVersions(Plugin):
+    group = Args(
+        title="TLS protocol versions",
+        description=(
+            "The following options specify the TLS protocol versions to scan. "
+            "By default all versions will be scanned, but if one version is "
+            "explicitly set to true, all other versions will be defaulted to false."
         ),
-        CliArg(
-            "--sslv3",
-            help="scan for protocol version SSLv3",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--tls10",
-            help="scan for protocol version TLS1.0",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--tls11",
-            help="scan for protocol version TLS1.1",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--tls12",
-            help="scan for protocol version TLS1.2",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--tls13",
-            help="scan for protocol version TLS1.3",
-            action=utils.BooleanOptionalAction,
-        ),
+    )
+    plugins = [
+        PluginSslv2,
+        PluginSslv3,
+        PluginTls10,
+        PluginTls11,
+        PluginTls12,
+        PluginTls13,
     ]
-    _versions = [arg._name[2:] for arg in cli_args]
-
-    @classmethod
-    def register_config(cls, config):
-        """Register configs for this plugin
-
-        Arguments:
-            config (:obj:`tlsmate.config.Configuration`): the configuration object
-        """
-
-        for vers in cls._versions:
-            config.register(ConfigItem(vers, type=bool, default=None))
-
-    @classmethod
-    def add_args(cls, parser, subcommand, exclude=None):
-        """Add basic arguments for TLS versions to a parser
-
-        Arguments:
-            parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
-        """
-
-        group = parser.add_argument_group(
-            title="TLS protocol versions",
-            description=(
-                "The following options specify the TLS protocol versions to scan. "
-                "By default all versions will be scanned, but if one version is "
-                "explicitly set to true, all other versions will be defaulted to false."
-            ),
-        )
-        for arg in cls.cli_args:
-            arg.add_argument(group, exclude)
 
     @classmethod
     def args_parsed(cls, args, parser, subcommand, config):
-        """Called after the arguments have been parsed.
+        super().args_parsed(args, parser, subcommand, config)
+        default = all([config.get(vers.config.name) is None for vers in cls.plugins])
+        enabled = False
+        for vers in cls.plugins:
+            val = config.get(vers.config.name)
+            if val is None:
+                val = default
+                config.set(vers.config.name, default)
+            enabled = enabled or val
 
-        Arguments:
-            args: the object holding the parsed CLI arguments
-            parser: the parser object, can be used to issue consistency errors
-            subcommand (str): the subcommand selected by the user
-            config (:obj:`tlsmate.config.Configuration`): the configuration object
-        """
-
-        versions = _group_applicability(args, config, None, cls._versions)
-        _ = [config.set(key, val) for key, val in versions.items()]
-        if not any([config.get(key) for key in cls._versions]):
+        if not enabled:
             parser.error("at least one TLS version must be given")
 
 
-class Features(CliPlugin):
-    """Class to implement CLI arguments for feature options.
-    """
+class PluginFeatures(Plugin):
+    config = ConfigItem("features", type=bool, default=True)
+    cli_args = Args(
+        "--features",
+        help=(
+            "specifies whether to include or exclude all features in the scan. "
+            "Per feature this behavior can be overruled by its specific command "
+            "line option below. "
+            "Defaults to true if no specific feature is enabled, otherwise it "
+            "defaults to false."
+        ),
+        action=utils.BooleanOptionalAction,
+    )
 
-    cli_args = [
-        CliArg(
-            "--features",
-            help=(
-                "specifies whether to include or exclude all features in the scan. "
-                "Per feature this behavior can be overruled by its specific command "
-                "line option below. "
-                "Defaults to true if no specific feature is enabled, otherwise it "
-                "defaults to false."
-            ),
-            action=utils.BooleanOptionalAction,
+
+class PluginCompression(Plugin):
+    config = ConfigItem("compression", type=bool, default=None)
+    cli_args = Args(
+        "--compression",
+        help="scan for compression support",
+        action=utils.BooleanOptionalAction,
+    )
+    workers = [ScanCompression]
+
+
+class PluginDhGroup(Plugin):
+    config = ConfigItem("dh_groups", type=bool, default=None)
+    cli_args = Args(
+        "--dh-groups",
+        help="scan for finite field DH groups (only TL1.0 - TLS1.2)",
+        action=utils.BooleanOptionalAction,
+    )
+    workers = [ScanDhGroups]
+
+
+class PluginEncThenMac(Plugin):
+    config = ConfigItem("encrypt_then_mac", type=bool, default=None)
+    cli_args = Args(
+        "--encrypt-then-mac",
+        help="scan for encrypt-then-mac support (only TL1.0 - TLS1.2)",
+        action=utils.BooleanOptionalAction,
+    )
+    workers = [ScanEncryptThenMac]
+
+
+class PluginEphemKeyReuse(Plugin):
+    config = ConfigItem("ephemeral_key_reuse", type=bool, default=None)
+    cli_args = Args(
+        "--ephemeral-key-reuse",
+        help="scan for reuse of ephemeral keys",
+        action=utils.BooleanOptionalAction,
+    )
+    workers = [ScanEphemeralKeyReuse]
+
+
+class PluginExtMasterSecret(Plugin):
+    config = ConfigItem("ext_master_secret", type=bool, default=None)
+    cli_args = Args(
+        "--ext-master-secret",
+        help="scan for extended master secret support (only TL1.0 - TLS1.2)",
+        action=utils.BooleanOptionalAction,
+    )
+    workers = [ScanExtendedMasterSecret]
+
+
+class PluginFallback(Plugin):
+    config = ConfigItem("fallback", type=bool, default=None)
+    cli_args = Args(
+        "--fallback",
+        help="scan for downgrade attack prevention (TLS_FALLBACK_SCSV)",
+        action=utils.BooleanOptionalAction,
+    )
+    workers = [ScanDowngrade]
+
+
+class PluginGrease(Plugin):
+    config = ConfigItem("grease", type=bool, default=None)
+    cli_args = Args(
+        "--grease",
+        help="scan for unknown parameter tolerance",
+        action=utils.BooleanOptionalAction,
+    )
+    workers = [ScanGrease]
+
+
+class PluginHeartbeat(Plugin):
+    config = ConfigItem("heartbeat", type=bool, default=None)
+    cli_args = Args(
+        "--heartbeat",
+        help="scan for heartbeat support",
+        action=utils.BooleanOptionalAction,
+    )
+    workers = [ScanHeartbeat]
+
+
+class PluginOcspStapling(Plugin):
+    config = ConfigItem("ocsp_stapling", type=bool, default=None)
+    cli_args = Args(
+        "--ocsp-stapling",
+        help="scan for OCSP stapling support",
+        action=utils.BooleanOptionalAction,
+    )
+    workers = [ScanOcspStapling]
+
+
+class PluginRenegotiation(Plugin):
+    config = ConfigItem("renegotiation", type=bool, default=None)
+    cli_args = Args(
+        "--renegotiation",
+        help="scan for renegotiation support (SSL30 - TLS1.2)",
+        action=utils.BooleanOptionalAction,
+    )
+    workers = [ScanRenegotiation]
+
+
+class PluginResumption(Plugin):
+    config = ConfigItem("resumption", type=bool, default=None)
+    cli_args = Args(
+        "--resumption",
+        help=(
+            "scan for resumption support (SSL30 - TLS1.2) and for PSK support (TLS1.3)"
         ),
-        CliArg(
-            "--compression",
-            help="scan for compression support",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--dh-groups",
-            help="scan for finite field DH groups (only TL1.0 - TLS1.2)",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--encrypt-then-mac",
-            help="scan for encrypt-then-mac support (only TL1.0 - TLS1.2)",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--ephemeral-key-reuse",
-            help="scan for reuse of ephemeral keys",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--ext-master-secret",
-            help="scan for extended master secret support (only TL1.0 - TLS1.2)",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--fallback",
-            help="scan for downgrade attack prevention (TLS_FALLBACK_SCSV)",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--grease",
-            help="scan for unknown parameter tolerance",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--heartbeat",
-            help="scan for heartbeat support",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--ocsp-stapling",
-            help="scan for OCSP stapling support",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--renegotiation",
-            help="scan for renegotiation support (SSL30 - TLS1.2)",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--resumption",
-            help=(
-                "scan for resumption support (SSL30 - TLS1.2) and for PSK support "
-                "(TLS1.3)"
-            ),
-            action=utils.BooleanOptionalAction,
-        ),
+        action=utils.BooleanOptionalAction,
+    )
+    workers = [ScanResumption]
+
+
+class PluginFeatureGroup(Plugin):
+    group = Args(title="Feature to include into the scan")
+    plugins = [
+        PluginFeatures,
+        PluginCompression,
+        PluginDhGroup,
+        PluginEncThenMac,
+        PluginEphemKeyReuse,
+        PluginExtMasterSecret,
+        PluginFallback,
+        PluginGrease,
+        PluginHeartbeat,
+        PluginOcspStapling,
+        PluginRenegotiation,
+        PluginResumption,
     ]
-
-    _feature_workers = {
-        "dh_groups": ScanDhGroups,
-        "compression": ScanCompression,
-        "encrypt_then_mac": ScanEncryptThenMac,
-        "ext_master_secret": ScanExtendedMasterSecret,
-        "renegotiation": ScanRenegotiation,
-        "resumption": ScanResumption,
-        "heartbeat": ScanHeartbeat,
-        "ephemeral_key_reuse": ScanEphemeralKeyReuse,
-        "ocsp_stapling": ScanOcspStapling,
-        "fallback": ScanDowngrade,
-        "grease": ScanGrease,
-    }
-
-    @classmethod
-    def register_config(cls, config):
-        """Register configs for this plugin
-
-        Arguments:
-            config (:obj:`tlsmate.config.Configuration`): the configuration object
-        """
-
-        for feature in cls._feature_workers.keys():
-            config.register(ConfigItem(feature, type=bool, default=None))
-
-    @classmethod
-    def add_args(cls, parser, subcommand, exclude=None):
-        """Add arguments for using different workers to a parser
-
-        Arguments:
-            parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
-        """
-
-        group = parser.add_argument_group(title="Feature to include into the scan",)
-        for arg in cls.cli_args:
-            arg.add_argument(group, exclude)
 
     @classmethod
     def args_parsed(cls, args, parser, subcommand, config):
-        """Called after the arguments have been parsed.
+        super().args_parsed(args, parser, subcommand, config)
 
-        Arguments:
-            args: the object holding the parsed CLI arguments
-            parser: the parser object, can be used to issue consistency errors
-            subcommand (str): the subcommand selected by the user
-            config (:obj:`tlsmate.config.Configuration`): the configuration object
-        """
+        plugins = cls.plugins[1:]
+        default = config.get(PluginFeatures.config.name)
+        if default is None:
+            default = not any(config.get(feat.config.name) for feat in plugins)
 
-        features = _group_applicability(
-            args, config, args.features, cls._feature_workers.keys()
-        )
-        _group_register_workers(config, cls._feature_workers, features)
+        for feat in plugins:
+            val = config.get(feat.config.name)
+            if val is None:
+                config.set(feat.config.name, default)
+                if default and feat.workers:
+                    for worker in feat.workers:
+                        WorkManager.register(worker)
 
 
-class Vulnerabilities(CliPlugin):
-    """Class to implement CLI arguments for vulnerabilities.
-    """
+class PluginVulnerabilities(Plugin):
+    config = ConfigItem("vulnerabilities", type=bool, default=True)
+    cli_args = Args(
+        "--vulnerabilities",
+        help=(
+            "specifies whether to include or exclude all vulnerabilities in the "
+            "scan. Per vulnerability this behavior can be overruled by its "
+            "specific command line option below. Defaults to true if no specific "
+            "vulnerability is enabled, otherwise it defaults to false."
+        ),
+        action=utils.BooleanOptionalAction,
+    )
 
-    cli_args = [
-        CliArg(
-            "--vulnerabilities",
-            help=(
-                "specifies whether to include or exclude all vulnerabilities in the "
-                "scan. Per vulnerability this behavior can be overruled by its "
-                "specific command line option below. Defaults to true if no specific "
-                "vulnerability is enabled, otherwise it defaults to false."
-            ),
-            action=utils.BooleanOptionalAction,
+
+class PluginCcsInjection(Plugin):
+    config = ConfigItem("ccs_injection", type=bool, default=None)
+    cli_args = Args(
+        "--ccs-injection",
+        help="scan for vulnerability CCS-injection (only TL1.0 - TLS1.2)",
+        action=utils.BooleanOptionalAction,
+    )
+    workers = [ScanCcsInjection]
+
+
+class PluginHeartbleed(Plugin):
+    config = ConfigItem("heartbleed", type=bool, default=None)
+    cli_args = Args(
+        "--heartbleed",
+        help="scan for the Heartbleed vulnerability CVE-2014-0160",
+        action=utils.BooleanOptionalAction,
+    )
+    workers = [ScanHeartbleed]
+
+
+class PluginPaddingOracle(Plugin):
+    config = ConfigItem("padding_oracle", type=bool, default=None)
+    cli_args = Args(
+        "--padding-oracle",
+        help="scan for CBC padding oracles",
+        action=utils.BooleanOptionalAction,
+    )
+    workers = [ScanPaddingOracle]
+
+
+class PluginPaddingOracleAccuracy(Plugin):
+    config = ConfigItem("oracle_accuracy", type=str, default="medium")
+    cli_args = Args(
+        "--oracle-accuracy",
+        help=(
+            "the accuracy of the scan for CBC padding oracles. "
+            "low: scan application data records for each TLS version with minimal "
+            "set of cipher suites (fastest). "
+            "medium: scan application data records for each TLS version and cipher "
+            "suite combination (slower). "
+            "high: scan application data, handshake and alert records for each TLS "
+            "version and cipher suite combination (slowest). "
+            "Default is medium."
         ),
-        CliArg(
-            "--ccs-injection",
-            help="scan for vulnerability CCS-injection (only TL1.0 - TLS1.2)",
-            action=utils.BooleanOptionalAction,
+        choices=["low", "medium", "high"],
+        default="medium",
+    )
+
+
+class PluginRobot(Plugin):
+    config = ConfigItem("robot", type=bool, default=None)
+    cli_args = Args(
+        "--robot",
+        help=(
+            "scan for ROBOT vulnerability CVE-2017-13099, etc. (only TL1.0 - TLS1.2)"
         ),
-        CliArg(
-            "--heartbleed",
-            help="scan for the Heartbleed vulnerability CVE-2014-0160",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--padding-oracle",
-            help="scan for CBC padding oracles",
-            action=utils.BooleanOptionalAction,
-        ),
-        CliArg(
-            "--oracle-accuracy",
-            help=(
-                "the accuracy of the scan for CBC padding oracles. "
-                "low: scan application data records for each TLS version with minimal "
-                "set of cipher suites (fastest). "
-                "medium: scan application data records for each TLS version and cipher "
-                "suite combination (slower). "
-                "high: scan application data, handshake and alert records for each TLS "
-                "version and cipher suite combination (slowest). "
-                "Default is medium."
-            ),
-            choices=["low", "medium", "high"],
-            default="medium",
-        ),
-        CliArg(
-            "--robot",
-            help=(
-                "scan for ROBOT vulnerability CVE-2017-13099, etc. (only TL1.0 "
-                "- TLS1.2)"
-            ),
-            action=utils.BooleanOptionalAction,
-        ),
+        action=utils.BooleanOptionalAction,
+    )
+    workers = [ScanRobot]
+
+
+class PluginVulnerabilityGroup(Plugin):
+    group = Args(title="Vulnerabilities to scan for")
+    plugins = [
+        PluginVulnerabilities,
+        PluginCcsInjection,
+        PluginHeartbleed,
+        PluginPaddingOracle,
+        PluginPaddingOracleAccuracy,
+        PluginRobot,
     ]
-    _vulnerability_workers = {
-        "ccs_injection": ScanCcsInjection,
-        "robot": ScanRobot,
-        "heartbleed": ScanHeartbleed,
-        "padding_oracle": ScanPaddingOracle,
-    }
-
-    @classmethod
-    def register_config(cls, config):
-        """Register configs for this plugin
-
-        Arguments:
-            config (:obj:`tlsmate.config.Configuration`): the configuration object
-        """
-
-        for vulnerability in cls._vulnerability_workers.keys():
-            config.register(ConfigItem(vulnerability, type=bool, default=None))
-
-        config.register(ConfigItem("oracle_accuracy", type=str, default="medium"))
-
-    @classmethod
-    def add_args(cls, parser, subcommand, exclude=None):
-        """Add arguments for vulnerabilities to a parser
-
-        Arguments:
-            parser (:obj:argparse.Parser): The (sub)parser to add arguments to.
-        """
-        group = parser.add_argument_group(title="Vulnerabilities to scan for")
-        for arg in cls.cli_args:
-            arg.add_argument(group, exclude)
 
     @classmethod
     def args_parsed(cls, args, parser, subcommand, config):
-        """Called after the arguments have been parsed.
+        super().args_parsed(args, parser, subcommand, config)
 
-        Arguments:
-            args: the object holding the parsed CLI arguments
-            parser: the parser object, can be used to issue consistency errors
-            subcommand (str): the subcommand selected by the user
-            config (:obj:`tlsmate.config.Configuration`): the configuration object
-        """
+        plugins = cls.plugins[:]
+        plugins.remove(PluginVulnerabilities)
+        plugins.remove(PluginPaddingOracleAccuracy)
 
-        vulns = _group_applicability(
-            args, config, args.vulnerabilities, cls._vulnerability_workers.keys(),
-        )
-        _group_register_workers(config, cls._vulnerability_workers, vulns)
+        default = config.get(PluginVulnerabilities.config.name)
+        if default is None:
+            default = not any(config.get(vuln.config.name) for vuln in plugins)
 
-        config.set("oracle_accuracy", args.oracle_accuracy)
+        for vuln in plugins:
+            val = config.get(vuln.config.name)
+            if val is None:
+                config.set(vuln.config.name, default)
+                if default and vuln.workers:
+                    for worker in vuln.workers:
+                        WorkManager.register(worker)
+
+
+@PluginBase.extend
+class PluginScan(Plugin):
+    subcommand = Args("scan", help="performs a TLS server scan")
+    plugins = [
+        PluginBasicScan,
+        PluginX509,
+        PluginTlsVersions,
+        PluginFeatureGroup,
+        PluginVulnerabilityGroup,
+        PluginServerProfile,
+    ]
+    workers = [ScanStart, ScanCipherSuites, ScanSupportedGroups, ScanSigAlgs, ScanEnd]

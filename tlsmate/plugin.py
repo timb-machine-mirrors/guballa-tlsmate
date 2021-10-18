@@ -11,185 +11,95 @@ import sys
 # import other stuff
 
 
-class CliPlugin(metaclass=abc.ABCMeta):
-    """Base abstract class for a plugin
+class Args(object):
+    def __init__(self, *args, **kwargs):
+        self.arg = args[0] if args else None
+        self.kwargs = kwargs
 
-    Attributes:
-        name (str): The unique name of the plugin, used to avoid multiple registrations
-            of the same CLI plugin.
-        prio (int): The prio determines the sequence of the plugins. It is only
-            relevant for displaying the command help with ``--help``: The sequence
-            of parameters in the help is determined according to the prio of the CLI
-            plugin.
-    """
 
-    name = None
-    prio = 50
-
-    @classmethod
-    def register_config(cls, config):
-        """A callback method which can be used to extend ``tlsmate``'s configuration
-
-        Arguments:
-            config (:obj:`tlsmate.config.Configuration`): the configuration object
-        """
-
-        return
+class Plugin(metaclass=abc.ABCMeta):
+    config = None
+    group = None
+    subcommand = None
+    cli_args = None
+    plugins = None
+    workers = None
+    _config_registered = False
 
     @classmethod
-    def add_subcommand(cls, subparsers):
-        """Adds a subcommand to the CLI parser object.
+    def args_name(cls):
+        if "dest" in cls.cli_args.kwargs:
+            return cls.cli_args.kwargs["dest"]
 
-        Arguments:
-            subparser (:obj:`argparse.Action`): the CLI subparsers object
-        """
+        name = cls.cli_args.arg
+        if name.startswith("--"):
+            name = name[2:]
 
-        return
-
-    @classmethod
-    def add_args(cls, parser, subcommand):
-        """A callback method used to add arguments to the CLI parser object.
-
-        This method is called to allow the CLI plugin to add additional command line
-        argument to the parser.
-
-        Arguments:
-            parser (:obj:`argparse.Parser`): the CLI parser object
-            subcommand (str): the subcommand for which arguments can be added. If None,
-                the global arguments (valid for all subcommands) can be added.
-        """
-
-        return
+        return name.replace("-", "_")
 
     @classmethod
-    def args_parsed(cls, args, parser, subcommand, config):
-        """A callback method called after the arguments have been parsed.
-
-        This is the point where the CLI plugin evaluates the given command line
-        arguments, adapts the configuration object accordingly and registers
-        the workers accordingly.
-
-        Arguments:
-            args: the object holding the parsed CLI arguments
-            parser (:obj:`argparse.Parser`): the parser object, can be used to issue
-                consistency errors
-            subcommand (str): the subcommand that was given
-            config (:obj:`tlsmate.config.Configuration`): the configuration object
-        """
-
-        return
-
-
-class CliManager(object):
-    """A static class which manages the CLI plugins.
-
-    CLI plugins are mainly used to extend the CLI and to register workers based on the
-    given command line options. The CliManager takes care of integrating the
-    registered CLI plugins accordingly.
-    """
-
-    _plugins = {}
-    _sorted_plugins = []
-    _cli_names = []
-
-    @classmethod
-    def reset(cls):
-        """Method to cleanly initialize this class
-        """
-        cls._plugins = {}
-        cls._sorted_plugins = []
-
-    @classmethod
-    def register(cls, plugin):
-        """Register a class derived from :class:`CliPlugin` as a plugin.
-
-        Typically be used as a class decorator.
-
-        Arguments:
-            plugin (:class:`CliPlugin`): The class to register
-
-        Returns:
-            :class:`CliPlugin`: the plugin class from the arguments
-
-        Raises:
-            ValueError: If there is already another plugin registered under the
-                same name.
-        """
-
-        if plugin.name in cls._plugins:
-            raise ValueError(
-                f"Another CLI plugin is already registered under the name "
-                f'"{plugin.name}"'
-            )
-
-        cls._plugins[plugin.name] = plugin
+    def extend(cls, plugin):
+        if cls.plugins is None:
+            cls.plugins = []
+        cls.plugins.append(plugin)
         return plugin
 
     @classmethod
-    def extend_parser(cls, parser):
-        """Adds the command line options for all registered CLI plugins.
+    def extend_parser(cls, parser, subparsers):
+        if cls.cli_args:
+            parser.add_argument(cls.cli_args.arg, **cls.cli_args.kwargs)
 
-        At this point the CLI plugin classes are instantiated as well.
+        elif cls.subcommand:
+            parser = subparsers.add_parser(cls.subcommand.arg, **cls.subcommand.kwargs)
 
-        Arguments:
-            parser (:obj:`argparse.Parser`): the parser object to add the arguments to.
-        """
+        elif cls.group:
+            parser = parser.add_argument_group(**cls.group.kwargs)
 
-        # required=True supported from Python3.7 on. Don't use it,
-        # and implement a consitency check
-        subparsers = parser.add_subparsers(title="commands", dest="subcommand")
-
-        cls._sorted_plugins = sorted(cls._plugins.values(), key=lambda x: x.prio)
-        for plugin_cls in cls._sorted_plugins:
-            plugin_cls.add_subcommand(subparsers)
-
-        for plugin_cls in cls._sorted_plugins:
-            plugin_cls.add_args(parser, subcommand=None)
-            for subcommand, subparser in subparsers.choices.items():
-                plugin_cls.add_args(subparser, subcommand=subcommand)
+        if cls.plugins is not None:
+            for plugin in cls.plugins:
+                plugin.extend_parser(parser, subparsers)
 
     @classmethod
     def register_config(cls, config):
-        """Extend the configuration by all registered CLI plugins.
+        if cls._config_registered:
+            return
 
-        Arguments:
-            config (:obj:`tlsmate.config.Configuration`): The configuration that is to
-                be extended.
-        """
-        for plugin_cls in cls._sorted_plugins:
-            plugin_cls.register_config(config)
+        cls._config_registered = True
+        if cls.config:
+            config.register(cls.config)
+
+        if cls.plugins:
+            for plugin in cls.plugins:
+                plugin.register_config(config)
 
     @classmethod
-    def args_parsed(cls, args, parser, config):
-        """Call the callbacks for all registered CLI plugins.
+    def args_parsed(cls, args, parser, subcommand, config):
+        if cls.subcommand and cls.subcommand.arg != subcommand:
+            return
 
-        This method will be called after the CLI arguments have been parsed. Now
-        the plugins can perform consistency checks on their CLI options, and they can
-        decide which workers are to be registered.
+        register_workers = False
+        if cls.cli_args and cls.config:
+            val = getattr(args, cls.args_name())
+            if val is not None:
+                config.set(cls.config.name, val)
 
-        Arguments:
-            args: the object holding the parsed CLI arguments
-            parser (:obj:`argparse.Parser`): the CLI parser object
-            config (:obj:`tlsmate.config.Configuration`): the configuration object
-        """
+        if cls.config:
+            register_workers = cls.config.type not in [None, False]
 
-        if args.subcommand is None:
-            parser.error("Subcommand is mandatory")
+        elif cls.subcommand:
+            register_workers = True
 
-        for plugin_cls in cls._sorted_plugins:
-            plugin_cls.args_parsed(args, parser, args.subcommand, config)
+        if register_workers and cls.workers is not None:
+            for worker in cls.workers:
+                WorkManager.register(worker)
+
+        if cls.plugins is not None:
+            for plugin in cls.plugins:
+                plugin.args_parsed(args, parser, subcommand, config)
 
 
-def register_cli_plugin(plugin):
-    """Alternative decorator to register CLI plugins.
-
-    Might be removed in the future.
-
-    Arguments:
-        plugin (:class:`CliPlugin`): The class to register
-    """
-    CliManager.register(plugin)
-    return plugin
+class PluginBase(Plugin):
+    pass
 
 
 class WorkerPlugin(metaclass=abc.ABCMeta):
@@ -275,16 +185,3 @@ class WorkManager(object):
                 logging.debug(f"starting worker {cls.name}")
                 cls(tlsmate).run()
                 logging.debug(f"worker {cls.name} finished")
-
-
-def register_worker(worker_class):
-    """Alternative decorator to register workers.
-
-    Might be removed in the future.
-
-    Arguments:
-        worker_class (:class:`WorkerPlugin`): A worker plugin class to be registered.
-    """
-
-    WorkManager.register(worker_class)
-    return worker_class
