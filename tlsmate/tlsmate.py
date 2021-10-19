@@ -14,7 +14,7 @@ from tlsmate.config import Configuration
 from tlsmate.cert import Certificate
 from tlsmate.crl_manager import CrlManager
 from tlsmate.trust_store import TrustStore
-from tlsmate.plugin import WorkManager
+# from tlsmate.plugin import WorkManager
 from tlsmate.key_logging import KeyLogger
 from tlsmate import utils
 
@@ -101,4 +101,4 @@ class TlsMate(object):
                 self.client_auth.deserialize_key_chain(key_chain)
 
         self.client = Client(tlsmate=self)
-        self.work_manager = WorkManager()
+        # self.work_manager = WorkManager()

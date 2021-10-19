@@ -4,7 +4,7 @@
 # import basic stuff
 
 # import own stuff
-from tlsmate.plugin import PluginBase, Plugin, Args, WorkerPlugin
+from tlsmate.plugin import BaseCommand, Plugin, Args, WorkerPlugin
 from tlsmate.version import __version__
 
 # import other stuff
@@ -20,8 +20,8 @@ class VersionWorker(WorkerPlugin):
         print(__version__)
 
 
-@PluginBase.extend
-class PluginVersion(Plugin):
+@BaseCommand.extend
+class SubcommandVersion(Plugin):
     """CLI plugin to print the version of ``tlsmate``.
     """
 

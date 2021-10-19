@@ -24,7 +24,6 @@ class Plugin(metaclass=abc.ABCMeta):
     cli_args = None
     plugins = None
     workers = None
-    _config_registered = False
 
     @classmethod
     def args_name(cls):
@@ -41,6 +40,7 @@ class Plugin(metaclass=abc.ABCMeta):
     def extend(cls, plugin):
         if cls.plugins is None:
             cls.plugins = []
+
         cls.plugins.append(plugin)
         return plugin
 
@@ -61,10 +61,6 @@ class Plugin(metaclass=abc.ABCMeta):
 
     @classmethod
     def register_config(cls, config):
-        if cls._config_registered:
-            return
-
-        cls._config_registered = True
         if cls.config:
             config.register(cls.config)
 
@@ -84,7 +80,7 @@ class Plugin(metaclass=abc.ABCMeta):
                 config.set(cls.config.name, val)
 
         if cls.config:
-            register_workers = cls.config.type not in [None, False]
+            register_workers = config.get(cls.config.name) not in [None, False]
 
         elif cls.subcommand:
             register_workers = True
@@ -98,8 +94,35 @@ class Plugin(metaclass=abc.ABCMeta):
                 plugin.args_parsed(args, parser, subcommand, config)
 
 
-class PluginBase(Plugin):
-    pass
+class ArgNoPlugin(Plugin):
+    cli_args = Args(
+        "--no-plugin",
+        default=None,
+        help="disable loading external plugins. Must be the first argument.",
+        action="store_true",
+    )
+
+
+class ArgConfig(Plugin):
+    cli_args = Args(
+        "--config",
+        dest="config_file",
+        default=None,
+        help="ini-file to read the configuration from.",
+    )
+
+
+class ArgLogging(Plugin):
+    cli_args = Args(
+        "--logging",
+        choices=["critical", "error", "warning", "info", "debug"],
+        help="sets the logging level. Default is error.",
+        default="error",
+    )
+
+
+class BaseCommand(Plugin):
+    plugins = [ArgNoPlugin, ArgConfig, ArgLogging]
 
 
 class WorkerPlugin(metaclass=abc.ABCMeta):
@@ -146,10 +169,19 @@ class WorkManager(object):
     priority by calling their run method.
     """
 
-    _prio_pool = {}
+    _instance = None
+
+    def __init__(self):
+        WorkManager._instance = self
+        self._prio_pool = {}
+
+
+    def _register(self, worker_class):
+        self._prio_pool.setdefault(worker_class.prio, [])
+        self._prio_pool[worker_class.prio].append(worker_class)
 
     @classmethod
-    def register(self, worker_class):
+    def register(cls, worker_class):
         """Register a worker plugin class.
 
         Can be used as a decorator.
@@ -161,9 +193,9 @@ class WorkManager(object):
             :class:`WorkerPlugin`: the worker class passed as argument
         """
 
-        self._prio_pool.setdefault(worker_class.prio, [])
-        self._prio_pool[worker_class.prio].append(worker_class)
+        cls._instance._register(worker_class)
         return worker_class
+
 
     def run(self, tlsmate):
         """Function to actually start the work manager.

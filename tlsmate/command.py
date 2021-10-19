@@ -10,8 +10,9 @@ import sys
 # import own stuff
 from tlsmate.config import Configuration
 from tlsmate.tlsmate import TlsMate
-from tlsmate.plugin import PluginBase
+from tlsmate.plugin import BaseCommand
 from tlsmate import utils
+from tlsmate.plugin import WorkManager
 
 # import other stuff
 
@@ -31,7 +32,7 @@ def build_parser():
         )
     )
     subparsers = parser.add_subparsers(title="commands", dest="subcommand")
-    PluginBase.extend_parser(parser, subparsers)
+    BaseCommand.extend_parser(parser, subparsers)
     return parser
 
 
@@ -48,12 +49,13 @@ def main():
     utils.set_logging(args.logging)
 
     config = Configuration()
-    PluginBase.register_config(config)
+    BaseCommand.register_config(config)
     config.init_from_external(args.config_file)
     config.set("logging", args.logging)
-    PluginBase.args_parsed(args, parser, args.subcommand, config)
+    work_manager = WorkManager()
+    BaseCommand.args_parsed(args, parser, args.subcommand, config)
     tlsmate = TlsMate(config=config)
-    tlsmate.work_manager.run(tlsmate)
+    work_manager.run(tlsmate)
 
 
 # And now load the plugins which are shipped by default with tlsmate...
