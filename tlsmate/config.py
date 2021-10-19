@@ -185,7 +185,7 @@ class Configuration(object):
             if config_item != self._descr[name]:
                 raise ValueError(
                     f'configuration setting "{name}" already defined with '
-                    f'different properties'
+                    f"different properties"
                 )
         self._descr[name] = config_item
         self._config[name] = config_item.default

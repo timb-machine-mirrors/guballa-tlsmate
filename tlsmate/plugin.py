@@ -175,7 +175,6 @@ class WorkManager(object):
         WorkManager._instance = self
         self._prio_pool = {}
 
-
     def _register(self, worker_class):
         self._prio_pool.setdefault(worker_class.prio, [])
         self._prio_pool[worker_class.prio].append(worker_class)
@@ -195,7 +194,6 @@ class WorkManager(object):
 
         cls._instance._register(worker_class)
         return worker_class
-
 
     def run(self, tlsmate):
         """Function to actually start the work manager.
