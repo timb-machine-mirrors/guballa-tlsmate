@@ -2,7 +2,6 @@
 """Module containing the CLI implementation
 """
 # import basic stuff
-import argparse
 import importlib
 import pkgutil
 import sys
@@ -24,16 +23,7 @@ def build_parser():
         :obj:`argparse.ArgumentParser`: the parser object as created with argparse
     """
 
-    parser = argparse.ArgumentParser(
-        description=(
-            "tlsmate is an application for testing and analyzing TLS servers. "
-            "Test scenarios can be defined in a simple way with great flexibility. "
-            "A TLS server configuration and vulnarability scan is built in."
-        )
-    )
-    subparsers = parser.add_subparsers(title="commands", dest="subcommand")
-    BaseCommand.extend_parser(parser, subparsers)
-    return parser
+    return BaseCommand.create_parser()
 
 
 def main():
@@ -42,8 +32,6 @@ def main():
 
     parser = build_parser()
     args = parser.parse_args()
-    if args.subcommand is None:
-        parser.error("Subcommand is mandatory")
 
     # logging must be setup before the first log is generated.
     utils.set_logging(args.logging)
@@ -53,7 +41,7 @@ def main():
     config.init_from_external(args.config_file)
     config.set("logging", args.logging)
     work_manager = WorkManager()
-    BaseCommand.args_parsed(args, parser, args.subcommand, config)
+    BaseCommand.args_parsed(args, parser, None, config)
     tlsmate = TlsMate(config=config)
     work_manager.run(tlsmate)
 

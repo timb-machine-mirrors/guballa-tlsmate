@@ -5,6 +5,7 @@
 import logging
 import abc
 import sys
+import argparse
 
 # import own stuff
 
@@ -123,6 +124,25 @@ class ArgLogging(Plugin):
 
 class BaseCommand(Plugin):
     plugins = [ArgNoPlugin, ArgConfig, ArgLogging]
+
+    @classmethod
+    def create_parser(cls):
+        parser = argparse.ArgumentParser(
+            description=(
+                "tlsmate is an application for testing and analyzing TLS servers. "
+                "Test scenarios can be defined in a simple way with great flexibility. "
+                "A TLS server configuration and vulnarability scan is built in."
+            )
+        )
+        subparsers = parser.add_subparsers(title="commands", dest="subcommand")
+        cls.extend_parser(parser, subparsers)
+        return parser
+
+    @classmethod
+    def args_parsed(cls, args, parser, subcommand, config):
+        if args.subcommand is None:
+            parser.error("Subcommand is mandatory")
+        super().args_parsed(args, parser, args.subcommand, config)
 
 
 class WorkerPlugin(metaclass=abc.ABCMeta):
