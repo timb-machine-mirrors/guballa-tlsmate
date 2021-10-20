@@ -66,7 +66,7 @@ from tlsmate import pdu
 from tlsmate import tls
 from tlsmate import utils
 from tlsmate.exception import TlsConnectionClosedError
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 from tlsmate.server_profile import (
     SPCbcPaddingOracleInfo,
     SPCbcPaddingOracle,
@@ -277,7 +277,7 @@ def _vector_17_invalid_short_padding_msb(block_size, mac_len):
     )
 
 
-class ScanPaddingOracle(WorkerPlugin):
+class ScanPaddingOracle(Worker):
     name = "scan_padding_oracles"
     descr = "scan for CBC padding oracles"
     prio = 40

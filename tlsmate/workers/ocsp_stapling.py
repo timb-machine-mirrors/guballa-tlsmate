@@ -5,12 +5,12 @@
 
 # import own stuff
 from tlsmate import tls
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 
 # import other stuff
 
 
-class ScanOcspStapling(WorkerPlugin):
+class ScanOcspStapling(Worker):
     name = "ocsp_stapling"
     descr = "scan for OCSP stapling"
     prio = 30

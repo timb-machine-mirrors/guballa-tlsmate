@@ -145,7 +145,7 @@ class BaseCommand(Plugin):
         super().args_parsed(args, parser, args.subcommand, config)
 
 
-class WorkerPlugin(metaclass=abc.ABCMeta):
+class Worker(metaclass=abc.ABCMeta):
     """Provides a base class for the implementation of a worker.
 
     Attributes:
@@ -206,10 +206,10 @@ class WorkManager(object):
         Can be used as a decorator.
 
         Arguments:
-            worker_class (:class:`WorkerPlugin`): A worker class to be registered.
+            worker_class (:class:`Worker`): A worker class to be registered.
 
         Returns:
-            :class:`WorkerPlugin`: the worker class passed as argument
+            :class:`Worker`: the worker class passed as argument
         """
 
         cls._instance._register(worker_class)

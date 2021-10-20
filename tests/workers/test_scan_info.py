@@ -7,7 +7,7 @@ import datetime
 from tlsmate import tls
 from tlsmate import msg
 from tlsmate import utils
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 from tlsmate.workers.scanner_info import ScanStart, ScanEnd
 from tlsmate.tlssuite import TlsSuiteTester, TlsLibrary
 from tlsmate.version import __version__
@@ -23,7 +23,7 @@ def flip_lsb(data):
     return data
 
 
-class MalfunctionWorker(WorkerPlugin):
+class MalfunctionWorker(Worker):
     name = "server_malfunction"
     prio = 100
 

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 # import own stuff
 
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 from tlsmate import tls
 from tlsmate import utils
 from tlsmate import pdu
@@ -205,8 +205,8 @@ def get_cert_ext(cert, name):
     return None
 
 
-class TextProfileWorker(WorkerPlugin):
-    """WorkerPlugin class which serializes a server profile.
+class TextProfileWorker(Worker):
+    """Worker class which serializes a server profile.
     """
 
     name = "text_profile_dumper"

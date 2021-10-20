@@ -7,14 +7,14 @@ import logging
 # import own stuff
 from tlsmate import msg
 from tlsmate import tls
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 from tlsmate import utils
 from tlsmate.server_profile import SPVersion, SPCiphers
 
 # import other stuff
 
 
-class ScanCipherSuites(WorkerPlugin):
+class ScanCipherSuites(Worker):
     """Scans for the supported versions, cipher suites and certificate chains.
 
     The results are stored in the server profile.

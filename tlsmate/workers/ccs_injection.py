@@ -15,12 +15,12 @@ were regarded as protected records.
 from tlsmate import msg
 from tlsmate import tls
 from tlsmate.exception import TlsConnectionClosedError
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 
 # import other stuff
 
 
-class ScanCcsInjection(WorkerPlugin):
+class ScanCcsInjection(Worker):
     name = "ccsinjection"
     descr = "scan for CCS injection vulnerability (CVE-2014-0224)"
     prio = 40

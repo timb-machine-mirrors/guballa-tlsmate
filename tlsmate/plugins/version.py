@@ -4,13 +4,13 @@
 # import basic stuff
 
 # import own stuff
-from tlsmate.plugin import BaseCommand, Plugin, Args, WorkerPlugin
+from tlsmate.plugin import BaseCommand, Plugin, Args, Worker
 from tlsmate.version import __version__
 
 # import other stuff
 
 
-class VersionWorker(WorkerPlugin):
+class VersionWorker(Worker):
     """Worker to print the version of tlsmate.
     """
 
