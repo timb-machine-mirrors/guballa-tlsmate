@@ -6,6 +6,7 @@ from pathlib import Path
 
 # import own stuff
 from tlsmate import utils
+from tlsmate.config import config_port
 from tlsmate.structs import ConfigItem
 from tlsmate.plugin import BaseCommand, Plugin, Args, WorkManager
 from tlsmate.workers.compression import ScanCompression
@@ -32,7 +33,7 @@ from tlsmate.workers.sig_algo import ScanSigAlgs
 
 
 class ArgPort(Plugin):
-    config = ConfigItem("port", type=int, default=443)
+    config = config_port
     cli_args = Args(
         "--port",
         default=None,
@@ -58,7 +59,7 @@ class ArgInterval(Plugin):
 
 
 class ArgKeyLogFile(Plugin):
-    config = ConfigItem("key_log_file", type=str)
+    config = ConfigItem("key_log_file", type=str, default=None)
     cli_args = Args(
         "--key-log-file",
         default=None,

@@ -7,9 +7,13 @@ import logging
 from pathlib import Path
 
 # import own stuff
+from tlsmate.structs import ConfigItem
 
 # import other stuff
 import configparser
+
+
+config_port = ConfigItem("port", type=int, default=443)
 
 
 class Configuration(object):
@@ -49,6 +53,7 @@ class Configuration(object):
     def __init__(self):
         self._config = {}
         self._descr = {}
+        self.register(config_port)
 
     def _str_to_filelist(self, string):
         """Resolves a string of files paths.
