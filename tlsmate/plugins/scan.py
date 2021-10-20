@@ -33,6 +33,9 @@ from tlsmate.workers.sig_algo import ScanSigAlgs
 
 
 class ArgPort(Plugin):
+    """Argument for port.
+    """
+
     config = config_port
     cli_args = Args(
         "--port",
@@ -49,6 +52,9 @@ class ArgPort(Plugin):
 
 
 class ArgInterval(Plugin):
+    """Argument for interval.
+    """
+
     config = ConfigItem("interval", type=int, default=0)
     cli_args = Args(
         "--interval",
@@ -59,6 +65,9 @@ class ArgInterval(Plugin):
 
 
 class ArgKeyLogFile(Plugin):
+    """Argument for key logging file.
+    """
+
     config = ConfigItem("key_log_file", type=str, default=None)
     cli_args = Args(
         "--key-log-file",
@@ -71,6 +80,9 @@ class ArgKeyLogFile(Plugin):
 
 
 class ArgProgress(Plugin):
+    """Argument for progress.
+    """
+
     config = ConfigItem("progress", type=bool, default=False)
     cli_args = Args(
         "--progress",
@@ -80,6 +92,9 @@ class ArgProgress(Plugin):
 
 
 class ArgSni(Plugin):
+    """Argument for sni.
+    """
+
     config = ConfigItem("sni", type=str, default=None)
     cli_args = Args(
         "--sni",
@@ -94,6 +109,9 @@ class ArgSni(Plugin):
 
 
 class ArgHost(Plugin):
+    """Argument for host.
+    """
+
     config = ConfigItem("host", type=str, default="localhost")
     cli_args = Args(
         "host",
@@ -107,6 +125,9 @@ class ArgHost(Plugin):
 
 
 class GroupBasicScan(Plugin):
+    """Group for basic arguments.
+    """
+
     plugins = [
         ArgPort,
         ArgInterval,
@@ -118,6 +139,9 @@ class GroupBasicScan(Plugin):
 
 
 class ArgReadProfile(Plugin):
+    """Argument for read-profile.
+    """
+
     config = ConfigItem("read_profile", type=str, default=None)
     cli_args = Args(
         "--read-profile",
@@ -131,6 +155,9 @@ class ArgReadProfile(Plugin):
 
 
 class ArgWriteProfile(Plugin):
+    """Argument for write-profile.
+    """
+
     config = ConfigItem("write_profile", type=str, default=None)
     cli_args = Args(
         "--write-profile",
@@ -144,6 +171,9 @@ class ArgWriteProfile(Plugin):
 
 
 class ArgFormat(Plugin):
+    """Argument for format.
+    """
+
     config = ConfigItem("format", type=str, default="text")
     cli_args = Args(
         "--format",
@@ -163,6 +193,9 @@ class ArgFormat(Plugin):
 
 
 class ArgColor(Plugin):
+    """Argument for color.
+    """
+
     config = ConfigItem("color", type=bool, default=True)
     cli_args = Args(
         "--color",
@@ -172,6 +205,9 @@ class ArgColor(Plugin):
 
 
 class ArgStyle(Plugin):
+    """Argument for style.
+    """
+
     _DEFAULT_STYLE = Path(__file__).parent / "../styles/default.yaml"
     config = ConfigItem("style", type=str, default=str(_DEFAULT_STYLE.resolve()))
     cli_args = Args(
@@ -186,6 +222,9 @@ class ArgStyle(Plugin):
 
 
 class GroupServerProfile(Plugin):
+    """Argument group for server profile arguments.
+    """
+
     group = Args(title="Server profile options")
     plugins = [
         ArgReadProfile,
@@ -197,6 +236,9 @@ class GroupServerProfile(Plugin):
 
 
 class ArgCaCerts(Plugin):
+    """Argument for CA certs.
+    """
+
     config = ConfigItem("ca_certs", type="file_list")
     cli_args = Args(
         "--ca-certs",
@@ -211,6 +253,9 @@ class ArgCaCerts(Plugin):
 
 
 class ArgClientKey(Plugin):
+    """Argument for client keys.
+    """
+
     config = ConfigItem("client_key", type="file_list")
     cli_args = Args(
         "--client-key",
@@ -225,6 +270,9 @@ class ArgClientKey(Plugin):
 
 
 class ArgClientChain(Plugin):
+    """Argument for client certificate chains.
+    """
+
     config = ConfigItem("client_chain", type="file_list")
     cli_args = Args(
         "--client-chain",
@@ -240,6 +288,9 @@ class ArgClientChain(Plugin):
 
 
 class ArgCrl(Plugin):
+    """Argument for CRL.
+    """
+
     config = ConfigItem("crl", type=bool, default=True)
     cli_args = Args(
         "--crl",
@@ -252,6 +303,9 @@ class ArgCrl(Plugin):
 
 
 class ArgOcsp(Plugin):
+    """Argument for OCSP.
+    """
+
     config = ConfigItem("ocsp", type=bool, default=True)
     cli_args = Args(
         "--ocsp",
@@ -264,6 +318,9 @@ class ArgOcsp(Plugin):
 
 
 class GroupX509(Plugin):
+    """Argument group for X509 arguments.
+    """
+
     group = Args(title="X509 certificates options")
     plugins = [ArgCaCerts, ArgClientKey, ArgClientChain, ArgCrl, ArgOcsp]
 
@@ -283,6 +340,9 @@ class GroupX509(Plugin):
 
 
 class ArgSslv2(Plugin):
+    """Argument for SSLv2.
+    """
+
     config = ConfigItem("sslv2", type=bool, default=None)
     cli_args = Args(
         "--sslv2",
@@ -292,6 +352,9 @@ class ArgSslv2(Plugin):
 
 
 class ArgSslv3(Plugin):
+    """Argument for SSLv3.
+    """
+
     config = ConfigItem("sslv3", type=bool, default=None)
     cli_args = Args(
         "--sslv3",
@@ -301,6 +364,9 @@ class ArgSslv3(Plugin):
 
 
 class ArgTls10(Plugin):
+    """Argument for TLS1.0.
+    """
+
     config = ConfigItem("tls10", type=bool, default=None)
     cli_args = Args(
         "--tls10",
@@ -310,6 +376,9 @@ class ArgTls10(Plugin):
 
 
 class ArgTls11(Plugin):
+    """Argument for TLS1.1.
+    """
+
     config = ConfigItem("tls11", type=bool, default=None)
     cli_args = Args(
         "--tls11",
@@ -319,6 +388,9 @@ class ArgTls11(Plugin):
 
 
 class ArgTls12(Plugin):
+    """Argument for TLS1.2.
+    """
+
     config = ConfigItem("tls12", type=bool, default=None)
     cli_args = Args(
         "--tls12",
@@ -328,6 +400,9 @@ class ArgTls12(Plugin):
 
 
 class ArgTls13(Plugin):
+    """Argument for TLS1.3.
+    """
+
     config = ConfigItem("tls13", type=bool, default=None)
     cli_args = Args(
         "--tls13",
@@ -337,6 +412,9 @@ class ArgTls13(Plugin):
 
 
 class GroupTlsVersions(Plugin):
+    """Argument group for TLS versions.
+    """
+
     group = Args(
         title="TLS protocol versions",
         description=(
@@ -364,6 +442,9 @@ class GroupTlsVersions(Plugin):
 
 
 class ArgFeatures(Plugin):
+    """Argument for Features.
+    """
+
     config = ConfigItem("features", type=bool, default=True)
     cli_args = Args(
         "--features",
@@ -379,6 +460,9 @@ class ArgFeatures(Plugin):
 
 
 class ArgCompression(Plugin):
+    """Argument for compression feature.
+    """
+
     config = ConfigItem("compression", type=bool, default=None)
     cli_args = Args(
         "--compression",
@@ -389,6 +473,9 @@ class ArgCompression(Plugin):
 
 
 class ArgDhGroup(Plugin):
+    """Argument for DH groups.
+    """
+
     config = ConfigItem("dh_groups", type=bool, default=None)
     cli_args = Args(
         "--dh-groups",
@@ -399,6 +486,9 @@ class ArgDhGroup(Plugin):
 
 
 class ArgEncThenMac(Plugin):
+    """Argument for encrypt-then-mac extension.
+    """
+
     config = ConfigItem("encrypt_then_mac", type=bool, default=None)
     cli_args = Args(
         "--encrypt-then-mac",
@@ -409,6 +499,9 @@ class ArgEncThenMac(Plugin):
 
 
 class ArgEphemKeyReuse(Plugin):
+    """Argument for ephemeral key reuse.
+    """
+
     config = ConfigItem("ephemeral_key_reuse", type=bool, default=None)
     cli_args = Args(
         "--ephemeral-key-reuse",
@@ -419,6 +512,9 @@ class ArgEphemKeyReuse(Plugin):
 
 
 class ArgExtMasterSecret(Plugin):
+    """Argument for extended-master-secret extension.
+    """
+
     config = ConfigItem("ext_master_secret", type=bool, default=None)
     cli_args = Args(
         "--ext-master-secret",
@@ -429,6 +525,9 @@ class ArgExtMasterSecret(Plugin):
 
 
 class ArgFallback(Plugin):
+    """Argument for fallback.
+    """
+
     config = ConfigItem("fallback", type=bool, default=None)
     cli_args = Args(
         "--fallback",
@@ -439,6 +538,9 @@ class ArgFallback(Plugin):
 
 
 class ArgGrease(Plugin):
+    """Argument for GREASE.
+    """
+
     config = ConfigItem("grease", type=bool, default=None)
     cli_args = Args(
         "--grease",
@@ -449,6 +551,9 @@ class ArgGrease(Plugin):
 
 
 class ArgHeartbeat(Plugin):
+    """Argument for heartbeat extension.
+    """
+
     config = ConfigItem("heartbeat", type=bool, default=None)
     cli_args = Args(
         "--heartbeat",
@@ -459,6 +564,9 @@ class ArgHeartbeat(Plugin):
 
 
 class ArgOcspStapling(Plugin):
+    """Argument for OCSP stapling.
+    """
+
     config = ConfigItem("ocsp_stapling", type=bool, default=None)
     cli_args = Args(
         "--ocsp-stapling",
@@ -469,6 +577,9 @@ class ArgOcspStapling(Plugin):
 
 
 class ArgRenegotiation(Plugin):
+    """Argument for renegotiation feature.
+    """
+
     config = ConfigItem("renegotiation", type=bool, default=None)
     cli_args = Args(
         "--renegotiation",
@@ -479,6 +590,9 @@ class ArgRenegotiation(Plugin):
 
 
 class ArgResumption(Plugin):
+    """Argument for resumption feature.
+    """
+
     config = ConfigItem("resumption", type=bool, default=None)
     cli_args = Args(
         "--resumption",
@@ -491,6 +605,9 @@ class ArgResumption(Plugin):
 
 
 class GroupFeatures(Plugin):
+    """Argument group for features.
+    """
+
     group = Args(title="Feature to include into the scan")
     plugins = [
         ArgFeatures,
@@ -526,6 +643,9 @@ class GroupFeatures(Plugin):
 
 
 class ArgVulnerabilities(Plugin):
+    """Argument for Vulnerabilities.
+    """
+
     config = ConfigItem("vulnerabilities", type=bool, default=True)
     cli_args = Args(
         "--vulnerabilities",
@@ -540,6 +660,9 @@ class ArgVulnerabilities(Plugin):
 
 
 class ArgCcsInjection(Plugin):
+    """Argument for CCS-injection vulnerability.
+    """
+
     config = ConfigItem("ccs_injection", type=bool, default=None)
     cli_args = Args(
         "--ccs-injection",
@@ -550,6 +673,9 @@ class ArgCcsInjection(Plugin):
 
 
 class ArgHeartbleed(Plugin):
+    """Argument for heartbleed vulnerability.
+    """
+
     config = ConfigItem("heartbleed", type=bool, default=None)
     cli_args = Args(
         "--heartbleed",
@@ -560,6 +686,9 @@ class ArgHeartbleed(Plugin):
 
 
 class ArgPaddingOracle(Plugin):
+    """Argument for CBC padding oracles.
+    """
+
     config = ConfigItem("padding_oracle", type=bool, default=None)
     cli_args = Args(
         "--padding-oracle",
@@ -570,6 +699,9 @@ class ArgPaddingOracle(Plugin):
 
 
 class ArgPaddingOracleAccuracy(Plugin):
+    """Argument for oracle accuracy.
+    """
+
     config = ConfigItem("oracle_accuracy", type=str, default="medium")
     cli_args = Args(
         "--oracle-accuracy",
@@ -589,6 +721,9 @@ class ArgPaddingOracleAccuracy(Plugin):
 
 
 class ArgRobot(Plugin):
+    """Argument for ROBOT vulnerability.
+    """
+
     config = ConfigItem("robot", type=bool, default=None)
     cli_args = Args(
         "--robot",
@@ -601,6 +736,9 @@ class ArgRobot(Plugin):
 
 
 class GroupVulnerabilities(Plugin):
+    """Argument group vulnerabilities.
+    """
+
     group = Args(title="Vulnerabilities to scan for")
     plugins = [
         ArgVulnerabilities,

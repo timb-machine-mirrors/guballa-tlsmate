@@ -13,12 +13,46 @@ import argparse
 
 
 class Args(object):
+    """Helper class to simplify specification of argparse arguments.
+
+    Arguments:
+        args: one optional argument
+        kwargs: any number of named arguments
+    """
+
     def __init__(self, *args, **kwargs):
         self.arg = args[0] if args else None
         self.kwargs = kwargs
 
 
 class Plugin(metaclass=abc.ABCMeta):
+    """Base class for plugins
+
+    A plugin can be:
+        - a subcommand
+        - an argument group
+        - a single argument
+
+    A plugin may have:
+        - an associated configuration item
+        - a list of plugins which are plugged in into this class
+        - a list of workers, which be default will be registered if
+            - the plugin is a subcommand or
+            - the associated configuration is not False and not None
+
+    The default plugin behavior can be overruled by specific class methods.
+
+    Attributes:
+        config(:obj:`tlsmate.structs.ConfigItem`): an optional associated
+            configuration item
+        group(:obj:`Args`): parameters for the add_argument_group method (argparse)
+        subcommand(str): the subcommand
+        cli_args(:obj:`Args`): parameter for the add_argument method (argparse)
+        plugins(list(:class:`Plugin`)): A list of plugin classes which are plugged in
+            into this plugin.
+        workers(list(:class:`Worker`)): a list of worker classes to be registered
+    """
+
     config = None
     group = None
     subcommand = None
@@ -28,6 +62,12 @@ class Plugin(metaclass=abc.ABCMeta):
 
     @classmethod
     def args_name(cls):
+        """Helper method to retrieve the args-attribute from the attribute arguments.
+
+        Returns:
+            str: the attribute name for the args object
+        """
+
         if "dest" in cls.cli_args.kwargs:
             return cls.cli_args.kwargs["dest"]
 
@@ -39,6 +79,9 @@ class Plugin(metaclass=abc.ABCMeta):
 
     @classmethod
     def extend(cls, plugin):
+        """Decorator to extend a plugin
+        """
+
         if cls.plugins is None:
             cls.plugins = []
 
@@ -47,6 +90,13 @@ class Plugin(metaclass=abc.ABCMeta):
 
     @classmethod
     def extend_parser(cls, parser, subparsers):
+        """Extends the parser (subcommand, argument group, or argument)
+
+        Arguments:
+            parser (:obj:`argparse.Parser`): the CLI parser object
+            subparsers: (:obj:`argparse.Parser`): the subparser object
+        """
+
         if cls.cli_args:
             parser.add_argument(cls.cli_args.arg, **cls.cli_args.kwargs)
 
@@ -62,6 +112,12 @@ class Plugin(metaclass=abc.ABCMeta):
 
     @classmethod
     def register_config(cls, config):
+        """Registers its configuration item, if defined.
+
+        Arguments:
+            config (:obj:`tlsmate.config.Configuration`): The configuration object.
+        """
+
         if cls.config:
             config.register(cls.config)
 
@@ -71,6 +127,17 @@ class Plugin(metaclass=abc.ABCMeta):
 
     @classmethod
     def args_parsed(cls, args, parser, subcommand, config):
+        """Callback after the arguments are parsed.
+
+        Provides the configuration (based on the argument) and registers the workers.
+
+        Arguments:
+            args: the parsed arguments object
+            parser (:obj:`argparse.Parser`): the CLI parser object
+            subcommand(str): the subcommand that was given
+            config (:obj:`tlsmate.config.Configuration`): The configuration object.
+        """
+
         if cls.subcommand and cls.subcommand.arg != subcommand:
             return
 
@@ -96,6 +163,9 @@ class Plugin(metaclass=abc.ABCMeta):
 
 
 class ArgNoPlugin(Plugin):
+    """Plugin for the "--no-plugin" argument.
+    """
+
     cli_args = Args(
         "--no-plugin",
         default=None,
@@ -105,6 +175,9 @@ class ArgNoPlugin(Plugin):
 
 
 class ArgConfig(Plugin):
+    """Plugin for the config file argument.
+    """
+
     cli_args = Args(
         "--config",
         dest="config_file",
@@ -114,6 +187,9 @@ class ArgConfig(Plugin):
 
 
 class ArgLogging(Plugin):
+    """Plugin for the logging argument.
+    """
+
     cli_args = Args(
         "--logging",
         choices=["critical", "error", "warning", "info", "debug"],
@@ -123,6 +199,9 @@ class ArgLogging(Plugin):
 
 
 class BaseCommand(Plugin):
+    """The base class for tlsmate. To be extended by plugins.
+    """
+
     plugins = [ArgNoPlugin, ArgConfig, ArgLogging]
 
     @classmethod
