@@ -36,7 +36,8 @@ class FontStyle:
         self.color = color
         self.bold = bold
 
-    def decorate(self, txt):
+    def decorate(self, txt, with_orig_len=False):
+        orig_len = len(str(txt))
         if self.html:
             if self.bold:
                 txt = f"<b>{txt}</b>"
@@ -54,7 +55,11 @@ class FontStyle:
             if self.color or self.bold:
                 txt = f"{txt}{Style.RESET_ALL}"
 
-        return txt
+        if with_orig_len:
+            return txt, orig_len
+
+        else:
+            return txt
 
 
 @dataclass
@@ -144,7 +149,7 @@ def get_mood(profile, *keys):
     )
 
 
-def get_mood_applied(txt, profile, *keys):
+def get_mood_applied(txt, profile, *keys, **kwargs):
     """Descent into a nested dict and apply the found mood to the given text.
 
     Arguments:
@@ -156,10 +161,10 @@ def get_mood_applied(txt, profile, *keys):
         str: the given text, decorated with the found ANSI escape code.
     """
 
-    return get_mood(profile, *keys).decorate(txt)
+    return get_mood(profile, *keys).decorate(txt, **kwargs)
 
 
-def get_styled_text(data, *path):
+def get_styled_text(data, *path, **kwargs):
     """Comfortable way to use common structure to apply a mood to a text.
 
     The item determined by data and path must be a dict with the following structure:
@@ -179,9 +184,9 @@ def get_styled_text(data, *path):
     """
     prof = get_dict_value(data, *path)
     if not prof:
-        return Mood.ERROR.decorate("???")
+        return Mood.ERROR.decorate("???", **kwargs)
 
-    return get_mood_applied(get_dict_value(prof, "txt"), prof, "style")
+    return get_mood_applied(get_dict_value(prof, "txt"), prof, "style", **kwargs)
 
 
 def get_cert_ext(cert, name):
@@ -247,6 +252,30 @@ class TextProfileWorker(Worker):
     def _read_style(self):
         self._style = utils.deserialize_data(self.style_file)
         self._parse_style()
+
+    def mood_for_cipher_suite(self, cs):
+        det = utils.get_cipher_suite_details(cs)
+        key_mood = get_mood(self._style, "key_exchange", det.key_algo.name)
+        cipher_mood = get_mood(self._style, "symmetric_ciphers", det.cipher.name)
+        mac_mood = get_mood(self._style, "macs", det.mac.name)
+        return merge_moods([key_mood, cipher_mood, mac_mood])
+
+    def _mood_for_assym_key_size(self, bits, style_entry):
+        key_sizes = get_dict_value(self._style, style_entry)
+        if not key_sizes:
+            return Mood.NEUTRAL
+
+        for prof in key_sizes:
+            if bits >= prof["size"]:
+                break
+
+        return get_mood(prof, "style")
+
+    def mood_for_rsa_dh_key_size(self, bits):
+        return self._mood_for_assym_key_size(bits, "assymetric_key_sizes")
+
+    def mood_for_ec_key_size(self, bits):
+        return self._mood_for_assym_key_size(bits, "assymetric_ec_key_sizes")
 
     def _print_tlsmate(self):
         print(Mood.HEADLINE.decorate("A TLS configuration scanner (and more)"))
@@ -416,15 +445,7 @@ class TextProfileWorker(Worker):
                         )
 
                     else:
-                        det = utils.get_cipher_suite_details(cs)
-                        key_mood = get_mood(
-                            self._style, "key_exchange", det.key_algo.name
-                        )
-                        cipher_mood = get_mood(
-                            self._style, "symmetric_ciphers", det.cipher.name
-                        )
-                        mac_mood = get_mood(self._style, "macs", det.mac.name)
-                        mood = merge_moods([key_mood, cipher_mood, mac_mood])
+                        mood = self.mood_for_cipher_suite(cs)
                         if mood is not Mood.GOOD:
                             all_good = False
 
@@ -610,16 +631,8 @@ class TextProfileWorker(Worker):
                 if name is None:
                     name = "unknown group"
                 txt = f"{name} ({size} bits)"
-                key_sizes = get_dict_value(self._style, "assymetric_key_sizes")
-                if key_sizes:
-                    for prof in key_sizes:
-                        if size >= prof["size"]:
-                            break
-
-                else:
-                    prof = None
-
-                print(f'    {get_mood_applied(txt, prof, "style")}')
+                mood = self.mood_for_rsa_dh_key_size(size)
+                print(f"    {mood.decorate(txt)}")
 
             print()
 
@@ -965,19 +978,10 @@ class TextProfileWorker(Worker):
                 tls.SignatureAlgorithm.RSA,
                 tls.SignatureAlgorithm.DSA,
             ]:
-                mood_reference = get_dict_value(self._style, "assymetric_key_sizes")
+                mood = self.mood_for_rsa_dh_key_size(key_size)
 
             else:
-                mood_reference = get_dict_value(self._style, "assymetric_ec_key_sizes")
-
-            if mood_reference is None:
-                mood = Mood.ERROR
-
-            else:
-                for item in mood_reference:
-                    if key_size >= item.get("size", 0):
-                        mood = get_mood(item, "style")
-                        break
+                mood = self.mood_for_ec_key_size(key_size)
 
             table.row(
                 "Public key",
