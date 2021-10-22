@@ -9,13 +9,13 @@ for the heartbeat request. Refer to https://heartbleed.com/
 # import own stuff
 from tlsmate import msg
 from tlsmate import tls
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
 
 # import other stuff
 
 
-class ScanHeartbleed(WorkerPlugin):
+class ScanHeartbleed(Worker):
     name = "heartbleed"
     descr = "scan for Heartbleed vulnerability"
     prio = 41

@@ -13,6 +13,9 @@ from tlsmate.structs import ConfigItem
 import configparser
 
 
+config_port = ConfigItem("port", type=int, default=443)
+
+
 class Configuration(object):
     """Class representing the configuration for tlsmate.
 
@@ -50,19 +53,7 @@ class Configuration(object):
     def __init__(self):
         self._config = {}
         self._descr = {}
-        self.register(ConfigItem("logging", type=str, default="error"))
-
-        self.register(ConfigItem("ca_certs", type="file_list"))
-        self.register(ConfigItem("client_chain", type="file_list"))
-        self.register(ConfigItem("client_key", type="file_list"))
-        self.register(ConfigItem("crl", type=bool, default=True))
-        self.register(ConfigItem("host", type=str, default="localhost"))
-        self.register(ConfigItem("port", type=int, default=443))
-        self.register(ConfigItem("interval", type=int, default=0))
-        self.register(ConfigItem("key_log_file", type=str))
-        self.register(ConfigItem("ocsp", type=bool, default=True))
-        self.register(ConfigItem("progress", type=bool, default=False))
-        self.register(ConfigItem("sni", type=str, default=None))
+        self.register(config_port)
 
     def _str_to_filelist(self, string):
         """Resolves a string of files paths.
@@ -196,6 +187,10 @@ class Configuration(object):
         """
         name = config_item.name
         if name in self._descr:
-            raise ValueError(f'configuration setting "{name}" already defined')
+            if config_item != self._descr[name]:
+                raise ValueError(
+                    f'configuration setting "{name}" already defined with '
+                    f"different properties"
+                )
         self._descr[name] = config_item
         self._config[name] = config_item.default

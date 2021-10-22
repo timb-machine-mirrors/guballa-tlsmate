@@ -13,7 +13,8 @@ import logging
 # import own stuff
 from tlsmate.tlsmate import TlsMate, TLSMATE_DIR
 from tlsmate import utils
-from tlsmate.config import Configuration, ConfigItem
+from tlsmate.config import Configuration
+from tlsmate.structs import ConfigItem
 from tlsmate.connection import TlsConnection
 
 # import other stuff
@@ -145,6 +146,8 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
                 ini_file = None
 
         self.config = Configuration()
+        self.config.register(ConfigItem("host", type=str, default="localhost"))
+        self.config.register(ConfigItem("port", type=int, default=443))
         self.config.register(ConfigItem("pytest_recorder_file", type=str))
         self.config.register(ConfigItem("pytest_recorder_replaying", type=str))
 

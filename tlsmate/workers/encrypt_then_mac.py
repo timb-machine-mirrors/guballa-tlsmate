@@ -5,13 +5,13 @@
 
 # import own stuff
 from tlsmate import tls
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 from tlsmate import utils
 
 # import other stuff
 
 
-class ScanEncryptThenMac(WorkerPlugin):
+class ScanEncryptThenMac(Worker):
     name = "encrypt_then_mac"
     descr = "scan for extension encrypt_then_mac support"
     prio = 30
