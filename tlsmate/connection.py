@@ -435,6 +435,7 @@ class TlsConnection(object):
         """Context manager: cleanup the TLS- and TCP-connection.
         """
 
+        logging.debug("exiting context manager...")
         if exc_type is ServerMalfunction:
             self.client.report_server_issue(
                 exc_value.issue, exc_value.message, exc_value.extension
@@ -456,6 +457,12 @@ class TlsConnection(object):
             self._send_alert(tls.AlertLevel.WARNING, tls.AlertDescription.CLOSE_NOTIFY)
 
         else:
+            if exc_type is not None:
+                logging.warning(f"exception {exc_type.__name__}: {str(exc_value)}")
+                str_io = io.StringIO()
+                tb.print_exception(exc_type, exc_value, traceback, file=str_io)
+                logging.debug(str_io.getvalue())
+
             self._send_alert(tls.AlertLevel.WARNING, tls.AlertDescription.CLOSE_NOTIFY)
 
         self._record_layer.close_socket()
@@ -1326,7 +1333,7 @@ class TlsConnection(object):
 
         if msg.chain.digest not in self._cert_chain_digests:
             self._cert_chain_digests.append(msg.chain.digest)
-            # validate_chain = True
+            validate_chain = True
 
         if validate_chain:
             self._validate_cert_chain(msg.chain)

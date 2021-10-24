@@ -237,7 +237,16 @@ class RsaKeyExchange(KeyExchange):
 
         cert = self._conn.msg.server_certificate.chain.certificates[0]
         rem_pub_key = cert.parsed.public_key()
-        ciphered_key = rem_pub_key.encrypt(bytes(self._pms), padding.PKCS1v15())
+        if self._conn.version is tls.Version.SSL30:
+            pad_len = rem_pub_key.key_size - 11 - len(self._pms)
+            pad_bytes = bytearray([x if x else 1 for x in os.urandom(pad_len)])
+            data = b"\x00\x02" + pad_bytes + (b"\x03" * 8) + b"\x00" + self._pms
+            pub_nbrs = rem_pub_key.public_numbers()
+            ciphered_int = pow(int(data.hex(), 16), pub_nbrs.e, pub_nbrs.n)
+            ciphered_key = ciphered_int.to_bytes(rem_pub_key.key_size // 8, byteorder="big")
+
+        else:
+            ciphered_key = rem_pub_key.encrypt(bytes(self._pms), padding.PKCS1v15())
         # injecting the encrypted key to the recorder is required, as the
         # padding scheme PKCS1v15 produces non-deterministic cipher text.
         return self._recorder.inject(rsa_enciphered=ciphered_key)

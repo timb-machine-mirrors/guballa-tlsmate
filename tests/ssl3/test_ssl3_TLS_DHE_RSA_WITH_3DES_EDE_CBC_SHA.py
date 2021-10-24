@@ -26,25 +26,6 @@ class TestCase(CipherSuiteTester):
     # adapt it to your needs.
     version = tls.Version.SSL30
 
-    def run(self, tlsmate, is_replaying=False):
-
-        client = tlsmate.client
-        client.profile.opensslersions = [tls.Version.SSL30]
-        client.profile.cipher_suites = [
-            tls.CipherSuite.TLS_DHE_RSA_WITH_3DES_EDE_CBC_SHA
-        ]
-
-        end_of_tc_reached = False
-        with client.create_connection() as conn:
-            conn.send(msg.ClientHello)
-            conn.wait(msg.ServerHello)
-            conn.wait(msg.Certificate)
-            conn.wait(msg.ServerKeyExchange)
-            conn.wait(msg.ServerHelloDone)
-            end_of_tc_reached = True
-
-        assert end_of_tc_reached is True
-
 
 if __name__ == "__main__":
     TestCase().entry(is_replaying=False)
