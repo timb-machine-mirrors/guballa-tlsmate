@@ -6,7 +6,6 @@ from pathlib import Path
 
 # import own stuff
 from tlsmate import utils
-from tlsmate.config import config_port
 from tlsmate.structs import ConfigItem
 from tlsmate.plugin import BaseCommand, Plugin, Args, WorkManager
 from tlsmate.workers.compression import ScanCompression
@@ -30,6 +29,19 @@ from tlsmate.workers.eval_cipher_suites import ScanCipherSuites
 from tlsmate.workers.scanner_info import ScanStart, ScanEnd
 from tlsmate.workers.supported_groups import ScanSupportedGroups
 from tlsmate.workers.sig_algo import ScanSigAlgs
+from tlsmate.config import (
+    config_host,
+    config_port,
+    config_interval,
+    config_key_log_file,
+    config_progress,
+    config_sni,
+    config_ca_certs,
+    config_client_key,
+    config_client_chain,
+    config_crl,
+    config_ocsp,
+)
 
 
 class ArgPort(Plugin):
@@ -55,7 +67,7 @@ class ArgInterval(Plugin):
     """Argument for interval.
     """
 
-    config = ConfigItem("interval", type=int, default=0)
+    config = config_interval
     cli_args = Args(
         "--interval",
         default=0,
@@ -68,7 +80,7 @@ class ArgKeyLogFile(Plugin):
     """Argument for key logging file.
     """
 
-    config = ConfigItem("key_log_file", type=str, default=None)
+    config = config_key_log_file
     cli_args = Args(
         "--key-log-file",
         default=None,
@@ -83,7 +95,7 @@ class ArgProgress(Plugin):
     """Argument for progress.
     """
 
-    config = ConfigItem("progress", type=bool, default=False)
+    config = config_progress
     cli_args = Args(
         "--progress",
         help="provides a progress indicator. Defaults to False.",
@@ -95,7 +107,7 @@ class ArgSni(Plugin):
     """Argument for sni.
     """
 
-    config = ConfigItem("sni", type=str, default=None)
+    config = config_sni
     cli_args = Args(
         "--sni",
         type=str,
@@ -112,7 +124,7 @@ class ArgHost(Plugin):
     """Argument for host.
     """
 
-    config = ConfigItem("host", type=str, default="localhost")
+    config = config_host
     cli_args = Args(
         "host",
         help=(
@@ -239,7 +251,7 @@ class ArgCaCerts(Plugin):
     """Argument for CA certs.
     """
 
-    config = ConfigItem("ca_certs", type="file_list")
+    config = config_ca_certs
     cli_args = Args(
         "--ca-certs",
         nargs="*",
@@ -256,7 +268,7 @@ class ArgClientKey(Plugin):
     """Argument for client keys.
     """
 
-    config = ConfigItem("client_key", type="file_list")
+    config = config_client_key
     cli_args = Args(
         "--client-key",
         type=str,
@@ -273,7 +285,7 @@ class ArgClientChain(Plugin):
     """Argument for client certificate chains.
     """
 
-    config = ConfigItem("client_chain", type="file_list")
+    config = config_client_chain
     cli_args = Args(
         "--client-chain",
         type=str,
@@ -291,7 +303,7 @@ class ArgCrl(Plugin):
     """Argument for CRL.
     """
 
-    config = ConfigItem("crl", type=bool, default=True)
+    config = config_crl
     cli_args = Args(
         "--crl",
         help=(
@@ -306,7 +318,7 @@ class ArgOcsp(Plugin):
     """Argument for OCSP.
     """
 
-    config = ConfigItem("ocsp", type=bool, default=True)
+    config = config_ocsp
     cli_args = Args(
         "--ocsp",
         help=(

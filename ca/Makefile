@@ -227,7 +227,11 @@ chains/server-invalid-sequence-rsa.chn:
 	cat certs/root-rsa.pem certs/ca-rsa.pem > chains/server-invalid-sequence-rsa.chn
 
 install:
-	mkdir -p ../tests/certs
-	mkdir -p ../tests/crl
-	cp certs/*.crt certs/*.pem ../tests/certs
-	cp crl/*.pem ../tests/crl
+	mkdir -p ../tests/ca/certs
+	mkdir -p ../tests/ca/crl
+	mkdir -p ../tests/ca/private
+	mkdir -p ../tests/ca/chains
+	cp certs/*.crt certs/*.pem ../tests/ca/certs
+	cp crl/*.pem ../tests/ca/crl
+	cp private/*.key ../tests/ca/private
+	cp chains/*.chn ../tests/ca/chains

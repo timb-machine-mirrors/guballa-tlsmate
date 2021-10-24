@@ -13,7 +13,17 @@ from tlsmate.structs import ConfigItem
 import configparser
 
 
+config_host = ConfigItem("host", type=str, default="localhost")
 config_port = ConfigItem("port", type=int, default=443)
+config_interval = ConfigItem("interval", type=int, default=0)
+config_key_log_file = ConfigItem("key_log_file", type=str, default=None)
+config_progress = ConfigItem("progress", type=bool, default=False)
+config_sni = ConfigItem("sni", type=str, default=None)
+config_ca_certs = ConfigItem("ca_certs", type="file_list")
+config_client_key = ConfigItem("client_key", type="file_list")
+config_client_chain = ConfigItem("client_chain", type="file_list")
+config_crl = ConfigItem("crl", type=bool, default=True)
+config_ocsp = ConfigItem("ocsp", type=bool, default=True)
 
 
 class Configuration(object):
@@ -53,7 +63,23 @@ class Configuration(object):
     def __init__(self):
         self._config = {}
         self._descr = {}
-        self.register(config_port)
+
+        # register configurations which are essential in the core
+        # part of tlsmate.
+        for item in [
+            config_host,
+            config_port,
+            config_interval,
+            config_key_log_file,
+            config_progress,
+            config_sni,
+            config_ca_certs,
+            config_client_key,
+            config_client_chain,
+            config_crl,
+            config_ocsp,
+        ]:
+            self.register(item)
 
     def _str_to_filelist(self, string):
         """Resolves a string of files paths.
