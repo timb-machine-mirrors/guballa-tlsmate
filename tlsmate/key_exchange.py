@@ -243,7 +243,9 @@ class RsaKeyExchange(KeyExchange):
             data = b"\x00\x02" + pad_bytes + (b"\x03" * 8) + b"\x00" + self._pms
             pub_nbrs = rem_pub_key.public_numbers()
             ciphered_int = pow(int(data.hex(), 16), pub_nbrs.e, pub_nbrs.n)
-            ciphered_key = ciphered_int.to_bytes(rem_pub_key.key_size // 8, byteorder="big")
+            ciphered_key = ciphered_int.to_bytes(
+                rem_pub_key.key_size // 8, byteorder="big"
+            )
 
         else:
             ciphered_key = rem_pub_key.encrypt(bytes(self._pms), padding.PKCS1v15())
