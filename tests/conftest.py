@@ -12,7 +12,7 @@ from tlsmate.tlsmate import TlsMate
 
 @pytest.fixture
 def valid_time():
-    return datetime.datetime(2021, 6, 1)
+    return datetime.datetime(2031, 6, 1)
 
 
 @pytest.fixture
@@ -32,12 +32,12 @@ def tlsmate_empty_ini(fixturefiles_dir):
 
 @pytest.fixture
 def trust_store_file(fixturefiles_dir):
-    return fixturefiles_dir / "ca/certs/root-certificates.pem"
+    return fixturefiles_dir / "../certs/root-certificates.pem"
 
 
 @pytest.fixture
 def ca_rsa_crl_file(fixturefiles_dir):
-    return fixturefiles_dir / "ca/crl/ca-rsa.crl.pem"
+    return fixturefiles_dir / "../crl/ca-rsa.crl.pem"
 
 
 def init_crl(fixturefiles_dir, crl_manager, ca, port=44400):
@@ -45,7 +45,7 @@ def init_crl(fixturefiles_dir, crl_manager, ca, port=44400):
     if "TLSMATE_CA_PORT" in os.environ:
         port = os.environ["TLSMATE_CA_PORT"]
 
-    pem_file = fixturefiles_dir / f"ca/crl/{ca}.crl.pem"
+    pem_file = fixturefiles_dir / f"../crl/{ca}.crl.pem"
     with open(pem_file, "rb") as fd:
         crl = fd.read()
     crl_manager.add_crl(f"http://crl.localhost:{port}/crl/{ca}.crl", pem_crl=crl)
@@ -65,52 +65,52 @@ def tlsmate(fixturefiles_dir, trust_store_file):
 
 @pytest.fixture
 def server_revoked_rsa_cert(fixturefiles_dir):
-    return pem.parse_file(fixturefiles_dir / "ca/certs/server-revoked-rsa.crt")[0]
+    return pem.parse_file(fixturefiles_dir / "../certs/server-revoked-rsa.pem")[0]
 
 
 @pytest.fixture
 def server_rsa_cert(fixturefiles_dir):
-    return pem.parse_file(fixturefiles_dir / "ca/certs/server-rsa.crt")[0]
+    return pem.parse_file(fixturefiles_dir / "../certs/server-rsa.pem")[0]
 
 
 @pytest.fixture
 def server_dsa_cert(fixturefiles_dir):
-    return pem.parse_file(fixturefiles_dir / "ca/certs/server-dsa.crt")[0]
+    return pem.parse_file(fixturefiles_dir / "../certs/server-dsa.pem")[0]
 
 
 @pytest.fixture
 def server_ed25519_cert(fixturefiles_dir):
-    return pem.parse_file(fixturefiles_dir / "ca/certs/server-ed25519.crt")[0]
+    return pem.parse_file(fixturefiles_dir / "../certs/server-ed25519.pem")[0]
 
 
 @pytest.fixture
 def server_ed448_cert(fixturefiles_dir):
-    return pem.parse_file(fixturefiles_dir / "ca/certs/server-ed448.crt")[0]
+    return pem.parse_file(fixturefiles_dir / "../certs/server-ed448.pem")[0]
 
 
 @pytest.fixture
 def ca_rsa_cert(fixturefiles_dir):
-    return pem.parse_file(fixturefiles_dir / "ca/certs/ca-rsa.crt")[0]
+    return pem.parse_file(fixturefiles_dir / "../certs/ca-rsa.pem")[0]
 
 
 @pytest.fixture
 def ca_2nd_rsa_cert(fixturefiles_dir):
-    return pem.parse_file(fixturefiles_dir / "ca/certs/ca-2nd-rsa.crt")[0]
+    return pem.parse_file(fixturefiles_dir / "../certs/ca-2nd-rsa.pem")[0]
 
 
 @pytest.fixture
 def ca_ecdsa_cert(fixturefiles_dir):
-    return pem.parse_file(fixturefiles_dir / "ca/certs/ca-ecdsa.crt")[0]
+    return pem.parse_file(fixturefiles_dir / "../certs/ca-ecdsa.pem")[0]
 
 
 @pytest.fixture
 def root_rsa_cert(fixturefiles_dir):
-    return pem.parse_file(fixturefiles_dir / "ca/certs/root-rsa.crt")[0]
+    return pem.parse_file(fixturefiles_dir / "../certs/root-rsa.pem")[0]
 
 
 @pytest.fixture
 def root_ecdsa_cert(fixturefiles_dir):
-    return pem.parse_file(fixturefiles_dir / "ca/certs/root-ecdsa.crt")[0]
+    return pem.parse_file(fixturefiles_dir / "../certs/root-ecdsa.pem")[0]
 
 
 @pytest.fixture

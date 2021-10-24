@@ -1,4 +1,4 @@
-V	310820141744Z		042B3F64BB125AD0	unknown	/C=DE/O=The TlsMate Company (Server side) ECDSA/CN=localhost
-V	310820141745Z		042B3F64BB125AD1	unknown	/C=DE/O=The TlsMate Company (Server side) Ed25519/CN=localhost
-V	310820141745Z		042B3F64BB125AD2	unknown	/C=DE/O=The TlsMate Company (Server side) Ed448/CN=localhost
-V	310820141754Z		042B3F64BB125AD3	unknown	/C=DE/O=The TlsMate Company (Client side) ECDSA/CN=client@tlsmate.org
+V	311022155208Z		08A60CE95F7F3AF9	unknown	/C=DE/O=The TlsMate Company (Server side) ECDSA/CN=localhost
+V	311022155208Z		08A60CE95F7F3AFA	unknown	/C=DE/O=The TlsMate Company (Server side) Ed25519/CN=localhost
+V	311022155208Z		08A60CE95F7F3AFB	unknown	/C=DE/O=The TlsMate Company (Server side) Ed448/CN=localhost
+V	311022155209Z		08A60CE95F7F3AFC	unknown	/C=DE/O=The TlsMate Company (Client side) ECDSA/CN=client@tlsmate.org

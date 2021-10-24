@@ -17,7 +17,7 @@ serial            = $db/serial
 default_md        = sha256
 policy            = policy_c_o_match
 default_days      = 3650
-default_crl_days  = 1000
+default_crl_days  = 3650
 
 [ req ]
 prompt			= no
