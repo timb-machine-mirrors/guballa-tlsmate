@@ -238,7 +238,7 @@ class RsaKeyExchange(KeyExchange):
         cert = self._conn.msg.server_certificate.chain.certificates[0]
         rem_pub_key = cert.parsed.public_key()
         if self._conn.version is tls.Version.SSL30:
-            pad_len = rem_pub_key.key_size - 11 - len(self._pms)
+            pad_len = ((rem_pub_key.key_size + 7) // 8) - 11 - len(self._pms)
             pad_bytes = bytearray([x if x else 1 for x in os.urandom(pad_len)])
             data = b"\x00\x02" + pad_bytes + (b"\x03" * 8) + b"\x00" + self._pms
             pub_nbrs = rem_pub_key.public_numbers()
