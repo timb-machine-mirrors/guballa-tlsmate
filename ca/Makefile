@@ -17,7 +17,7 @@ clean:
 root: root-rsa root-ecdsa
 root-rsa: certs/root-rsa.crt
 root-ecdsa: certs/root-ecdsa.crt
-ca: ca-rsa ca-ecdsa
+ca: ca-rsa ca-2nd-rsa ca-ecdsa
 ca-rsa: certs/ca-rsa.crt
 ca-2nd-rsa: certs/ca-2nd-rsa.crt
 ca-ecdsa: certs/ca-ecdsa.crt
@@ -227,7 +227,11 @@ chains/server-invalid-sequence-rsa.chn:
 	cat certs/root-rsa.pem certs/ca-rsa.pem > chains/server-invalid-sequence-rsa.chn
 
 install:
-	mkdir -p ../tests/fixturefiles/ca/certs
-	mkdir -p ../tests/fixturefiles/ca/crl
-	cp certs/*.crt certs/*.pem ../tests/fixturefiles/ca/certs
-	cp crl/*.pem ../tests/fixturefiles/ca/crl
+	mkdir -p ../tests/ca/certs
+	mkdir -p ../tests/ca/crl
+	mkdir -p ../tests/ca/private
+	mkdir -p ../tests/ca/chains
+	cp certs/*.crt certs/*.pem ../tests/ca/certs
+	cp crl/*.pem ../tests/ca/crl
+	cp private/*.key ../tests/ca/private
+	cp chains/*.chn ../tests/ca/chains

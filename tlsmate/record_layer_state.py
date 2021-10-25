@@ -11,7 +11,7 @@ from tlsmate import structs
 from tlsmate.exception import ServerMalfunction
 
 # import other stuff
-from cryptography.hazmat.primitives import hmac
+from cryptography.hazmat.primitives import hmac, hashes
 from cryptography.hazmat.primitives.ciphers import Cipher, modes, aead
 
 
@@ -95,16 +95,34 @@ class RecordLayerState(object):
             bytes: The fragment appended with the MAC.
         """
 
-        mac_input = (
-            pdu.pack_uint64(self._seq_nbr)
-            + pdu.pack_uint8(content_type.value)
-            + pdu.pack_uint16(version.value)
-            + pdu.pack_uint16(len(fragment))
-            + fragment
-        )
-        mac = hmac.HMAC(self._keys.mac, self._mac.hash_algo())
-        mac.update(mac_input)
-        mac_bytes = mac.finalize()
+        # TODO: move mac calculation to kdf object
+
+        if version is tls.Version.SSL30:
+            pad_len = 40 if self._mac.hash_algo.name == "sha1" else 48
+            mac = hashes.Hash(self._mac.hash_algo())
+            mac.update(
+                self._keys.mac
+                + b"\x36" * pad_len
+                + pdu.pack_uint64(self._seq_nbr)
+                + pdu.pack_uint8(content_type.value)
+                + pdu.pack_uint16(len(fragment))
+                + fragment
+            )
+            mac2 = hashes.Hash(self._mac.hash_algo())
+            mac2.update(self._keys.mac + b"\x5c" * pad_len + mac.finalize())
+            mac_bytes = mac2.finalize()
+
+        else:
+            mac_input = (
+                pdu.pack_uint64(self._seq_nbr)
+                + pdu.pack_uint8(content_type.value)
+                + pdu.pack_uint16(version.value)
+                + pdu.pack_uint16(len(fragment))
+                + fragment
+            )
+            mac = hmac.HMAC(self._keys.mac, self._mac.hash_algo())
+            mac.update(mac_input)
+            mac_bytes = mac.finalize()
 
         if mac_cb:
             mac_bytes = mac_cb(bytearray(mac_bytes))
@@ -344,16 +362,34 @@ class RecordLayerState(object):
             mac_received = mac_cb(bytearray(mac_received))
 
         msg = fragment[:msg_len]
-        mac_input = (
-            pdu.pack_uint64(self._seq_nbr)
-            + pdu.pack_uint8(content_type.value)
-            + pdu.pack_uint16(version.value)
-            + pdu.pack_uint16(msg_len)
-            + msg
-        )
-        mac = hmac.HMAC(self._keys.mac, self._mac.hash_algo())
-        mac.update(mac_input)
-        mac_calculated = mac.finalize()
+
+        if version is tls.Version.SSL30:
+            pad_len = 40 if self._mac.hash_algo.name == "sha1" else 48
+            mac = hashes.Hash(self._mac.hash_algo())
+            mac.update(
+                self._keys.mac
+                + b"\x36" * pad_len
+                + pdu.pack_uint64(self._seq_nbr)
+                + pdu.pack_uint8(content_type.value)
+                + pdu.pack_uint16(msg_len)
+                + msg
+            )
+            mac2 = hashes.Hash(self._mac.hash_algo())
+            mac2.update(self._keys.mac + b"\x5c" * pad_len + mac.finalize())
+            mac_calculated = mac2.finalize()
+
+        else:
+            mac_input = (
+                pdu.pack_uint64(self._seq_nbr)
+                + pdu.pack_uint8(content_type.value)
+                + pdu.pack_uint16(version.value)
+                + pdu.pack_uint16(msg_len)
+                + msg
+            )
+            mac = hmac.HMAC(self._keys.mac, self._mac.hash_algo())
+            mac.update(mac_input)
+            mac_calculated = mac.finalize()
+
         if mac_calculated != mac_received:
             raise ServerMalfunction(tls.ServerIssue.RECORD_MAC_INVALID)
 
@@ -396,8 +432,10 @@ class RecordLayerState(object):
             padding = padding_cb(bytearray(padding))
 
         plain_text = plain_text[:pad_start]
-        if (struct.pack("!B", pad) * (pad + 1)) != padding:
-            raise ServerMalfunction(tls.ServerIssue.RECORD_WRONG_PADDING_BYTES)
+
+        if self._version is not tls.Version.SSL30:
+            if (struct.pack("!B", pad) * (pad + 1)) != padding:
+                raise ServerMalfunction(tls.ServerIssue.RECORD_WRONG_PADDING_BYTES)
 
         return plain_text
 
