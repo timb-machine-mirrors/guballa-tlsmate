@@ -224,9 +224,16 @@ class Client(object):
         if profile_values is not None:
             self.profile.versions = profile_values.versions[:]
             self.profile.cipher_suites = profile_values.cipher_suites[:]
-            self.profile.supported_groups = profile_values.supported_groups[:]
-            self.profile.signature_algorithms = profile_values.signature_algorithms[:]
-            self.profile.key_shares = profile_values.key_shares[:]
+            if profile_values.supported_groups:
+                self.profile.supported_groups = profile_values.supported_groups[:]
+
+            if profile_values.signature_algorithms:
+                self.profile.signature_algorithms = profile_values.signature_algorithms[
+                    :
+                ]
+
+            if profile_values.key_shares:
+                self.profile.key_shares = profile_values.key_shares[:]
 
     def _set_profile_interoperability(self):
         """Define profile for interoperability, like used in modern browsers

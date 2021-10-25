@@ -130,7 +130,7 @@ class ScanGrease(WorkerPlugin):
     def _check_groups(self, grease_prof):
         versions = tls.Version.tls_only()
         values = self.server_profile.get_profile_values(versions, full_hs=True)
-        if not values.versions:
+        if not values.versions or not values.supported_groups:
             state = tls.SPBool.C_NA
 
         else:

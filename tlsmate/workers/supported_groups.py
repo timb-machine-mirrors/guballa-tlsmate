@@ -83,36 +83,32 @@ class _Scan(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     def scan(self, testsuite_name):
-        try:
-            self._client.profile.cipher_suites = self._get_cipher_suites()
-            if not self._client.profile.cipher_suites:
-                raise ScanError("No (EC)DH cipher suites supported")
-            self._client.profile.versions = [self._version]
-            self._client.profile.signature_algorithms = [
-                tls.SignatureScheme.ED25519,
-                tls.SignatureScheme.ED448,
-                tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
-                tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
-                tls.SignatureScheme.ECDSA_SECP521R1_SHA512,
-                tls.SignatureScheme.RSA_PSS_RSAE_SHA256,
-                tls.SignatureScheme.RSA_PSS_RSAE_SHA384,
-                tls.SignatureScheme.RSA_PSS_RSAE_SHA512,
-                tls.SignatureScheme.RSA_PKCS1_SHA256,
-                tls.SignatureScheme.RSA_PKCS1_SHA384,
-                tls.SignatureScheme.RSA_PKCS1_SHA512,
-                tls.SignatureScheme.ECDSA_SHA1,
-                tls.SignatureScheme.RSA_PKCS1_SHA1,
-            ]
-            self._determine_supported_groups()
+        self._client.profile.cipher_suites = self._get_cipher_suites()
+        if not self._client.profile.cipher_suites:
+            logging.info(f'no (EC)DH cipher suites supported ("{testsuite_name}")')
+            return
 
-            if self._profile_groups.extension_supported is tls.SPBool.C_TRUE:
-                self._determine_server_preference()
-                self._determine_advertised_group()
+        self._client.profile.versions = [self._version]
+        self._client.profile.signature_algorithms = [
+            tls.SignatureScheme.ED25519,
+            tls.SignatureScheme.ED448,
+            tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
+            tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
+            tls.SignatureScheme.ECDSA_SECP521R1_SHA512,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA256,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA384,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA512,
+            tls.SignatureScheme.RSA_PKCS1_SHA256,
+            tls.SignatureScheme.RSA_PKCS1_SHA384,
+            tls.SignatureScheme.RSA_PKCS1_SHA512,
+            tls.SignatureScheme.ECDSA_SHA1,
+            tls.SignatureScheme.RSA_PKCS1_SHA1,
+        ]
+        self._determine_supported_groups()
 
-        except ScanError as exc:
-            logging.info(f'scan error in "{testsuite_name}": {exc.message}')
-            # TODO: strategy for handling status messages
-            # self._profile_groups.set_status(exc.message)
+        if self._profile_groups.extension_supported is tls.SPBool.C_TRUE:
+            self._determine_server_preference()
+            self._determine_advertised_group()
 
 
 class _TLS12_Scan(_Scan):

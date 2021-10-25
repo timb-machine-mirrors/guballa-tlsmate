@@ -491,7 +491,7 @@ class ScanPaddingOracle(WorkerPlugin):
 
     def _tls_poodle_handshake(self):
         fp = self._vector_fingerprint(tls.ContentType.HANDSHAKE, _vector_tls_poodle)
-        if fp.events[0][1] is tls.CCSType.CHANGE_CIPHER_SPEC:
+        if fp and fp.events[0][1] is tls.CCSType.CHANGE_CIPHER_SPEC:
             self.tls_poodle = True
 
     def _scan_version(self, values, tls_poodle=False):

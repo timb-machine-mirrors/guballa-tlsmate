@@ -437,7 +437,6 @@ class TextProfileWorker(WorkerPlugin):
 
         prof_grps = get_dict_value(self._style, "supported_groups", "groups")
         group_hash = {}
-        print(Mood.HEADLINE.decorate("Supported groups"))
         for version in self._prof_versions:
             prof_version = get_dict_value(self._style, "supported_groups", version.name)
             version_prof = self.server_profile.get_version_profile(version)
@@ -494,6 +493,10 @@ class TextProfileWorker(WorkerPlugin):
             else:
                 group_hash[hashed] = {"versions": [str(version)], "combined": combined}
 
+        if not group_hash:
+            return
+
+        print(Mood.HEADLINE.decorate("Supported groups"))
         for group in group_hash.values():
             versions = ", ".join(group["versions"])
             print(f"\n  {Mood.BOLD.decorate(versions)}:")
@@ -682,13 +685,6 @@ class TextProfileWorker(WorkerPlugin):
                 "compression", get_styled_text(self._style, "compression", compr.name)
             )
 
-        scsv = getattr(feat_prof, "scsv_renegotiation", None)
-        if scsv is not None:
-            table.row(
-                "SCSV-renegotiation",
-                get_styled_text(self._style, "scsv_renegotiation", scsv.name),
-            )
-
         etm = getattr(feat_prof, "encrypt_then_mac", None)
         if etm is not None:
             table.row(
@@ -715,8 +711,15 @@ class TextProfileWorker(WorkerPlugin):
         sec_reneg = getattr(feat_prof, "secure_renegotation", None)
         if sec_reneg is not None:
             table.row(
-                "secure renegotiation",
+                "secure renegotiation (extension)",
                 get_styled_text(self._style, "secure_renegotiation", sec_reneg.name),
+            )
+
+        scsv = getattr(feat_prof, "scsv_renegotiation", None)
+        if scsv is not None:
+            table.row(
+                "secure renegotiation (SCSV)",
+                get_styled_text(self._style, "scsv_renegotiation", scsv.name),
             )
 
         session_id = getattr(feat_prof, "session_id", None)
@@ -867,6 +870,10 @@ class TextProfileWorker(WorkerPlugin):
         self_signed = getattr(cert, "self_signed", None)
         if self_signed is tls.SPBool.C_TRUE:
             items.append("self-signed")
+
+        from_trust_store = getattr(cert, "from_trust_store", tls.SPBool.C_FALSE)
+        if from_trust_store is tls.SPBool.C_TRUE:
+            items.append("certificate taken from trust store")
 
         print(f'  Certificate #{idx}: {", ".join(items)}')
         table = utils.Table(indent=4, sep="  ")
