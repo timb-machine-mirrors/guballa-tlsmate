@@ -60,6 +60,8 @@ def init_crl(ca_dir, crl_manager, ca, port=44400):
 def tlsmate(ca_dir, trust_store_file):
     mate = TlsMate()
     mate.trust_store.set_ca_files([trust_store_file])
+    init_crl(ca_dir, mate.crl_manager, "root-rsa")
+    init_crl(ca_dir, mate.crl_manager, "root-ecdsa")
     init_crl(ca_dir, mate.crl_manager, "ca-rsa")
     init_crl(ca_dir, mate.crl_manager, "ca-ecdsa")
     mate.config.set("ocsp", False)
