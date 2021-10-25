@@ -26,6 +26,11 @@ def fixturefiles_dir():
 
 
 @pytest.fixture
+def tlsmate_empty_ini(fixturefiles_dir):
+    return fixturefiles_dir / "tlsmate_empty.ini"
+
+
+@pytest.fixture
 def trust_store_file(fixturefiles_dir):
     return fixturefiles_dir / "ca/certs/root-certificates.pem"
 

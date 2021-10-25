@@ -6,7 +6,7 @@ import random
 
 # import own stuff
 from tlsmate import tls
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 from tlsmate import msg
 from tlsmate import ext
 from tlsmate.server_profile import SPGrease
@@ -54,7 +54,7 @@ _grease_cipher_suites = [
 _grease_psk_modes = [0x0B, 0x2A, 0x49, 0x68, 0x87, 0xA6, 0xC5, 0xE4]
 
 
-class ScanGrease(WorkerPlugin):
+class ScanGrease(Worker):
     name = "grease"
     descr = "scan for tolerance to unknown parameter values (GREASE)"
     prio = 35

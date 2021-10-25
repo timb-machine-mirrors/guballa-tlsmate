@@ -7,7 +7,7 @@ import abc
 # import own stuff
 from tlsmate import msg
 from tlsmate import tls
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 from tlsmate import utils
 from tlsmate.server_profile import SPSignatureAlgorithms
 
@@ -57,7 +57,7 @@ class _BackendTls13(_Backend):
         return sig_alg, cert_chain
 
 
-class ScanSigAlgs(WorkerPlugin):
+class ScanSigAlgs(Worker):
     name = "sigalgo"
     descr = "scan for supported signature algorithms"
     prio = 20
