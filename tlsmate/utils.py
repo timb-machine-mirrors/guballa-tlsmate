@@ -423,7 +423,7 @@ class Table(object):
         cols = [0] * self._nbr_columns
         for row in self._rows:
             for idx, col in enumerate(row):
-                cols[idx] = max(cols[idx], len(col))
+                cols[idx] = max(cols[idx], col[1])
 
         cols[-1] = 1
         for row in self._rows:
