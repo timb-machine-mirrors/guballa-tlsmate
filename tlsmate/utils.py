@@ -352,7 +352,11 @@ def int_to_bytes(number):
         bytes: just as many bytes as needed to represent the integer as an octet string
     """
 
-    return number.to_bytes((number.bit_length() + 7) // 8, "big")
+    if number:
+        return number.to_bytes((number.bit_length() + 7) // 8, "big")
+
+    else:
+        return b"\0"
 
 
 def set_logging(level):
@@ -363,7 +367,9 @@ def set_logging(level):
     """
 
     if level is not None:
-        logging.basicConfig(level=level.upper(), format="%(levelname)s: %(message)s")
+        logging.basicConfig(
+            level=level.upper(), format="%(levelname)s: %(message)s", force=True
+        )
 
 
 class Log(object):
@@ -420,7 +426,7 @@ class Table(object):
         if not self._nbr_columns:
             return
 
-        cols = [0] * self._nbr_columns
+        cols = [1] * self._nbr_columns
         for row in self._rows:
             for idx, col in enumerate(row):
                 cols[idx] = max(cols[idx], col[1])
