@@ -12,7 +12,7 @@ from tlsmate.structs import ConfigItem
 # import other stuff
 import configparser
 
-
+config_logging = ConfigItem("logging", type=str, default="error")
 config_host = ConfigItem("host", type=str, default="localhost")
 config_port = ConfigItem("port", type=int, default=443)
 config_interval = ConfigItem("interval", type=int, default=0)
@@ -67,6 +67,7 @@ class Configuration(object):
         # register configurations which are essential in the core
         # part of tlsmate.
         for item in [
+            config_logging,
             config_host,
             config_port,
             config_interval,

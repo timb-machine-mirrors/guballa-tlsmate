@@ -119,14 +119,6 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
 
         return self.path.resolve().parent / "recordings" / (name + ".yaml")
 
-    def _init_classes(self):
-        """Init class attributes.
-
-        Between two test cases some class attributes must be reset.
-        """
-
-        TlsConnection.reset()
-
     def entry(self, is_replaying=False):
         """Entry point for a test case.
 
@@ -134,8 +126,6 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             is_replaying (bool): an indication if the test case is replayed or recorded.
                 Defaults to False.
         """
-
-        self._init_classes()
 
         if is_replaying:
             ini_file = None
@@ -146,8 +136,6 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
                 ini_file = None
 
         self.config = Configuration()
-        self.config.register(ConfigItem("host", type=str, default="localhost"))
-        self.config.register(ConfigItem("port", type=int, default=443))
         self.config.register(ConfigItem("pytest_recorder_file", type=str))
         self.config.register(ConfigItem("pytest_recorder_replaying", type=str))
 

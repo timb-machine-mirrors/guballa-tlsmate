@@ -330,17 +330,6 @@ class TlsConnection(object):
             Heartbeat messages.
     """
 
-    _cert_chain_digests = []
-
-    @classmethod
-    def reset(cls):
-        """Reset class attributes.
-
-        Required for pytest, as between two test cases the cert_chain_digest
-        must be reset.
-        """
-        cls._cert_chain_digests = []
-
     def __init__(self, tlsmate, host=None, port=None):
         self._tlsmate = tlsmate
         if host is None:
@@ -967,12 +956,7 @@ class TlsConnection(object):
             if sni is None:
                 raise ValueError("No SNI defined")
 
-        try:
-            cert_chain.validate(timestamp, sni, self.client.alert_on_invalid_cert)
-
-        except Exception as exc:
-            if self.client.alert_on_invalid_cert:
-                raise exc
+        cert_chain.validate(timestamp, sni, self.client.alert_on_invalid_cert)
 
     def send(self, *messages, pre_serialization=None, **kwargs):
         """Interface to send messages.
@@ -1320,24 +1304,13 @@ class TlsConnection(object):
             self._record_layer.update_state(self.hs_write_state)
 
     def _on_certificate_received(self, msg):
-        verify_oscp_status = False
-        validate_chain = False
+        self._validate_cert_chain(msg.chain)
         if self.version is tls.Version.TLS13:
             self.certificate_digest = self._kdf.current_msg_digest()
             ext_status_req = get_extension(
                 msg.chain.certificates[0].tls_extensions, tls.Extension.STATUS_REQUEST
             )
             if ext_status_req:
-                validate_chain = True
-                verify_oscp_status = True
-
-        if msg.chain.digest not in self._cert_chain_digests:
-            self._cert_chain_digests.append(msg.chain.digest)
-            validate_chain = True
-
-        if validate_chain:
-            self._validate_cert_chain(msg.chain)
-            if verify_oscp_status:
                 self.stapling_status = msg.chain.verify_ocsp_stapling(
                     [ext_status_req.ocsp_response], self.client.alert_on_invalid_cert
                 )
