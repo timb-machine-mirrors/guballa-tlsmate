@@ -31,6 +31,16 @@ def tlsmate_empty_ini(fixturefiles_dir):
 
 
 @pytest.fixture
+def guballa_de_pem(fixturefiles_dir):
+    return pem.parse_file(fixturefiles_dir / "guballa.de.pem")[0]
+
+
+@pytest.fixture
+def quo_vadis_root_ca3(fixturefiles_dir):
+    return pem.parse_file(fixturefiles_dir / "QuoVadis_Root_CA_3.pem")[0]
+
+
+@pytest.fixture
 def ca_dir(fixturefiles_dir):
     return fixturefiles_dir / "../ca"
 
