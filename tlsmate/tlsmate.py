@@ -62,7 +62,7 @@ class TlsMate(object):
 
         self.config = config
         self.server_profile = ServerProfile()
-        self.recorder = Recorder()
+        self.recorder = Recorder(tlsmate=self)
         self.trust_store = TrustStore(tlsmate=self)
         self.client_auth = ClientAuth(tlsmate=self)
         self.crl_manager = CrlManager(tlsmate=self)
