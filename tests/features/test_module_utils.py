@@ -8,7 +8,7 @@ from tlsmate import tls
 data = {
     "array": [1, 2, 3],
     "integer": 4,
-    "object": {"a": 1, "b": 2,},
+    "object": {"a": 1, "b": 2},
     "string": "hello",
 }
 

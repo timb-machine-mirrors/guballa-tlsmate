@@ -40,7 +40,13 @@ all: \
 	recordings/recorder_cbc_padding_oracle_ok.yaml \
 	recordings/profile_text_ssl2.yaml \
 	recordings/profile_text_openssl1_0_1e.yaml \
-	recordings/profile_text_openssl3_0_0.yaml
+	recordings/profile_text_openssl3_0_0.yaml \
+	recordings/profile_basic_openssl3_0_0_ed25519_ed448.yaml \
+	recordings/profile_supported_groups_openssl3_0_0_ed25519_ed448.yaml \
+	recordings/profile_sig_algos_openssl3_0_0_ed25519_ed448.yaml \
+	recordings/profile_basic_openssl1_0_2_DSA.yaml \
+	recordings/profile_supported_groups_openssl1_0_2_DSA.yaml \
+	recordings/profile_sig_algos_openssl1_0_2_DSA.yaml
 
 recordings/recorder_supported_groups_openssl%.yaml: recordings/recorder_eval_cipher_suites_openssl$*.yaml
 

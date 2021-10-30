@@ -483,7 +483,9 @@ class CertChain(object):
             self.certificates[0], 0, timestamp, domain_name, raise_on_failure
         )
 
-        self.successful_validation = all([self.certificates[idx].trusted for idx in self._trust_path])
+        self.successful_validation = all(
+            [self.certificates[idx].trusted for idx in self._trust_path]
+        )
 
         self._cert_chain_cache.update_cached_validation_state(self)
 

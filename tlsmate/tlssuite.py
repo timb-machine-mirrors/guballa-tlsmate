@@ -15,7 +15,6 @@ from tlsmate.tlsmate import TlsMate, TLSMATE_DIR
 from tlsmate import utils
 from tlsmate.config import Configuration
 from tlsmate.structs import ConfigItem
-from tlsmate.connection import TlsConnection
 
 # import other stuff
 
