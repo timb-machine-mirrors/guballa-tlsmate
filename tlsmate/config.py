@@ -82,6 +82,11 @@ class Configuration(object):
         ]:
             self.register(item)
 
+        # special configuration item exclusively used for unit tests.
+        # if set to False, the recorder will not use any delays when replaying.
+        self.register(ConfigItem("recorder_delay", type=bool, default=True))
+        self._init_environment_var("recorder_delay")
+
     def _str_to_filelist(self, string):
         """Resolves a string of files paths.
 
@@ -96,6 +101,7 @@ class Configuration(object):
         Returns:
             list of str: the list of resolved absolute paths.
         """
+
         ret = []
         for val in string.split(","):
             val = val.strip()
@@ -113,6 +119,7 @@ class Configuration(object):
     def _init_from_ini_file(self, ini_file):
         """Helper method to initialize the configuration from an ini-file.
         """
+
         if ini_file is None:
             ini_file = Path.home() / ".tlsmate.ini"
             if not ini_file.is_file():
@@ -137,17 +144,25 @@ class Configuration(object):
                 if val is not None:
                     self._config[item] = self._cast_item(item, val)
 
+    def _init_environment_var(self, item):
+        """Helper method to initialize a single item from the environment variable.
+        """
+
+        val = os.environ.get("TLSMATE_" + item.upper())
+        if val is not None:
+            self._config[item] = self._cast_item(item, val)
+
     def _init_from_environment(self):
         """Helper method to initialize the configuration from environment variables.
         """
+
         for item in self._config:
-            val = os.environ.get("TLSMATE_" + item.upper())
-            if val is not None:
-                self._config[item] = self._cast_item(item, val)
+            self._init_environment_var(item)
 
     def _cast_item(self, item, val):
         """Cast the type of a configuration item into the internal format.
         """
+
         item_type = self._descr[item].type
         if item_type in self._format_option:
             val = self._format_option[item_type](self, val)
@@ -160,6 +175,7 @@ class Configuration(object):
             ini_file (str): the path to the ini file. If None is given, then only
                 the environment variables are taken into account.
         """
+
         self._init_from_ini_file(ini_file)
         self._init_from_environment()
 
@@ -171,6 +187,7 @@ class Configuration(object):
             item name and the item value.
 
         """
+
         return self._config.items()
 
     def get(self, key, default=None):
@@ -185,6 +202,7 @@ class Configuration(object):
             any: the value of the configuration item or the provided default value if
             it is not present.
         """
+
         return self._config.get(key, default)
 
     def set(self, key, val, keep_existing=True):
@@ -212,6 +230,7 @@ class Configuration(object):
         Raises:
             ValueError: if a configuration item with the same name is already existing
         """
+
         name = config_item.name
         if name in self._descr:
             if config_item != self._descr[name]:
