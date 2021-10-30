@@ -160,10 +160,11 @@ class ProfileSchema(Schema):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # self.unknown = INCLUDE
         self.unknown = INCLUDE
 
     @post_load
-    def deserialize(self, data, **kwargs):
+    def deserialize(self, data, reuse_object=None, **kwargs):
         """Instantiate an object and define the properties according to the given dict.
 
         Arguments:
@@ -180,7 +181,13 @@ class ProfileSchema(Schema):
             return data
 
         cls_data = self._get_schema_data(data)
-        obj = cls(data=cls_data)
+        if reuse_object:
+            obj = reuse_object
+            obj._init_from_dict(cls_data)
+
+        else:
+            obj = cls(data=cls_data)
+
         for base_cls, ext_cls in self._augments:
             if base_cls is self.__class__:
                 cls_data = ext_cls._get_schema_data(data)
@@ -797,7 +804,6 @@ class SPCertExtension(SPObject):
 
     def _ext_cert_issuer(self, value):
         raise NotImplementedError
-        pass
 
     def _ext_crl_reason(self, value):
         logging.error("Certificate extensions CertIssuer not implemented")
@@ -1829,5 +1835,4 @@ class ServerProfileSchema(ProfileSchema):
 
     @post_load
     def deserialize(self, data, **kwargs):
-        if self._profile is not None:
-            self._profile._init_from_dict(data)
+        super().deserialize(data, reuse_object=self._profile, **kwargs)

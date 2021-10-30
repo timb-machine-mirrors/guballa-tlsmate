@@ -37,7 +37,7 @@ class TestCase(CipherSuiteTester):
         tls.SignatureScheme.RSA_PKCS1_SHA1,
         tls.SignatureScheme.DSA_SHA1,
         tls.SignatureScheme.DSA_SHA256,
-        tls.SignatureScheme.DSA_SHA384
+        tls.SignatureScheme.DSA_SHA384,
     ]
     # Uncomment the line below if you do not want to use the default version and
     # adapt it to your needs.

@@ -83,7 +83,7 @@ def verify_certificate_verify(cert_ver, msgs, msg_digest):
             validate.
     """
 
-    data = ((b" " * 64) + b"TLS 1.3, server CertificateVerify" + b"\0" + msg_digest)
+    data = (b" " * 64) + b"TLS 1.3, server CertificateVerify" + b"\0" + msg_digest
     cert = msgs.server_certificate.chain.certificates[0]
     cert.validate_signature(cert_ver.signature_scheme, data, cert_ver.signature)
 
