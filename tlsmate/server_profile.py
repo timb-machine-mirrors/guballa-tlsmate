@@ -1372,8 +1372,8 @@ class SPSignatureAlgorithms(SPObject):
     """
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
         self.algorithms = []
+        super().__init__(**kwargs)
 
 
 class SPSignatureAlgorithmsSchema(ProfileSchema):
@@ -1556,7 +1556,11 @@ class SPMalfunctionIssue(SPObject):
     """Data class for a server issue
     """
 
-    def __init__(self, issue):
+    def __init__(self, issue=None, **kwargs):
+        super().__init__(**kwargs)
+        if not issue:
+            return
+
         self.name = issue.name
         self.description = issue.value
 
@@ -1593,7 +1597,7 @@ class SPServerMalfunction(SPObject):
         if not malfunction:
             return
 
-        self.issue = SPMalfunctionIssue(malfunction.issue)
+        self.issue = SPMalfunctionIssue(issue=malfunction.issue)
         if malfunction.message:
             self.message = malfunction.message
 
