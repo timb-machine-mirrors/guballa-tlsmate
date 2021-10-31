@@ -73,25 +73,6 @@ class Mood:
     ERROR: FontStyle = FontStyle(color=Color.RED, bold=True)
 
 
-def apply_mood(txt, mood):
-    """Decorate the text with the given mood
-
-    Arguments:
-        txt (str): the text to decorate
-        mood(str): the ANSI escape code string to style a terminal output
-
-    Returns:
-        str: the decorated text. The output will be reset to a normal terminal output
-        at the end.
-    """
-    if mood == "":
-        return str(txt)
-
-    return mood.format(txt=txt)
-
-    # return mood + str(txt) + Mood.RESET
-
-
 def merge_moods(moods):
     """Returns the "worst" mood from a given list
 
@@ -290,6 +271,9 @@ class TextProfileWorker(Worker):
         print()
 
     def _print_scan_info(self):
+        if not hasattr(self.server_profile, "scan_info"):
+            return
+
         scan_info = self.server_profile.scan_info
         self._start_date = scan_info.start_date
         print(Mood.HEADLINE.decorate("Basic scan information"))
@@ -308,6 +292,9 @@ class TextProfileWorker(Worker):
         print()
 
     def _print_host(self):
+        if not hasattr(self.server_profile, "server"):
+            return
+
         host_info = self.server_profile.server
         print(Mood.HEADLINE.decorate("Scanned host"))
         print()
@@ -623,7 +610,7 @@ class TextProfileWorker(Worker):
                 }
 
         if dh_groups:
-            print(Mood.HEADLINE.decorate("DH groups (finite field"))
+            print(Mood.HEADLINE.decorate("DH groups (finite field)"))
             for values in dh_groups.values():
                 versions = ", ".join(values["versions"])
                 print(f"\n  {Mood.BOLD.decorate(versions)}:")
