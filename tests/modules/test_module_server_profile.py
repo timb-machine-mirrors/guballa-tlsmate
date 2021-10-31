@@ -4,6 +4,7 @@
 import datetime
 from tlsmate.cert_chain import CertChain
 from tlsmate.server_profile import SPObject, ProfileSchema, ServerProfileSchema
+from tlsmate import utils
 
 from marshmallow import fields
 import pytest
@@ -79,3 +80,6 @@ def test_deserialize_profile_nok(tlsmate):
 
     with pytest.raises(ValueError, match="fields not defined in schema"):
         tlsmate.server_profile.load(data)
+
+def test_deserialize_full_profile(tlsmate, server_profile):
+    tlsmate.server_profile.load(utils.deserialize_data(server_profile))
