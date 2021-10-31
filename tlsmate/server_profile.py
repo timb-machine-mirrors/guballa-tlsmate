@@ -1517,7 +1517,7 @@ class SPVulnerabilitiesSchema(ProfileSchema):
     cbc_padding_oracle = fields.Nested(SPCbcPaddingOracleInfoSchema)
 
 
-class SPServerIssue(SPObject):
+class SPMalfunctionIssue(SPObject):
     """Data class for a server issue
     """
 
@@ -1526,17 +1526,17 @@ class SPServerIssue(SPObject):
         self.description = issue.value
 
 
-class SPServerIssueSchema(ProfileSchema):
-    """Schema for a TLS version (enum).
+class SPMalfunctionIssueSchema(ProfileSchema):
+    """Schema for malfunction issue
     """
 
-    __profile_class__ = SPServerIssue
+    __profile_class__ = SPMalfunctionIssue
     name = fields.String()
     description = fields.String()
 
 
 class SPMalfunctionMessageSchema(ProfileEnumSchema):
-    """Schema for mlafunction message
+    """Schema for malfunction message
     """
 
     __profile_class__ = tls.HandshakeType
@@ -1553,8 +1553,20 @@ class SPServerMalfunction(SPObject):
     """Data class for server malfunction
     """
 
-    def __init__(self, issue):
-        self.issue = SPServerIssue(issue)
+    def __init__(self, malfunction=None, **kwargs):
+        if malfunction:
+            self._init_from_args(malfunction)
+
+        else:
+            super().__init__(**kwargs)
+
+    def _init_from_args(self, malfunction):
+        self.issue = SPMalfunctionIssue(malfunction.issue)
+        if malfunction.message:
+            self.message = malfunction.message
+
+        if malfunction.extension:
+            self.extension = malfunction.extension
 
 
 class SPServerMalfunctionSchema(ProfileSchema):
@@ -1562,7 +1574,7 @@ class SPServerMalfunctionSchema(ProfileSchema):
     """
 
     __profile_class__ = SPServerMalfunction
-    issue = fields.Nested(SPServerIssueSchema)
+    issue = fields.Nested(SPMalfunctionIssueSchema)
     message = fields.Nested(SPMalfunctionMessageSchema)
     extension = fields.Nested(SPMalfunctionExtensionSchema)
 
