@@ -85,7 +85,7 @@ def test_sig_algo():
     sig_algo, offset = ext.Extension.deserialize(data, 0)
     assert offset == len(data)
     assert type(sig_algo) is ext.ExtSignatureAlgorithms
-    assert sig_algo.signature_algorithms == [tls.SignatureScheme.ECDSA_SHA1, 0xaabb]
+    assert sig_algo.signature_algorithms == [tls.SignatureScheme.ECDSA_SHA1, 0xAABB]
 
 
 def test_heartbeat():

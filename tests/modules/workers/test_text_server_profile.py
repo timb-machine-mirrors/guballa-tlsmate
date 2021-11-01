@@ -179,6 +179,7 @@ server_malfunctions:
         in captured.out
     )
 
+
 def test_with_compression(tlsmate, style_file, capsys):
     FontStyle.html = False
     yaml_data = """
@@ -216,6 +217,7 @@ def test_with_html(tlsmate, style_file, capsys):
     captured = capsys.readouterr()
     assert captured.out.startswith("<pre>")
     assert captured.out.endswith("</pre>\n")
+
 
 def test_without_style(tlsmate):
     tlsmate.server_profile.load({})
