@@ -1090,13 +1090,13 @@ class Alert(TlsMessage):
 
     def serialize(self, conn):
         alert = bytearray()
-        if self.level == int:
+        if type(self.level) is int:
             alert.extend(pdu.pack_uint8(self.level))
 
         else:
             alert.extend(pdu.pack_uint8(self.level.value))
 
-        if self.description == int:
+        if type(self.description) is int:
             alert.extend(pdu.pack_uint8(self.description))
 
         else:
@@ -1369,7 +1369,7 @@ class SSL2Error(SSL2Message):
         pass
 
     def _deserialize_msg_body(self, fragment, offset, conn):
-        error = pdu.unpack_uint16(fragment, offset)
+        error, offset = pdu.unpack_uint16(fragment, offset)
         self.error = tls.SSLError.val2enum(error)
         return self
 
