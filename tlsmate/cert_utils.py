@@ -225,7 +225,7 @@ def _verify_ecdsa(cert, signature, data, hash_algo):
 def _verify_xcurve(cert, signature, data, hash_algo):
     """Verify X25519 and X488 signatures
     """
-    cert.parsed.public_key().verify(signature, data)
+    cert.parsed.public_key().verify(signature, bytes(data))
 
 
 def _verify_rsae_pss(cert, signature, data, hash_algo):

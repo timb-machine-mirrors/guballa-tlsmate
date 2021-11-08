@@ -7,14 +7,14 @@ import logging
 # import own stuff
 from tlsmate import msg
 from tlsmate import tls
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 from tlsmate import utils
 from tlsmate.server_profile import SPVersion, SPCiphers
 
 # import other stuff
 
 
-class ScanCipherSuites(WorkerPlugin):
+class ScanCipherSuites(Worker):
     """Scans for the supported versions, cipher suites and certificate chains.
 
     The results are stored in the server profile.
@@ -32,6 +32,31 @@ class ScanCipherSuites(WorkerPlugin):
         tls.Version.TLS12: "tls12",
         tls.Version.TLS13: "tls13",
     }
+
+    supported_groups_tls12 = [
+        tls.SupportedGroups.X25519,
+        tls.SupportedGroups.X448,
+        tls.SupportedGroups.SECT163K1,
+        tls.SupportedGroups.SECT163R2,
+        tls.SupportedGroups.SECT233K1,
+        tls.SupportedGroups.SECT233R1,
+        tls.SupportedGroups.SECT283K1,
+        tls.SupportedGroups.SECT283R1,
+        tls.SupportedGroups.SECT409K1,
+        tls.SupportedGroups.SECT409R1,
+        tls.SupportedGroups.SECT571K1,
+        tls.SupportedGroups.SECT571R1,
+        tls.SupportedGroups.SECP224R1,
+        tls.SupportedGroups.SECP256K1,
+        tls.SupportedGroups.BRAINPOOLP256R1,
+        tls.SupportedGroups.BRAINPOOLP384R1,
+        tls.SupportedGroups.BRAINPOOLP512R1,
+        tls.SupportedGroups.SECP256R1,
+        tls.SupportedGroups.SECP384R1,
+        tls.SupportedGroups.SECP521R1,
+        tls.SupportedGroups.FFDHE2048,
+        tls.SupportedGroups.FFDHE4096,
+    ]
 
     def _get_server_cs_and_cert(self, version):
         """Performs a handshake and retieves the cipher suite and certificate chain.
@@ -61,7 +86,9 @@ class ScanCipherSuites(WorkerPlugin):
             certificate = conn.wait(msg.Certificate, optional=True)
             if certificate is not None:
                 self.server_profile.append_unique_cert_chain(certificate.chain)
+
             return server_hello.cipher_suite
+
         return None
 
     def _get_server_cs(self):
@@ -74,8 +101,10 @@ class ScanCipherSuites(WorkerPlugin):
         with self.client.create_connection() as conn:
             conn.send(msg.ClientHello)
             server_hello = conn.wait(msg.Any)
+
         try:
             return server_hello.cipher_suite
+
         except AttributeError:
             return None
 
@@ -96,6 +125,7 @@ class ScanCipherSuites(WorkerPlugin):
             server_cs = self._get_server_cs()
             server_pref.append(server_cs)
             self.client.profile.cipher_suites.remove(server_cs)
+
         return server_pref
 
     def _chacha_poly_pref(self, server_pref, ciphers):
@@ -114,6 +144,7 @@ class ScanCipherSuites(WorkerPlugin):
             if cs not in chacha_cs:
                 if idx < len(chacha_cs):
                     check_chacha_pref = True
+
                 break
 
         if not check_chacha_pref:
@@ -144,6 +175,12 @@ class ScanCipherSuites(WorkerPlugin):
             vers_prof (:obj:`tlsmate.server_profile.SPVersion`): the version profile
         """
 
+        if version is tls.Version.TLS13:
+            self.client.profile.supported_groups = tls.SupportedGroups.all_tls13()
+
+        else:
+            self.client.profile.supported_groups = self.supported_groups_tls12
+
         cipher_suites = utils.filter_cipher_suites(
             tls.CipherSuite.all(), version=version
         )
@@ -173,18 +210,21 @@ class ScanCipherSuites(WorkerPlugin):
                 if cipher_suite not in (None, tls.CipherSuite.TLS_NULL_WITH_NULL_NULL):
                     sub_set.remove(cipher_suite)
                     supported_cs.append(cipher_suite)
+
                 else:
                     sub_set = []
 
         if supported_cs:
             if len(supported_cs) == 1:
                 server_prio = tls.SPBool.C_NA
+
             else:
                 server_prio = tls.SPBool.C_FALSE
                 # check if server enforce the cipher suite prio
                 self.client.profile.cipher_suites = supported_cs
                 if self._get_server_cs() != supported_cs[0]:
                     server_prio = tls.SPBool.C_TRUE
+
                 else:
                     supported_cs.append(supported_cs.pop(0))
                     if self._get_server_cs() != supported_cs[0]:
@@ -193,6 +233,7 @@ class ScanCipherSuites(WorkerPlugin):
                 # determine the order of cipher suites on server side, if applicable
                 if server_prio == tls.SPBool.C_TRUE:
                     supported_cs = self._get_server_preference(supported_cs)
+
                 else:
                     # esthetical: restore original order, which means the cipher suites
                     # are ordered according to the binary representation
@@ -251,31 +292,6 @@ class ScanCipherSuites(WorkerPlugin):
         self.client.profile.support_session_id = False
         self.client.profile.support_session_ticket = False
         self.client.profile.ec_point_formats = None
-        self.client.profile.versions = [tls.Version.TLS12]
-        self.client.profile.supported_groups = [
-            tls.SupportedGroups.X25519,
-            tls.SupportedGroups.X448,
-            tls.SupportedGroups.SECT163K1,
-            tls.SupportedGroups.SECT163R2,
-            tls.SupportedGroups.SECT233K1,
-            tls.SupportedGroups.SECT233R1,
-            tls.SupportedGroups.SECT283K1,
-            tls.SupportedGroups.SECT283R1,
-            tls.SupportedGroups.SECT409K1,
-            tls.SupportedGroups.SECT409R1,
-            tls.SupportedGroups.SECT571K1,
-            tls.SupportedGroups.SECT571R1,
-            tls.SupportedGroups.SECP224R1,
-            tls.SupportedGroups.SECP256K1,
-            tls.SupportedGroups.BRAINPOOLP256R1,
-            tls.SupportedGroups.BRAINPOOLP384R1,
-            tls.SupportedGroups.BRAINPOOLP512R1,
-            tls.SupportedGroups.SECP256R1,
-            tls.SupportedGroups.SECP384R1,
-            tls.SupportedGroups.SECP521R1,
-            tls.SupportedGroups.FFDHE2048,
-            tls.SupportedGroups.FFDHE4096,
-        ]
         self.client.profile.key_shares = tls.SupportedGroups.all_tls13()
         self.client.profile.signature_algorithms = [
             tls.SignatureScheme.ED25519,
@@ -293,6 +309,7 @@ class ScanCipherSuites(WorkerPlugin):
             tls.SignatureScheme.RSA_PKCS1_SHA1,
         ]
 
+        self.server_profile.allocate_versions()
         for version in tls.Version.all():
             vers_prof = SPVersion(version=version)
             if self.config.get(self.config_mapping[version]):

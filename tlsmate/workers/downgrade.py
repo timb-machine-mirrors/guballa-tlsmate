@@ -6,12 +6,12 @@
 # import own stuff
 from tlsmate import tls
 from tlsmate import msg
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 
 # import other stuff
 
 
-class ScanDowngrade(WorkerPlugin):
+class ScanDowngrade(Worker):
     name = "downgrade"
     descr = "scan for downgrade attack prevention"
     prio = 30

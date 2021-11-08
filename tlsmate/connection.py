@@ -330,17 +330,6 @@ class TlsConnection(object):
             Heartbeat messages.
     """
 
-    _cert_chain_digests = []
-
-    @classmethod
-    def reset(cls):
-        """Reset class attributes.
-
-        Required for pytest, as between two test cases the cert_chain_digest
-        must be reset.
-        """
-        cls._cert_chain_digests = []
-
     def __init__(self, tlsmate, host=None, port=None):
         self._tlsmate = tlsmate
         if host is None:
@@ -435,6 +424,7 @@ class TlsConnection(object):
         """Context manager: cleanup the TLS- and TCP-connection.
         """
 
+        logging.debug("exiting context manager...")
         if exc_type is ServerMalfunction:
             self.client.report_server_issue(
                 exc_value.issue, exc_value.message, exc_value.extension
@@ -456,6 +446,12 @@ class TlsConnection(object):
             self._send_alert(tls.AlertLevel.WARNING, tls.AlertDescription.CLOSE_NOTIFY)
 
         else:
+            if exc_type is not None:
+                logging.warning(f"exception {exc_type.__name__}: {str(exc_value)}")
+                str_io = io.StringIO()
+                tb.print_exception(exc_type, exc_value, traceback, file=str_io)
+                logging.debug(str_io.getvalue())
+
             self._send_alert(tls.AlertLevel.WARNING, tls.AlertDescription.CLOSE_NOTIFY)
 
         self._record_layer.close_socket()
@@ -831,6 +827,10 @@ class TlsConnection(object):
             logging.debug(f"finished_key: {pdu.dump(finished_key)}")
             val = self._kdf.hkdf_extract(hash_val, finished_key)
 
+        elif self.version is tls.Version.SSL30:
+            val = self._kdf._backend.ssl30_digest(self.master_secret, b"CLNT")
+            self._update_write_state()
+
         else:
             if self._entity == tls.Entity.CLIENT:
                 label = b"client finished"
@@ -956,12 +956,7 @@ class TlsConnection(object):
             if sni is None:
                 raise ValueError("No SNI defined")
 
-        try:
-            cert_chain.validate(timestamp, sni, self.client.alert_on_invalid_cert)
-
-        except Exception as exc:
-            if self.client.alert_on_invalid_cert:
-                raise exc
+        cert_chain.validate(timestamp, sni, self.client.alert_on_invalid_cert)
 
     def send(self, *messages, pre_serialization=None, **kwargs):
         """Interface to send messages.
@@ -1228,15 +1223,20 @@ class TlsConnection(object):
             )
 
         else:
-            if self._entity == tls.Entity.CLIENT:
-                label = b"server finished"
+            if self.version is tls.Version.SSL30:
+                val = self._kdf._backend.ssl30_digest(self.master_secret, b"SRVR")
 
             else:
-                label = b"client finished"
+                if self._entity == tls.Entity.CLIENT:
+                    label = b"server finished"
 
-            val = self._kdf.prf(
-                self.master_secret, label, self._pre_finished_digest, 12
-            )
+                else:
+                    label = b"client finished"
+
+                val = self._kdf.prf(
+                    self.master_secret, label, self._pre_finished_digest, 12
+                )
+
             self._secure_reneg_sv_data = val
             self.recorder.trace(msg_digest_finished_rec=self._pre_finished_digest)
             self.recorder.trace(verify_data_finished_rec=msg.verify_data)
@@ -1304,24 +1304,13 @@ class TlsConnection(object):
             self._record_layer.update_state(self.hs_write_state)
 
     def _on_certificate_received(self, msg):
-        verify_oscp_status = False
-        validate_chain = False
+        self._validate_cert_chain(msg.chain)
         if self.version is tls.Version.TLS13:
             self.certificate_digest = self._kdf.current_msg_digest()
             ext_status_req = get_extension(
                 msg.chain.certificates[0].tls_extensions, tls.Extension.STATUS_REQUEST
             )
             if ext_status_req:
-                validate_chain = True
-                verify_oscp_status = True
-
-        if msg.chain.digest not in self._cert_chain_digests:
-            self._cert_chain_digests.append(msg.chain.digest)
-            validate_chain = True
-
-        if validate_chain:
-            self._validate_cert_chain(msg.chain)
-            if verify_oscp_status:
                 self.stapling_status = msg.chain.verify_ocsp_stapling(
                     [ext_status_req.ocsp_response], self.client.alert_on_invalid_cert
                 )
@@ -1596,7 +1585,12 @@ class TlsConnection(object):
         logging.debug(f"cipher_primitive: {self.cs_details.cipher_struct.primitive}")
 
     def _generate_master_secret(self):
-        if self.extended_ms:
+        if self.version is tls.Version.SSL30:
+            self.master_secret = self._kdf._backend.ssl3_master_secret(
+                self.premaster_secret, self.client_random + self.server_random
+            )
+
+        elif self.extended_ms:
             msg_digest = self._kdf.current_msg_digest()
             self.master_secret = self._kdf.prf(
                 self.premaster_secret, b"extended master secret", msg_digest, 48
@@ -1692,24 +1686,38 @@ class TlsConnection(object):
 
     def _key_derivation(self):
         ciph = self.cs_details.cipher_struct
-        if ciph.c_type is tls.CipherType.AEAD:
-            mac_len = 0
+        if self.version is tls.Version.SSL30:
+            mac_len = self.cs_details.mac_struct.key_len
+            key_material = self._kdf._backend.ssl3_key_material(
+                self.master_secret,
+                self.server_random + self.client_random,
+                2 * (mac_len + ciph.key_len + ciph.iv_len),
+            )
+            logging.debug(f"keying material: {pdu.dump(key_material)}")
 
         else:
-            mac_len = self.cs_details.mac_struct.key_len
 
-        key_material = self._kdf.prf(
-            self.master_secret,
-            b"key expansion",
-            self.server_random + self.client_random,
-            2 * (mac_len + ciph.key_len + ciph.iv_len),
-        )
+            if ciph.c_type is tls.CipherType.AEAD:
+                mac_len = 0
+
+            else:
+                mac_len = self.cs_details.mac_struct.key_len
+
+            key_material = self._kdf.prf(
+                self.master_secret,
+                b"key expansion",
+                self.server_random + self.client_random,
+                2 * (mac_len + ciph.key_len + ciph.iv_len),
+            )
+
         c_mac, offset = pdu.unpack_bytes(key_material, 0, mac_len)
         s_mac, offset = pdu.unpack_bytes(key_material, offset, mac_len)
         c_enc, offset = pdu.unpack_bytes(key_material, offset, ciph.key_len)
         s_enc, offset = pdu.unpack_bytes(key_material, offset, ciph.key_len)
         c_iv, offset = pdu.unpack_bytes(key_material, offset, ciph.iv_len)
         s_iv, offset = pdu.unpack_bytes(key_material, offset, ciph.iv_len)
+
+        # TODO: SSL30, export ciphers
 
         self.recorder.trace(client_write_mac_key=c_mac)
         self.recorder.trace(server_write_mac_key=s_mac)

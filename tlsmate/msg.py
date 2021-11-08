@@ -734,7 +734,9 @@ class ClientKeyExchange(HandshakeMessage):
     def _serialize_msg_body(self, conn):
         msg = bytearray()
         if self.rsa_encrypted_pms is not None:
-            msg.extend(pdu.pack_uint16(len(self.rsa_encrypted_pms)))
+            if conn.version is not tls.Version.SSL30:
+                msg.extend(pdu.pack_uint16(len(self.rsa_encrypted_pms)))
+
             msg.extend(self.rsa_encrypted_pms)
 
         elif self.dh_public is not None:

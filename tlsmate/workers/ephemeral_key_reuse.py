@@ -6,7 +6,7 @@
 # import own stuff
 from tlsmate import tls
 from tlsmate import msg
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 from tlsmate import utils
 from tlsmate.server_profile import SPEphemeralKeyReuse
 
@@ -26,7 +26,7 @@ def _determine_status(keys):
     return tls.SPBool.C_UNDETERMINED
 
 
-class ScanEphemeralKeyReuse(WorkerPlugin):
+class ScanEphemeralKeyReuse(Worker):
     name = "ephemeral_key_reuse"
     descr = "scan for ephemeral key reuse"
     prio = 31

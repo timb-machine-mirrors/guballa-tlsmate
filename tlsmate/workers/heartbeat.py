@@ -6,12 +6,12 @@
 # import own stuff
 from tlsmate import tls
 from tlsmate import msg
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 
 # import other stuff
 
 
-class ScanHeartbeat(WorkerPlugin):
+class ScanHeartbeat(Worker):
     name = "heartbeat"
     descr = "scan for heartbeat support"
     prio = 30

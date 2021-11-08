@@ -352,7 +352,11 @@ def int_to_bytes(number):
         bytes: just as many bytes as needed to represent the integer as an octet string
     """
 
-    return number.to_bytes((number.bit_length() + 7) // 8, "big")
+    if number:
+        return number.to_bytes((number.bit_length() + 7) // 8, "big")
+
+    else:
+        return b"\0"
 
 
 def set_logging(level):
@@ -363,7 +367,9 @@ def set_logging(level):
     """
 
     if level is not None:
-        logging.basicConfig(level=level.upper(), format="%(levelname)s: %(message)s")
+        logging.basicConfig(
+            level=level.upper(), format="%(levelname)s: %(message)s", force=True
+        )
 
 
 class Log(object):
@@ -410,7 +416,8 @@ class Table(object):
             args (str): a complete row, one string for each column
         """
         self._nbr_columns = max(self._nbr_columns, len(args))
-        self._rows.append(args)
+        cols = [col if type(col) is tuple else (col, len(col)) for col in args]
+        self._rows.append(cols)
 
     def dump(self):
         """Print the table
@@ -419,15 +426,22 @@ class Table(object):
         if not self._nbr_columns:
             return
 
-        cols = [0] * self._nbr_columns
+        cols = [1] * self._nbr_columns
         for row in self._rows:
             for idx, col in enumerate(row):
-                cols[idx] = max(cols[idx], len(col))
+                cols[idx] = max(cols[idx], col[1])
 
         cols[-1] = 1
         for row in self._rows:
             print(" " * self._indent, end="")
-            print(self._sep.join([f"{col:{cols[idx]}}" for idx, col in enumerate(row)]))
+            print(
+                self._sep.join(
+                    [
+                        f"{col[0]:{cols[idx] + len(col[0]) - col[1]}}"
+                        for idx, col in enumerate(row)
+                    ]
+                )
+            )
 
 
 def get_random_value():

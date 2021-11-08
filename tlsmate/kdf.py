@@ -141,6 +141,48 @@ class _BackendTls10(_Backend):
 
         return result
 
+    def ssl30_digest(self, master_secret, label):
+        md5 = self._msg_digest_md5.copy()
+        sha = self._msg_digest_sha.copy()
+        md5.update(label + master_secret + (b"\x36" * 48))
+        sha.update(label + master_secret + (b"\x36" * 40))
+        md5_2 = hashes.Hash(hashes.MD5())
+        sha_2 = hashes.Hash(hashes.SHA1())
+        md5_2.update(master_secret + (b"\x5c" * 48) + md5.finalize())
+        sha_2.update(master_secret + (b"\x5c" * 40) + sha.finalize())
+        return md5_2.finalize() + sha_2.finalize()
+
+    def ssl3_master_secret(self, pms, randoms):
+        sha = hashes.Hash(hashes.SHA1())
+        sha.update(b"A" + pms + randoms)
+        md5 = hashes.Hash(hashes.MD5())
+        md5.update(pms + sha.finalize())
+        ms = md5.finalize()
+
+        sha = hashes.Hash(hashes.SHA1())
+        sha.update(b"BB" + pms + randoms)
+        md5 = hashes.Hash(hashes.MD5())
+        md5.update(pms + sha.finalize())
+        ms += md5.finalize()
+
+        sha = hashes.Hash(hashes.SHA1())
+        sha.update(b"CCC" + pms + randoms)
+        md5 = hashes.Hash(hashes.MD5())
+        md5.update(pms + sha.finalize())
+        return ms + md5.finalize()
+
+    def ssl3_key_material(self, ms, randoms, size):
+        block = b""
+        for idx in range((size + 15) // 16):
+            prefix = bytes([65 + idx] * (idx + 1))
+            sha = hashes.Hash(hashes.SHA1())
+            sha.update(prefix + ms + randoms)
+            md5 = hashes.Hash(hashes.MD5())
+            md5.update(ms + sha.finalize())
+            block += md5.finalize()
+
+        return block
+
 
 class _BackendTls12(_Backend):
     """Implements a backend for TLS1.2 and TLS1.3

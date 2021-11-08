@@ -20,6 +20,49 @@ from cryptography.x509.oid import AuthorityInformationAccessOID
 from cryptography.exceptions import InvalidSignature
 
 
+class CertChainCache(object):
+    """Caches the validation state for a given certificate chain
+    """
+
+    _CACHE_SIZE = 100
+
+    def __init__(self):
+        self._cache = {}
+
+    def get_cached_validation_state(self, cert_chain):
+        """Returns the validation state of a certificate chain from the cache.
+
+        If not present in the cache, the certificate chain is added with the status
+        False.
+
+        Arguments:
+            cert_chain (:obj:`CertChain`): the certificate chain object
+
+        Returns
+            bool: the validation status of the certificate chain from the cache or
+            None if the certificate chain is not found.
+        """
+
+        val = self._cache.get(cert_chain.digest)
+        if val is None:
+            # Here keep cache at a reasonable size
+            if len(self._cache) >= self._CACHE_SIZE:
+                del self._cache[next(iter(self._cache))]
+
+            self._cache[cert_chain.digest] = False
+
+        return val
+
+    def update_cached_validation_state(self, cert_chain):
+        """Updates a certificate chain entry in the cache.
+
+        Arguments:
+            cert_chain (:obj:`CertChain`): the certificate chain object
+        """
+
+        self._cache[cert_chain.digest] = cert_chain.successful_validation
+
+
 class CertChain(object):
     """Class representing a certificate chain.
 
@@ -30,6 +73,7 @@ class CertChain(object):
         from tlsmate.tlsmate import TlsMate
 
         tlsmate = TlsMate.instance
+        self._cert_chain_cache = tlsmate.cert_chain_cache
         self.certificates = []
         self._digest = hashes.Hash(hashes.SHA256())
         self._digest_value = None
@@ -43,7 +87,6 @@ class CertChain(object):
         self._trust_store = tlsmate.trust_store
         self._crl_manager = tlsmate.crl_manager
         self._trust_path = None
-        self._validated = False
 
     def append_bin_cert(self, bin_cert):
         """Append the chain by a certificate given in raw format.
@@ -181,11 +224,11 @@ class CertChain(object):
                 ret_status.append(None)
                 continue
 
+            cert = self.certificates[idx]
             if not self.successful_validation:
                 ocsp_status = tls.OcspStatus.INVALID_ISSUER_CERT
 
             else:
-                cert = self.certificates[self._trust_path[idx]]
                 ocsp_status = self._verify_ocsp_resp(
                     cert, resp, self._recorder.get_timestamp(), cert.issuer_cert,
                 )
@@ -315,13 +358,13 @@ class CertChain(object):
             :obj:`tlsmate.exception.UntrustedCertificate`: if the certificate is
                 untrusted
         """
-        track = []
+        trust_path = []
         # cert already seen?
-        if cert.trusted:
-            return track
+        if cert.trusted is not None:
+            if not cert.trusted and raise_on_failure:
+                raise UntrustedCertificate(f"certificate {cert} is not trusted")
 
-        elif cert.trusted is False:
-            raise UntrustedCertificate(f"certificate {cert} is not trusted")
+            return trust_path
 
         cert.validate_period(timestamp, raise_on_failure)
         if idx == 0:
@@ -330,13 +373,13 @@ class CertChain(object):
         if idx is None:
             cert.trusted = True
             cert.issuer_cert = cert
-            return track
+            return trust_path
 
         if cert.self_signed:
             issuers = [(idx, cert)]
             if not self._trust_store.cert_in_trust_store(cert):
                 cert.mark_untrusted(
-                    "self-signed certificate not found in trust store", True
+                    "self-signed certificate not found in trust store", raise_on_failure
                 )
             else:
                 self.root_cert_transmitted = True
@@ -364,7 +407,7 @@ class CertChain(object):
                             f"issuer certificate "
                             f'"{cert.parsed.issuer.rfc4514_string()}" not found '
                             f"in trust store",
-                            True,
+                            raise_on_failure,
                         )
                     break
 
@@ -376,7 +419,7 @@ class CertChain(object):
                     cert.mark_untrusted("invalid signature", raise_on_failure)
 
                 if not cert.self_signed:
-                    track = self._validate_cert(
+                    trust_path = self._validate_cert(
                         issuer_cert,
                         issuer_idx,
                         timestamp,
@@ -405,7 +448,7 @@ class CertChain(object):
             else:
                 cert.mark_untrusted("no valid trust path found", raise_on_failure)
 
-        return [idx] + track
+        return [idx] + trust_path
 
     def validate(self, timestamp, domain_name, raise_on_failure):
         """Only the minimal checks are supported.
@@ -425,15 +468,26 @@ class CertChain(object):
                 validated and `raise_on_failure` is True.
         """
 
-        if self._validated:
+        valid = self._cert_chain_cache.get_cached_validation_state(self)
+        if valid is not None:
+            logging.debug(
+                f"using certificate chain validation status {valid} from cache"
+            )
+            if not valid and raise_on_failure:
+                raise UntrustedCertificate(
+                    f"cached status for {self.certificates[0]} is not valid"
+                )
             return
 
-        self._validated = True
         self._trust_path = self._validate_cert(
             self.certificates[0], 0, timestamp, domain_name, raise_on_failure
         )
 
-        self.successful_validation = self.certificates[0].trusted is True
+        self.successful_validation = all(
+            [self.certificates[idx].trusted for idx in self._trust_path]
+        )
+
+        self._cert_chain_cache.update_cached_validation_state(self)
 
         # And now check for gratuitous certificate in the chain
         if not raise_on_failure:

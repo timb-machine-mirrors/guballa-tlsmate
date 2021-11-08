@@ -160,10 +160,11 @@ class ProfileSchema(Schema):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # self.unknown = INCLUDE
         self.unknown = INCLUDE
 
     @post_load
-    def deserialize(self, data, **kwargs):
+    def deserialize(self, data, reuse_object=None, **kwargs):
         """Instantiate an object and define the properties according to the given dict.
 
         Arguments:
@@ -180,7 +181,13 @@ class ProfileSchema(Schema):
             return data
 
         cls_data = self._get_schema_data(data)
-        obj = cls(data=cls_data)
+        if reuse_object:
+            obj = reuse_object
+            obj._init_from_dict(cls_data)
+
+        else:
+            obj = cls(data=cls_data)
+
         for base_cls, ext_cls in self._augments:
             if base_cls is self.__class__:
                 cls_data = ext_cls._get_schema_data(data)
@@ -222,22 +229,31 @@ class ProfileSchema(Schema):
                 del data[key]
         return cls_data
 
-    @staticmethod
-    def augment(base_cls):
+    @classmethod
+    def augment(cls, ext_cls):
         """Decorator to register scheme extensions.
 
+        cls is the class to be extended.
+
+        Examlple:
+            @SPServerProfile.augment
+            class MyExtensions(ProfileSchema):
+                client_simulation = fields.Nested(...)
+                a_number = fields.Integer()
+
+        This extends the schema class SPServerProfile by two more attributes.
+        Note, that __profile_class__ must not be given in the extension class. The
+        name of the extension class has no relevance.
+
         Arguments:
-            base_cls (:class:`ProfileSchema`): the schema class to extend
+            ext_cls (:class:`ProfileSchema`): the schema class containing the extensions
 
         Returns:
             the class used to extend the base_cls class
         """
 
-        def inner(ext_cls):
-            ProfileSchema._augments.append((base_cls, ext_cls))
-            return ext_cls
-
-        return inner
+        cls._augments.append((cls, ext_cls))
+        return ext_cls
 
 
 class ProfileEnumSchema(Schema):
@@ -380,15 +396,16 @@ class SPPublicKey(SPObject):
     """
 
     def _init_from_args(self, pub_key):
-        self.key_size = pub_key.key_size
 
         if isinstance(pub_key, rsa.RSAPublicKey):
+            self.key_size = pub_key.key_size
             self.key_type = tls.SignatureAlgorithm.RSA
             pub_numbers = pub_key.public_numbers()
             self.key_exponent = pub_numbers.e
             self.key = pub_numbers.n.to_bytes(int(pub_key.key_size / 8), "big")
 
         elif isinstance(pub_key, dsa.DSAPublicKey):
+            self.key_size = pub_key.key_size
             self.key_type = tls.SignatureAlgorithm.DSA
             pub_numbers = pub_key.public_numbers()
             self.key = pub_numbers.y.to_bytes(int(pub_key.key_size / 8), "big")
@@ -397,6 +414,7 @@ class SPPublicKey(SPObject):
             self.key_g = utils.int_to_bytes(pub_numbers.parameter_numbers.g)
 
         elif isinstance(pub_key, ec.EllipticCurvePublicKey):
+            self.key_size = pub_key.key_size
             self.key_type = tls.SignatureAlgorithm.ECDSA
             group = mappings.curve_to_group.get(pub_key.curve.name)
             if group is None:
@@ -407,10 +425,12 @@ class SPPublicKey(SPObject):
             )
 
         elif isinstance(pub_key, ed25519.Ed25519PublicKey):
+            self.key_size = 256
             self.key_type = tls.SignatureAlgorithm.ED25519
             self.key = pub_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
 
         elif isinstance(pub_key, ed448.Ed448PublicKey):
+            self.key_size = 456
             self.key_type = tls.SignatureAlgorithm.ED448
             self.key = pub_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
 
@@ -784,7 +804,6 @@ class SPCertExtension(SPObject):
 
     def _ext_cert_issuer(self, value):
         raise NotImplementedError
-        pass
 
     def _ext_crl_reason(self, value):
         logging.error("Certificate extensions CertIssuer not implemented")
@@ -1566,21 +1585,28 @@ class ServerProfile(SPObject):
     def _init_from_args(self):
         self._hash = {}
 
-        self.cert_chains = []
-        self.scan_info = SPScanInfo()
-        self.server = SPServer()
-        self.versions = []
+    def allocate_versions(self):
+        """Ensure that the versions property and cert_chains properties are setup.
+        """
+
+        if not hasattr(self, "versions"):
+            self.versions = []
+
+        if not hasattr(self, "cert_chains"):
+            self.cert_chains = []
 
     def allocate_features(self):
         """Ensure that the features property is setup.
         """
-        if not getattr(self, "features", None):
+
+        if not hasattr(self, "features"):
             self.features = SPFeatures()
 
     def allocate_vulnerabilities(self):
         """Ensure that the vulnerabilities property is setup.
         """
-        if not getattr(self, "vulnerabilities", None):
+
+        if not hasattr(self, "vulnerabilities"):
             self.vulnerabilities = SPVulnerabilities()
 
     def append_unique_cert_chain(self, chain):
@@ -1608,6 +1634,9 @@ class ServerProfile(SPObject):
         Returns:
             list(:obj:`tlsmate.tls.Version`): A list of all supported versions.
         """
+
+        if not hasattr(self, "versions"):
+            return []
 
         if exclude is None:
             exclude = []
@@ -1806,5 +1835,4 @@ class ServerProfileSchema(ProfileSchema):
 
     @post_load
     def deserialize(self, data, **kwargs):
-        if self._profile is not None:
-            self._profile._init_from_dict(data)
+        super().deserialize(data, reuse_object=self._profile, **kwargs)
