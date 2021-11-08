@@ -46,7 +46,8 @@ all: \
 	recordings/profile_sig_algos_openssl3_0_0_ed25519_ed448.yaml \
 	recordings/profile_basic_openssl1_0_2_DSA.yaml \
 	recordings/profile_supported_groups_openssl1_0_2_DSA.yaml \
-	recordings/profile_sig_algos_openssl1_0_2_DSA.yaml
+	recordings/profile_sig_algos_openssl1_0_2_DSA.yaml \
+	recordings/recorder_heartbleed_no_features \
 
 recordings/recorder_supported_groups_openssl%.yaml: recordings/recorder_eval_cipher_suites_openssl$*.yaml
 
@@ -65,6 +66,8 @@ recordings/recorder_grease.yaml: recordings/recorder_resumption.yaml
 recordings/recorder_heartbeat.yaml: recordings/recorder_sig_algos_openssl1_0_2.yaml
 
 recordings/recorder_heartbleed.yaml: recordings/recorder_sig_algos_openssl1_0_2.yaml
+
+recordings/recorder_heartbleed_no_features.yaml: recordings/recorder_sig_algos_openssl1_0_2.yaml
 
 recordings/recorder_master_secret.yaml: recordings/recorder_sig_algos_openssl1_0_2.yaml
 
