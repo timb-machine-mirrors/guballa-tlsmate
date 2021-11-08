@@ -100,8 +100,11 @@ class Recorder(object):
         "response": "response",
     }
 
-    def __init__(self):
+    def __init__(self, tlsmate=None):
         self.reset()
+        self._delay = True
+        if tlsmate:
+            self._delay = tlsmate.config.get("recorder_delay")
 
     def reset(self):
         """Reset the recorder to an initial state.
@@ -281,7 +284,9 @@ class Recorder(object):
 
         if self._state is RecorderState.REPLAYING:
             timeout, event_type, data = self._unstore_value("msg_recv")
-            time.sleep(timeout)
+            if self._delay:
+                time.sleep(timeout)
+
             if event_type is SocketEvent.CLOSURE:
                 raise TlsConnectionClosedError
 
@@ -380,7 +385,9 @@ class Recorder(object):
 
         if self._state is RecorderState.REPLAYING:
             timeout, event_type, data = self._unstore_value("response")
-            time.sleep(timeout)
+            if self._delay:
+                time.sleep(timeout)
+
             if event_type is SocketEvent.CLOSURE:
                 raise Exception
 
