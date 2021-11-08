@@ -70,10 +70,10 @@ tags: ## generate ctags
 	ctags -R --languages=python  -f ./tags tlsmate/ tests/
 
 test-cov: ## generate coverage statistics
-	TLSMATE_RECORDER_DELAY=0 py.test $(COVERAGE) $(PYTEST_SUBPROCESS)
+	py.test $(COVERAGE) $(PYTEST_SUBPROCESS)
 
 test-cov-report: ## generate coverage report for each file
-	TLSMATE_RECORDER_DELAY=0 py.test --cov-report annotate:cov_annotate $(COVERAGE) $(PYTEST_SUBPROCESS)
+	py.test --cov-report annotate:cov_annotate $(COVERAGE) $(PYTEST_SUBPROCESS)
 
 test-all: ## run tests on every Python version with tox
 	tox
