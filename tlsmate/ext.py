@@ -73,7 +73,7 @@ class Extension(metaclass=abc.ABCMeta):
         ext_body, offset = pdu.unpack_bytes(fragment, offset, ext_len)
         cls_name = deserialization_map.get(ext_id)
         if cls_name is None:
-            return ExtUnknownExtension(id=ext_id_int, bytes=fragment)
+            return ExtUnknownExtension(id=ext_id_int, bytes=fragment[4:]), len(fragment)
 
         extension = cls_name()
         extension._deserialize_ext_body(ext_body)
@@ -140,7 +140,7 @@ class ExtServerNameIndication(Extension):
         list_length, offset = pdu.unpack_uint16(fragment, 0)
         if offset + list_length != len(fragment):
             raise ServerMalfunction(
-                tls.ServerIssue.EXTENTION_LENGHT_ERROR, self.extension_id
+                tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
         while offset < len(fragment):
@@ -525,8 +525,8 @@ class ExtStatusRequestV2(Extension):
             status_request = bytearray()
             responders = bytearray()
             for responder in responder_ids:
-                responders.extend(pdu.pack_uint16, len(responder))
-                responders.extend(responders)
+                responders.extend(pdu.pack_uint16(len(responder)))
+                responders.extend(responder)
             status_request.extend(pdu.pack_uint16(len(responders)))
             status_request.extend(responders)
             status_request.extend(pdu.pack_uint16(len(extensions)))
@@ -742,8 +742,7 @@ class ExtPostHandshakeAuth(Extension):
             )
 
 
-"""Map the extensions id to the corresponding class.
-"""
+# Map the extensions id to the corresponding class.
 deserialization_map = {
     tls.Extension.SERVER_NAME: ExtServerNameIndication,
     # tls.Extension.MAX_FRAGMENT_LENGTH = 1

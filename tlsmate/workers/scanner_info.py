@@ -85,14 +85,9 @@ class ScanEnd(Worker):
                 self.server_profile.server_malfunctions = []
 
             for malfunction in self.client.server_issues:
-                prof_malfunc = SPServerMalfunction(issue=malfunction.issue)
-                if malfunction.message:
-                    prof_malfunc.message = malfunction.message
-
-                if malfunction.extension:
-                    prof_malfunc.extension = malfunction.extension
-
-                self.server_profile.server_malfunctions.append(prof_malfunc)
+                self.server_profile.server_malfunctions.append(
+                    SPServerMalfunction(malfunction=malfunction)
+                )
 
         scan_info = self.server_profile.scan_info
         start_time = scan_info.start_timestamp

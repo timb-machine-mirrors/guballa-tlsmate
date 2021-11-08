@@ -3,6 +3,7 @@
 .DEFAULT_GOAL := help
 
 COVERAGE= --cov=tlsmate --cov=tlsmate/workers --cov=tlsmate/plugins
+PYTEST_SUBPROCESS=$(shell pip show pytest-xdist 2&> /dev/null && echo "-n auto")
 
 SHELL := /bin/bash
 
@@ -60,23 +61,25 @@ certs: ## create certificates using private ca
 	(cd ca && $(MAKE) all)
 
 test: ## run tests quickly with the default Python
-	py.test
+	py.test $(PYTEST_SUBPROCESS)
+
+test-fast: ## run tests as quick as possible with the default Python
+	TLSMATE_RECORDER_DELAY=0 py.test $(PYTEST_SUBPROCESS)
 
 tags: ## generate ctags
 	ctags -R --languages=python  -f ./tags tlsmate/ tests/
 
 test-cov: ## generate coverage statistics
-	py.test $(COVERAGE)
+	py.test $(COVERAGE) $(PYTEST_SUBPROCESS)
 
 test-cov-report: ## generate coverage report for each file
-	py.test --cov-report annotate:cov_annotate $(COVERAGE)
+	py.test --cov-report annotate:cov_annotate $(COVERAGE) $(PYTEST_SUBPROCESS)
 
 test-all: ## run tests on every Python version with tox
 	tox
 
 docs: clean-docs ## generate Sphinx HTML documentation, including API docs
 	$(MAKE) -C docs html
-
 
 dist: clean ## builds source and wheel package
 	python setup.py sdist

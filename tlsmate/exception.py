@@ -20,6 +20,7 @@ class ServerMalfunction(TlsmateException):
     """
 
     def __init__(self, issue, message=None, extension=None):
+        super().__init__(issue.value)
         self.issue = issue
         self.message = message
         self.extension = extension

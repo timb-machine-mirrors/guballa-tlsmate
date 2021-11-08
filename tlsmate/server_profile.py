@@ -183,7 +183,7 @@ class ProfileSchema(Schema):
         cls_data = self._get_schema_data(data)
         if reuse_object:
             obj = reuse_object
-            obj._init_from_dict(cls_data)
+            obj.__init__(data=cls_data)
 
         else:
             obj = cls(data=cls_data)
@@ -281,21 +281,12 @@ class SPObject(metaclass=abc.ABCMeta):
     """
 
     def __init__(self, data=None, **kwargs):
-        if data is not None:
-            self._init_from_dict(data)
+        if data is None:
+            data = {}
 
-        else:
-            self._init_from_args(**kwargs)
-
-    def _init_from_dict(self, data):
-        for key, val in data.items():
+        for key, val in {**data, **kwargs}.items():
             if val is not None:
                 setattr(self, key, val)
-
-    def _init_from_args(self, **kwargs):
-        """Specific method to initialize the instance from an object
-        """
-        self._init_from_dict(kwargs)
 
 
 # ### Classes used for the server profile
@@ -395,7 +386,10 @@ class SPPublicKey(SPObject):
     """Data class for all types of public key
     """
 
-    def _init_from_args(self, pub_key):
+    def __init__(self, pub_key=None, **kwargs):
+        super().__init__(**kwargs)
+        if not pub_key:
+            return
 
         if isinstance(pub_key, rsa.RSAPublicKey):
             self.key_size = pub_key.key_size
@@ -500,7 +494,11 @@ class SPCertGeneralName(SPObject):
     """Data class for general name
     """
 
-    def _init_from_args(self, name):
+    def __init__(self, name=None, **kwargs):
+        super().__init__(**kwargs)
+        if not name:
+            return
+
         if isinstance(name, x509.RFC822Name):
             self.rfc822_name = name.value
 
@@ -541,7 +539,11 @@ class SPCertNoticeReference(SPObject):
     """Data class for notice reference
     """
 
-    def _init_from_args(self, ref):
+    def __init__(self, ref=None, **kwargs):
+        super().__init__(**kwargs)
+        if not ref:
+            return
+
         self.organization = ref.organization
         self.notice_numbers = [number for number in ref.notice_numbers]
 
@@ -559,7 +561,11 @@ class SPCertUserNotice(SPObject):
     """Data class for user notice
     """
 
-    def _init_from_args(self, notice):
+    def __init__(self, notice=None, **kwargs):
+        super().__init__(**kwargs)
+        if not notice:
+            return
+
         if isinstance(notice, x509.UserNotice):
             self.explicit_text = notice.explicit_text
             if notice.notice_reference is not None:
@@ -585,7 +591,11 @@ class SPDistrPoint(SPObject):
     """Data class for distribution point
     """
 
-    def _init_from_args(self, point):
+    def __init__(self, point=None, **kwargs):
+        super().__init__(**kwargs)
+        if not point:
+            return
+
         if point.full_name is not None:
             self.full_name = [SPCertGeneralName(name=name) for name in point.full_name]
 
@@ -618,7 +628,11 @@ class SPCertPolicyInfo(SPObject):
     """Data class for policy info
     """
 
-    def _init_from_args(self, policy):
+    def __init__(self, policy=None, **kwargs):
+        super().__init__(**kwargs)
+        if not policy:
+            return
+
         self.policy_name = policy.policy_identifier._name
         self.policy_oid = policy.policy_identifier.dotted_string
         if policy.policy_qualifiers is not None:
@@ -641,7 +655,11 @@ class SPCertAccessDescription(SPObject):
     """Data class for access description
     """
 
-    def _init_from_args(self, descr):
+    def __init__(self, descr=None, **kwargs):
+        super().__init__(**kwargs)
+        if not descr:
+            return
+
         self.access_method = descr.access_method._name
         self.access_location = descr.access_location.value
 
@@ -659,7 +677,11 @@ class SPCertSignedTimestamp(SPObject):
     """Data class for signed certificate timestamp
     """
 
-    def _init_from_args(self, timestamp):
+    def __init__(self, timestamp=None, **kwargs):
+        super().__init__(**kwargs)
+        if not timestamp:
+            return
+
         self.version = timestamp.version.name
         self.log_id = timestamp.log_id
         self.timestamp = timestamp.timestamp
@@ -845,7 +867,11 @@ class SPCertExtension(SPObject):
         x509.extensions.OCSPNonce: _ext_ocsp_nonce,
     }
 
-    def _init_from_args(self, ext):
+    def __init__(self, ext=None, **kwargs):
+        super().__init__(**kwargs)
+        if not ext:
+            return
+
         self.name = ext.value.__class__.__name__
         self.oid = ext.oid.dotted_string
         self.criticality = tls.SPBool(ext.critical)
@@ -1204,7 +1230,11 @@ class SPCertificate(SPObject):
     """Data class for a certificate.
     """
 
-    def _init_from_args(self, cert):
+    def __init__(self, cert=None, **kwargs):
+        super().__init__(**kwargs)
+        if not cert:
+            return
+
         self.pem = cert.pem.decode()
         self.subject = cert.subject_str
         self.issuer = cert.parsed.issuer.rfc4514_string()
@@ -1271,7 +1301,11 @@ class SPCertChain(SPObject):
     """Data class for a certificate chain.
     """
 
-    def _init_from_args(self, chain):
+    def __init__(self, chain=None, **kwargs):
+        super().__init__(**kwargs)
+        if not chain:
+            return
+
         self.id = chain.id
         self.successful_validation = tls.SPBool(chain.successful_validation)
         self.cert_chain = [SPCertificate(cert=cert) for cert in chain.certificates]
@@ -1337,8 +1371,9 @@ class SPSignatureAlgorithms(SPObject):
     """Data class for signature algorithms
     """
 
-    def _init_from_args(self):
+    def __init__(self, **kwargs):
         self.algorithms = []
+        super().__init__(**kwargs)
 
 
 class SPSignatureAlgorithmsSchema(ProfileSchema):
@@ -1517,26 +1552,30 @@ class SPVulnerabilitiesSchema(ProfileSchema):
     cbc_padding_oracle = fields.Nested(SPCbcPaddingOracleInfoSchema)
 
 
-class SPServerIssue(SPObject):
+class SPMalfunctionIssue(SPObject):
     """Data class for a server issue
     """
 
-    def __init__(self, issue):
+    def __init__(self, issue=None, **kwargs):
+        super().__init__(**kwargs)
+        if not issue:
+            return
+
         self.name = issue.name
         self.description = issue.value
 
 
-class SPServerIssueSchema(ProfileSchema):
-    """Schema for a TLS version (enum).
+class SPMalfunctionIssueSchema(ProfileSchema):
+    """Schema for malfunction issue
     """
 
-    __profile_class__ = SPServerIssue
+    __profile_class__ = SPMalfunctionIssue
     name = fields.String()
     description = fields.String()
 
 
 class SPMalfunctionMessageSchema(ProfileEnumSchema):
-    """Schema for mlafunction message
+    """Schema for malfunction message
     """
 
     __profile_class__ = tls.HandshakeType
@@ -1553,8 +1592,17 @@ class SPServerMalfunction(SPObject):
     """Data class for server malfunction
     """
 
-    def __init__(self, issue):
-        self.issue = SPServerIssue(issue)
+    def __init__(self, malfunction=None, **kwargs):
+        super().__init__(**kwargs)
+        if not malfunction:
+            return
+
+        self.issue = SPMalfunctionIssue(issue=malfunction.issue)
+        if malfunction.message:
+            self.message = malfunction.message
+
+        if malfunction.extension:
+            self.extension = malfunction.extension
 
 
 class SPServerMalfunctionSchema(ProfileSchema):
@@ -1562,7 +1610,7 @@ class SPServerMalfunctionSchema(ProfileSchema):
     """
 
     __profile_class__ = SPServerMalfunction
-    issue = fields.Nested(SPServerIssueSchema)
+    issue = fields.Nested(SPMalfunctionIssueSchema)
     message = fields.Nested(SPMalfunctionMessageSchema)
     extension = fields.Nested(SPMalfunctionExtensionSchema)
 
@@ -1582,7 +1630,8 @@ class ServerProfile(SPObject):
             the vulnerabilities
     """
 
-    def _init_from_args(self):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self._hash = {}
 
     def allocate_versions(self):
