@@ -21,9 +21,15 @@ class ScanHeartbleed(Worker):
     prio = 41
 
     def run(self):
-        hb = getattr(
-            self.server_profile.features, "heartbeat", tls.SPHeartbeat.C_UNDETERMINED
-        )
+        if not hasattr(self.server_profile, "features"):
+            hb = tls.SPHeartbeat.C_UNDETERMINED
+
+        else:
+            hb = getattr(
+                self.server_profile.features,
+                "heartbeat",
+                tls.SPHeartbeat.C_UNDETERMINED,
+            )
 
         state = tls.HeartbleedStatus.UNDETERMINED
         if hb in (tls.SPHeartbeat.C_FALSE, tls.SPHeartbeat.C_NA):
