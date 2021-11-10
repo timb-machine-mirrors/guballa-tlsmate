@@ -80,14 +80,40 @@ class ScanBaseVulnerabilities(Worker):
         self.server_profile.vulnerabilities.freak = freak
 
     def _scan_logjam(self):
-        logjam = tls.SPBool.C_NA
+        logjam_na = True
+        logjam_512 = False
+        logjam_1024_common = False
+        logjam_1024_cust = False
+
         for vers in self.server_profile.get_versions():
             vers_prof = self.server_profile.get_version_profile(vers)
             if hasattr(vers_prof, "dh_group"):
-                logjam = tls.SPBool.C_FALSE
-                if vers_prof.dh_group.size <= 1024:
-                    logjam = tls.SPBool.C_TRUE
+                logjam_na = False
+                if vers_prof.dh_group.size <= 512:
+                    logjam_512 = True
                     break
+
+                elif vers_prof.dh_group.size <= 1024:
+                    if hasattr(vers_prof.dh_group, "name"):
+                        logjam_1024_common = True
+
+                    else:
+                        logjam_1024_cust = True
+
+        if logjam_512:
+            logjam = tls.Logjam.PRIME512
+
+        elif logjam_1024_common:
+            logjam = tls.Logjam.PRIME1024_COMMON
+
+        elif logjam_1024_cust:
+            logjam = tls.Logjam.PRIME1024_CUSTOMIZED
+
+        elif logjam_na:
+            logjam = tls.Logjam.NA
+
+        else:
+            logjam = tls.Logjam.OK
 
         self.server_profile.vulnerabilities.logjam = logjam
 

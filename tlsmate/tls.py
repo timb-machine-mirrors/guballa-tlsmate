@@ -1225,3 +1225,14 @@ class ServerIssue(ExtendedEnum):
     RECORD_WRONG_PADDING_BYTES = "wrong padding byte contents"
     ILLEGAL_PARAMETER_VALUE = "received parameter value is illegal"
     KEX_INVALID_SIGNATURE = "signature of server's key exchange parameters invalid"
+
+
+class Logjam(ExtendedEnum):
+    """The type of logjam weakness
+    """
+
+    NA = enum.auto()
+    OK = enum.auto()
+    PRIME512 = enum.auto()
+    PRIME1024_COMMON = enum.auto()
+    PRIME1024_CUSTOMIZED = enum.auto()
