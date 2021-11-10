@@ -29,6 +29,7 @@ from tlsmate.workers.eval_cipher_suites import ScanCipherSuites
 from tlsmate.workers.scanner_info import ScanStart, ScanEnd
 from tlsmate.workers.supported_groups import ScanSupportedGroups
 from tlsmate.workers.sig_algo import ScanSigAlgs
+from tlsmate.workers.base_vulnerabilities import ScanBaseVulnerabilities
 from tlsmate.config import (
     config_host,
     config_port,
@@ -773,6 +774,7 @@ class GroupVulnerabilities(Plugin):
         if default is None:
             default = not any(config.get(vuln.config.name) for vuln in plugins)
 
+        base_vuln = False
         for vuln in plugins:
             val = config.get(vuln.config.name)
             if val is None:
@@ -780,6 +782,10 @@ class GroupVulnerabilities(Plugin):
                 if default and vuln.workers:
                     for worker in vuln.workers:
                         WorkManager.register(worker)
+                        base_vuln = True
+
+        if base_vuln:
+            WorkManager.register(ScanBaseVulnerabilities)
 
 
 @BaseCommand.extend
