@@ -1554,7 +1554,7 @@ class SPVulnerabilitiesSchema(ProfileSchema):
     crime = FieldsEnumString(enum_class=tls.SPBool)
     sweet_32 = FieldsEnumString(enum_class=tls.SPBool)
     freak = FieldsEnumString(enum_class=tls.SPBool)
-    logjam = FieldsEnumString(enum_class=tls.SPBool)
+    logjam = FieldsEnumString(enum_class=tls.Logjam)
 
 
 class SPMalfunctionIssue(SPObject):

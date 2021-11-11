@@ -774,6 +774,21 @@ vulnerabilities:
     C_UNDETERMINED:
       txt: undetermined
       style: soso
+  beast:
+    <<: *vulnerabilities_common
+    C_TRUE:
+      txt: vulnerable, TLS1.0 is enabled
+      style: bad
+  crime:
+    <<: *vulnerabilities_common
+    C_TRUE:
+      txt: vulnerable, compression is enabled
+      style: bad
+  freak:
+    <<: *vulnerabilities_common
+    C_TRUE:
+      txt: vulnerable, RSA-export cipher suites are enabled
+      style: bad
   heartbleed:
     NOT_APPLICABLE:
       txt: not applicable
@@ -793,6 +808,22 @@ vulnerabilities:
     CONNECTION_CLOSED:
       txt: not vulnerable (connection closed)
       style: good
+  logjam:
+    NA:
+      txt: not applicable, DH key exchange not in use
+      style: neutral
+    OK:
+      txt: not vulnerable
+      style: good
+    PRIME512:
+      txt: vulnerable, DH export cipher suites in use (512 bits)
+      style: bad
+    PRIME1024_COMMON:
+      txt: vulnerable, common DH prime used (1024 bits)
+      style: bad
+    PRIME1024_CUTOMIZED:
+      txt: vulnerable, customized DH prime used (1024 bits)
+      style: bad
   robot:
     NOT_APPLICABLE:
       txt: not applicable
@@ -817,8 +848,16 @@ vulnerabilities:
     C_TRUE:
       txt: vulnerable, see CBC padding oracle details below
       style: bad
-
-  poodle: *vulnerabilities_common
+  sweet_32:
+    <<: *vulnerabilities_common
+    C_TRUE:
+      txt: vulnerable, cipher suites with blocksize <= 64 bits used (3DES, IDEA)
+      style: bad
+  poodle:
+    <<: *vulnerabilities_common
+    C_TRUE:
+      txt: vulnerable, SSL30 is enabled
+      style: bad
   tls_poodle: *vulnerabilities_common
   cbc_padding_oracle:
     vulnerable: *vulnerabilities_common

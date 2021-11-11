@@ -1151,12 +1151,40 @@ class TextProfileWorker(Worker):
         table = utils.Table(indent=2, sep="  ")
         print(Mood.HEADLINE.decorate("Vulnerabilities"))
         print()
+
+        beast = getattr(vuln_prof, "beast", None)
+        if beast is not None:
+            table.row(
+                "BEAST (CVE-2011-3389)",
+                get_styled_text(
+                    self._style, "vulnerabilities", "beast", beast.name
+                ),
+            )
+
         ccs = getattr(vuln_prof, "ccs_injection", None)
         if ccs is not None:
             table.row(
                 "CCS injection (CVE-2014-0224)",
                 get_styled_text(
                     self._style, "vulnerabilities", "ccs_injection", ccs.name
+                ),
+            )
+
+        crime = getattr(vuln_prof, "crime", None)
+        if crime is not None:
+            table.row(
+                "CRIME (CVE-2012-4929)",
+                get_styled_text(
+                    self._style, "vulnerabilities", "crime", crime.name
+                ),
+            )
+
+        freak = getattr(vuln_prof, "freak", None)
+        if freak is not None:
+            table.row(
+                "FREAK (CVE-2015-0204)",
+                get_styled_text(
+                    self._style, "vulnerabilities", "freak", freak.name
                 ),
             )
 
@@ -1167,24 +1195,42 @@ class TextProfileWorker(Worker):
                 get_styled_text(self._style, "vulnerabilities", "heartbleed", hb.name),
             )
 
+        logjam = getattr(vuln_prof, "logjam", None)
+        if logjam is not None:
+            table.row(
+                "Logjam (CVE-2015-0204)",
+                get_styled_text(
+                    self._style, "vulnerabilities", "logjam", logjam.name
+                ),
+            )
+
         robot = getattr(vuln_prof, "robot", None)
         if robot is not None:
             table.row(
-                "ROBOT vulnerability (CVE-2017-13099, ...)",
+                "ROBOT (CVE-2017-13099, ...)",
                 get_styled_text(self._style, "vulnerabilities", "robot", robot.name),
+            )
+
+        sweet_32 = getattr(vuln_prof, "sweet_32", None)
+        if sweet_32 is not None:
+            table.row(
+                "Sweet32 (CVE-2016-2183, CVE-2016-6329)",
+                get_styled_text(
+                    self._style, "vulnerabilities", "sweet_32", sweet_32.name
+                ),
             )
 
         poodle = getattr(vuln_prof, "poodle", None)
         if poodle is not None:
             table.row(
-                "POODLE vulnerability (SSL30 enabled)",
+                "POODLE (CVE-2014-3566)",
                 get_styled_text(self._style, "vulnerabilities", "poodle", poodle.name),
             )
 
         tls_poodle = getattr(vuln_prof, "tls_poodle", None)
         if tls_poodle is not None:
             table.row(
-                "TLS POODLE vulnerability",
+                "TLS POODLE",
                 get_styled_text(
                     self._style, "vulnerabilities", "tls_poodle", tls_poodle.name
                 ),
@@ -1193,7 +1239,7 @@ class TextProfileWorker(Worker):
         lucky_minus_20 = getattr(vuln_prof, "lucky_minus_20", None)
         if lucky_minus_20 is not None:
             table.row(
-                "Lucky-Minus-20 vulnerability (CVE-2016-2107)",
+                "Lucky-Minus-20 (CVE-2016-2107)",
                 get_styled_text(
                     self._style,
                     "vulnerabilities",
