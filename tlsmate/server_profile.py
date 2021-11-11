@@ -1550,6 +1550,11 @@ class SPVulnerabilitiesSchema(ProfileSchema):
     tls_poodle = FieldsEnumString(enum_class=tls.SPBool)
     lucky_minus_20 = FieldsEnumString(enum_class=tls.SPBool)
     cbc_padding_oracle = fields.Nested(SPCbcPaddingOracleInfoSchema)
+    beast = FieldsEnumString(enum_class=tls.SPBool)
+    crime = FieldsEnumString(enum_class=tls.SPBool)
+    sweet_32 = FieldsEnumString(enum_class=tls.SPBool)
+    freak = FieldsEnumString(enum_class=tls.SPBool)
+    logjam = FieldsEnumString(enum_class=tls.Logjam)
 
 
 class SPMalfunctionIssue(SPObject):

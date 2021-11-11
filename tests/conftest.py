@@ -141,5 +141,30 @@ def text_server_profile(fixturefiles_dir):
 
 
 @pytest.fixture
+def server_profile_base_vuln(fixturefiles_dir):
+    return fixturefiles_dir / "server_profile_base_vulnerabilities.yaml"
+
+
+@pytest.fixture
+def server_profile_no_compr(fixturefiles_dir):
+    return fixturefiles_dir / "server_profile_no_compr.yaml"
+
+
+@pytest.fixture
+def server_profile_no_features(fixturefiles_dir):
+    return fixturefiles_dir / "server_profile_no_features.yaml"
+
+
+@pytest.fixture
+def server_profile_logjam_common(fixturefiles_dir):
+    return fixturefiles_dir / "server_profile_logjam_common.yaml"
+
+
+@pytest.fixture
+def server_profile_logjam_cust(fixturefiles_dir):
+    return fixturefiles_dir / "server_profile_logjam_customized.yaml"
+
+
+@pytest.fixture
 def full_server_profile(fixturefiles_dir):
     return fixturefiles_dir / "full_server_profile.yaml"
