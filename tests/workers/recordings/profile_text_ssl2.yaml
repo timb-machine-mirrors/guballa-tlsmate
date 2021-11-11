@@ -27,12 +27,12 @@ features:
     session_ticket: C_NA
 scan_info:
     command: tlsmate scan localhost --port=44330 --format=yaml --write-profile=/home/jens/project/tlsmate/tests/workers/recordings/profile_text_ssl2.yaml
-    run_time: 0.054
-    start_date: '2021-10-03T16:32:17'
-    start_timestamp: 1633271537.7457974
-    stop_date: '2021-10-03T16:32:17'
-    stop_timestamp: 1633271537.7994316
-    version: 1.0.1.dev59+g85c3613.d20210825
+    run_time: 0.321
+    start_date: '2021-11-11T21:46:41'
+    start_timestamp: 1636663601.3196983
+    stop_date: '2021-11-11T21:46:41'
+    stop_timestamp: 1636663601.64114
+    version: 1.0.1.dev194
 server:
     ip: 127.0.0.1
     name_resolution:
@@ -82,12 +82,17 @@ versions:
         id: 772
         name: TLS13
 vulnerabilities:
+    beast: C_FALSE
     cbc_padding_oracle:
         accuracy: MEDIUM
         vulnerable: C_NA
     ccs_injection: C_NA
+    crime: C_UNDETERMINED
+    freak: C_FALSE
     heartbleed: NOT_APPLICABLE
+    logjam: NA
     lucky_minus_20: C_NA
     poodle: C_FALSE
     robot: NOT_APPLICABLE
+    sweet_32: C_FALSE
     tls_poodle: C_NA

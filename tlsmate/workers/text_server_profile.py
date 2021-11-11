@@ -1156,9 +1156,7 @@ class TextProfileWorker(Worker):
         if beast is not None:
             table.row(
                 "BEAST (CVE-2011-3389)",
-                get_styled_text(
-                    self._style, "vulnerabilities", "beast", beast.name
-                ),
+                get_styled_text(self._style, "vulnerabilities", "beast", beast.name),
             )
 
         ccs = getattr(vuln_prof, "ccs_injection", None)
@@ -1174,18 +1172,14 @@ class TextProfileWorker(Worker):
         if crime is not None:
             table.row(
                 "CRIME (CVE-2012-4929)",
-                get_styled_text(
-                    self._style, "vulnerabilities", "crime", crime.name
-                ),
+                get_styled_text(self._style, "vulnerabilities", "crime", crime.name),
             )
 
         freak = getattr(vuln_prof, "freak", None)
         if freak is not None:
             table.row(
                 "FREAK (CVE-2015-0204)",
-                get_styled_text(
-                    self._style, "vulnerabilities", "freak", freak.name
-                ),
+                get_styled_text(self._style, "vulnerabilities", "freak", freak.name),
             )
 
         hb = getattr(vuln_prof, "heartbleed", None)
@@ -1199,9 +1193,7 @@ class TextProfileWorker(Worker):
         if logjam is not None:
             table.row(
                 "Logjam (CVE-2015-0204)",
-                get_styled_text(
-                    self._style, "vulnerabilities", "logjam", logjam.name
-                ),
+                get_styled_text(self._style, "vulnerabilities", "logjam", logjam.name),
             )
 
         robot = getattr(vuln_prof, "robot", None)
