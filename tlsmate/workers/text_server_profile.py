@@ -691,10 +691,10 @@ class TextProfileWorker(Worker):
             if (len(feat_prof.compression) == 1) and feat_prof.compression[
                 0
             ] is tls.CompressionMethod.NULL:
-                compr = tls.SPBool.FALSE
+                compr = tls.ScanState.FALSE
 
             else:
-                compr = tls.SPBool.TRUE
+                compr = tls.ScanState.TRUE
 
             table.row(
                 "compression", get_styled_text(self._style, "compression", compr.name)
@@ -807,7 +807,7 @@ class TextProfileWorker(Worker):
         table = utils.Table(indent=4, sep="  ")
 
         for prof_prop, style_prop in grease:
-            val = getattr(grease_prof, prof_prop, tls.SPBool.UNDETERMINED)
+            val = getattr(grease_prof, prof_prop, tls.ScanState.UNDETERMINED)
             table.row(
                 get_dict_value(
                     self._style, "grease", style_prop, "descr", default="???"
@@ -883,11 +883,11 @@ class TextProfileWorker(Worker):
     def _print_cert(self, cert, idx):
         items = [str(getattr(cert, "version", ""))]
         self_signed = getattr(cert, "self_signed", None)
-        if self_signed is tls.SPBool.TRUE:
+        if self_signed is tls.ScanState.TRUE:
             items.append("self-signed")
 
-        from_trust_store = getattr(cert, "from_trust_store", tls.SPBool.FALSE)
-        if from_trust_store is tls.SPBool.TRUE:
+        from_trust_store = getattr(cert, "from_trust_store", tls.ScanState.FALSE)
+        if from_trust_store is tls.ScanState.TRUE:
             items.append("certificate taken from trust store")
 
         print(f'  Certificate #{idx}: {", ".join(items)}')
@@ -932,8 +932,8 @@ class TextProfileWorker(Worker):
                 ),
             )
 
-        ev = getattr(cert, "extended_validation", tls.SPBool.NA)
-        if ev is not tls.SPBool.NA:
+        ev = getattr(cert, "extended_validation", tls.ScanState.NA)
+        if ev is not tls.ScanState.NA:
             table.row(
                 "Extended validation",
                 get_styled_text(
@@ -948,7 +948,7 @@ class TextProfileWorker(Worker):
 
         sig_algo = getattr(cert, "signature_algorithm", None)
         if sig_algo is not None:
-            if self_signed is tls.SPBool.TRUE:
+            if self_signed is tls.ScanState.TRUE:
                 txt = sig_algo.name
 
             else:
@@ -988,16 +988,16 @@ class TextProfileWorker(Worker):
             table.row("Extended key usage", usage_txt)
 
         if hasattr(cert, "not_valid_before"):
-            valid = tls.SPBool.TRUE
-            valid_from = tls.SPBool.TRUE
+            valid = tls.ScanState.TRUE
+            valid_from = tls.ScanState.TRUE
             if cert.not_valid_before > self._start_date:
-                valid_from = tls.SPBool.FALSE
-                valid = tls.SPBool.FALSE
+                valid_from = tls.ScanState.FALSE
+                valid = tls.ScanState.FALSE
 
-            valid_to = tls.SPBool.TRUE
+            valid_to = tls.ScanState.TRUE
             if cert.not_valid_after < self._start_date:
-                valid_to = tls.SPBool.FALSE
-                valid = tls.SPBool.FALSE
+                valid_to = tls.ScanState.FALSE
+                valid = tls.ScanState.FALSE
 
             from_txt = get_mood_applied(
                 cert.not_valid_before,
@@ -1057,14 +1057,14 @@ class TextProfileWorker(Worker):
             )
 
             text = []
-            must_staple = tls.SPBool.FALSE
-            if cert.ocsp_must_staple is tls.SPBool.TRUE:
+            must_staple = tls.ScanState.FALSE
+            if cert.ocsp_must_staple is tls.ScanState.TRUE:
                 text.append("must staple")
-                must_staple = tls.SPBool.TRUE
+                must_staple = tls.ScanState.TRUE
 
-            if cert.ocsp_must_staple_multi is tls.SPBool.TRUE:
+            if cert.ocsp_must_staple_multi is tls.ScanState.TRUE:
                 text.append("must multi-staple")
-                must_staple = tls.SPBool.TRUE
+                must_staple = tls.ScanState.TRUE
 
             txt = get_dict_value(
                 self._style,

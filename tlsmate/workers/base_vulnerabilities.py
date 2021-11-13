@@ -34,27 +34,27 @@ class ScanBaseVulnerabilities(Worker):
             )
             beast = bool(cs)
 
-        self.server_profile.vulnerabilities.beast = tls.SPBool(beast)
+        self.server_profile.vulnerabilities.beast = tls.ScanState(beast)
 
     def _scan_crime(self):
-        crime = tls.SPBool.FALSE
+        crime = tls.ScanState.FALSE
         if hasattr(self.server_profile, "features"):
             if hasattr(self.server_profile.features, "compression"):
                 compr = self.server_profile.features.compression
                 null_compr = int(any([x.name == "NULL" for x in compr]))
-                crime = tls.SPBool(len(compr) - null_compr)
+                crime = tls.ScanState(len(compr) - null_compr)
 
             else:
-                crime = tls.SPBool.UNDETERMINED
+                crime = tls.ScanState.UNDETERMINED
 
         else:
-            crime = tls.SPBool.UNDETERMINED
+            crime = tls.ScanState.UNDETERMINED
 
         self.server_profile.vulnerabilities.crime = crime
 
     def _scan_sweet_32(self):
         prof_values = self.server_profile.get_profile_values(tls.Version.all())
-        sweet_32 = tls.SPBool(
+        sweet_32 = tls.ScanState(
             bool(
                 utils.filter_cipher_suites(
                     prof_values.cipher_suites,
@@ -69,7 +69,7 @@ class ScanBaseVulnerabilities(Worker):
 
     def _scan_freak(self):
         prof_values = self.server_profile.get_profile_values(tls.Version.all())
-        freak = tls.SPBool(
+        freak = tls.ScanState(
             bool(
                 utils.filter_cipher_suites(
                     prof_values.cipher_suites,

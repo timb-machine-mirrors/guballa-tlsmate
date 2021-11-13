@@ -19,9 +19,9 @@ class ScanResumption(Worker):
     def resumption_tls12(self, prof_vals, session_ticket=False):
         if not prof_vals.cipher_suites:
             # no cipher suite, for which a hull handshake is supported.
-            state = tls.SPBool.UNDETERMINED
+            state = tls.ScanState.UNDETERMINED
         else:
-            state = tls.SPBool.FALSE
+            state = tls.ScanState.FALSE
             self.client.init_profile(profile_values=prof_vals)
             if session_ticket:
                 self.client.profile.support_session_ticket = True
@@ -41,7 +41,7 @@ class ScanResumption(Worker):
                     with self.client.create_connection() as conn2:
                         conn2.handshake()
                     if conn2.handshake_completed and conn2.abbreviated_hs:
-                        state = tls.SPBool.TRUE
+                        state = tls.ScanState.TRUE
         return state
 
     def run_tls12(self):
@@ -49,8 +49,8 @@ class ScanResumption(Worker):
         prof_vals = self.server_profile.get_profile_values(versions, full_hs=True)
         prof_features = self.server_profile.features
 
-        session_id_support = tls.SPBool.NA
-        session_ticket_support = tls.SPBool.NA
+        session_id_support = tls.ScanState.NA
+        session_ticket_support = tls.ScanState.NA
         if prof_vals.versions:
             session_id_support = self.resumption_tls12(prof_vals, session_ticket=False)
             session_ticket_support = self.resumption_tls12(
@@ -59,14 +59,14 @@ class ScanResumption(Worker):
 
         prof_features.session_ticket = session_ticket_support
         prof_features.session_id = session_id_support
-        if session_ticket_support is tls.SPBool.TRUE:
+        if session_ticket_support is tls.ScanState.TRUE:
             prof_features.session_ticket_lifetime = (
                 self.client.session_state_ticket.lifetime
             )
 
     def run_tls13(self):
-        resumption_psk = tls.SPBool.NA
-        early_data = tls.SPBool.NA
+        resumption_psk = tls.ScanState.NA
+        early_data = tls.ScanState.NA
         psk_lifetime = None
         prof_vals = self.server_profile.get_profile_values(
             [tls.Version.TLS13], full_hs=True
@@ -85,18 +85,18 @@ class ScanResumption(Worker):
                 if ticket_msg is not None:
                     psk_lifetime = ticket_msg.lifetime
                 else:
-                    resumption_psk = tls.SPBool.FALSE
+                    resumption_psk = tls.ScanState.FALSE
 
             if ticket_msg:
-                resumption_psk = tls.SPBool.TRUE
-                early_data = tls.SPBool.FALSE
+                resumption_psk = tls.ScanState.TRUE
+                early_data = tls.ScanState.FALSE
 
                 self.client.profile.early_data = b"This is EarlyData (0-RTT)"
                 with self.client.create_connection() as conn:
                     conn.handshake()
 
                 if conn.early_data_accepted:
-                    early_data = tls.SPBool.TRUE
+                    early_data = tls.ScanState.TRUE
 
         self.server_profile.features.resumption_psk = resumption_psk
         self.server_profile.features.early_data = early_data

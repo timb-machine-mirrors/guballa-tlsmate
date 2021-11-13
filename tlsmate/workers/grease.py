@@ -65,7 +65,7 @@ class ScanGrease(Worker):
     def _check_version(self, grease_prof):
         values = self.server_profile.get_profile_values(tls.Version.all(), full_hs=True)
         if not values.versions:
-            state = tls.SPBool.NA
+            state = tls.ScanState.NA
 
         else:
             self.client.init_profile(profile_values=values)
@@ -74,17 +74,17 @@ class ScanGrease(Worker):
                 conn.handshake()
 
             if conn.handshake_completed:
-                state = tls.SPBool.TRUE
+                state = tls.ScanState.TRUE
 
             else:
-                state = tls.SPBool.FALSE
+                state = tls.ScanState.FALSE
 
         setattr(grease_prof, "version_tolerance", state)
 
     def _check_cipher_suite(self, grease_prof):
         values = self.server_profile.get_profile_values(tls.Version.all(), full_hs=True)
         if not values.versions:
-            state = tls.SPBool.NA
+            state = tls.ScanState.NA
 
         else:
             self.client.init_profile(profile_values=values)
@@ -95,10 +95,10 @@ class ScanGrease(Worker):
                 conn.handshake()
 
             if conn.handshake_completed:
-                state = tls.SPBool.TRUE
+                state = tls.ScanState.TRUE
 
             else:
-                state = tls.SPBool.FALSE
+                state = tls.ScanState.FALSE
 
         setattr(grease_prof, "cipher_suite_tolerance", state)
 
@@ -112,7 +112,7 @@ class ScanGrease(Worker):
         versions = tls.Version.tls_only()
         values = self.server_profile.get_profile_values(versions, full_hs=True)
         if not values.versions:
-            state = tls.SPBool.NA
+            state = tls.ScanState.NA
 
         else:
             self.client.init_profile(profile_values=values)
@@ -120,10 +120,10 @@ class ScanGrease(Worker):
                 conn.handshake(ch_pre_serialization=add_unknown_extension)
 
             if conn.handshake_completed:
-                state = tls.SPBool.TRUE
+                state = tls.ScanState.TRUE
 
             else:
-                state = tls.SPBool.FALSE
+                state = tls.ScanState.FALSE
 
         setattr(grease_prof, "extension_tolerance", state)
 
@@ -131,22 +131,22 @@ class ScanGrease(Worker):
         versions = tls.Version.tls_only()
         values = self.server_profile.get_profile_values(versions, full_hs=True)
         if not values.versions or not values.supported_groups:
-            state = tls.SPBool.NA
+            state = tls.ScanState.NA
 
         else:
             self.client.init_profile(profile_values=values)
             self.client.profile.supported_groups.insert(
                 0, self._get_grease_value(_grease_params)
             )
-            state = tls.SPBool.UNDETERMINED
+            state = tls.ScanState.UNDETERMINED
             with self.client.create_connection() as conn:
                 conn.handshake()
 
             if conn.handshake_completed:
-                state = tls.SPBool.TRUE
+                state = tls.ScanState.TRUE
 
             else:
-                state = tls.SPBool.FALSE
+                state = tls.ScanState.FALSE
 
         setattr(grease_prof, "group_tolerance", state)
 
@@ -154,38 +154,38 @@ class ScanGrease(Worker):
         versions = [tls.Version.TLS12, tls.Version.TLS13]
         values = self.server_profile.get_profile_values(versions, full_hs=True)
         if not values.versions:
-            state = tls.SPBool.NA
+            state = tls.ScanState.NA
 
         else:
             self.client.init_profile(profile_values=values)
             self.client.profile.signature_algorithms.insert(
                 0, self._get_grease_value(_grease_params)
             )
-            state = tls.SPBool.UNDETERMINED
+            state = tls.ScanState.UNDETERMINED
             with self.client.create_connection() as conn:
                 conn.handshake()
 
             if conn.handshake_completed:
-                state = tls.SPBool.TRUE
+                state = tls.ScanState.TRUE
 
             else:
-                state = tls.SPBool.FALSE
+                state = tls.ScanState.FALSE
 
         setattr(grease_prof, "sig_algo_tolerance", state)
 
     def _check_psk_mode(self, grease_prof):
         if (
             getattr(self.server_profile.features, "resumption_psk", None)
-            is not tls.SPBool.TRUE
+            is not tls.ScanState.TRUE
         ):
-            state = tls.SPBool.NA
+            state = tls.ScanState.NA
 
         else:
             values = self.server_profile.get_profile_values(
                 [tls.Version.TLS13], full_hs=True
             )
             self.client.init_profile(profile_values=values)
-            state = tls.SPBool.UNDETERMINED
+            state = tls.ScanState.UNDETERMINED
             self.client.profile.support_psk = True
             self.client.profile.psk_key_exchange_modes = [
                 self._get_grease_value(_grease_psk_modes),
@@ -202,10 +202,10 @@ class ScanGrease(Worker):
                     conn.handshake()
 
                 if conn.handshake_completed:
-                    state = tls.SPBool.TRUE
+                    state = tls.ScanState.TRUE
 
                 else:
-                    state = tls.SPBool.FALSE
+                    state = tls.ScanState.FALSE
 
         setattr(grease_prof, "psk_mode_tolerance", state)
 

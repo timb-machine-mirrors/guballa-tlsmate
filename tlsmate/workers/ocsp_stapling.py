@@ -20,7 +20,7 @@ class ScanOcspStapling(Worker):
         versions = tls.Version.tls_only()
         prof_values = self.server_profile.get_profile_values(versions, full_hs=True)
         if not prof_values.versions:
-            status = tls.SPBool.NA
+            status = tls.ScanState.NA
 
         else:
             self.client.init_profile(profile_values=prof_values)
@@ -38,13 +38,13 @@ class ScanOcspStapling(Worker):
             # received.
 
             if not conn.handshake_completed:
-                status = tls.SPBool.UNDETERMINED
+                status = tls.ScanState.UNDETERMINED
 
             elif conn.stapling_status:
-                status = tls.SPBool.TRUE
+                status = tls.ScanState.TRUE
 
             else:
-                status = tls.SPBool.FALSE
+                status = tls.ScanState.FALSE
 
         self.server_profile.features.ocsp_stapling = status
 
@@ -54,7 +54,7 @@ class ScanOcspStapling(Worker):
             [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12], full_hs=True
         )
         if not prof_values.versions:
-            status = tls.SPBool.NA
+            status = tls.ScanState.NA
 
         else:
             self.client.init_profile(profile_values=prof_values)
@@ -64,13 +64,13 @@ class ScanOcspStapling(Worker):
                 conn.handshake()
 
             if conn.msg.server_hello is None:
-                status = tls.SPBool.UNDETERMINED
+                status = tls.ScanState.UNDETERMINED
 
             elif conn.msg.server_hello.get_extension(tls.Extension.STATUS_REQUEST_V2):
-                status = tls.SPBool.TRUE
+                status = tls.ScanState.TRUE
 
             else:
-                status = tls.SPBool.FALSE
+                status = tls.ScanState.FALSE
 
         self.server_profile.features.ocsp_multi_stapling = status
 

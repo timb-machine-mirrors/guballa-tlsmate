@@ -979,7 +979,7 @@ class HeartbeatMode(ExtendedEnum):
     PEER_NOT_ALLOWED_TO_SEND = 2
 
 
-class SPBool(ExtendedEnum):
+class ScanState(ExtendedEnum):
     """Enum representing a pseudo-boolean value in the server profile.
 
     In addition to True and False the two values are defined:
@@ -1158,7 +1158,7 @@ class HeartbleedStatus(ExtendedEnum):
     CONNECTION_CLOSED = enum.auto()
 
 
-class SPHeartbeat(ExtendedEnum):
+class HeartbeatState(ExtendedEnum):
     """Status for heartbeart support
     """
 
