@@ -52,7 +52,7 @@ all: \
 	recordings/TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256_ED25519.yaml \
 	recordings/TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256_ED448.yaml \
 	recordings/TLS_DHE_DSS_WITH_AES_128_CBC_SHA256.yaml
-^
+
 clean:
 	rm -f recordings/*.yaml
 

@@ -29,7 +29,7 @@ class TestCase(TlsSuiteTester):
         server_profile = tlsmate.server_profile
         ScanDowngrade(tlsmate).run()
         profile = server_profile.make_serializable()
-        assert profile["features"]["downgrade_attack_prevention"] == "C_TRUE"
+        assert profile["features"]["downgrade_attack_prevention"] == "TRUE"
 
 
 if __name__ == "__main__":

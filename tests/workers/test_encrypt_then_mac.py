@@ -29,7 +29,7 @@ class TestCase(TlsSuiteTester):
         server_profile = tlsmate.server_profile
         ScanEncryptThenMac(tlsmate).run()
         profile = server_profile.make_serializable()
-        assert profile["features"]["encrypt_then_mac"] == "C_TRUE"
+        assert profile["features"]["encrypt_then_mac"] == "TRUE"
 
 
 if __name__ == "__main__":

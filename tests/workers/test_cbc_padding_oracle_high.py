@@ -30,16 +30,16 @@ class TestCase(TlsSuiteTester):
         self.config.set("oracle_accuracy", "high")
         ScanPaddingOracle(tlsmate).run()
         profile = server_profile.make_serializable()
-        assert profile["vulnerabilities"]["lucky_minus_20"] == "C_TRUE"
-        assert profile["vulnerabilities"]["poodle"] == "C_TRUE"
-        assert profile["vulnerabilities"]["tls_poodle"] == "C_FALSE"
+        assert profile["vulnerabilities"]["lucky_minus_20"] == "TRUE"
+        assert profile["vulnerabilities"]["poodle"] == "TRUE"
+        assert profile["vulnerabilities"]["tls_poodle"] == "FALSE"
         cbc = profile["vulnerabilities"]["cbc_padding_oracle"]
         assert cbc["accuracy"] == "HIGH"
-        assert cbc["vulnerable"] == "C_TRUE"
+        assert cbc["vulnerable"] == "TRUE"
         assert len(cbc["oracles"]) == 1
         oracle = cbc["oracles"][0]
-        assert oracle["observable"] == "C_FALSE"
-        assert oracle["strong"] == "C_FALSE"
+        assert oracle["observable"] == "FALSE"
+        assert oracle["strong"] == "FALSE"
         assert oracle["types"] == ["LUCKY_MINUS_20"]
         groups = oracle["cipher_group"]
         assert any([x["record_protocol"]["name"] == "APPLICATION_DATA" for x in groups])

@@ -26,12 +26,12 @@ class ScanCcsInjection(Worker):
     prio = 40
 
     def run(self):
-        status = tls.SPBool.C_NA
+        status = tls.ScanState.NA
         values = self.server_profile.get_profile_values(
             [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12], full_hs=True
         )
         if values.versions:
-            status = tls.SPBool.C_UNDETERMINED
+            status = tls.ScanState.UNDETERMINED
             self.client.init_profile(profile_values=values)
             with self.client.create_connection() as conn:
                 conn.send(msg.ClientHello)
@@ -54,13 +54,13 @@ class ScanCcsInjection(Worker):
                         or alert.description is tls.AlertDescription.DECRYPTION_FAILED
                     ):
                         # vulnerable
-                        status = tls.SPBool.C_TRUE
+                        status = tls.ScanState.TRUE
 
                     else:
-                        status = tls.SPBool.C_FALSE
+                        status = tls.ScanState.FALSE
 
                 except TlsConnectionClosedError:
-                    status = tls.SPBool.C_FALSE
+                    status = tls.ScanState.FALSE
 
         self.server_profile.allocate_vulnerabilities()
         self.server_profile.vulnerabilities.ccs_injection = status

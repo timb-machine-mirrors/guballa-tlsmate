@@ -1,37 +1,37 @@
 cert_chains: []
 features:
-    downgrade_attack_prevention: C_NA
-    early_data: C_NA
-    encrypt_then_mac: C_NA
+    downgrade_attack_prevention: NA
+    early_data: NA
+    encrypt_then_mac: NA
     ephemeral_key_reuse:
-        tls12_dhe_reuse: C_NA
-        tls12_ecdhe_reuse: C_NA
-        tls13_dhe_reuse: C_NA
-        tls13_ecdhe_reuse: C_NA
-    extended_master_secret: C_NA
+        tls12_dhe_reuse: NA
+        tls12_ecdhe_reuse: NA
+        tls13_dhe_reuse: NA
+        tls13_ecdhe_reuse: NA
+    extended_master_secret: NA
     grease:
-        cipher_suite_tolerance: C_FALSE
-        extension_tolerance: C_NA
-        group_tolerance: C_NA
-        psk_mode_tolerance: C_NA
-        sig_algo_tolerance: C_NA
-        version_tolerance: C_FALSE
-    heartbeat: C_NA
-    insecure_renegotiation: C_NA
-    ocsp_multi_stapling: C_NA
-    ocsp_stapling: C_NA
-    resumption_psk: C_NA
-    scsv_renegotiation: C_NA
-    secure_renegotation: C_NA
-    session_id: C_NA
-    session_ticket: C_NA
+        cipher_suite_tolerance: 'FALSE'
+        extension_tolerance: NA
+        group_tolerance: NA
+        psk_mode_tolerance: NA
+        sig_algo_tolerance: NA
+        version_tolerance: 'FALSE'
+    heartbeat: NA
+    insecure_renegotiation: NA
+    ocsp_multi_stapling: NA
+    ocsp_stapling: NA
+    resumption_psk: NA
+    scsv_renegotiation: NA
+    secure_renegotation: NA
+    session_id: NA
+    session_ticket: NA
 scan_info:
     command: tlsmate scan localhost --port=44330 --format=yaml --write-profile=/home/jens/project/tlsmate/tests/workers/recordings/profile_text_ssl2.yaml
     run_time: 0.321
-    start_date: '2021-11-11T21:46:41'
-    start_timestamp: 1636663601.3196983
-    stop_date: '2021-11-11T21:46:41'
-    stop_timestamp: 1636663601.64114
+    start_date: '2021-11-11T23:03:31'
+    start_timestamp: 1636668211.3567374
+    stop_date: '2021-11-11T23:03:31'
+    stop_timestamp: 1636668211.677475
     version: 1.0.1.dev194
 server:
     ip: 127.0.0.1
@@ -57,42 +57,42 @@ versions:
         name: SSL_CK_DES_64_CBC_WITH_MD5
     -   id: 458944
         name: SSL_CK_DES_192_EDE3_CBC_WITH_MD5
-    support: C_TRUE
+    support: 'TRUE'
     version:
         id: 512
         name: SSL20
--   support: C_FALSE
+-   support: 'FALSE'
     version:
         id: 768
         name: SSL30
--   support: C_FALSE
+-   support: 'FALSE'
     version:
         id: 769
         name: TLS10
--   support: C_FALSE
+-   support: 'FALSE'
     version:
         id: 770
         name: TLS11
--   support: C_FALSE
+-   support: 'FALSE'
     version:
         id: 771
         name: TLS12
--   support: C_FALSE
+-   support: 'FALSE'
     version:
         id: 772
         name: TLS13
 vulnerabilities:
-    beast: C_FALSE
+    beast: 'FALSE'
     cbc_padding_oracle:
         accuracy: MEDIUM
-        vulnerable: C_NA
-    ccs_injection: C_NA
-    crime: C_UNDETERMINED
-    freak: C_FALSE
+        vulnerable: NA
+    ccs_injection: NA
+    crime: UNDETERMINED
+    freak: 'FALSE'
     heartbleed: NOT_APPLICABLE
     logjam: NA
-    lucky_minus_20: C_NA
-    poodle: C_FALSE
+    lucky_minus_20: NA
+    poodle: 'FALSE'
     robot: NOT_APPLICABLE
-    sweet_32: C_FALSE
-    tls_poodle: C_NA
+    sweet_32: 'FALSE'
+    tls_poodle: NA

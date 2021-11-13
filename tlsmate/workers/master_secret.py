@@ -16,11 +16,11 @@ class ScanExtendedMasterSecret(Worker):
     prio = 30
 
     def run(self):
-        state = tls.SPBool.C_UNDETERMINED
+        state = tls.ScanState.UNDETERMINED
         versions = [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]
         prof_values = self.server_profile.get_profile_values(versions, full_hs=True)
         if not prof_values.versions:
-            state = tls.SPBool.C_NA
+            state = tls.ScanState.NA
         else:
             self.client.init_profile(profile_values=prof_values)
             self.client.profile.support_extended_master_secret = True
@@ -30,9 +30,9 @@ class ScanExtendedMasterSecret(Worker):
                 if conn.msg.server_hello.get_extension(
                     tls.Extension.EXTENDED_MASTER_SECRET
                 ):
-                    state = tls.SPBool.C_TRUE
+                    state = tls.ScanState.TRUE
                 else:
-                    state = tls.SPBool.C_FALSE
+                    state = tls.ScanState.FALSE
 
         self.server_profile.allocate_features()
         self.server_profile.features.extended_master_secret = state

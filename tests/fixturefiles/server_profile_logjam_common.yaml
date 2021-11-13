@@ -1,28 +1,28 @@
 cert_chains:
 -   cert_chain:
     -   crl_revocation_status: NOT_REVOKED
-        extended_validation: C_FALSE
+        extended_validation: "FALSE"
         extensions:
-        -   ca: C_FALSE
-            criticality: C_TRUE
+        -   ca: "FALSE"
+            criticality: "TRUE"
             name: BasicConstraints
             oid: 2.5.29.19
-        -   criticality: C_FALSE
+        -   criticality: "FALSE"
             name: SubjectAlternativeName
             oid: 2.5.29.17
             subj_alt_names:
             - test.localhost
             - '*.wildcard.localhost'
-        -   criticality: C_FALSE
+        -   criticality: "FALSE"
             extended_key_usage:
             - serverAuth
             name: ExtendedKeyUsage
             oid: 2.5.29.37
-        -   criticality: C_FALSE
+        -   criticality: "FALSE"
             digest: 51:61:85:72:f8:df:d4:50:3b:ea:4a:03:1c:97:ac:7c:f2:c2:42:15
             name: SubjectKeyIdentifier
             oid: 2.5.29.14
-        -   criticality: C_FALSE
+        -   criticality: "FALSE"
             key_identifier: d5:7c:a3:16:ac:51:15:e8:9e:72:1b:d1:ed:61:ff:3a:f6:25:e5:f6
             name: AuthorityKeyIdentifier
             oid: 2.5.29.35
@@ -31,10 +31,10 @@ cert_chains:
                 access_method: caIssuers
             -   access_location: http://ocsp.localhost:44401
                 access_method: OCSP
-            criticality: C_FALSE
+            criticality: "FALSE"
             name: AuthorityInformationAccess
             oid: 1.3.6.1.5.5.7.1.1
-        -   criticality: C_FALSE
+        -   criticality: "FALSE"
             distribution_points:
             -   full_name:
                 -   uri: http://crl.localhost:44400/crl/ca-rsa.crl
@@ -43,10 +43,10 @@ cert_chains:
         -   cert_policies:
             -   policy_name: Unknown OID
                 policy_oid: 2.23.140.1.2.1
-            criticality: C_FALSE
+            criticality: "FALSE"
             name: CertificatePolicies
             oid: 2.5.29.32
-        -   criticality: C_FALSE
+        -   criticality: "FALSE"
             name: TLSFeature
             oid: 1.3.6.1.5.5.7.1.24
             tls_features:
@@ -60,8 +60,8 @@ cert_chains:
         - subject name does not match
         not_valid_after: '2020-10-01T01:00:00'
         not_valid_before: '2020-08-01T01:00:00'
-        ocsp_must_staple: C_TRUE
-        ocsp_must_staple_multi: C_TRUE
+        ocsp_must_staple: "TRUE"
+        ocsp_must_staple_multi: "TRUE"
         ocsp_revocation_status: NOT_REVOKED
         pem: |
             -----BEGIN CERTIFICATE-----
@@ -96,32 +96,32 @@ cert_chains:
             key_exponent: 65537
             key_size: 2048
             key_type: RSA
-        self_signed: C_FALSE
+        self_signed: "FALSE"
         serial_number_bytes: 03:66:28:f6:d2:87:14:3d
         serial_number_int: 244928270297404477
         signature: aa:9a:d4:93:09:ab:cb:5d:e2:bb:f7:bb:b7:9d:0c:10:52:0c:c9:b5:59:7c:2a:ed:c9:be:ed:2b:51:f3:70:15:84:34:ca:dc:f9:2f:50:35:7d:01:44:ff:23:89:fc:ec:a8:a1:bc:ef:0e:bc:75:35:52:79:35:a8:78:ad:91:8b:91:d0:27:6b:b6:73:e9:45:7a:6f:2f:55:43:10:b1:ea:3f:d6:73:c9:bd:de:9b:63:2a:21:6c:3a:5d:96:a2:2e:f5:44:0f:62:bb:90:8f:ed:71:07:a0:2c:4b:61:65:cd:a6:fd:09:89:ea:96:26:4c:ea:ce:8a:1b:a9:28:42:4b:c8:85:19:50:b3:f6:be:f5:9f:ac:66:48:dc:43:2a:e8:62:18:bd:a3:3b:fc:86:15:5f:37:0f:ee:10:c7:98:07:28:c2:bd:6f:6f:e7:0c:63:45:86:a6:3b:d7:85:9b:f2:85:4c:f2:0f:bc:27:4a:b8:b8:86:5d:8d:eb:5a:93:80:11:f8:df:d3:9c:98:d9:b6:ca:44:dd:0f:45:6f:d3:83:96:64:e2:3f:31:7b:a4:1e:35:c6:c5:05:d2:b3:0e:a4:49:cc:f1:8a:8a:eb:89:13:f8:68:1c:fc:36:45:30:02:fc:93:27:93:1a:87:b7:3f:8c:24:6f:cc:d2:dd:f2:b1
         signature_algorithm: RSA_PKCS1_SHA256
         subject: CN=expired.localhost,O=The TlsMate Company (Server side) RSA,C=DE
-        subject_matches: C_FALSE
+        subject_matches: "FALSE"
         validity_period_days: 61
         version: Version.v3
-    -   extended_validation: C_NA
+    -   extended_validation: NA
         extensions:
-        -   ca: C_TRUE
-            criticality: C_TRUE
+        -   ca: "TRUE"
+            criticality: "TRUE"
             name: BasicConstraints
             oid: 2.5.29.19
-        -   criticality: C_TRUE
+        -   criticality: "TRUE"
             key_usage:
             - KEY_CERT_SIGN
             - CRL_SIGN
             name: KeyUsage
             oid: 2.5.29.15
-        -   criticality: C_FALSE
+        -   criticality: "FALSE"
             digest: 2b:48:f0:60:f4:04:84:21:8e:71:c8:0d:d1:38:b0:2c:89:8d:ba:ba
             name: SubjectKeyIdentifier
             oid: 2.5.29.14
-        -   criticality: C_FALSE
+        -   criticality: "FALSE"
             key_identifier: 2b:48:f0:60:f4:04:84:21:8e:71:c8:0d:d1:38:b0:2c:89:8d:ba:ba
             name: AuthorityKeyIdentifier
             oid: 2.5.29.35
@@ -130,8 +130,8 @@ cert_chains:
         issuer: CN=localhost Root CA RSA,O=The TlsMate Company,C=DE
         not_valid_after: '2031-08-20T14:17:44'
         not_valid_before: '2021-08-22T14:17:44'
-        ocsp_must_staple: C_FALSE
-        ocsp_must_staple_multi: C_FALSE
+        ocsp_must_staple: "FALSE"
+        ocsp_must_staple_multi: "FALSE"
         pem: |
             -----BEGIN CERTIFICATE-----
             MIIDhzCCAm+gAwIBAgIUR7B/xYABToiAv76ByGyQVg5oz+0wDQYJKoZIhvcNAQEL
@@ -159,7 +159,7 @@ cert_chains:
             key_exponent: 65537
             key_size: 2048
             key_type: RSA
-        self_signed: C_TRUE
+        self_signed: "TRUE"
         serial_number_bytes: 47:b0:7f:c5:80:01:4e:88:80:bf:be:81:c8:6c:90:56:0e:68:cf:ed
         serial_number_int: 409274406349521581469817764321618401398589280237
         signature: 93:c9:d1:ff:7f:c7:ff:53:3b:42:05:09:b7:5b:b7:ba:5d:89:b6:47:1a:9f:4c:6a:91:f0:1b:5c:f8:27:79:4e:06:fd:fd:87:66:12:75:7e:21:6d:ee:91:a9:3b:da:33:5b:a8:28:a3:56:b1:36:ab:ce:eb:83:d0:62:8d:99:9a:96:f6:a2:25:f0:bd:7a:91:d0:58:04:f8:be:f2:c8:c0:c1:61:c6:31:2c:55:c1:09:03:87:b5:c2:a0:83:7f:b7:17:7f:bb:26:64:03:54:d1:30:05:3e:28:82:79:ca:0f:2b:f2:2b:ff:22:e5:01:77:ea:bd:87:f0:ce:94:09:70:70:ce:82:92:17:e3:1e:34:4c:1f:4b:13:72:ba:df:c1:37:11:df:f3:9a:92:b4:62:cf:08:62:d3:a2:65:ef:30:dc:b9:1b:15:96:1c:3a:26:32:09:11:86:27:32:3b:9f:1c:a4:3d:3b:5a:fc:df:e7:b1:d5:c4:64:6c:c3:86:c1:21:f7:61:21:80:42:4c:18:7b:e9:70:33:0e:6c:c0:39:a5:aa:b6:89:bb:b5:c6:c9:12:3a:18:ca:37:cc:53:f8:49:77:6f:90:b2:4f:6c:38:e1:66:ad:d2:65:bb:f1:15:f8:aa:e2:01:cb:6c:df:a4:5c:ee:73:3f:b8:65:58:c4
@@ -174,16 +174,16 @@ features:
     -   id: 1
         name: DEFLATE
 versions:
--   support: C_FALSE
+-   support: "FALSE"
     version:
         id: 512
         name: SSL20
--   support: C_FALSE
+-   support: "FALSE"
     version:
         id: 768
         name: SSL30
 -   ciphers:
-        chacha_poly_preference: C_FALSE
+        chacha_poly_preference: "FALSE"
         cipher_suites:
         -   id: 0x0033
             name: TLS_DHE_RSA_WITH_AES_128_CBC_SHA
@@ -191,25 +191,25 @@ versions:
             name: TLS_RSA_WITH_IDEA_CBC_SHA
         -   id: 0x0008
             name: TLS_RSA_EXPORT_WITH_DES40_CBC_SHA
-        server_preference: C_TRUE
+        server_preference: "TRUE"
     dh_group:
         g_value: 2
         name: Something
         p_value: ff:ff:ff:ff:ff:ff:ff:ff
         size: 1024
-    support: C_TRUE
+    support: "TRUE"
     version:
         id: 769
         name: TLS10
--   support: C_FALSE
+-   support: "FALSE"
     version:
         id: 770
         name: TLS11
--   support: C_FALSE
+-   support: "FALSE"
     version:
         id: 771
         name: TLS12
--   support: C_FALSE
+-   support: "FALSE"
     version:
         id: 772
         name: TLS13

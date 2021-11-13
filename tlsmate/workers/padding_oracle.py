@@ -122,8 +122,8 @@ class _ResponseFingerprint(object):
 
 class CipherSuiteFingerprint(object):
     def __init__(self):
-        self.strong = tls.SPBool.C_UNDETERMINED
-        self.observable = tls.SPBool.C_UNDETERMINED
+        self.strong = tls.ScanState.UNDETERMINED
+        self.observable = tls.ScanState.UNDETERMINED
         self.oracle_types = []
 
     def get_fingerprint_id(self):
@@ -460,7 +460,7 @@ class ScanPaddingOracle(Worker):
             if fp_11_padding_no_data_invalid_mac_msb != fp_invalid_mac:
                 cs_fp.oracle_types.append(tls.SPCbcPaddingOracle.INVALID_MAC)
 
-            cs_fp.observable = tls.SPBool(
+            cs_fp.observable = tls.ScanState(
                 any(fp_invalid_mac.visible_difference(fp) for fp in fps)
             )
             fp_17_invalid_short_padding_msb = self._vector_fingerprint(
@@ -470,9 +470,9 @@ class ScanPaddingOracle(Worker):
                 f"fp_17_invalid_short_padding_msb {fp_17_invalid_short_padding_msb}"
             )
             if not fp_17_invalid_short_padding_msb:
-                cs_fp.strong = tls.SPBool.C_UNDETERMINED
+                cs_fp.strong = tls.ScanState.UNDETERMINED
             else:
-                cs_fp.strong = tls.SPBool(
+                cs_fp.strong = tls.ScanState(
                     fp_17_invalid_short_padding_msb != fp_invalid_mac
                 )
 
@@ -526,7 +526,7 @@ class ScanPaddingOracle(Worker):
         cbc_ciphers = utils.filter_cipher_suites(
             values.cipher_suites, cipher_type=[tls.CipherType.BLOCK],
         )
-        return tls.SPBool(bool(cbc_ciphers))
+        return tls.ScanState(bool(cbc_ciphers))
 
     def _scan_tls_poodle(self):
         for version in [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]:
@@ -559,14 +559,14 @@ class ScanPaddingOracle(Worker):
         oracle_info = SPCbcPaddingOracleInfo()
         oracle_info.accuracy = self.accuracy
         if not self.applicable:
-            tls_poodle = tls.SPBool.C_NA
-            lucky_minus_20 = tls.SPBool.C_NA
-            oracle_info.vulnerable = tls.SPBool.C_NA
+            tls_poodle = tls.ScanState.NA
+            lucky_minus_20 = tls.ScanState.NA
+            oracle_info.vulnerable = tls.ScanState.NA
 
         else:
-            tls_poodle = tls.SPBool(self.tls_poodle)
-            lucky_minus_20 = tls.SPBool(self.lucky_minus_20)
-            oracle_info.vulnerable = tls.SPBool(bool(self.fingerprints))
+            tls_poodle = tls.ScanState(self.tls_poodle)
+            lucky_minus_20 = tls.ScanState(self.lucky_minus_20)
+            oracle_info.vulnerable = tls.ScanState(bool(self.fingerprints))
             oracle_info.oracles = []
             if self.fingerprints:
                 for entry in self.fingerprints.values():

@@ -72,7 +72,7 @@ def test_only_versions(tlsmate, style_file, capsys):
     FontStyle.html = False
     yaml_data = """
 versions:
--   support: C_UNDETERMINED
+-   support: UNDETERMINED
     version:
         id: 512
         name: SSL20
@@ -184,7 +184,7 @@ def test_with_compression(tlsmate, style_file, capsys):
     FontStyle.html = False
     yaml_data = """
 versions:
--   support: C_TRUE
+-   support: 'TRUE'
     version:
         id: 770
         name: TLS11
@@ -192,7 +192,7 @@ versions:
         cipher_suites:
         -   id: 4865
             name: TLS_AES_128_GCM_SHA256
-        server_preference: C_FALSE
+        server_preference: 'FALSE'
 features:
     compression:
     -   id: 0
