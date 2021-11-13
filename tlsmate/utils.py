@@ -359,17 +359,21 @@ def int_to_bytes(number):
         return b"\0"
 
 
-def set_logging(level):
+def set_logging_format():
+    """Initializes the format of log messages
+    """
+
+    logging.basicConfig(format="%(levelname)s: %(message)s")
+
+
+def set_logging_level(level):
     """Sets the logging level
 
     Arguments:
         level (str): The logging level to use.
     """
 
-    if level is not None:
-        logging.basicConfig(
-            level=level.upper(), format="%(levelname)s: %(message)s", force=True
-        )
+    logging.getLogger().setLevel(level.upper())
 
 
 class Log(object):
