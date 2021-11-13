@@ -15,7 +15,7 @@ from tlsmate import pdu
 from tlsmate.version import __version__
 
 # import other stuff
-from colorama import init, Fore, Style
+import colorama
 
 
 class Color(tls.ExtendedEnum):
@@ -47,13 +47,13 @@ class FontStyle:
 
         else:
             if self.color:
-                txt = f"{getattr(Fore, self.color.name)}{txt}"
+                txt = f"{getattr(colorama.Fore, self.color.name)}{txt}"
 
             if self.bold:
-                txt = f"{Style.BRIGHT}{txt}"
+                txt = f"{colorama.Style.BRIGHT}{txt}"
 
             if self.color or self.bold:
-                txt = f"{txt}{Style.RESET_ALL}"
+                txt = f"{txt}{colorama.Style.RESET_ALL}"
 
         if with_orig_len:
             return txt, orig_len
@@ -63,7 +63,7 @@ class FontStyle:
 
 
 @dataclass
-class Mood:
+class Style:
     GOOD: FontStyle = FontStyle(color=Color.GREEN)
     NEUTRAL: FontStyle = FontStyle()
     SOSO: FontStyle = FontStyle(color=Color.YELLOW, bold=True)
@@ -79,7 +79,7 @@ def merge_moods(moods):
     Arguments:
         moods (list of moods): the list of mood strings
     """
-    for mood in [Mood.ERROR, Mood.BAD, Mood.SOSO, Mood.NEUTRAL, Mood.GOOD]:
+    for mood in [Style.ERROR, Style.BAD, Style.SOSO, Style.NEUTRAL, Style.GOOD]:
         if mood in moods:
             return mood
 
@@ -123,10 +123,10 @@ def get_mood(profile, *keys):
         *keys (str): the keys applied in sequence to descent to the mood
 
     Returns:
-        str: ANSI escape code string. If anything fails, Mood.ERROR is returned.
+        str: ANSI escape code string. If anything fails, Style.ERROR is returned.
     """
     return getattr(
-        Mood, get_dict_value(profile, *keys, default="error").upper(), Mood.ERROR
+        Style, get_dict_value(profile, *keys, default="error").upper(), Style.ERROR
     )
 
 
@@ -165,7 +165,7 @@ def get_styled_text(data, *path, **kwargs):
     """
     prof = get_dict_value(data, *path)
     if not prof:
-        return Mood.ERROR.decorate("???", **kwargs)
+        return Style.ERROR.decorate("???", **kwargs)
 
     return get_mood_applied(get_dict_value(prof, "txt"), prof, "style", **kwargs)
 
@@ -228,7 +228,7 @@ class TextProfileWorker(Worker):
                         color = Color.str2enum(fg.upper())
 
                     bold = mood_def.get("style") == "bright"
-                    setattr(Mood, mood.upper(), FontStyle(color=color, bold=bold))
+                    setattr(Style, mood.upper(), FontStyle(color=color, bold=bold))
 
     def _read_style(self):
         self._style = utils.deserialize_data(self.style_file)
@@ -244,7 +244,7 @@ class TextProfileWorker(Worker):
     def _mood_for_assym_key_size(self, bits, style_entry):
         key_sizes = get_dict_value(self._style, style_entry)
         if not key_sizes:
-            return Mood.NEUTRAL
+            return Style.NEUTRAL
 
         for prof in key_sizes:
             if bits >= prof["size"]:
@@ -259,7 +259,7 @@ class TextProfileWorker(Worker):
         return self._mood_for_assym_key_size(bits, "assymetric_ec_key_sizes")
 
     def _print_tlsmate(self):
-        print(Mood.HEADLINE.decorate("A TLS configuration scanner (and more)"))
+        print(Style.HEADLINE.decorate("A TLS configuration scanner (and more)"))
         print()
         table = utils.Table(indent=2, sep="  ")
         table.row("tlsmate version", __version__)
@@ -276,7 +276,7 @@ class TextProfileWorker(Worker):
 
         scan_info = self.server_profile.scan_info
         self._start_date = scan_info.start_date
-        print(Mood.HEADLINE.decorate("Basic scan information"))
+        print(Style.HEADLINE.decorate("Basic scan information"))
         print()
         print(f"  command: {scan_info.command}")
         table = utils.Table(indent=2, sep="  ")
@@ -296,7 +296,7 @@ class TextProfileWorker(Worker):
             return
 
         host_info = self.server_profile.server
-        print(Mood.HEADLINE.decorate("Scanned host"))
+        print(Style.HEADLINE.decorate("Scanned host"))
         print()
         table = utils.Table(indent=2, sep="  ")
         name_resolution = hasattr(host_info, "name_resolution")
@@ -326,7 +326,7 @@ class TextProfileWorker(Worker):
         if not malfunctions:
             return
 
-        print(Mood.HEADLINE.decorate("Severe server implementation flaws"))
+        print(Style.HEADLINE.decorate("Severe server implementation flaws"))
         print()
         for malfunction in malfunctions:
             add_info = []
@@ -345,7 +345,7 @@ class TextProfileWorker(Worker):
             if add_info:
                 txt += f" ({'; '.join(add_info)})"
 
-            print(Mood.BAD.decorate(txt))
+            print(Style.BAD.decorate(txt))
 
         print()
 
@@ -353,7 +353,7 @@ class TextProfileWorker(Worker):
         if not hasattr(self.server_profile, "versions"):
             return
 
-        print(Mood.HEADLINE.decorate("TLS protocol versions"))
+        print(Style.HEADLINE.decorate("TLS protocol versions"))
         print()
         table = utils.Table(indent=2, sep="  ")
         for version_prof in self.server_profile.versions:
@@ -376,7 +376,7 @@ class TextProfileWorker(Worker):
             return
 
         cipher_hash = {}
-        print(Mood.HEADLINE.decorate("Cipher suites"))
+        print(Style.HEADLINE.decorate("Cipher suites"))
 
         for version in self._prof_versions:
             version_prof = self.server_profile.get_version_profile(version)
@@ -428,12 +428,12 @@ class TextProfileWorker(Worker):
                 for cs in cipher_list:
                     if version is tls.Version.SSL20:
                         cipher_hash[hashed]["table"].row(
-                            f"0x{cs.value:06x}", Mood.BAD.decorate(cs)
+                            f"0x{cs.value:06x}", Style.BAD.decorate(cs)
                         )
 
                     else:
                         mood = self.mood_for_cipher_suite(cs)
-                        if mood is not Mood.GOOD:
+                        if mood is not Style.GOOD:
                             all_good = False
 
                         cipher_hash[hashed]["table"].row(
@@ -441,10 +441,10 @@ class TextProfileWorker(Worker):
                         )
 
                 if all_good:
-                    cipher_hash[hashed]["preference"] = Mood.NEUTRAL.decorate(pref_txt)
+                    cipher_hash[hashed]["preference"] = Style.NEUTRAL.decorate(pref_txt)
 
         for values in cipher_hash.values():
-            versions = Mood.BOLD.decorate(", ".join(values["versions"]))
+            versions = Style.BOLD.decorate(", ".join(values["versions"]))
             print(f"\n  {versions}:")
             print(f'    {values["preference"]}')
             if values["chacha_preference"] != "":
@@ -491,7 +491,7 @@ class TextProfileWorker(Worker):
                     if prof_grps and all(
                         [prof_grps[grp.name] == "good" for grp in group_prof.groups]
                     ):
-                        pref_mood = Mood.NEUTRAL
+                        pref_mood = Style.NEUTRAL
 
                     else:
                         pref_mood = get_mood(prof, "style")
@@ -519,10 +519,10 @@ class TextProfileWorker(Worker):
         if not group_hash:
             return
 
-        print(Mood.HEADLINE.decorate("Supported groups"))
+        print(Style.HEADLINE.decorate("Supported groups"))
         for group in group_hash.values():
             versions = ", ".join(group["versions"])
-            print(f"\n  {Mood.BOLD.decorate(versions)}:")
+            print(f"\n  {Style.BOLD.decorate(versions)}:")
             supp_txt, pref_txt, ad_txt, groups = group["combined"]
 
             if supp_txt:
@@ -551,7 +551,7 @@ class TextProfileWorker(Worker):
             return
 
         algo_hash = {}
-        print(Mood.HEADLINE.decorate("Signature algorithms"))
+        print(Style.HEADLINE.decorate("Signature algorithms"))
         for version in self._prof_versions:
             version_prof = self.server_profile.get_version_profile(version)
             if not hasattr(version_prof, "signature_algorithms"):
@@ -570,7 +570,7 @@ class TextProfileWorker(Worker):
 
         for algo in algo_hash.values():
             versions = ", ".join(algo["versions"])
-            print(f"\n  {Mood.BOLD.decorate(versions)}:")
+            print(f"\n  {Style.BOLD.decorate(versions)}:")
 
             print("    signature algorithms:")
             table = utils.Table(indent=6, sep="  ")
@@ -610,10 +610,10 @@ class TextProfileWorker(Worker):
                 }
 
         if dh_groups:
-            print(Mood.HEADLINE.decorate("DH groups (finite field)"))
+            print(Style.HEADLINE.decorate("DH groups (finite field)"))
             for values in dh_groups.values():
                 versions = ", ".join(values["versions"])
-                print(f"\n  {Mood.BOLD.decorate(versions)}:")
+                print(f"\n  {Style.BOLD.decorate(versions)}:")
                 name, size = values["combined"]
                 if name is None:
                     name = "unknown group"
@@ -636,7 +636,7 @@ class TextProfileWorker(Worker):
         ):
             return
 
-        print(f'  {Mood.BOLD.decorate("Common features")}')
+        print(f'  {Style.BOLD.decorate("Common features")}')
         table = utils.Table(indent=4, sep="  ")
 
         ocsp_state = getattr(feat_prof, "ocsp_stapling", None)
@@ -685,7 +685,7 @@ class TextProfileWorker(Worker):
         ):
             return
 
-        print(f'  {Mood.BOLD.decorate("Features for TLS1.2 and below")}')
+        print(f'  {Style.BOLD.decorate("Features for TLS1.2 and below")}')
         table = utils.Table(indent=4, sep="  ")
         if hasattr(feat_prof, "compression"):
             if (len(feat_prof.compression) == 1) and feat_prof.compression[
@@ -765,7 +765,7 @@ class TextProfileWorker(Worker):
         ):
             return
 
-        print(f'  {Mood.BOLD.decorate("Features for TLS1.3")}')
+        print(f'  {Style.BOLD.decorate("Features for TLS1.3")}')
 
         table = utils.Table(indent=4, sep="  ")
         resumption_psk = getattr(feat_prof, "resumption_psk", None)
@@ -800,7 +800,7 @@ class TextProfileWorker(Worker):
             ("psk_mode_tolerance", "psk_mode"),
         )
 
-        caption = Mood.BOLD.decorate(
+        caption = Style.BOLD.decorate(
             "Server tolerance to unknown values (GREASE, RFC8701)"
         )
         print(f"  {caption}")
@@ -823,7 +823,7 @@ class TextProfileWorker(Worker):
             return
 
         ekr = self.server_profile.features.ephemeral_key_reuse
-        print(Mood.BOLD.decorate("  Ephemeral key reuse"))
+        print(Style.BOLD.decorate("  Ephemeral key reuse"))
         table = utils.Table(indent=4, sep="  ")
         table.row(
             "DHE key reuse (TLS1.2 or below)",
@@ -857,7 +857,7 @@ class TextProfileWorker(Worker):
         if not feat_prof:
             return
 
-        print(Mood.HEADLINE.decorate("Features"))
+        print(Style.HEADLINE.decorate("Features"))
         print()
 
         self._print_common_features(feat_prof)
@@ -1103,7 +1103,7 @@ class TextProfileWorker(Worker):
         if cert_chains is None:
             return
 
-        print(Mood.HEADLINE.decorate("Certificate chains"))
+        print(Style.HEADLINE.decorate("Certificate chains"))
         for cert_chain in cert_chains:
             print()
             if hasattr(cert_chain, "successful_validation"):
@@ -1117,7 +1117,7 @@ class TextProfileWorker(Worker):
             else:
                 valid_txt = ""
 
-            head_line = Mood.BOLD.decorate(f"Certificate chain #{cert_chain.id}:")
+            head_line = Style.BOLD.decorate(f"Certificate chain #{cert_chain.id}:")
             print(f"  {head_line} {valid_txt}")
             if hasattr(cert_chain, "issues"):
                 mood = get_mood(self._style, "cert_chain", "issues")
@@ -1149,7 +1149,7 @@ class TextProfileWorker(Worker):
             return
 
         table = utils.Table(indent=2, sep="  ")
-        print(Mood.HEADLINE.decorate("Vulnerabilities"))
+        print(Style.HEADLINE.decorate("Vulnerabilities"))
         print()
 
         beast = getattr(vuln_prof, "beast", None)
@@ -1334,7 +1334,7 @@ class TextProfileWorker(Worker):
             print("<pre>")
 
         else:
-            init(strip=not self.config.get("color"))
+            colorama.init(strip=not self.config.get("color"))
 
         self._prof_versions = self.server_profile.get_versions()
         self._print_tlsmate()
