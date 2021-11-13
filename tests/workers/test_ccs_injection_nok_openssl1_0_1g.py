@@ -30,7 +30,7 @@ class TestCaseVulnerable(TlsSuiteTester):
         server_profile = tlsmate.server_profile
         ScanCcsInjection(tlsmate).run()
         profile = server_profile.make_serializable()
-        assert profile["vulnerabilities"]["ccs_injection"] == "C_TRUE"
+        assert profile["vulnerabilities"]["ccs_injection"] == "TRUE"
 
 
 if __name__ == "__main__":

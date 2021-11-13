@@ -43,17 +43,17 @@ class TestCase(TlsSuiteTester):
     server = "localhost"
 
     def check_tls12(self, profile):
-        assert profile["extension_supported"] == "C_TRUE"
-        assert profile["server_preference"] == "C_FALSE"
-        assert profile["groups_advertised"] == "C_NA"
+        assert profile["extension_supported"] == "TRUE"
+        assert profile["server_preference"] == "FALSE"
+        assert profile["groups_advertised"] == "NA"
         assert len(profile["groups"]) == len(groups_tls12)
         for a, b in zip(groups_tls12, profile["groups"]):
             assert a == b["name"]
 
     def check_tls13(self, profile):
-        assert profile["extension_supported"] == "C_TRUE"
-        assert profile["server_preference"] == "C_FALSE"
-        assert profile["groups_advertised"] == "C_TRUE"
+        assert profile["extension_supported"] == "TRUE"
+        assert profile["server_preference"] == "FALSE"
+        assert profile["groups_advertised"] == "TRUE"
         assert len(profile["groups"]) == len(groups_tls13)
         for a, b in zip(groups_tls13, profile["groups"]):
             assert a == b["name"]

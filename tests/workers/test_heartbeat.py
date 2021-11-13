@@ -30,7 +30,7 @@ class TestCase(TlsSuiteTester):
         server_profile = tlsmate.server_profile
         ScanHeartbeat(tlsmate).run()
         profile = server_profile.make_serializable()
-        assert profile["features"]["heartbeat"] == "C_TRUE"
+        assert profile["features"]["heartbeat"] == "TRUE"
 
 
 if __name__ == "__main__":

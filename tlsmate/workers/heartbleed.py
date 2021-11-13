@@ -26,7 +26,9 @@ class ScanHeartbleed(Worker):
 
         else:
             hb = getattr(
-                self.server_profile.features, "heartbeat", tls.HeartbeatState.UNDETERMINED,
+                self.server_profile.features,
+                "heartbeat",
+                tls.HeartbeatState.UNDETERMINED,
             )
 
         state = tls.HeartbleedStatus.UNDETERMINED

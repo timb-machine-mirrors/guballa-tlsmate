@@ -104,25 +104,25 @@ class TestCase(TlsSuiteTester):
     def check_versions(self, versions):
         assert len(versions) == 6
         assert versions[0]["version"]["name"] == "SSL20"
-        assert versions[0]["support"] == "C_FALSE"
+        assert versions[0]["support"] == "FALSE"
 
         assert versions[1]["version"]["name"] == "SSL30"
-        assert versions[1]["support"] == "C_FALSE"
+        assert versions[1]["support"] == "FALSE"
 
         assert versions[2]["version"]["name"] == "TLS10"
-        assert versions[2]["support"] == "C_FALSE"
+        assert versions[2]["support"] == "FALSE"
 
         assert versions[3]["version"]["name"] == "TLS11"
-        assert versions[3]["support"] == "C_FALSE"
+        assert versions[3]["support"] == "FALSE"
 
         assert versions[4]["version"]["name"] == "TLS12"
-        assert versions[4]["support"] == "C_TRUE"
-        assert versions[4]["ciphers"]["server_preference"] == "C_TRUE"
-        assert versions[4]["ciphers"]["chacha_poly_preference"] == "C_TRUE"
+        assert versions[4]["support"] == "TRUE"
+        assert versions[4]["ciphers"]["server_preference"] == "TRUE"
+        assert versions[4]["ciphers"]["chacha_poly_preference"] == "TRUE"
 
         assert versions[5]["version"]["name"] == "TLS13"
-        assert versions[5]["support"] == "C_TRUE"
-        assert versions[5]["ciphers"]["server_preference"] == "C_FALSE"
+        assert versions[5]["support"] == "TRUE"
+        assert versions[5]["ciphers"]["server_preference"] == "FALSE"
 
         for a, b in zip(tls12_cs, versions[4]["ciphers"]["cipher_suites"]):
             assert a == b["name"]

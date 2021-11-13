@@ -29,7 +29,7 @@ class TestCase(TlsSuiteTester):
         server_profile = tlsmate.server_profile
         ScanExtendedMasterSecret(tlsmate).run()
         profile = server_profile.make_serializable()
-        assert profile["features"]["extended_master_secret"] == "C_TRUE"
+        assert profile["features"]["extended_master_secret"] == "TRUE"
 
 
 if __name__ == "__main__":

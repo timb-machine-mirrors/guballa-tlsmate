@@ -29,8 +29,8 @@ class TestCase(TlsSuiteTester):
         server_profile = tlsmate.server_profile
         ScanOcspStapling(tlsmate).run()
         profile = server_profile.make_serializable()
-        assert profile["features"]["ocsp_stapling"] == "C_FALSE"
-        assert profile["features"]["ocsp_multi_stapling"] == "C_FALSE"
+        assert profile["features"]["ocsp_stapling"] == "FALSE"
+        assert profile["features"]["ocsp_multi_stapling"] == "FALSE"
 
 
 if __name__ == "__main__":
