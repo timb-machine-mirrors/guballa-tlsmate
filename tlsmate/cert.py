@@ -102,9 +102,9 @@ class Certificate(object):
         self.trusted = None
         self.tls_extensions = []
         self.issuer_cert = None
-        self.ocsp_must_staple = tls.SPBool.C_FALSE
-        self.ocsp_must_staple_multi = tls.SPBool.C_FALSE
-        self.extended_validation = tls.SPBool.C_NA
+        self.ocsp_must_staple = tls.SPBool.FALSE
+        self.ocsp_must_staple_multi = tls.SPBool.FALSE
+        self.extended_validation = tls.SPBool.NA
         self.from_trust_store = False
 
         if der is not None:
@@ -269,10 +269,10 @@ class Certificate(object):
             ).value
 
             if x509.TLSFeatureType.status_request in tls_features:
-                self.ocsp_must_staple = tls.SPBool.C_TRUE
+                self.ocsp_must_staple = tls.SPBool.TRUE
 
             if x509.TLSFeatureType.status_request_v2 in tls_features:
-                self.ocsp_must_staple_multi = tls.SPBool.C_TRUE
+                self.ocsp_must_staple_multi = tls.SPBool.TRUE
 
         except x509.ExtensionNotFound:
             pass
@@ -291,10 +291,10 @@ class Certificate(object):
                         pol.policy_identifier.dotted_string in _ev_oids
                         for pol in cert_policies
                     ):
-                        self.extended_validation = tls.SPBool.C_TRUE
+                        self.extended_validation = tls.SPBool.TRUE
 
                     else:
-                        self.extended_validation = tls.SPBool.C_FALSE
+                        self.extended_validation = tls.SPBool.FALSE
 
                 except x509.ExtensionNotFound:
                     pass

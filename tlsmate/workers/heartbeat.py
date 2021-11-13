@@ -17,7 +17,7 @@ class ScanHeartbeat(Worker):
     prio = 30
 
     def run(self):
-        state = tls.SPHeartbeat.C_UNDETERMINED
+        state = tls.SPHeartbeat.UNDETERMINED
         versions = [
             tls.Version.TLS10,
             tls.Version.TLS11,
@@ -26,7 +26,7 @@ class ScanHeartbeat(Worker):
         ]
         prof_values = self.server_profile.get_profile_values(versions, full_hs=True)
         if not prof_values.versions:
-            state = tls.SPHeartbeat.C_NA
+            state = tls.SPHeartbeat.NA
 
         else:
             self.client.init_profile(profile_values=prof_values)
@@ -44,23 +44,23 @@ class ScanHeartbeat(Worker):
                             conn.send(req)
                             res = conn.wait(msg.HeartbeatResponse, timeout=2000)
                             if res is None:
-                                state = tls.SPHeartbeat.C_NOT_REPONDING
+                                state = tls.SPHeartbeat.NOT_REPONDING
 
                             else:
                                 if (
                                     req.payload_length == res.payload_length
                                     and req.payload == res.payload
                                 ):
-                                    state = tls.SPHeartbeat.C_TRUE
+                                    state = tls.SPHeartbeat.TRUE
 
                                 else:
-                                    state = tls.SPHeartbeat.C_WRONG_RESPONSE
+                                    state = tls.SPHeartbeat.WRONG_RESPONSE
 
                         else:
-                            state = tls.SPHeartbeat.C_FALSE
+                            state = tls.SPHeartbeat.FALSE
 
                     else:
-                        state = tls.SPHeartbeat.C_FALSE
+                        state = tls.SPHeartbeat.FALSE
 
         self.server_profile.allocate_features()
         self.server_profile.features.heartbeat = state

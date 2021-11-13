@@ -122,8 +122,8 @@ class _ResponseFingerprint(object):
 
 class CipherSuiteFingerprint(object):
     def __init__(self):
-        self.strong = tls.SPBool.C_UNDETERMINED
-        self.observable = tls.SPBool.C_UNDETERMINED
+        self.strong = tls.SPBool.UNDETERMINED
+        self.observable = tls.SPBool.UNDETERMINED
         self.oracle_types = []
 
     def get_fingerprint_id(self):
@@ -470,7 +470,7 @@ class ScanPaddingOracle(Worker):
                 f"fp_17_invalid_short_padding_msb {fp_17_invalid_short_padding_msb}"
             )
             if not fp_17_invalid_short_padding_msb:
-                cs_fp.strong = tls.SPBool.C_UNDETERMINED
+                cs_fp.strong = tls.SPBool.UNDETERMINED
             else:
                 cs_fp.strong = tls.SPBool(
                     fp_17_invalid_short_padding_msb != fp_invalid_mac
@@ -559,9 +559,9 @@ class ScanPaddingOracle(Worker):
         oracle_info = SPCbcPaddingOracleInfo()
         oracle_info.accuracy = self.accuracy
         if not self.applicable:
-            tls_poodle = tls.SPBool.C_NA
-            lucky_minus_20 = tls.SPBool.C_NA
-            oracle_info.vulnerable = tls.SPBool.C_NA
+            tls_poodle = tls.SPBool.NA
+            lucky_minus_20 = tls.SPBool.NA
+            oracle_info.vulnerable = tls.SPBool.NA
 
         else:
             tls_poodle = tls.SPBool(self.tls_poodle)

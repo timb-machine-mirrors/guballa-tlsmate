@@ -49,7 +49,7 @@ class _Scan(metaclass=abc.ABCMeta):
                     break
                 supported_groups.append(server_group)
                 if server_group not in sub_set:
-                    self._profile_groups.extension_supported = tls.SPBool.C_FALSE
+                    self._profile_groups.extension_supported = tls.SPBool.FALSE
                     self._profile_groups.groups = supported_groups
                     return
                 sub_set.remove(server_group)
@@ -57,7 +57,7 @@ class _Scan(metaclass=abc.ABCMeta):
         if not supported_groups:
             raise ScanError("ECDHE cipher suites negotiated, but no groups supported")
 
-        self._profile_groups.extension_supported = tls.SPBool.C_TRUE
+        self._profile_groups.extension_supported = tls.SPBool.TRUE
         self._profile_groups.groups = supported_groups
 
     def _determine_server_preference(self):
@@ -69,12 +69,12 @@ class _Scan(metaclass=abc.ABCMeta):
             server_group = self._get_group_from_server(groups)
             if server_group is not None:
                 if server_group is ref_group:
-                    status = tls.SPBool.C_TRUE
+                    status = tls.SPBool.TRUE
                 else:
-                    status = tls.SPBool.C_FALSE
+                    status = tls.SPBool.FALSE
             groups.insert(0, groups.pop())
         else:
-            status = tls.SPBool.C_NA
+            status = tls.SPBool.NA
         if status is not None:
             self._profile_groups.server_preference = status
 
@@ -106,7 +106,7 @@ class _Scan(metaclass=abc.ABCMeta):
         ]
         self._determine_supported_groups()
 
-        if self._profile_groups.extension_supported is tls.SPBool.C_TRUE:
+        if self._profile_groups.extension_supported is tls.SPBool.TRUE:
             self._determine_server_preference()
             self._determine_advertised_group()
 
@@ -143,7 +143,7 @@ class _TLS12_Scan(_Scan):
         return None
 
     def _determine_advertised_group(self):
-        self._profile_groups.groups_advertised = tls.SPBool.C_NA
+        self._profile_groups.groups_advertised = tls.SPBool.NA
 
 
 class _TLS13_Scan(_Scan):
@@ -210,12 +210,12 @@ class _TLS13_Scan(_Scan):
             )
 
             if supported_group_ext is None:
-                status = tls.SPBool.C_FALSE
+                status = tls.SPBool.FALSE
             else:
                 advertised_groups = supported_group_ext.supported_groups
-                status = tls.SPBool.C_TRUE
+                status = tls.SPBool.TRUE
 
-                if self._profile_groups.server_preference is not tls.SPBool.C_TRUE:
+                if self._profile_groups.server_preference is not tls.SPBool.TRUE:
                     if set(advertised_groups) != set(groups):
                         raise ScanError(
                             "server's advertised groups differ from accepted groups"

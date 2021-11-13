@@ -22,20 +22,18 @@ class ScanHeartbleed(Worker):
 
     def run(self):
         if not hasattr(self.server_profile, "features"):
-            hb = tls.SPHeartbeat.C_UNDETERMINED
+            hb = tls.SPHeartbeat.UNDETERMINED
 
         else:
             hb = getattr(
-                self.server_profile.features,
-                "heartbeat",
-                tls.SPHeartbeat.C_UNDETERMINED,
+                self.server_profile.features, "heartbeat", tls.SPHeartbeat.UNDETERMINED,
             )
 
         state = tls.HeartbleedStatus.UNDETERMINED
-        if hb in (tls.SPHeartbeat.C_FALSE, tls.SPHeartbeat.C_NA):
+        if hb in (tls.SPHeartbeat.FALSE, tls.SPHeartbeat.NA):
             state = tls.HeartbleedStatus.NOT_APPLICABLE
 
-        elif hb is tls.SPHeartbeat.C_TRUE:
+        elif hb is tls.SPHeartbeat.TRUE:
             values = self.server_profile.get_profile_values(
                 tls.Version.all(), full_hs=True
             )

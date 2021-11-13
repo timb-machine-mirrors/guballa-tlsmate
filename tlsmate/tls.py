@@ -984,18 +984,18 @@ class SPBool(ExtendedEnum):
 
     In addition to True and False the two values are defined:
 
-    * C_UNDETERMINED - used when tlsmate has not even tried to determine the
+    * UNDETERMINED - used when tlsmate has not even tried to determine the
       value or if the value could not determined at all (for whatever reason).
 
-    * C_NA - Used as an indication this the boolean value is not applicable, e.g.
+    * NA - Used as an indication this the boolean value is not applicable, e.g.
       when the server does not support any CBC-cipher suite, support for the
       extension ENCRYPT_THEN_MAC is not applicable.
     """
 
-    C_FALSE = 0
-    C_TRUE = 1
-    C_NA = 2
-    C_UNDETERMINED = 3
+    FALSE = 0
+    TRUE = 1
+    NA = 2
+    UNDETERMINED = 3
 
 
 class SSLMessagType(ExtendedEnum):
@@ -1162,12 +1162,12 @@ class SPHeartbeat(ExtendedEnum):
     """Status for heartbeart support
     """
 
-    C_FALSE = 0
-    C_TRUE = 1
-    C_NA = 2
-    C_UNDETERMINED = 3
-    C_NOT_REPONDING = 3
-    C_WRONG_RESPONSE = 4
+    FALSE = 0
+    TRUE = 1
+    NA = 2
+    UNDETERMINED = 3
+    NOT_REPONDING = 3
+    WRONG_RESPONSE = 4
 
 
 class StatusType(ExtendedEnum):

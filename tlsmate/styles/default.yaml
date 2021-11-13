@@ -49,64 +49,64 @@ style:
 version:
   SSL20:
     supported: &version_deprecated
-      C_FALSE: &version_not_supported
+      "FALSE": &version_not_supported
         txt: not supported
         style: good
-      C_TRUE: &version_supported
+      "TRUE": &version_supported
         txt: supported
         style: bad
-      C_NA:
+      NA:
         txt: ""
         style: neutral
-      C_UNDETERMINED:
+      UNDETERMINED:
         txt: skipped from scan
         style: neutral
     cipher_order: &cipher_order_neutral
-      C_FALSE: &cipher_order_false
+      "FALSE": &cipher_order_false
         txt: server does not enforce cipher suite order
         style: neutral
-      C_TRUE: &cipher_order_true
+      "TRUE": &cipher_order_true
         txt: server enforces cipher suite order
         style: neutral
-      C_NA: &cipher_order_na
+      NA: &cipher_order_na
         txt: ""
         style: neutral
-      C_UNDETERMINED: &cipher_order_undet
+      UNDETERMINED: &cipher_order_undet
         txt: no indication if server enforces cipher suite order
         style: neutral
     chacha_preference: &chacha_preference_all
-      C_FALSE:
+      "FALSE":
         txt: server does not respect client preference for CHACHA20 cipher suites
         style: neutral
-      C_TRUE:
+      "TRUE":
         txt: server respects client preference for CHACHA20 cipher suites
         style: good
-      C_NA:
+      NA:
         txt: ""
         style: neutral
-      C_UNDETERMINED:
+      UNDETERMINED:
         txt: undetermined if server respects client preference for CHACHA20 cipher suites
         style: soso
   SSL30:
     supported: *version_deprecated
     cipher_order: &cipher_order_tls
-      C_FALSE:
+      "FALSE":
         <<: *cipher_order_false
         style: bad
-      C_TRUE:
+      "TRUE":
         <<: *cipher_order_true
         style: good
-      C_NA:
+      NA:
         <<: *cipher_order_na
         style: neutral
-      C_UNDETERMINED:
+      UNDETERMINED:
         <<: *cipher_order_undet
         style: soso
     chacha_preference: *chacha_preference_all
   TLS10:
     supported: &version_not_recommended
       <<: *version_deprecated
-      C_TRUE:
+      "TRUE":
         <<: *version_supported
         style: soso
     cipher_order: *cipher_order_tls
@@ -118,10 +118,10 @@ version:
   TLS12:
     supported: &version_recommended
       <<: *version_not_recommended
-      C_FALSE:
+      "FALSE":
         <<: *version_not_supported
         style: neutral
-      C_TRUE:
+      "TRUE":
         <<: *version_supported
         style: good
     cipher_order: *cipher_order_tls
@@ -206,97 +206,97 @@ macs:
 supported_groups:
   SSL20: &supported_groups_ssl
     support:
-      C_FALSE: &supported_groups_supp_false
+      "FALSE": &supported_groups_supp_false
         txt: 'extension "supported_groups" not supported'
         style: neutral
-      C_TRUE: &supported_groups_supp_true
+      "TRUE": &supported_groups_supp_true
         txt: 'extension "supported_groups" supported'
         style: neutral
-      C_NA: &supported_groups_supp_na
+      NA: &supported_groups_supp_na
         txt: ""
         style: neutral
-      C_UNDETERMINED: &supported_groups_supp_undet
+      UNDETERMINED: &supported_groups_supp_undet
         txt: 'support for extensions "supported_group" unknown'
         style: neutral
     preference:
-      C_FALSE: &supported_groups_pref_false
+      "FALSE": &supported_groups_pref_false
         txt: server does not enforce order of supported groups
         style: neutral
-      C_TRUE: &supported_groups_pref_true
+      "TRUE": &supported_groups_pref_true
         txt: server enforces order of supported groups
         style: neutral
-      C_NA: &supported_groups_pref_na
+      NA: &supported_groups_pref_na
         txt: ""
         style: neutral
-      C_UNDETERMINED: &supported_groups_pref_undet
+      UNDETERMINED: &supported_groups_pref_undet
         txt: server preference for supported groups unknown
         style: neutral
     advertised:
-      C_FALSE: &supported_groups_adv_false
+      "FALSE": &supported_groups_adv_false
         txt: server does not advertise supported groups
         style: neutral
-      C_TRUE: &supported_groups_adv_true
+      "TRUE": &supported_groups_adv_true
         txt: server advertises supported groups
         style: neutral
-      C_NA: &supported_groups_adv_na
+      NA: &supported_groups_adv_na
         txt: ""
         style: neutral
-      C_UNDETERMINED: &supported_groups_adv_undet
+      UNDETERMINED: &supported_groups_adv_undet
         txt: advertisement of supported groups unknown
         style: neutral
   SSL30:
     <<: *supported_groups_ssl
     preference:
-      C_FALSE:
+      "FALSE":
         <<: *supported_groups_pref_false
         style: bad
-      C_TRUE:
+      "TRUE":
         <<: *supported_groups_pref_true
         style: good
-      C_NA:
+      NA:
         <<: *supported_groups_pref_na
         style: neutral
-      C_UNDETERMINED:
+      UNDETERMINED:
         <<: *supported_groups_pref_undet
         style: neutral
   TLS10: &supported_groups_tls
     support:
-      C_FALSE:
+      "FALSE":
         <<: *supported_groups_supp_false
         style: bad
-      C_TRUE:
+      "TRUE":
         <<: *supported_groups_supp_true
         style: good
-      C_NA:
+      NA:
         <<: *supported_groups_supp_na
         style: neutral
-      C_UNDETERMINED:
+      UNDETERMINED:
         <<: *supported_groups_supp_undet
         style: soso
     preference:
-      C_FALSE:
+      "FALSE":
         <<: *supported_groups_pref_false
         style: bad
-      C_TRUE:
+      "TRUE":
         <<: *supported_groups_pref_true
         style: good
-      C_NA:
+      NA:
         <<: *supported_groups_pref_na
         style: neutral
-      C_UNDETERMINED:
+      UNDETERMINED:
         <<: *supported_groups_pref_undet
         style: soso
     advertised:
-      C_FALSE:
+      "FALSE":
         <<: *supported_groups_adv_false
         style: neutral
-      C_TRUE:
+      "TRUE":
         <<: *supported_groups_adv_true
         style: neutral
-      C_NA:
+      NA:
         <<: *supported_groups_adv_na
         style: neutral
-      C_UNDETERMINED:
+      UNDETERMINED:
         <<: *supported_groups_adv_undet
         style: neutral
   TLS11: *supported_groups_tls
@@ -398,214 +398,214 @@ assymetric_ec_key_sizes:
     style: bad
 
 ocsp_stapling:
-  C_FALSE:
+  "FALSE":
     txt: &txt_false not supported
     style: bad
-  C_TRUE:
+  "TRUE":
     txt: &txt_true supported
     style: good
-  C_NA:
+  NA:
     txt: &txt_na not applicable
     style: neutral
-  C_UNDETERMINED:
+  UNDETERMINED:
     txt: &txt_undet undetermined
     style: soso
 
 ocsp_multi_stapling:
-  C_FALSE:
+  "FALSE":
     txt: *txt_false
     style: neutral
-  C_TRUE:
+  "TRUE":
     txt: *txt_true
     style: good
-  C_NA:
+  NA:
     txt: *txt_na
     style: neutral
-  C_UNDETERMINED:
+  UNDETERMINED:
     txt: *txt_undet
     style: soso
 
 heartbeat:
-  C_FALSE:
+  "FALSE":
     txt: *txt_false
     style: good
-  C_TRUE:
+  "TRUE":
     txt: *txt_true
     style: bad
-  C_NA:
+  NA:
     txt: *txt_na
     style: neutral
-  C_UNDETERMINED:
+  UNDETERMINED:
     txt: *txt_undet
     style: soso
-  C_NOT_REPONDING:
+  NOT_REPONDING:
     txt: supported, but no response
     style: bad
-  C_WRONG_RESPONSE:
+  WRONG_RESPONSE:
     txt: supported, but invalid response received
     style: bad
 
 fallback:
-  C_FALSE:
+  "FALSE":
     txt: no, TLS_FALLBACK_SCSV not supported
     style: bad
-  C_TRUE:
+  "TRUE":
     txt: yes, TLS_FALLBACK_SCSV is supported
     style: good
-  C_NA:
+  NA:
     txt: *txt_na
     style: neutral
-  C_UNDETERMINED:
+  UNDETERMINED:
     txt: *txt_undet
     style: soso
 
 compression:
-  C_FALSE:
+  "FALSE":
     txt: *txt_false
     style: good
-  C_TRUE:
+  "TRUE":
     txt: *txt_true
     style: bad
 
 encrypt_then_mac:
-  C_FALSE:
+  "FALSE":
     txt: *txt_false
     style: bad
-  C_TRUE:
+  "TRUE":
     txt: *txt_true
     style: good
-  C_NA:
+  NA:
     txt: *txt_na
     style: neutral
-  C_UNDETERMINED:
+  UNDETERMINED:
     txt: *txt_undet
     style: soso
 
 extended_master_secret:
-  C_FALSE:
+  "FALSE":
     txt: *txt_false
     style: bad
-  C_TRUE:
+  "TRUE":
     txt: *txt_true
     style: good
-  C_NA:
+  NA:
     txt: *txt_na
     style: neutral
-  C_UNDETERMINED:
+  UNDETERMINED:
     txt: *txt_undet
     style: soso
 
 insecure_renegotiation:
-  C_FALSE:
+  "FALSE":
     txt: *txt_false
     style: good
-  C_TRUE:
+  "TRUE":
     txt: *txt_true
     style: bad
-  C_NA:
+  NA:
     txt: *txt_na
     style: neutral
-  C_UNDETERMINED:
+  UNDETERMINED:
     txt: *txt_undet
     style: soso
 
 secure_renegotiation:
-  C_FALSE:
+  "FALSE":
     txt: *txt_false
     style: neutral
-  C_TRUE:
+  "TRUE":
     txt: *txt_true
     style: good
-  C_NA:
+  NA:
     txt: *txt_na
     style: neutral
-  C_UNDETERMINED:
+  UNDETERMINED:
     txt: *txt_undet
     style: soso
 
 scsv_renegotiation:
-  C_FALSE:
+  "FALSE":
     txt: *txt_false
     style: neutral
-  C_TRUE:
+  "TRUE":
     txt: *txt_true
     style: good
-  C_NA:
+  NA:
     txt: *txt_na
     style: neutral
-  C_UNDETERMINED:
+  UNDETERMINED:
     txt: *txt_undet
     style: soso
 
 session_id:
-  C_FALSE:
+  "FALSE":
     txt: *txt_false
     style: neutral
-  C_TRUE:
+  "TRUE":
     txt: *txt_true
     style: neutral
-  C_NA:
+  NA:
     txt: *txt_na
     style: neutral
-  C_UNDETERMINED:
+  UNDETERMINED:
     txt: *txt_undet
     style: neutral
 
 session_ticket:
-  C_FALSE:
+  "FALSE":
     txt: *txt_false
     style: good
-  C_TRUE:
+  "TRUE":
     txt: *txt_true
     style: soso
-  C_NA:
+  NA:
     txt: *txt_na
     style: neutral
-  C_UNDETERMINED:
+  UNDETERMINED:
     txt: *txt_undet
     style: soso
 
 resumption_psk:
-  C_FALSE:
+  "FALSE":
     txt: *txt_false
     style: neutral
-  C_TRUE:
+  "TRUE":
     txt: *txt_true
     style: neutral
-  C_NA:
+  NA:
     txt: *txt_na
     style: neutral
-  C_UNDETERMINED:
+  UNDETERMINED:
     txt: *txt_undet
     style: neutral
 
 early_data:
-  C_FALSE:
+  "FALSE":
     txt: *txt_false
     style: good
-  C_TRUE:
+  "TRUE":
     txt: *txt_true
     style: bad
-  C_NA:
+  NA:
     txt: *txt_na
     style: neutral
-  C_UNDETERMINED:
+  UNDETERMINED:
     txt: *txt_undet
     style: soso
 
 grease:
   version: &grease_all
     descr: protocol versions
-    C_FALSE:
+    "FALSE":
       txt: not tolerant
       style: bad
-    C_TRUE:
+    "TRUE":
       txt: tolerant
       style: good
-    C_NA:
+    NA:
       txt: *txt_na
       style: neutral
-    C_UNDETERMINED:
+    UNDETERMINED:
       txt: *txt_undet
       style: soso
   cipher_suite:
@@ -625,55 +625,55 @@ grease:
     descr: PSK exchange modes (TLS1.3)
 
 ephemeral_key_reuse:
-  C_FALSE:
+  "FALSE":
     txt: keys not reused
     style: good
-  C_TRUE:
+  "TRUE":
     txt: keys reused
     style: bad
-  C_NA:
+  NA:
     txt: *txt_na
     style: neutral
-  C_UNDETERMINED:
+  UNDETERMINED:
     txt: *txt_undet
     style: soso
 
 cert_chain:
   issues: bad
   validation:
-    C_FALSE:
+    "FALSE":
       txt: validation failed
       style: bad
-    C_TRUE:
+    "TRUE":
       txt: successfully validated
       style: good
-    C_NA:
+    NA:
       txt: ""
       style: neutral
-    C_UNDETERMINED:
+    UNDETERMINED:
       txt: validation status undetermined
       style: soso
   root_cert_transmitted:
-    C_FALSE:
+    "FALSE":
       txt: root certificate was not provided by the server
       style: good
-    C_TRUE:
+    "TRUE":
       txt: root certificate was provided by the server
       style: soso
 
 certificate:
   issues: bad
   subject_matches:
-    C_FALSE:
+    "FALSE":
       txt: no, URI not matched against subject/SAN
       style: bad
-    C_TRUE:
+    "TRUE":
       txt: yes, URI matches subject/SAN
       style: good
-    C_NA:
+    NA:
       txt: ""
       style: neutral
-    C_UNDETERMINED:
+    UNDETERMINED:
       txt: validation status undetermined
       style: soso
   crl_status:
@@ -733,60 +733,60 @@ certificate:
       txt: certificate for issuer is invalid
       style: bad
   extended_validation:
-    C_FALSE:
+    "FALSE":
       txt: "no"
       style: neutral
-    C_TRUE:
+    "TRUE":
       txt: "yes"
       style: good
-    C_NA:
+    NA:
       txt: ""
       style: neutral
-    C_UNDETERMINED:
+    UNDETERMINED:
       txt: undetermined
       style: soso
   must_staple:
-    C_FALSE:
+    "FALSE":
       txt: "no"
       style: neutral
-    C_TRUE:
+    "TRUE":
       txt: "yes"
       style: good
   validity:
-    C_FALSE:
+    "FALSE":
       txt: invalid period
       style: bad
-    C_TRUE:
+    "TRUE":
       txt: valid period
       style: good
 
 vulnerabilities:
   ccs_injection: &vulnerabilities_common
-    C_FALSE:
+    "FALSE":
       txt: not vulnerable
       style: good
-    C_TRUE:
+    "TRUE":
       txt: vulnerable
       style: bad
-    C_NA:
+    NA:
       txt: not applicable
       style: neutral
-    C_UNDETERMINED:
+    UNDETERMINED:
       txt: undetermined
       style: soso
   beast:
     <<: *vulnerabilities_common
-    C_TRUE:
+    "TRUE":
       txt: vulnerable, TLS1.0 is enabled
       style: bad
   crime:
     <<: *vulnerabilities_common
-    C_TRUE:
+    "TRUE":
       txt: vulnerable, compression is enabled
       style: bad
   freak:
     <<: *vulnerabilities_common
-    C_TRUE:
+    "TRUE":
       txt: vulnerable, RSA-export cipher suites are enabled
       style: bad
   heartbleed:
@@ -845,17 +845,17 @@ vulnerabilities:
       style: good
   lucky_minus_20:
     <<: *vulnerabilities_common
-    C_TRUE:
+    "TRUE":
       txt: vulnerable, see CBC padding oracle details below
       style: bad
   sweet_32:
     <<: *vulnerabilities_common
-    C_TRUE:
+    "TRUE":
       txt: vulnerable, cipher suites with blocksize <= 64 bits used (3DES, IDEA)
       style: bad
   poodle:
     <<: *vulnerabilities_common
-    C_TRUE:
+    "TRUE":
       txt: vulnerable, SSL30 is enabled
       style: bad
   tls_poodle: *vulnerabilities_common
@@ -873,29 +873,29 @@ vulnerabilities:
         style: neutral
     oracle:
       observable:
-        C_FALSE:
+        "FALSE":
           txt: no, different oracle behavior hard to observe
           style: bad
-        C_TRUE:
+        "TRUE":
           txt: yes, different oracle behavior easily observable
           style: bad
-        C_NA:
+        NA:
           txt: not applicable
           style: neutral
-        C_UNDETERMINED:
+        UNDETERMINED:
           txt: undetermined
           style: soso
       strong:
-        C_FALSE:
+        "FALSE":
           txt: weak, high number of oracle queries required for exploitation
           style: bad
-        C_TRUE:
+        "TRUE":
           txt: strong, moderate number of oracle queries sufficient for exploitation
           style: bad
-        C_NA:
+        NA:
           txt: not applicable
           style: neutral
-        C_UNDETERMINED:
+        UNDETERMINED:
           txt: undetermined
           style: soso
       type:

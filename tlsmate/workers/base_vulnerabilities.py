@@ -37,7 +37,7 @@ class ScanBaseVulnerabilities(Worker):
         self.server_profile.vulnerabilities.beast = tls.SPBool(beast)
 
     def _scan_crime(self):
-        crime = tls.SPBool.C_FALSE
+        crime = tls.SPBool.FALSE
         if hasattr(self.server_profile, "features"):
             if hasattr(self.server_profile.features, "compression"):
                 compr = self.server_profile.features.compression
@@ -45,10 +45,10 @@ class ScanBaseVulnerabilities(Worker):
                 crime = tls.SPBool(len(compr) - null_compr)
 
             else:
-                crime = tls.SPBool.C_UNDETERMINED
+                crime = tls.SPBool.UNDETERMINED
 
         else:
-            crime = tls.SPBool.C_UNDETERMINED
+            crime = tls.SPBool.UNDETERMINED
 
         self.server_profile.vulnerabilities.crime = crime
 

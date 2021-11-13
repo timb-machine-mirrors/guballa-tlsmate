@@ -1698,7 +1698,7 @@ class ServerProfile(SPObject):
         return [
             obj.version
             for obj in self.versions
-            if obj.version not in exclude and obj.support is tls.SPBool.C_TRUE
+            if obj.version not in exclude and obj.support is tls.SPBool.TRUE
         ]
 
     def get_version_profile(self, version):
@@ -1710,7 +1710,7 @@ class ServerProfile(SPObject):
         """
 
         for vers_obj in self.versions:
-            if vers_obj.version is version and vers_obj.support is tls.SPBool.C_TRUE:
+            if vers_obj.version is version and vers_obj.support is tls.SPBool.TRUE:
                 return vers_obj
 
         return None

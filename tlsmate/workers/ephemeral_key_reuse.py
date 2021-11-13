@@ -18,12 +18,12 @@ HANDSHAKE_COUNT = 5
 def _determine_status(keys):
     if len(keys) == HANDSHAKE_COUNT:
         if len(set(keys)) == HANDSHAKE_COUNT:
-            return tls.SPBool.C_FALSE
+            return tls.SPBool.FALSE
 
         else:
-            return tls.SPBool.C_TRUE
+            return tls.SPBool.TRUE
 
-    return tls.SPBool.C_UNDETERMINED
+    return tls.SPBool.UNDETERMINED
 
 
 class ScanEphemeralKeyReuse(Worker):
@@ -33,7 +33,7 @@ class ScanEphemeralKeyReuse(Worker):
 
     def _tls12_handshakes(self, cs, pub_key):
         if not cs:
-            return tls.SPBool.C_NA
+            return tls.SPBool.NA
 
         self.client.profile.cipher_suites = cs
         keys = []
@@ -44,7 +44,7 @@ class ScanEphemeralKeyReuse(Worker):
             if conn.msg.server_key_exchange is not None:
                 key = pub_key(conn.msg.server_key_exchange)
                 if key in keys:
-                    return tls.SPBool.C_TRUE
+                    return tls.SPBool.TRUE
 
                 keys.append(key)
 
@@ -59,7 +59,7 @@ class ScanEphemeralKeyReuse(Worker):
         ]
         prof_values = self.server_profile.get_profile_values(versions)
         if not prof_values.versions:
-            return (tls.SPBool.C_NA, tls.SPBool.C_NA)
+            return (tls.SPBool.NA, tls.SPBool.NA)
 
         self.client.init_profile(profile_values=prof_values)
         dhe_cs = utils.filter_cipher_suites(
@@ -88,7 +88,7 @@ class ScanEphemeralKeyReuse(Worker):
 
     def _tls13_handshakes(self, shares):
         if not shares:
-            return tls.SPBool.C_NA
+            return tls.SPBool.NA
 
         self.client.profile.supported_groups = shares
         self.client.profile.key_shares = shares
@@ -99,11 +99,11 @@ class ScanEphemeralKeyReuse(Worker):
                 server_hello = conn.wait(msg.ServerHello)
                 key_share_ext = server_hello.get_extension(tls.Extension.KEY_SHARE)
                 if not key_share_ext:
-                    return tls.SPBool.C_UNDETERMINED
+                    return tls.SPBool.UNDETERMINED
 
                 key_share = key_share_ext.key_shares[0].key_exchange
                 if key_share in keys:
-                    return tls.SPBool.C_TRUE
+                    return tls.SPBool.TRUE
 
                 keys.append(key_share)
                 self.client.profile.cipher_suites = [server_hello.cipher_suite]
@@ -113,7 +113,7 @@ class ScanEphemeralKeyReuse(Worker):
     def _scan_tls13(self):
         prof_values = self.server_profile.get_profile_values([tls.Version.TLS13])
         if not prof_values.versions:
-            return (tls.SPBool.C_NA, tls.SPBool.C_NA)
+            return (tls.SPBool.NA, tls.SPBool.NA)
 
         self.client.init_profile(profile_values=prof_values)
         ecdhe_shares = []
