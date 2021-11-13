@@ -129,15 +129,15 @@ class ScanCipherSuites(Worker):
         return server_pref
 
     def _chacha_poly_pref(self, server_pref, ciphers):
-        if server_pref is not tls.SPBool.C_TRUE:
-            return tls.SPBool.C_NA
+        if server_pref is not tls.ScanState.TRUE:
+            return tls.ScanState.NA
 
         tmp_cs = ciphers.cipher_suites[:]
         chacha_cs = utils.filter_cipher_suites(
             tmp_cs, cipher_prim=[tls.CipherPrimitive.CHACHA], remove=True
         )
         if not chacha_cs:
-            return tls.SPBool.C_NA
+            return tls.ScanState.NA
 
         check_chacha_pref = False
         for idx, cs in enumerate(ciphers.cipher_suites):
@@ -148,7 +148,7 @@ class ScanCipherSuites(Worker):
                 break
 
         if not check_chacha_pref:
-            return tls.SPBool.C_NA
+            return tls.ScanState.NA
 
         chacha_cs.extend(tmp_cs)
         self.client.profile.cipher_suites = chacha_cs
@@ -156,12 +156,12 @@ class ScanCipherSuites(Worker):
             conn.send(msg.ClientHello)
             server_hello = conn.wait(msg.ServerHello)
             if server_hello.cipher_suite in chacha_cs:
-                return tls.SPBool.C_TRUE
+                return tls.ScanState.TRUE
 
             else:
-                return tls.SPBool.C_FALSE
+                return tls.ScanState.FALSE
 
-        return tls.SPBool.C_UNDETERMINED
+        return tls.ScanState.UNDETERMINED
 
     def _tls_enum_version(self, version, vers_prof):
         """Determines the supported cipher suites and other stuff for a given version.
@@ -216,22 +216,22 @@ class ScanCipherSuites(Worker):
 
         if supported_cs:
             if len(supported_cs) == 1:
-                server_prio = tls.SPBool.C_NA
+                server_prio = tls.ScanState.NA
 
             else:
-                server_prio = tls.SPBool.C_FALSE
+                server_prio = tls.ScanState.FALSE
                 # check if server enforce the cipher suite prio
                 self.client.profile.cipher_suites = supported_cs
                 if self._get_server_cs() != supported_cs[0]:
-                    server_prio = tls.SPBool.C_TRUE
+                    server_prio = tls.ScanState.TRUE
 
                 else:
                     supported_cs.append(supported_cs.pop(0))
                     if self._get_server_cs() != supported_cs[0]:
-                        server_prio = tls.SPBool.C_TRUE
+                        server_prio = tls.ScanState.TRUE
 
                 # determine the order of cipher suites on server side, if applicable
-                if server_prio == tls.SPBool.C_TRUE:
+                if server_prio == tls.ScanState.TRUE:
                     supported_cs = self._get_server_preference(supported_cs)
 
                 else:
@@ -248,10 +248,10 @@ class ScanCipherSuites(Worker):
                 )
 
             vers_prof.ciphers = ciphers
-            vers_prof.support = tls.SPBool.C_TRUE
+            vers_prof.support = tls.ScanState.TRUE
 
         else:
-            vers_prof.support = tls.SPBool.C_FALSE
+            vers_prof.support = tls.ScanState.FALSE
 
         logging.info(f"enumeration for {version} finished")
 
@@ -263,12 +263,12 @@ class ScanCipherSuites(Worker):
             server_hello = conn.wait(msg.SSL2ServerHello)
             if server_hello is not None:
                 vers_prof.cipher_kinds = server_hello.cipher_specs
-                vers_prof.server_preference = tls.SPBool.C_UNDETERMINED
+                vers_prof.server_preference = tls.ScanState.UNDETERMINED
                 vers_prof.version = tls.Version.SSL20
-                vers_prof.support = tls.SPBool.C_TRUE
+                vers_prof.support = tls.ScanState.TRUE
                 return
 
-        vers_prof.support = tls.SPBool.C_FALSE
+        vers_prof.support = tls.ScanState.FALSE
 
     def _enum_version(self, version, vers_prof):
         """Scan a specific TLS version.
@@ -316,6 +316,6 @@ class ScanCipherSuites(Worker):
                 self._enum_version(version, vers_prof)
 
             else:
-                vers_prof.support = tls.SPBool.C_UNDETERMINED
+                vers_prof.support = tls.ScanState.UNDETERMINED
 
             self.server_profile.versions.append(vers_prof)

@@ -38,7 +38,7 @@ class TestCase(TlsSuiteTester):
             "sig_algo_tolerance",
             "psk_mode_tolerance",
         ):
-            assert grease_prof[param] == "C_TRUE"
+            assert grease_prof[param] == "TRUE"
 
 
 if __name__ == "__main__":

@@ -30,10 +30,10 @@ class TestCase(TlsSuiteTester):
         ScanEphemeralKeyReuse(tlsmate).run()
         profile = server_profile.make_serializable()
         ekr = profile["features"]["ephemeral_key_reuse"]
-        assert ekr["tls12_dhe_reuse"] == "C_FALSE"
-        assert ekr["tls12_ecdhe_reuse"] == "C_FALSE"
-        assert ekr["tls13_dhe_reuse"] == "C_FALSE"
-        assert ekr["tls13_ecdhe_reuse"] == "C_FALSE"
+        assert ekr["tls12_dhe_reuse"] == "FALSE"
+        assert ekr["tls12_ecdhe_reuse"] == "FALSE"
+        assert ekr["tls13_dhe_reuse"] == "FALSE"
+        assert ekr["tls13_ecdhe_reuse"] == "FALSE"
 
 
 if __name__ == "__main__":

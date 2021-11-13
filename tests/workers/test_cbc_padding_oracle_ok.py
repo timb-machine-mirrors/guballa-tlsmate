@@ -29,12 +29,12 @@ class TestCase(TlsSuiteTester):
         self.config.set("oracle_accuracy", "low")
         ScanPaddingOracle(tlsmate).run()
         profile = server_profile.make_serializable()
-        assert profile["vulnerabilities"]["lucky_minus_20"] == "C_FALSE"
-        assert profile["vulnerabilities"]["poodle"] == "C_TRUE"
-        assert profile["vulnerabilities"]["tls_poodle"] == "C_FALSE"
+        assert profile["vulnerabilities"]["lucky_minus_20"] == "FALSE"
+        assert profile["vulnerabilities"]["poodle"] == "TRUE"
+        assert profile["vulnerabilities"]["tls_poodle"] == "FALSE"
         cbc = profile["vulnerabilities"]["cbc_padding_oracle"]
         assert cbc["accuracy"] == "LOW"
-        assert cbc["vulnerable"] == "C_FALSE"
+        assert cbc["vulnerable"] == "FALSE"
         assert len(cbc["oracles"]) == 0
 
 

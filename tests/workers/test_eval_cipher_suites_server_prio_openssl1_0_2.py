@@ -144,26 +144,26 @@ class TestCase(TlsSuiteTester):
         assert len(versions) == 6
 
         assert versions[0]["version"]["name"] == "SSL20"
-        assert versions[0]["support"] == "C_FALSE"
+        assert versions[0]["support"] == "FALSE"
 
         assert versions[1]["version"]["name"] == "SSL30"
-        assert versions[1]["support"] == "C_TRUE"
-        assert versions[1]["ciphers"]["server_preference"] == "C_TRUE"
+        assert versions[1]["support"] == "TRUE"
+        assert versions[1]["ciphers"]["server_preference"] == "TRUE"
 
         assert versions[2]["version"]["name"] == "TLS10"
-        assert versions[2]["support"] == "C_TRUE"
-        assert versions[2]["ciphers"]["server_preference"] == "C_TRUE"
+        assert versions[2]["support"] == "TRUE"
+        assert versions[2]["ciphers"]["server_preference"] == "TRUE"
 
         assert versions[3]["version"]["name"] == "TLS11"
-        assert versions[3]["support"] == "C_TRUE"
-        assert versions[3]["ciphers"]["server_preference"] == "C_TRUE"
+        assert versions[3]["support"] == "TRUE"
+        assert versions[3]["ciphers"]["server_preference"] == "TRUE"
 
         assert versions[4]["version"]["name"] == "TLS12"
-        assert versions[4]["support"] == "C_TRUE"
-        assert versions[4]["ciphers"]["server_preference"] == "C_TRUE"
+        assert versions[4]["support"] == "TRUE"
+        assert versions[4]["ciphers"]["server_preference"] == "TRUE"
 
         assert versions[5]["version"]["name"] == "TLS13"
-        assert versions[5]["support"] == "C_FALSE"
+        assert versions[5]["support"] == "FALSE"
 
         for a, b in zip(tls10_cs, versions[1]["ciphers"]["cipher_suites"]):
             assert a == b["name"]
