@@ -126,6 +126,8 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
                 Defaults to False.
         """
 
+        utils.set_logging_format()
+
         if is_replaying:
             ini_file = None
 
@@ -145,7 +147,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         self.config.set("read_profile", self.get_yaml_file(self.sp_in_yaml))
         self.config.set("pytest_recorder_file", self.get_yaml_file(self.recorder_yaml))
         self.config.set("pytest_recorder_replaying", is_replaying)
-        utils.set_logging(self.config.get("logging"))
+        utils.set_logging_level(self.config.get("logging"))
 
         self.tlsmate = TlsMate(self.config)
         self.recorder = self.tlsmate.recorder

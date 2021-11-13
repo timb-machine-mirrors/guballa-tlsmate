@@ -30,11 +30,13 @@ def main():
     """The entry point for the command line interface
     """
 
+    utils.set_logging_format()
+
     parser = build_parser()
     args = parser.parse_args()
 
-    # logging must be setup before the first log is generated.
-    utils.set_logging(args.logging)
+    # logging should be setup as early as possible
+    utils.set_logging_level(args.logging)
 
     config = Configuration()
     BaseCommand.register_config(config)

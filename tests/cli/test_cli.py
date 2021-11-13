@@ -48,7 +48,6 @@ def test_no_subcommand(capsys):
 def test_version(capsys):
     cmd = "tlsmate version"
     sys.argv = cmd.split()
-    # import pudb; pudb.set_trace()
     command.main()
     captured = capsys.readouterr()
     assert re.match(r"^\d+\.\d+\.\d+", captured.out)
