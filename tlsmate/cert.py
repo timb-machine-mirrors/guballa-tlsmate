@@ -323,12 +323,11 @@ class Certificate(object):
             )
         return self._self_signed
 
-    def mark_untrusted(self, issue, raise_on_failure):
+    def mark_untrusted(self, issue):
         """Mark the certificate as untrusted.
 
         Arguments:
             issue (str): the error message containing the reason
-            raise_on_failure (bool): whether an exception shall be raised
 
         Raises:
             :obj:`tlsmate.exception.UntrustedCertificate`: if raise_on_failure is True
@@ -338,8 +337,6 @@ class Certificate(object):
         issue_long = f"certificate {self}: {issue}"
         logging.debug(issue_long)
         self.issues.append(issue)
-        if raise_on_failure:
-            raise UntrustedCertificate(issue_long)
 
     def validate_period(self, datetime, raise_on_failure=True):
         """Validate the period of the certificate against a given timestamp.
@@ -363,7 +360,22 @@ class Certificate(object):
         if datetime > self.parsed.not_valid_after:
             self.mark_untrusted("validity period exceeded", raise_on_failure)
 
-    def validate_subject(self, domain, raise_on_failure=True):
+    def has_valid_period(self, timestamp):
+        valid = True
+        if timestamp < self.parsed.not_valid_before:
+            self.mark_untrusted("validity period not yet reached")
+            valid = False
+
+        if timestamp > self.parsed.not_valid_after:
+            self.mark_untrusted("validity period exceeded")
+            valid = False
+
+        return valid
+
+
+
+
+    def has_valid_subject(self, domain):
         """Validate if the certificate matches the given domain
 
         It takes the subject and the subject alternative name into account, and
@@ -382,27 +394,33 @@ class Certificate(object):
             UntrustedCertificate: if the certificate is not issued for the given
             domain
         """
+
+        subject_matches = False
         domain = cert_utils.string_prep(domain)
         no_subdomain = cert_utils.remove_subdomain(domain)
 
         subject_cn = self._common_name(self.parsed.subject)
         if cert_utils.subject_matches(subject_cn, domain, no_subdomain):
-            self.subject_matches = True
-            return
+            subject_matches = True
 
-        try:
-            subj_alt_names = self.parsed.extensions.get_extension_for_oid(
-                ExtensionOID.SUBJECT_ALTERNATIVE_NAME
-            )
-            for name in subj_alt_names.value.get_values_for_type(x509.DNSName):
-                if cert_utils.subject_matches(name, domain, no_subdomain):
-                    self.subject_matches = True
-                    return
-        except x509.ExtensionNotFound:
-            pass
+        else:
+            try:
+                subj_alt_names = self.parsed.extensions.get_extension_for_oid(
+                    ExtensionOID.SUBJECT_ALTERNATIVE_NAME
+                )
+                for name in subj_alt_names.value.get_values_for_type(x509.DNSName):
+                    if cert_utils.subject_matches(name, domain, no_subdomain):
+                        subject_matches = True
+                        break
 
-        self.subject_matches = False
-        self.mark_untrusted("subject name does not match", raise_on_failure)
+            except x509.ExtensionNotFound:
+                pass
+
+        if not subject_matches:
+            self.mark_untrusted("subject name does not match")
+
+        self.subject_matches = subject_matches
+        return subject_matches
 
     def validate_signature(self, sig_scheme, data, signature):
         """Validate a signature using the public key from the certificate.
