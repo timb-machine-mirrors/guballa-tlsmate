@@ -81,6 +81,16 @@ def tlsmate(ca_dir, trust_store_file):
 
 
 @pytest.fixture
+def server_expired_rsa_cert(ca_dir):
+    return pem.parse_file(ca_dir / "certs/server-expired-rsa.pem")[0]
+
+
+@pytest.fixture
+def server_no_ids_rsa_cert(ca_dir):
+    return pem.parse_file(ca_dir / "certs/server-no-ids-rsa.pem")[0]
+
+
+@pytest.fixture
 def server_revoked_rsa_cert(ca_dir):
     return pem.parse_file(ca_dir / "certs/server-revoked-rsa.pem")[0]
 
@@ -111,6 +121,11 @@ def ca_rsa_cert(ca_dir):
 
 
 @pytest.fixture
+def ca_rsa_key(ca_dir):
+    return pem.parse_file(ca_dir / "private/ca-rsa.key")[0]
+
+
+@pytest.fixture
 def ca_2nd_rsa_cert(ca_dir):
     return pem.parse_file(ca_dir / "certs/ca-2nd-rsa.pem")[0]
 
@@ -123,6 +138,11 @@ def ca_ecdsa_cert(ca_dir):
 @pytest.fixture
 def root_rsa_cert(ca_dir):
     return pem.parse_file(ca_dir / "certs/root-rsa.pem")[0]
+
+
+@pytest.fixture
+def root_rsa_key(ca_dir):
+    return pem.parse_file(ca_dir / "private/root-rsa.key")[0]
 
 
 @pytest.fixture
