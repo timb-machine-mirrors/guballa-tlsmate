@@ -158,12 +158,13 @@ class CertChain(object):
 
         ocsp_decoded = x509.ocsp.load_der_ocsp_response(response)
 
+        if ocsp_decoded.response_status is not x509.ocsp.OCSPResponseStatus.SUCCESSFUL:
+            return tls.OcspStatus.INVALID_RESPONSE
+
         if ocsp_decoded.certificates:
             sig_cert = Certificate(x509_cert=ocsp_decoded.certificates[0], parse=True)
-            try:
-                self._validate_cert(sig_cert, -1, timestamp, None, True)
-
-            except Exception:
+            self._determine_trust_path(sig_cert, -1, timestamp, None, False)
+            if sig_cert.trusted is tls.ScanState.FALSE:
                 return tls.OcspStatus.INVALID_ISSUER_CERT
 
         else:
@@ -186,24 +187,20 @@ class CertChain(object):
             except InvalidSignature:
                 return tls.OcspStatus.SIGNATURE_INVALID
 
-        if ocsp_decoded.response_status == x509.ocsp.OCSPResponseStatus.SUCCESSFUL:
-            if ocsp_decoded.this_update > timestamp:
-                return tls.OcspStatus.INVALID_TIMESTAMP
+        if ocsp_decoded.this_update > timestamp:
+            return tls.OcspStatus.INVALID_TIMESTAMP
 
-            if ocsp_decoded.next_update and ocsp_decoded.next_update < timestamp:
-                return tls.OcspStatus.INVALID_TIMESTAMP
+        if ocsp_decoded.next_update and ocsp_decoded.next_update < timestamp:
+            return tls.OcspStatus.INVALID_TIMESTAMP
 
-            if ocsp_decoded.certificate_status == x509.ocsp.OCSPCertStatus.GOOD:
-                return tls.OcspStatus.NOT_REVOKED
+        if ocsp_decoded.certificate_status == x509.ocsp.OCSPCertStatus.GOOD:
+            return tls.OcspStatus.NOT_REVOKED
 
-            elif ocsp_decoded.certificate_status == x509.ocsp.OCSPCertStatus.REVOKED:
-                return tls.OcspStatus.REVOKED
-
-            else:
-                return tls.OcspStatus.UNKNOWN
+        elif ocsp_decoded.certificate_status == x509.ocsp.OCSPCertStatus.REVOKED:
+            return tls.OcspStatus.REVOKED
 
         else:
-            return tls.OcspStatus.INVALID_RESPONSE
+            return tls.OcspStatus.UNKNOWN
 
     def verify_ocsp_stapling(self, responses, raise_on_failure):
         """Check the status for a OCSP response
@@ -391,7 +388,7 @@ class CertChain(object):
                 issuer_trust_path = self._determine_trust_path(
                     issuer_cert, issuer_idx, timestamp, domain_name, full_validation,
                 )
-                if not issuer_cert.trusted:
+                if issuer_cert.trusted is tls.ScanState.FALSE:
                     continue
 
             else:
@@ -461,7 +458,7 @@ class CertChain(object):
         )
 
         self.successful_validation = all(
-            [self.certificates[idx].trusted for idx in trust_path]
+            [self.certificates[idx].trusted is tls.ScanState.TRUE for idx in trust_path]
         )
         self._cert_chain_cache.update_cached_validation_state(self)
 
@@ -478,12 +475,12 @@ class CertChain(object):
         if not raise_on_failure and trust_path:
             for idx, cert in enumerate(self.certificates):
                 if idx not in trust_path:
-                    if cert.trusted is None:
+                    if cert.trusted is tls.ScanState.UNDETERMINED:
                         cert.issues.append(
                             "gratuitous certificate, not part of trust chain"
                         )
 
-                    else:
+                    elif cert.trusted is tls.ScanState.FALSE:
                         cert.issues.append(
                             "certificate part of untrusted alternate trust path"
                         )

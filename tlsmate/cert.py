@@ -99,7 +99,7 @@ class Certificate(object):
         self.crl_status = None
         self.ocsp_status = None
         self.issues = []
-        self.trusted = None
+        self.trusted = tls.ScanState.UNDETERMINED
         self.tls_extensions = []
         self.issuer_cert = None
         self.ocsp_must_staple = tls.ScanState.FALSE
@@ -333,7 +333,7 @@ class Certificate(object):
             :obj:`tlsmate.exception.UntrustedCertificate`: if raise_on_failure is True
         """
 
-        self.trusted = False
+        self.trusted = tls.ScanState.FALSE
         issue_long = f"certificate {self}: {issue}"
         logging.debug(issue_long)
         self.issues.append(issue)
@@ -371,9 +371,6 @@ class Certificate(object):
             valid = False
 
         return valid
-
-
-
 
     def has_valid_subject(self, domain):
         """Validate if the certificate matches the given domain
