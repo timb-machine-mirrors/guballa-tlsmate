@@ -73,6 +73,16 @@ crlDistributionPoints   = @crl_info
 certificatePolicies	= 2.23.140.1.2.1
 tlsfeature              = status_request, status_request_v2
 
+[ server_ext_no_ids ]
+# Server certificate without subjectKeyIdentifier and without authorityKeyIdentifier
+basicConstraints        = critical,CA:FALSE
+subjectAltName          = @alt_names
+extendedKeyUsage        = serverAuth
+authorityInfoAccess     = @issuer_info
+crlDistributionPoints   = @crl_info
+certificatePolicies	= 2.23.140.1.2.1
+tlsfeature              = status_request, status_request_v2
+
 [ alt_names ]
 DNS.1 = test.localhost
 DNS.2 = *.wildcard.localhost
