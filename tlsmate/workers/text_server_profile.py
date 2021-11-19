@@ -73,17 +73,17 @@ class Style:
     ERROR: FontStyle = FontStyle(color=Color.RED, bold=True)
 
 
-def merge_moods(moods):
-    """Returns the "worst" mood from a given list
+def merge_styles(styles):
+    """Returns the "worst" style from a given list
 
     Arguments:
-        moods (list of moods): the list of mood strings
+        styles (list of styles): the list of style strings
     """
-    for mood in [Style.ERROR, Style.BAD, Style.SOSO, Style.NEUTRAL, Style.GOOD]:
-        if mood in moods:
-            return mood
+    for style in [Style.ERROR, Style.BAD, Style.SOSO, Style.NEUTRAL, Style.GOOD]:
+        if style in styles:
+            return style
 
-    raise ValueError("cannot merge moods")
+    raise ValueError("cannot merge styles")
 
 
 def get_dict_value(profile, *keys, default=None):
@@ -111,16 +111,16 @@ def get_dict_value(profile, *keys, default=None):
     return profile
 
 
-def get_mood(profile, *keys):
-    """Get the mood string from a nested dict, descending according to the keys
+def get_style(profile, *keys):
+    """Get the style string from a nested dict, descending according to the keys
 
     The leaf must be in ["good", "neutral", "soso", "bad", "headline", "bold", "reset",
-    "error"] (case insensitive). These mood names are translated to the corresponding
+    "error"] (case insensitive). These style names are translated to the corresponding
     ANSI escape code.
 
     Arguments:
         profile (dict): the nested dict
-        *keys (str): the keys applied in sequence to descent to the mood
+        *keys (str): the keys applied in sequence to descent to the style
 
     Returns:
         str: ANSI escape code string. If anything fails, Style.ERROR is returned.
@@ -130,8 +130,8 @@ def get_mood(profile, *keys):
     )
 
 
-def get_mood_applied(txt, profile, *keys, **kwargs):
-    """Descent into a nested dict and apply the found mood to the given text.
+def get_style_applied(txt, profile, *keys, **kwargs):
+    """Descent into a nested dict and apply the found style to the given text.
 
     Arguments:
         txt (str): the text to decorate
@@ -142,11 +142,11 @@ def get_mood_applied(txt, profile, *keys, **kwargs):
         str: the given text, decorated with the found ANSI escape code.
     """
 
-    return get_mood(profile, *keys).decorate(txt, **kwargs)
+    return get_style(profile, *keys).decorate(txt, **kwargs)
 
 
 def get_styled_text(data, *path, **kwargs):
-    """Comfortable way to use common structure to apply a mood to a text.
+    """Comfortable way to use common structure to apply a style to a text.
 
     The item determined by data and path must be a dict with the following structure:
     {
@@ -161,13 +161,13 @@ def get_styled_text(data, *path, **kwargs):
         *keys (str): the keys to descent into the nested dict
 
     Returns:
-        str: the "txt" string decoraded with the "style" mood.
+        str: the "txt" string decoraded with the "style" style.
     """
     prof = get_dict_value(data, *path)
     if not prof:
         return Style.ERROR.decorate("???", **kwargs)
 
-    return get_mood_applied(get_dict_value(prof, "txt"), prof, "style", **kwargs)
+    return get_style_applied(get_dict_value(prof, "txt"), prof, "style", **kwargs)
 
 
 def get_cert_ext(cert, name):
@@ -219,29 +219,37 @@ class TextProfileWorker(Worker):
             return
 
         if "style" in self._style:
-            for mood in ["good", "neutral", "soso", "bad", "headline", "bold", "error"]:
-                mood_def = self._style["style"].get(mood)
-                if mood_def is not None:
+            for style in [
+                "good",
+                "neutral",
+                "soso",
+                "bad",
+                "headline",
+                "bold",
+                "error",
+            ]:
+                style_def = self._style["style"].get(style)
+                if style_def is not None:
                     color = None
-                    fg = mood_def.get("fg")
+                    fg = style_def.get("fg")
                     if fg in [c.name.lower() for c in Color.all()]:
                         color = Color.str2enum(fg.upper())
 
-                    bold = mood_def.get("style") == "bright"
-                    setattr(Style, mood.upper(), FontStyle(color=color, bold=bold))
+                    bold = style_def.get("style") == "bright"
+                    setattr(Style, style.upper(), FontStyle(color=color, bold=bold))
 
     def _read_style(self):
         self._style = utils.deserialize_data(self.style_file)
         self._parse_style()
 
-    def mood_for_cipher_suite(self, cs):
+    def style_for_cipher_suite(self, cs):
         det = utils.get_cipher_suite_details(cs)
-        key_mood = get_mood(self._style, "key_exchange", det.key_algo.name)
-        cipher_mood = get_mood(self._style, "symmetric_ciphers", det.cipher.name)
-        mac_mood = get_mood(self._style, "macs", det.mac.name)
-        return merge_moods([key_mood, cipher_mood, mac_mood])
+        key_style = get_style(self._style, "key_exchange", det.key_algo.name)
+        cipher_style = get_style(self._style, "symmetric_ciphers", det.cipher.name)
+        mac_style = get_style(self._style, "macs", det.mac.name)
+        return merge_styles([key_style, cipher_style, mac_style])
 
-    def _mood_for_assym_key_size(self, bits, style_entry):
+    def _style_for_assym_key_size(self, bits, style_entry):
         key_sizes = get_dict_value(self._style, style_entry)
         if not key_sizes:
             return Style.NEUTRAL
@@ -250,13 +258,13 @@ class TextProfileWorker(Worker):
             if bits >= prof["size"]:
                 break
 
-        return get_mood(prof, "style")
+        return get_style(prof, "style")
 
-    def mood_for_rsa_dh_key_size(self, bits):
-        return self._mood_for_assym_key_size(bits, "assymetric_key_sizes")
+    def style_for_rsa_dh_key_size(self, bits):
+        return self._style_for_assym_key_size(bits, "assymetric_key_sizes")
 
-    def mood_for_ec_key_size(self, bits):
-        return self._mood_for_assym_key_size(bits, "assymetric_ec_key_sizes")
+    def style_for_ec_key_size(self, bits):
+        return self._style_for_assym_key_size(bits, "assymetric_ec_key_sizes")
 
     def _print_tlsmate(self):
         print(Style.HEADLINE.decorate("A TLS configuration scanner (and more)"))
@@ -382,7 +390,7 @@ class TextProfileWorker(Worker):
             version_prof = self.server_profile.get_version_profile(version)
             if version is tls.Version.SSL20:
                 cipher_list = version_prof.cipher_kinds
-                mood_txt = ""
+                style_txt = ""
                 chacha_txt = ""
                 pref_txt = ""
             else:
@@ -393,7 +401,7 @@ class TextProfileWorker(Worker):
                     self._style, "version", version.name, "cipher_order", order.name
                 )
                 pref_txt = get_dict_value(struct, "txt", default="???")
-                mood_txt = get_mood_applied(pref_txt, struct, "style")
+                style_txt = get_style_applied(pref_txt, struct, "style")
 
                 chacha_pref = getattr(
                     version_prof.ciphers, "chacha_poly_preference", None
@@ -406,14 +414,14 @@ class TextProfileWorker(Worker):
                         "chacha_preference",
                         chacha_pref.name,
                     )
-                    chacha_txt = get_mood_applied(
+                    chacha_txt = get_style_applied(
                         get_dict_value(struct, "txt", default="???"), struct, "style"
                     )
 
                 else:
                     chacha_txt = ""
 
-            hashed = hash((mood_txt, chacha_txt, tuple(cipher_list)))
+            hashed = hash((style_txt, chacha_txt, tuple(cipher_list)))
             if hashed in cipher_hash:
                 cipher_hash[hashed]["versions"].append(str(version))
 
@@ -421,7 +429,7 @@ class TextProfileWorker(Worker):
                 cipher_hash[hashed] = {
                     "versions": [str(version)],
                     "table": utils.Table(indent=4, sep="  "),
-                    "preference": mood_txt,
+                    "preference": style_txt,
                     "chacha_preference": chacha_txt,
                 }
                 all_good = True
@@ -432,12 +440,12 @@ class TextProfileWorker(Worker):
                         )
 
                     else:
-                        mood = self.mood_for_cipher_suite(cs)
-                        if mood is not Style.GOOD:
+                        style = self.style_for_cipher_suite(cs)
+                        if style is not Style.GOOD:
                             all_good = False
 
                         cipher_hash[hashed]["table"].row(
-                            f"0x{cs.value:04x}", mood.decorate(cs.name)
+                            f"0x{cs.value:04x}", style.decorate(cs.name)
                         )
 
                 if all_good:
@@ -478,7 +486,7 @@ class TextProfileWorker(Worker):
                 prof = get_dict_value(prof_version, "support", supported.name)
                 supp_txt = get_dict_value(prof, "txt", default="???")
                 if supp_txt:
-                    supp_txt = get_mood_applied(supp_txt, prof, "style")
+                    supp_txt = get_style_applied(supp_txt, prof, "style")
 
             preference = getattr(group_prof, "server_preference", None)
             if preference is None:
@@ -491,12 +499,12 @@ class TextProfileWorker(Worker):
                     if prof_grps and all(
                         [prof_grps[grp.name] == "good" for grp in group_prof.groups]
                     ):
-                        pref_mood = Style.NEUTRAL
+                        pref_style = Style.NEUTRAL
 
                     else:
-                        pref_mood = get_mood(prof, "style")
+                        pref_style = get_style(prof, "style")
 
-                    pref_txt = pref_mood.decorate(pref_txt)
+                    pref_txt = pref_style.decorate(pref_txt)
 
             advertised = getattr(group_prof, "groups_advertised", None)
             if advertised is None:
@@ -506,7 +514,7 @@ class TextProfileWorker(Worker):
                 prof = get_dict_value(prof_version, "advertised", advertised.name)
                 ad_txt = get_dict_value(prof, "txt", default="???")
                 if ad_txt:
-                    ad_txt = get_mood_applied(ad_txt, prof, "style")
+                    ad_txt = get_style_applied(ad_txt, prof, "style")
 
             combined = (supp_txt, pref_txt, ad_txt, tuple(group_prof.groups))
             hashed = hash(combined)
@@ -539,7 +547,7 @@ class TextProfileWorker(Worker):
             for grp in groups:
                 table.row(
                     f"0x{grp.value:02x}",
-                    get_mood_applied(grp.name, prof_grps, grp.name),
+                    get_style_applied(grp.name, prof_grps, grp.name),
                 )
 
             table.dump()
@@ -573,7 +581,7 @@ class TextProfileWorker(Worker):
             print(f"\n  {Style.BOLD.decorate(versions)}:")
 
             if not algo["algos"]:
-                print ("    no signature algorithms supported")
+                print("    no signature algorithms supported")
 
             else:
                 print("    signature algorithms:")
@@ -582,7 +590,7 @@ class TextProfileWorker(Worker):
                     for alg in algo["algos"]:
                         table.row(
                             f"0x{alg.value:04x}",
-                            get_mood_applied(
+                            get_style_applied(
                                 alg.name, self._style, "signature_schemes", alg.name
                             ),
                         )
@@ -623,8 +631,8 @@ class TextProfileWorker(Worker):
                 if name is None:
                     name = "unknown group"
                 txt = f"{name} ({size} bits)"
-                mood = self.mood_for_rsa_dh_key_size(size)
-                print(f"    {mood.decorate(txt)}")
+                style = self.style_for_rsa_dh_key_size(size)
+                print(f"    {style.decorate(txt)}")
 
             print()
 
@@ -901,15 +909,15 @@ class TextProfileWorker(Worker):
         issues = getattr(cert, "issues", None)
         if issues:
             issue_txt = []
-            mood = get_mood(self._style, "certificate", "issues")
+            style = get_style(self._style, "certificate", "issues")
             for issue in issues:
                 folded_lines = utils.fold_string(issue, max_length=100)
                 issue_txt.append("- " + folded_lines.pop(0))
                 issue_txt.extend(["  " + item for item in folded_lines])
 
-            table.row("Issues", mood.decorate(issue_txt[0]))
+            table.row("Issues", style.decorate(issue_txt[0]))
             for line in issue_txt[1:]:
-                table.row("", mood.decorate(line))
+                table.row("", style.decorate(line))
 
         table.row("Serial number", f"{cert.serial_number_int} (integer)")
         table.row("", f"{pdu.string(cert.serial_number_bytes)} (hex)")
@@ -957,7 +965,7 @@ class TextProfileWorker(Worker):
                 txt = sig_algo.name
 
             else:
-                txt = get_mood_applied(
+                txt = get_style_applied(
                     sig_algo.name, self._style, "signature_schemes", sig_algo.name
                 )
 
@@ -970,14 +978,14 @@ class TextProfileWorker(Worker):
                 tls.SignatureAlgorithm.RSA,
                 tls.SignatureAlgorithm.DSA,
             ]:
-                mood = self.mood_for_rsa_dh_key_size(key_size)
+                style = self.style_for_rsa_dh_key_size(key_size)
 
             else:
-                mood = self.mood_for_ec_key_size(key_size)
+                style = self.style_for_ec_key_size(key_size)
 
             table.row(
                 "Public key",
-                f'{pub_key.key_type}, {mood.decorate(f"{key_size} bits")}',
+                f'{pub_key.key_type}, {style.decorate(f"{key_size} bits")}',
             )
 
         key_usage_ext = get_cert_ext(cert, "KeyUsage")
@@ -1004,7 +1012,7 @@ class TextProfileWorker(Worker):
                 valid_to = tls.ScanState.FALSE
                 valid = tls.ScanState.FALSE
 
-            from_txt = get_mood_applied(
+            from_txt = get_style_applied(
                 cert.not_valid_before,
                 self._style,
                 "certificate",
@@ -1012,7 +1020,7 @@ class TextProfileWorker(Worker):
                 valid_from.name,
                 "style",
             )
-            to_txt = get_mood_applied(
+            to_txt = get_style_applied(
                 cert.not_valid_after,
                 self._style,
                 "certificate",
@@ -1084,7 +1092,7 @@ class TextProfileWorker(Worker):
 
             table.row(
                 "OCSP must staple",
-                get_mood_applied(
+                get_style_applied(
                     txt,
                     self._style,
                     "certificate",
@@ -1125,12 +1133,12 @@ class TextProfileWorker(Worker):
             head_line = Style.BOLD.decorate(f"Certificate chain #{cert_chain.id}:")
             print(f"  {head_line} {valid_txt}")
             if hasattr(cert_chain, "issues"):
-                mood = get_mood(self._style, "cert_chain", "issues")
+                style = get_style(self._style, "cert_chain", "issues")
                 print("    Issues:")
                 for issue in cert_chain.issues:
                     lines = utils.fold_string(issue, max_length=100)
                     txt = "    - " + "\n      ".join(lines)
-                    print(mood.decorate(txt))
+                    print(style.decorate(txt))
 
             if hasattr(cert_chain, "root_cert_transmitted"):
                 txt = get_styled_text(
@@ -1261,7 +1269,7 @@ class TextProfileWorker(Worker):
 
             table.row(
                 "CBC padding oracle",
-                get_mood_applied(
+                get_style_applied(
                     txt, style_cbc, "vulnerable", vulnerable.name, "style"
                 ),
             )
