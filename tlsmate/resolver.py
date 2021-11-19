@@ -9,6 +9,7 @@ import logging
 from tlsmate.exception import ScanError
 from tlsmate import tls
 from tlsmate import structs
+from tlsmate import utils
 
 # import other stuff
 
@@ -54,13 +55,15 @@ def resolve_hostname(host_name):
     """
 
     if host_name not in _resolved:
+        import traceback
+        import sys
 
         try:
             logging.debug(f"Performing DNS lookup for {host_name}")
             ips = socket.getaddrinfo(host_name, None, type=socket.SOCK_STREAM)
 
         except socket.gaierror:
-            raise ScanError(f"Cannot resolve {host_name}")
+            utils.exit_with_error(f"Cannot resolve domain name {host_name}")
 
         ipv4_addresses = [item[4][0] for item in ips if item[0] is socket.AF_INET]
         ipv6_addresses = [item[4][0] for item in ips if item[0] is socket.AF_INET6]

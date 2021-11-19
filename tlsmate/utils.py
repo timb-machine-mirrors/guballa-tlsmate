@@ -6,6 +6,7 @@ import time
 import logging
 import json
 import os
+import sys
 import argparse
 
 # import own stuff
@@ -471,3 +472,15 @@ def log_extensions(extensions):
     for extension in extensions:
         extension = extension.extension_id
         logging.debug(f"extension {extension.value} {extension}")
+
+
+def exit_with_error(error):
+    """Abort tlsmate with an error message
+
+    Arguments:
+        error (str): the error message to print on stderr
+    """
+
+    sys.stderr.write(f"Error: {error}\n")
+    sys.stderr.flush()
+    sys.exit(1)
