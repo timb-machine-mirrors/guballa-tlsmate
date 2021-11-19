@@ -63,6 +63,26 @@ def test_scan(capsys):
     assert pytest_wrapped_e.value.code == 2
 
 
+def test_invalid_domain(capsys):
+    cmd = "tlsmate scan --port=0 palimpalim.palimpalim"
+    sys.argv = cmd.split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        command.main()
+    captured = capsys.readouterr()
+    assert "Error: Cannot resolve domain name palimpalim.palimpalim" in captured.err
+    assert pytest_wrapped_e.value.code == 1
+
+
+def test_closed_port(capsys):
+    cmd = "tlsmate scan --port=0 localhost"
+    sys.argv = cmd.split()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        command.main()
+    captured = capsys.readouterr()
+    assert "Error: Cannot open TCP connection to TransportEndpoint" in captured.err
+    assert pytest_wrapped_e.value.code == 1
+
+
 def test_all_defaults(monkeypatch, tlsmate_empty_ini):
     monkeypatch.setattr(WorkManager, "run", work_manager_run)
 
