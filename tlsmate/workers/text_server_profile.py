@@ -572,17 +572,22 @@ class TextProfileWorker(Worker):
             versions = ", ".join(algo["versions"])
             print(f"\n  {Style.BOLD.decorate(versions)}:")
 
-            print("    signature algorithms:")
-            table = utils.Table(indent=6, sep="  ")
-            for alg in algo["algos"]:
-                table.row(
-                    f"0x{alg.value:04x}",
-                    get_mood_applied(
-                        alg.name, self._style, "signature_schemes", alg.name
-                    ),
-                )
+            if not algo["algos"]:
+                print ("    no signature algorithms supported")
 
-            table.dump()
+            else:
+                print("    signature algorithms:")
+                table = utils.Table(indent=6, sep="  ")
+                if algo["algos"]:
+                    for alg in algo["algos"]:
+                        table.row(
+                            f"0x{alg.value:04x}",
+                            get_mood_applied(
+                                alg.name, self._style, "signature_schemes", alg.name
+                            ),
+                        )
+
+                table.dump()
 
         print()
 
