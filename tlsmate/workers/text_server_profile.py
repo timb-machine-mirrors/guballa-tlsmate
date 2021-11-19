@@ -1120,7 +1120,7 @@ class TextProfileWorker(Worker):
 
     def _print_certificates(self):
         cert_chains = getattr(self.server_profile, "cert_chains", None)
-        if cert_chains is None:
+        if not cert_chains:
             return
 
         print(Style.HEADLINE.decorate("Certificate chains"))
