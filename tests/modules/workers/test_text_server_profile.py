@@ -6,7 +6,7 @@ import re
 from tlsmate.workers.text_server_profile import (
     FontStyle,
     Color,
-    merge_moods,
+    merge_styles,
     get_dict_value,
     get_styled_text,
     TextProfileWorker,
@@ -32,9 +32,9 @@ def test_FontStyle_orig_length():
     assert styled_txt == (f"<font color=green><b>{txt}</b></font>", len(txt))
 
 
-def test_merge_moods():
-    with pytest.raises(ValueError, match="cannot merge moods"):
-        merge_moods([])
+def test_merge_styles():
+    with pytest.raises(ValueError, match="cannot merge styles"):
+        merge_styles([])
 
 
 def test_get_dict_value_no_profile():

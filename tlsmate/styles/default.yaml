@@ -692,6 +692,9 @@ certificate:
     WRONG_CRL_ISSUER:
       txt: wrong CRL issuer
       style: bad
+    INVALID_TIMESTAMP:
+      txt: CRL timstamp is invalid
+      style: bad
     CRL_SIGNATURE_INVALID:
       txt: CRL signature invalid
       style: bad
