@@ -55,16 +55,21 @@ class Socket(object):
         if self._recorder.is_injecting():
             return
 
-        self._socket = socket.socket(family, socket.SOCK_STREAM)
-        self._socket.settimeout(5.0)
-        self._socket.connect(addr_info)
-        self._socket.settimeout(None)
-        addr = self._socket.getsockname()
-        laddr = addr[0]
-        lport = addr[1]
-        addr = self._socket.getpeername()
-        raddr = addr[0]
-        rport = addr[1]
+        try:
+            self._socket = socket.socket(family, socket.SOCK_STREAM)
+            self._socket.settimeout(5.0)
+            self._socket.connect(addr_info)
+            self._socket.settimeout(None)
+            addr = self._socket.getsockname()
+            laddr = addr[0]
+            lport = addr[1]
+            addr = self._socket.getpeername()
+            raddr = addr[0]
+            rport = addr[1]
+
+        except OSError:
+            utils.exit_with_error(f"Cannot open TCP connection to {l4_addr}")
+
         if self._config.get("progress"):
             sys.stderr.write(".")
             sys.stderr.flush()
