@@ -11,7 +11,7 @@ import sys
 # import own stuff
 from tlsmate import utils
 from tlsmate import tls
-from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError, ScanError
+from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
 from tlsmate import recorder
 from tlsmate import resolver
 

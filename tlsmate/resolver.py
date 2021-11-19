@@ -55,9 +55,6 @@ def resolve_hostname(host_name):
     """
 
     if host_name not in _resolved:
-        import traceback
-        import sys
-
         try:
             logging.debug(f"Performing DNS lookup for {host_name}")
             ips = socket.getaddrinfo(host_name, None, type=socket.SOCK_STREAM)
