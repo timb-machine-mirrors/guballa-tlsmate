@@ -563,7 +563,6 @@ class TextProfileWorker(Worker):
             return
 
         algo_hash = {}
-        print(Style.HEADLINE.decorate("Signature algorithms"))
         for version in self._prof_versions:
             version_prof = self.server_profile.get_version_profile(version)
             if not hasattr(version_prof, "signature_algorithms"):
@@ -580,6 +579,10 @@ class TextProfileWorker(Worker):
                     "algos": algo_prof.algorithms,
                 }
 
+        if not algo_hash:
+            return
+
+        print(Style.HEADLINE.decorate("Signature algorithms"))
         for algo in algo_hash.values():
             versions = ", ".join(algo["versions"])
             print(f"\n  {Style.BOLD.decorate(versions)}:")
