@@ -390,9 +390,13 @@ class TextProfileWorker(Worker):
             version_prof = self.server_profile.get_version_profile(version)
             if version is tls.Version.SSL20:
                 cipher_list = version_prof.cipher_kinds
-                style_txt = ""
-                chacha_txt = ""
                 pref_txt = ""
+                style_txt = (
+                    ""
+                    if cipher_list
+                    else Style.BAD.decorate("no cipher kinds provided by server")
+                )
+                chacha_txt = ""
             else:
                 cipher_list = version_prof.ciphers.cipher_suites
                 order = version_prof.ciphers.server_preference
@@ -432,7 +436,7 @@ class TextProfileWorker(Worker):
                     "preference": style_txt,
                     "chacha_preference": chacha_txt,
                 }
-                all_good = True
+                all_good = bool(cipher_list)
                 for cs in cipher_list:
                     if version is tls.Version.SSL20:
                         cipher_hash[hashed]["table"].row(
