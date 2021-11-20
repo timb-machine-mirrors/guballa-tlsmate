@@ -240,7 +240,6 @@ class GroupServerProfile(Plugin):
 
     group = Args(title="Server profile options")
     plugins = [
-        ArgReadProfile,
         ArgWriteProfile,
         ArgFormat,
         ArgColor,
