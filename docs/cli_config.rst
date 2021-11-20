@@ -47,7 +47,7 @@ as key/value pairs, whereby for keys the dashes as used on the CLI are replaced 
 Here is an example of an ini-file for ``tlsmate``::
 
     [tlsmate]
-    debug = logging
+    logging = debug
 
 Each command line options has its specific type. For some types special treatment applies.
 

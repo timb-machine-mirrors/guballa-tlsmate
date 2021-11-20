@@ -70,7 +70,6 @@ in the future:
 
 * proxy support
 * simulating a TLS server (thus allowing to test TLS clients)
-* scan for more vulnerabilities
 
 .. _`TLS features`: https://guballa.gitlab.io/tlsmate/tlsfeatures.html
 
@@ -102,7 +101,6 @@ applications.
 
 In the following only some basic examples for using the CLI are
 given. Use the ``tlsmate --help`` command to get all supported subcommands.
-Well, currently there are not that many.
 
 .. note::
 
