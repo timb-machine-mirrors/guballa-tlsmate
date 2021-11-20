@@ -115,8 +115,8 @@ class ArgSni(Plugin):
         help=(
             "the server name indication, i.e., the domain name of the server to "
             "contact. If not given, the value will be taken from the host "
-            "parameter (after stripping of the port number, if present). This "
-            "parameter is useful, if the host is given as an IP address."
+            "parameter. This parameter is useful, if the host is given as an "
+            "IP address."
         ),
     )
 
@@ -129,9 +129,7 @@ class ArgHost(Plugin):
     cli_args = Args(
         "host",
         help=(
-            "the host to scan. If an IPv6 address is given, it must be enclosed in "
-            "square brackets. May optionally have the port number appended, "
-            "separated by a colon. The port defaults to 443."
+            "the target host. Can be given as a domain name or as an IPv4/IPv6 address."
         ),
         type=str,
     )
@@ -212,7 +210,10 @@ class ArgColor(Plugin):
     config = ConfigItem("color", type=bool, default=True)
     cli_args = Args(
         "--color",
-        help="use colored console output. Only used if --format=text is given.",
+        help=(
+            "use colored console output. Only used if --format=text is given. "
+            "Defaults to True."
+        ),
         action=utils.BooleanOptionalAction,
     )
 
