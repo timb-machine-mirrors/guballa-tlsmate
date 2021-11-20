@@ -33,7 +33,7 @@ def verify_signed_params(prefix, params, cert, default_scheme, version):
     Arguments:
         prefix (bytes): the bytes to prepend to the data
         params: the parameter block from the ServerKeyExchange message
-        cert (:obj:`tlsmate.cert.Certificate)`: the certificate used to validate
+        cert (:obj:`tlsmate.cert.Certificate`): the certificate used to validate
             the data
         default_scheme (:class:`tlsmate.tls.SignatureScheme`): the default
             signature scheme to use (if not present in the message)

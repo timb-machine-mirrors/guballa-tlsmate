@@ -3,6 +3,7 @@
 
 Actually, this is not a scan but rather an evaluation of the server profile.
 The following vulnerabilities are treated:
+
     - BEAST (TLS1.0 enabled)
     - CRIME (compression enabled)
     - Sweet-32 (64-bit block ciphers [IDEA, 3DES])
