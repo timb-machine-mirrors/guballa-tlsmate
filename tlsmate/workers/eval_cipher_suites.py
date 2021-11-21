@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Module containing the test suite
+"""Module scanning for TLS protocol versions, cipher suites and certificate chains
 """
 # import basic stuff
 import logging

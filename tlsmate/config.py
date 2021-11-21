@@ -43,21 +43,18 @@ class Configuration(object):
     Example:
         Specifying the logging option:
 
-        Via command line:
-            ::
+        Via command line::
 
-                tlsmate --logging=debug ...
+            tlsmate --logging=debug ...
 
-        Via Enviroment variable:
-            ::
+        Via Enviroment variable::
 
-                export TLSMATE_LOGGING=debug
+            export TLSMATE_LOGGING=debug
 
-        Via ini-file:
-            ::
+        Via ini-file::
 
-                [tlsmate]
-                logging = debug
+            [tlsmate]
+            logging = debug
     """
 
     def __init__(self):

@@ -14,7 +14,7 @@ class ServerMalfunction(TlsmateException):
     This exception basically indicates a specification violation by the server.
 
     Attributes:
-        issue (:obj:tlsmate.tls.`ServerMalfunction`): the reason for the exception
+        issue (:obj:`tlsmate.tls.ServerIssue`): the reason for the exception
         message (:obj:`tlsmate.tls.HandshakeType`): the message, if applicable
         extension (:obj:`tlsmate.tls.Extension`): the extension, if applicable
     """

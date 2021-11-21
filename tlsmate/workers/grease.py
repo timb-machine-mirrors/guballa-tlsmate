@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Module containing the test suite
+"""Module scanning for protocol parameter tolerance (GREASE)
 """
 # import basic stuff
 import random
@@ -105,7 +105,7 @@ class ScanGrease(Worker):
     def _check_extension(self, grease_prof):
         def add_unknown_extension(msg):
             unknown_ext = ext.ExtUnknownExtension(
-                id=self._get_grease_value(_grease_params), bytes=b"deadbeaf"
+                id=self._get_grease_value(_grease_params), bytes=b"deadbeef"
             )
             msg.extensions.insert(0, unknown_ext)
 

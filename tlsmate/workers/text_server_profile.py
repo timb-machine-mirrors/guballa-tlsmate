@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Module for a worker handling the server profile (de)serialization
+"""Module for displaying the server profile in (colored) text format
 """
 # import basic stuff
 import sys
@@ -161,7 +161,7 @@ def get_styled_text(data, *path, **kwargs):
         *keys (str): the keys to descent into the nested dict
 
     Returns:
-        str: the "txt" string decoraded with the "style" style.
+        str: the "txt" string decorated with the "style" style.
     """
     prof = get_dict_value(data, *path)
     if not prof:

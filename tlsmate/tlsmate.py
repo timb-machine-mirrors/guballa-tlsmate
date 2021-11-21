@@ -51,6 +51,8 @@ class TlsMate(object):
     """
 
     instance = None
+    """The instance of tlsmate
+    """
 
     def __init__(self, config=None):
         TlsMate.instance = self

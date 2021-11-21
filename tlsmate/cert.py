@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Module for handling a certificate chain
+"""Module for certificates
 """
 # import basic stuff
 import logging
@@ -151,7 +151,8 @@ class Certificate(object):
 
     @property
     def bytes(self):
-        """bytes: the certificate in raw format"""
+        """bytes: the certificate in raw format, i.e. in DER format.
+        """
         if self._bytes is None:
             self._bytes = self.parsed.public_bytes(Encoding.DER)
         return self._bytes
@@ -213,7 +214,7 @@ class Certificate(object):
             sig_scheme = size_to_algo.get(public_key.curve.key_size)
             if sig_scheme is None:
                 raise ValueError(
-                    f"unknown keysize {public_key.curve.key_size} for ECDSA public key"
+                    f"unknown key size {public_key.curve.key_size} for ECDSA public key"
                 )
 
             self.tls12_signature_algorithms = [sig_scheme]
@@ -361,6 +362,14 @@ class Certificate(object):
             self.mark_untrusted("validity period exceeded", raise_on_failure)
 
     def has_valid_period(self, timestamp):
+        """Determines if the period is valid.
+
+        Arguments:
+            timestamp (datetime.datetime): the timestamp to check against
+
+        Returns:
+            bool: An indication if the period is valid
+        """
         valid = True
         if timestamp < self.parsed.not_valid_before:
             self.mark_untrusted("validity period not yet reached")

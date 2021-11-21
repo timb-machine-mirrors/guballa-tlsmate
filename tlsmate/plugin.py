@@ -29,14 +29,17 @@ class Plugin(metaclass=abc.ABCMeta):
     """Base class for plugins
 
     A plugin can be:
+
         - a subcommand
         - an argument group
         - a single argument
 
     A plugin may have:
+
         - an associated configuration item
         - a list of plugins which are plugged in into this class
-        - a list of workers, which be default will be registered if
+        - a list of workers, which by default will be registered if
+
             - the plugin is a subcommand or
             - the associated configuration is not False and not None
 
@@ -46,8 +49,8 @@ class Plugin(metaclass=abc.ABCMeta):
         config(:obj:`tlsmate.structs.ConfigItem`): an optional associated
             configuration item
         group(:obj:`Args`): parameters for the add_argument_group method (argparse)
-        subcommand(str): the subcommand
-        cli_args(:obj:`Args`): parameter for the add_argument method (argparse)
+        subcommand(:obj:`Args`): parameters for the add_subparsers method
+        cli_args(:obj:`Args`): parameters for the add_argument method (argparse)
         plugins(list(:class:`Plugin`)): A list of plugin classes which are plugged in
             into this plugin.
         workers(list(:class:`Worker`)): a list of worker classes to be registered
@@ -210,7 +213,7 @@ class BaseCommand(Plugin):
             description=(
                 "tlsmate is an application for testing and analyzing TLS servers. "
                 "Test scenarios can be defined in a simple way with great flexibility. "
-                "A TLS server configuration and vulnarability scan is built in."
+                "A TLS server configuration and vulnerability scan is built in."
             )
         )
         subparsers = parser.add_subparsers(title="commands", dest="subcommand")
@@ -260,12 +263,12 @@ class Worker(metaclass=abc.ABCMeta):
 
 
 class WorkManager(object):
-    """Manages the registered worker plugins and runs them.
+    """Manages the registered workers and runs them.
 
-    The worker manager provides an interface to register worker plugins.
+    The worker manager provides an interface to register workers.
 
-    The registered workers are triggered (via their run-method) based on their
-    priority by calling their run method.
+    The registered workers are triggered based on their priority by calling their
+    run method.
     """
 
     _instance = None

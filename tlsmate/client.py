@@ -48,7 +48,7 @@ class ClientProfile(object):
             Default: [:obj:`tlsmate.tls.CompressionMethod.NULL`]
         cipher_suites (list (:obj:`tlsmate.tls.CipherSuite` or int)):
             A list of cipher suites which will be offered to the server in the
-            sequence given. Note, that arbitraty interger values are supported
+            sequence given. Note, that arbitrary integer values are supported
             as well, allowing to check if the server ignores unknown values.
             Default: []
         support_sni (bool):
@@ -61,12 +61,12 @@ class ClientProfile(object):
         supported_groups (list (:obj:`tlsmate.tls.SupportedGroups` or int)): The list
             of named groups supported by the client. If set to None, the
             extension will not be present in the ClientHello message. Note,
-            that arbitraty interger values are supported as well, allowing to
+            that arbitrary integer values are supported as well, allowing to
             check if the server ignores unknown values. Default: None
         signature_algorithms (list (:obj:`tlsmate.tls.SignatureScheme` or int)):
             The list of signature algorithms supported by the client. If
             set to None, the extension will not be present in the ClientHello
-            message. Note, that arbitraty interger values are supported as
+            message. Note, that arbitrary integer values are supported as
             well, allowing to check if the server ignores unknown values.
             Default: None
         heartbeat_mode (:class:`tlsmate.tls.HeartbeatMode` or None): The mode which is
@@ -100,12 +100,12 @@ class ClientProfile(object):
             the request. NONE is used to suppress the extension.
             Default: NONE
         key_shares (list (:obj:`tlsmate.tls.SupportedGroups` or int)): The list
-            of key shares supported for TLS1.3. Note, that arbitraty interger
+            of key shares supported for TLS1.3. Note, that arbitrary integer
             values are supported as well, allowing to check if the server
             ignores unknown values. Default: None
         psk_key_exchange_modes (list (:obj:`tlsmate.tls.PskKeyExchangeMode` or int)):
             The list of PSK key exchange modes used in the extension
-            psk_key_exchange_modes. Note, that arbitraty interger values are
+            psk_key_exchange_modes. Note, that arbitrary integer values are
             supported as well, allowing to check if the server ignores unknown
             values. Default: None
         early_data (bytes): The application data to be sent with 0-RTT. TLS1.3 only.
@@ -579,8 +579,8 @@ class Client(object):
 
         Arguments:
             psk (:obj:`tlsmate.structs.Psk`): A pre-shared key be stored on the
-            client level, usable to resume connections using the pre-shared key
-            extension.
+                client level, usable to resume connections using the pre-shared key
+                extension.
         """
         self.psks.append(psk)
 
@@ -624,7 +624,7 @@ class Client(object):
             self.profile.support_session_ticket
             and self.session_state_ticket is not None
         ):
-            msg.session_id = bytes.fromhex("dead beaf")
+            msg.session_id = bytes.fromhex("dead beef")
 
         elif self.profile.support_session_id and self.session_state_id is not None:
             msg.session_id = self.session_state_id.session_id

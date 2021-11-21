@@ -69,7 +69,7 @@ def verify_signed_params(prefix, params, cert, default_scheme, version):
 
 
 def verify_certificate_verify(cert_ver, msgs, msg_digest):
-    """Validates the the CertificateVerify message.
+    """Validates the CertificateVerify message.
 
     Arguments:
         cert_ver (:obj:`tlsmate.msg.CertificateVerify`): the CertificateVerify

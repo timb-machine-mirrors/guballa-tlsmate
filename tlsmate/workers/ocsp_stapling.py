@@ -33,7 +33,7 @@ class ScanOcspStapling(Worker):
             # server_hello, and some are not (e.g. openssl for TLS13). So check if
             # OCSP status request is received without evaluating it. Evaluating
             # the responses would require more sophisticated handling, as the state
-            # should then be determined for all certificate chains, repectively
+            # should then be determined for all certificate chains, respectively
             # for all certificates (status_request_v2) for which a response is
             # received.
 
