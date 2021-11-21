@@ -85,7 +85,7 @@ class ExtendedEnum(enum.Enum):
 
 
 class ExtendedIntEnum(ExtendedEnum):
-    """Clas for comparable enums
+    """Class for comparable enums
 
     Note, that we us our own class, as we cannot overwrite the __str__ method of the
     enum.IntEnum call (__slots__!)
@@ -914,7 +914,7 @@ class CipherPrimitive(ExtendedEnum):
 class SymmetricCipher(ExtendedEnum):
     """Enum representing the ciphers supported by tlsmate.
 
-    "Supported" means, a handshake can be completed sucessfully, and a secured
+    "Supported" means, a handshake can be completed successfully, and a secured
     channel is established between both peers.
     """
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Module containing the test suite
+"""Module scanning for renegotiation support
 """
 # import basic stuff
 

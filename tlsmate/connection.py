@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Module containing the implementing for a TLS connection
+"""Module containing the implementation for a TLS connection
 """
 
 # import basic stuff
@@ -170,8 +170,8 @@ class TlsConnectionMsgs(object):
             heartbeat response message sent by the client
         server_heartbeat_response (:obj:`tlsmate.msg.HeartbeatResponse`): the
             heartbeat response message sent by the server
-        hello_retry_request (:obj:`tlsmate.msg.HelloRetryRequest`): the
-            HelloRetryRequest message
+        hello_retry_request (:obj:`tlsmate.msg.HelloRequest`): the
+            HelloRequest message
     """
 
     _map_msg2attr = {
@@ -243,7 +243,7 @@ class TlsConnectionMsgs(object):
 class TlsConnection(object):
     """Class representing a TLS connection object.
 
-    The typical way to instantiate a `TlsConnection` object is through the client's
+    The typical way to instantiate a ``TlsConnection`` object is through the client's
     :meth:`tlsmate.client.Client.create_connection` method and by using the context
     manager this class provides.
 
@@ -252,15 +252,15 @@ class TlsConnection(object):
         >>> with client.create_connection() as conn:
         >>>     conn.handshake()
 
-        The variable `conn` references the `TlsConnection` instance. When entering
+        The variable ``conn`` references the ``TlsConnection`` instance. When entering
         the context manager, the host's URL is resolved, and a TCP socket is
         opened. When leaving the context manager, the TLS-connection is always
         properly closed, e.g., by sending a closure alert and by closing the
         underlying TCP socket.
 
         .. note::
-            The `TlsConnection` instance is accessible outside the context manager as
-            well, "outside the context manager" only mean that the TLS connection is
+            The ``TlsConnection`` instance is accessible outside the context manager as
+            well, "outside the context manager" only means that the TLS connection is
             closed.
 
         .. note::
@@ -276,7 +276,7 @@ class TlsConnection(object):
             object. Only used for unit tests.
         record_layer_version (:obj:`tlsmate.tls.Version`): the record layer version
             to use in records sent. The handling for this parameter is greatly
-            underspecified in all TLS RFCs. The default behavior for `tlsmate` is as
+            underspecified in all TLS RFCs. The default behavior for ``tlsmate`` is as
             follows: ClientHellos are all sent with a version set to TLS1.0. If
             TLS1.3 is negotiated, the version is updated to TLS1.2. Anyway,
             this parameter can be set anytime in a test case to whatever value is
@@ -442,7 +442,7 @@ class TlsConnection(object):
             logging.warning("connected closed, probably by peer")
 
         elif exc_type is TlsMsgTimeoutError:
-            logging.warning(f"timeout occured while waiting for {self._awaited_msg}")
+            logging.warning(f"timeout occurred while waiting for {self._awaited_msg}")
             self._send_alert(tls.AlertLevel.WARNING, tls.AlertDescription.CLOSE_NOTIFY)
 
         else:
@@ -919,7 +919,7 @@ class TlsConnection(object):
         """Setup a message for which only the class has been provided
 
         Here, we also do all the funny stuff required prior sending a
-        mesage, e.g. for a ClientKeyExchange the key exchange and key deriviation
+        message, e.g. for a ClientKeyExchange the key exchange and key derivation
         is performed here.
         """
         method = self._generate_out_msg.get(msg_cls.msg_type)
@@ -1244,7 +1244,7 @@ class TlsConnection(object):
             if msg.verify_data != val:
                 raise ServerMalfunction(tls.ServerIssue.VERIFY_DATA_INVALID)
 
-        logging.debug("Received Finished sucessfully verified")
+        logging.debug("Received Finished successfully verified")
         if self._finished_treated:
             self.handshake_completed = True
             logging.debug("Handshake finished, secure connection established")
@@ -1355,7 +1355,8 @@ class TlsConnection(object):
     }
 
     def _on_msg_received(self, msg):
-        """Called whenever a message is received before it is passed to the testcase"""
+        """Called whenever a message is received before it is passed to the test case
+        """
         method = self._on_msg_received_map.get(msg.msg_type)
         if method is not None:
             method(self, msg)
@@ -1465,7 +1466,7 @@ class TlsConnection(object):
 
         Raises:
             ScanError: In case an unexpected message is received
-            TlsMsgTimeoutError: In case fail_on_timeout is True and a timeout occured.
+            TlsMsgTimeoutError: In case fail_on_timeout is True and a timeout occurred.
         """
         ultimo = time.time() + (timeout / 1000)
         min_nbr = 0 if optional else 1

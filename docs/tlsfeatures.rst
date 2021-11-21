@@ -38,6 +38,7 @@ SSLv2 is not supported.
 
 For the other protocol versions the following messages are supported:
 
+* HelloRequest
 * ClientHello
 * ServerHello
 * NewSessionTicket
@@ -48,6 +49,7 @@ For the other protocol versions the following messages are supported:
 * CertificateRequest
 * ServerHelloDone
 * CertificateVerify
+* CertificateStatus
 * ClientKeyExchange
 * Finished
 * ChangeCipherSpec

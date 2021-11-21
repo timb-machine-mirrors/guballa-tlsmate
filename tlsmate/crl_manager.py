@@ -72,7 +72,7 @@ class CrlManager(object):
 
         Downloads the CRL (if a download fails, the next url is tried), if not yet
         cached, validates the CRL against the issuer & its signature and checks if
-        the certicifate is present in the CRL or not.
+        the certificate is present in the CRL or not.
 
         Arguments:
             urls (list of str): a list of CRL-urls

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Module containing the test suite
+"""Module scanning for the excrypt-then-mac extension
 """
 # import basic stuff
 

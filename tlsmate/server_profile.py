@@ -1493,7 +1493,7 @@ class SPCipherGroup(SPObject):
 
 
 class SPCipherGroupSchema(ProfileSchema):
-    """Schema for a cipher group (cipher suite, tls version, record protocol)
+    """Schema for a cipher group (cipher suite, TLS version, record protocol)
     """
 
     __profile_class__ = SPCipherGroup
@@ -1629,7 +1629,7 @@ class ServerProfile(SPObject):
         features (:obj:`SPFeatures`): the profile structure for the features supported
             by the server
         scan_info (:obj:`SPScanInfo`): object describing basic scan information
-        server (:obj:`SPServer`): object describing the sercer's details
+        server (:obj:`SPServer`): object describing the server's details
         versions (list of :obj:`SPVersion`): list versions supported by the server
         vulnerabilities (:obj:`SPVulnerabilities`): object containing infos regarding
             the vulnerabilities

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Module containing the test suite
+"""Module scanning for supported groups
 """
 # import basic stuff
 import logging

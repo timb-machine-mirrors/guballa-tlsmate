@@ -3,31 +3,32 @@
 
 Specifically, we will scan for the following vulnerabilities:
 
-* POODLE
-    In SSL30, the content of the padding bytes was not specified. Resolved with
-    TLS1.0. Scanning for POODLE is not required, just check if SSL30 is enabled
-    with at least one CBC-cipher suite.
+    * POODLE
+        In SSL30, the content of the padding bytes was not specified. Resolved with
+        TLS1.0. Scanning for POODLE is not required, just check if SSL30 is enabled
+        with at least one CBC-cipher suite.
 
-* TLS POODLE
-    Padding bits are not checked, even for TLS1.0 and above.
-    We will only scan for the handshake protocol (Finished), as there are
-    implementations in the wild, where AppData are not affected.
-    We won't scan every cipher suite, but we do scan each TLS protocol version.
-    There are implementations, which check only certain bits of the padding, we
-    regard those implementations as vulnerable to TLS POODLE as well, although for
-    (SSL) POODLE, no bits are checked at all.
+    * TLS POODLE
+        Padding bits are not checked, even for TLS1.0 and above.
+        We will only scan for the handshake protocol (Finished), as there are
+        implementations in the wild, where AppData are not affected.
+        We won't scan every cipher suite, but we do scan each TLS protocol version.
+        There are implementations, which check only certain bits of the padding, we
+        regard those implementations as vulnerable to TLS POODLE as well, although for
+        (SSL) POODLE, no bits are checked at all.
 
-* Lucky-Minus-20 (aka. OpenSSL Padding Oracle vuln.): CVE-2016-2107
-    padding length spans the complete record, so that there is no "room" for the
-    MAC and the data
-    vector: no data, no mac, valid padding
-    fingerprint: server responds with RECORD_OVERFLOW-Alert
-    - https://web-in-security.blogspot.com/2016/05/curious-padding-oracle-in-openssl-cve.html  # noqa
-    - https://blog.cloudflare.com/yet-another-padding-oracle-in-openssl-cbc-ciphersuites/  # noqua
+    * Lucky-Minus-20 (aka. OpenSSL Padding Oracle vuln.): CVE-2016-2107
+        padding length spans the complete record, so that there is no "room" for the
+        MAC and the data
+        vector: no data, no mac, valid padding
+        fingerprint: server responds with RECORD_OVERFLOW-Alert
+        - https://web-in-security.blogspot.com/2016/05/curious-padding-oracle-in-openssl-cve.html  # noqa
+        - https://blog.cloudflare.com/yet-another-padding-oracle-in-openssl-cbc-ciphersuites/  # noqua
 
 For other CBC padding oracle vulnerabilities the definition is not exactly
 clear (to me).
 This includes:
+
     * Zombie POODLE: The researcher says, an alert is sent in case the padding is
       correct, but the MAC is not. What, if instead of an alert the TCP connection
       is closed or reset? Still Zombie POODLE?

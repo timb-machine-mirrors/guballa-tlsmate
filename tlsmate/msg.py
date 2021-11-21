@@ -956,7 +956,7 @@ EncryptedExtensions.get_extension.__doc__ = ClientHello.get_extension.__doc__
 
 
 class CertificateStatus(HandshakeMessage):
-    """This class represents a Certificate Status messge.
+    """This class represents a Certificate Status message.
     """
 
     msg_type = tls.HandshakeType.CERTIFICATE_STATUS

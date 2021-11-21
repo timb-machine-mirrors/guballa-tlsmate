@@ -268,7 +268,7 @@ class ExtSupportedGroups(Extension):
     """Represents the SupportedGroup extension.
 
     Attributes:
-        supported_groups (list of :obj:`tlsmate.tls.SupportedGroup`): The list
+        supported_groups (list of :obj:`tlsmate.tls.SupportedGroups`): The list
             of supported groups.
     """
 
@@ -592,7 +592,7 @@ class ExtKeyShare(Extension):
     provided in the SupportedGroup extension.
 
     Attributes:
-        key_shares (list of :obj:`tlsmate.tls.SupportedGroup`): The list of
+        key_shares (list of :obj:`tlsmate.tls.SupportedGroups`): The list of
             supported groups for which key shares shall be generated.
     """
 

@@ -29,7 +29,7 @@ Refer to :class:`tlsmate.config.Configuration`.
 The Client class
 ----------------
 
-This class is used to implement a TLS client. It is something analog to a
+This class is used to represent a TLS client. It is something analog to a
 browser: It manages everything which needs to be handled outside of a TLS
 connection, e.g., session tickets, trust stores, client certificates, etc. It
 is also responsible for initiating TLS connections, and it has implemented a
@@ -55,7 +55,7 @@ Refer to :class:`tlsmate.client.ClientProfile`.
 The TlsConnection class
 -----------------------
 
-Objects of this class are typically instantiated by the client. they represent a
+Objects of this class are typically instantiated by the client. They represent a
 TLS connection (including the underlying TCP connection) using a python context
 manager. The object and its properties are available even after the connection
 has been closed.

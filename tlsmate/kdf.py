@@ -359,8 +359,8 @@ class Kdf(object):
 
         Arguments:
             suspend (bool): If set to False, provide the message digest in the
-                current state, but allow to add more messages to the digest lateron.
-                If set to True, provide the messge digest, but do not consider
+                current state, but allow to add more messages to the digest later on.
+                If set to True, provide the message digest, but do not consider
                 further messages.
 
         Returns:

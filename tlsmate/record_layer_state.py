@@ -19,7 +19,7 @@ class RecordLayerState(object):
     """Class to represent a dynamic record layer state
 
     Attributes:
-        param (:obj:`tlsmate.structs.StateUpdateParams`): the structure to initialite
+        param (:obj:`tlsmate.structs.StateUpdateParams`): the structure to initialize
             the record layer state.
     """
 
@@ -324,6 +324,8 @@ class RecordLayerState(object):
         Arguments:
             rl_msg (:obj:`tlsmate.structs.RecordLayerMsg`): The record layer
                 message to protect.
+            kwargs (dict): additional parameters which can be used to control CBC
+                padding oracle related behavior
 
         Returns:
             :obj:`tlsmate.structs.RecordLayerMsg`:
@@ -350,7 +352,7 @@ class RecordLayerState(object):
             bytes: The fragment appended with the MAC.
 
         Raises:
-            ServerMalfunction: If the MAC is incorrect.
+            :obj:`tlsmate.exception.ServerMalfunction`: If the MAC is incorrect.
         """
 
         if len(fragment) < self._mac.mac_len:
@@ -405,7 +407,7 @@ class RecordLayerState(object):
             bytes: the decoded fragment.
 
         Raises:
-            ServerMalfunction: If padding errors are detected.
+            :obj:`tlsmate.exception.ServerMalfunction`: If padding errors are detected.
         """
 
         if self._version <= tls.Version.TLS10:
@@ -608,6 +610,9 @@ class RecordLayerState(object):
         Returns:
             :obj:`tlsmate.structs.RecordLayerMsg`:
             The unprotected record layer message (plain text).
+
+        Raises:
+            :obj:`tlsmate.exception.ServerMalfunction`: If padding errors are detected.
         """
 
         aad = (
@@ -649,6 +654,9 @@ class RecordLayerState(object):
         Arguments:
             rl_msg (:obj:`tlsmate.structs.RecordLayerMsg`): The record layer
                 message to unprotect.
+
+            kwargs (dict): additional parameters which can be used to control CBC
+                padding oracle related behavior
 
         Returns:
             :obj:`tlsmate.structs.RecordLayerMsg`:

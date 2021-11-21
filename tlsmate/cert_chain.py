@@ -38,7 +38,7 @@ class CertChainCache(object):
         Arguments:
             cert_chain (:obj:`CertChain`): the certificate chain object
 
-        Returns
+        Returns:
             bool: the validation status of the certificate chain from the cache or
             None if the certificate chain is not found.
         """
@@ -213,7 +213,7 @@ class CertChain(object):
 
         Returns:
             list of :obj:`tlsmate.tls.OcspStatus`: the status, one for each response.
-                An list element can be None, if an empty response is provided.
+            An list element can be None, if an empty response is provided.
         """
 
         ret_status = []
@@ -424,7 +424,7 @@ class CertChain(object):
         return trust_path + issuer_trust_path
 
     def validate(self, timestamp, domain_name, raise_on_failure):
-        """Only the minimal checks are supported.
+        """Validates the certificate chain. Only the minimal checks are supported.
 
         If a discrepancy is found, an exception is raised (depending on
         raise_on_failure).

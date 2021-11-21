@@ -228,7 +228,7 @@ class ArgStyle(Plugin):
         "--style",
         type=str,
         help=(
-            "a yaml file defining the text outout and the color scheme used if "
+            "a yaml file defining the text output and the color scheme used if "
             "--format=text or --format=html is given. If not given, the internal "
             "default file will be used."
         ),
