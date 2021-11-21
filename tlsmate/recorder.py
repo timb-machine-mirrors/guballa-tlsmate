@@ -36,19 +36,19 @@ class Recorder(object):
     """Class implementing a recorder mechanism.
 
     The purpose of the class is to have a build-in mechanism for unit testing. It works
-    by providing hooks to all external interfaces. "External interface" means messages
+    by providing hooks to all external interfaces. `External interface` means messages
     sent and received via the socket as well as numbers generated randomly.
 
     If inactive, the recorder has no functional impact on the rest of tlsmate.
     When recording, the recorder stores all data which are passing the interfaces,
-    and they are "recorded", i.e., they are stored in the recorder object. This mode
+    and they are `recorded`, i.e., they are stored in the recorder object. This mode
     is used to record a unit test case (which can be as complex as a complete scan of
     a server). After the recoding is finished, the complete recorder object is
     serialized to a YAML file.
     When replaying (normally triggered by pytest), the recorder object is deserialized
     from the file, and all recorded data is injected when the external interfaces
     are used. This way an EXACT clone of the connection(s) is/are executed. The
-    replayed test case uses the same keying material as well, it is a "byte-to-byte""
+    replayed test case uses the same keying material as well, it is a `byte-to-byte`
     copy. Of course, all data sent over external interfaces are checked, and any
     deviation with the previously recorded data will let the test case fail.
     Note, that even after some cryptographic operations the recorder is hooked in, this
@@ -100,8 +100,11 @@ class Recorder(object):
         "response": "response",
     }
 
-    def __init__(self):
+    def __init__(self, tlsmate=None):
         self.reset()
+        self._delay = True
+        if tlsmate:
+            self._delay = tlsmate.config.get("recorder_delay")
 
     def reset(self):
         """Reset the recorder to an initial state.
@@ -260,8 +263,8 @@ class Recorder(object):
         """Trace a message received from a socket (if state is recording).
 
         Arguments:
-            timeout (float): the timeout after that the event occured in seconds
-            event_type (:obj:`SocketEvent`): the event that occured
+            timeout (float): the timeout after that the event occurred in seconds
+            event_type (:obj:`SocketEvent`): the event that occurred
             data (bytes): the message in raw format (if event_type is data)
         """
 
@@ -281,7 +284,9 @@ class Recorder(object):
 
         if self._state is RecorderState.REPLAYING:
             timeout, event_type, data = self._unstore_value("msg_recv")
-            time.sleep(timeout)
+            if self._delay:
+                time.sleep(timeout)
+
             if event_type is SocketEvent.CLOSURE:
                 raise TlsConnectionClosedError
 
@@ -380,7 +385,9 @@ class Recorder(object):
 
         if self._state is RecorderState.REPLAYING:
             timeout, event_type, data = self._unstore_value("response")
-            time.sleep(timeout)
+            if self._delay:
+                time.sleep(timeout)
+
             if event_type is SocketEvent.CLOSURE:
                 raise Exception
 
@@ -398,7 +405,7 @@ class Recorder(object):
 
         Arguments:
             timeout (float): the timeout after which the response was received.
-            event_type (:obj:`SocketEvent`): the event that occured
+            event_type (:obj:`SocketEvent`): the event that occurred
             data (bytes): the response object from which only
                 the most relevant attributes are recorded (ok, status_code, content).
                 Only present if event_type is SocketEvent.DATA.
@@ -424,3 +431,19 @@ class Recorder(object):
         """
 
         self.data = utils.deserialize_data(filename)
+
+    def get_timestamp(self):
+        """Return an appropriate timestamp
+
+        Returns:
+            datetime.datetime: the timestamp. If the recorder is injecting, it is the
+            recorded timestamp, else the current time (which is recorded, if the
+            recorder is active).
+        """
+        if self.is_injecting():
+            return self.inject(datetime=None)
+
+        else:
+            timestamp = datetime.datetime.now()
+            self.trace(datetime=timestamp)
+            return timestamp

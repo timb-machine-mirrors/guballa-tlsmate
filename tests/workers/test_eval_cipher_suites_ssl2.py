@@ -33,8 +33,26 @@ class TestCase(TlsSuiteTester):
     server = "localhost"
 
     def check_versions(self, versions):
-        assert len(versions) == 1
+        assert len(versions) == 6
+
         assert versions[0]["version"]["name"] == "SSL20"
+        assert versions[0]["support"] == "TRUE"
+
+        assert versions[1]["version"]["name"] == "SSL30"
+        assert versions[1]["support"] == "FALSE"
+
+        assert versions[2]["version"]["name"] == "TLS10"
+        assert versions[2]["support"] == "FALSE"
+
+        assert versions[3]["version"]["name"] == "TLS11"
+        assert versions[3]["support"] == "FALSE"
+
+        assert versions[4]["version"]["name"] == "TLS12"
+        assert versions[4]["support"] == "FALSE"
+
+        assert versions[5]["version"]["name"] == "TLS13"
+        assert versions[5]["support"] == "FALSE"
+
         for a, b in zip(ssl2_ck, versions[0]["cipher_kinds"]):
             assert a == b["name"]
 

@@ -63,6 +63,7 @@ class TrustStore(object):
         Arguments:
             cert (:obj:`tlsmate.cert.Certificate`): The certificate to add
         """
+
         if cert.fingerprint_sha256 not in self._fingerprint_cache:
             logging.debug(
                 f'adding certificate "{cert.parsed.subject.rfc4514_string()}" '
@@ -83,6 +84,7 @@ class TrustStore(object):
         Returns:
             bool: True, if the given certificate is present in the trust store
         """
+
         if self._ca_files is None and not self._cert_cache:
             return False
 

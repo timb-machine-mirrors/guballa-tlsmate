@@ -160,10 +160,11 @@ class ProfileSchema(Schema):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # self.unknown = INCLUDE
         self.unknown = INCLUDE
 
     @post_load
-    def deserialize(self, data, **kwargs):
+    def deserialize(self, data, reuse_object=None, **kwargs):
         """Instantiate an object and define the properties according to the given dict.
 
         Arguments:
@@ -180,7 +181,13 @@ class ProfileSchema(Schema):
             return data
 
         cls_data = self._get_schema_data(data)
-        obj = cls(data=cls_data)
+        if reuse_object:
+            obj = reuse_object
+            obj.__init__(data=cls_data)
+
+        else:
+            obj = cls(data=cls_data)
+
         for base_cls, ext_cls in self._augments:
             if base_cls is self.__class__:
                 cls_data = ext_cls._get_schema_data(data)
@@ -222,22 +229,31 @@ class ProfileSchema(Schema):
                 del data[key]
         return cls_data
 
-    @staticmethod
-    def augment(base_cls):
+    @classmethod
+    def augment(cls, ext_cls):
         """Decorator to register scheme extensions.
 
+        cls is the class to be extended.
+
+        Examlple:
+            @SPServerProfile.augment
+            class MyExtensions(ProfileSchema):
+                client_simulation = fields.Nested(...)
+                a_number = fields.Integer()
+
+        This extends the schema class SPServerProfile by two more attributes.
+        Note, that __profile_class__ must not be given in the extension class. The
+        name of the extension class has no relevance.
+
         Arguments:
-            base_cls (:class:`ProfileSchema`): the schema class to extend
+            ext_cls (:class:`ProfileSchema`): the schema class containing the extensions
 
         Returns:
             the class used to extend the base_cls class
         """
 
-        def inner(ext_cls):
-            ProfileSchema._augments.append((base_cls, ext_cls))
-            return ext_cls
-
-        return inner
+        cls._augments.append((cls, ext_cls))
+        return ext_cls
 
 
 class ProfileEnumSchema(Schema):
@@ -265,21 +281,12 @@ class SPObject(metaclass=abc.ABCMeta):
     """
 
     def __init__(self, data=None, **kwargs):
-        if data is not None:
-            self._init_from_dict(data)
+        if data is None:
+            data = {}
 
-        else:
-            self._init_from_args(**kwargs)
-
-    def _init_from_dict(self, data):
-        for key, val in data.items():
+        for key, val in {**data, **kwargs}.items():
             if val is not None:
                 setattr(self, key, val)
-
-    def _init_from_args(self, **kwargs):
-        """Specific method to initialize the instance from an object
-        """
-        self._init_from_dict(kwargs)
 
 
 # ### Classes used for the server profile
@@ -321,12 +328,28 @@ class SPGreaseSchema(ProfileSchema):
     """
 
     __profile_class__ = SPGrease
-    version_tolerance = FieldsEnumString(enum_class=tls.SPBool)
-    cipher_suite_tolerance = FieldsEnumString(enum_class=tls.SPBool)
-    extension_tolerance = FieldsEnumString(enum_class=tls.SPBool)
-    group_tolerance = FieldsEnumString(enum_class=tls.SPBool)
-    sig_algo_tolerance = FieldsEnumString(enum_class=tls.SPBool)
-    psk_mode_tolerance = FieldsEnumString(enum_class=tls.SPBool)
+    version_tolerance = FieldsEnumString(enum_class=tls.ScanState)
+    cipher_suite_tolerance = FieldsEnumString(enum_class=tls.ScanState)
+    extension_tolerance = FieldsEnumString(enum_class=tls.ScanState)
+    group_tolerance = FieldsEnumString(enum_class=tls.ScanState)
+    sig_algo_tolerance = FieldsEnumString(enum_class=tls.ScanState)
+    psk_mode_tolerance = FieldsEnumString(enum_class=tls.ScanState)
+
+
+class SPEphemeralKeyReuse(SPObject):
+    """Data class for ephemeral key reuse
+    """
+
+
+class SPEphemeralKeyReuseSchema(ProfileSchema):
+    """Schema for ephemeral key reuse
+    """
+
+    __profile_class__ = SPEphemeralKeyReuse
+    tls12_dhe_reuse = FieldsEnumString(enum_class=tls.ScanState)
+    tls12_ecdhe_reuse = FieldsEnumString(enum_class=tls.ScanState)
+    tls13_dhe_reuse = FieldsEnumString(enum_class=tls.ScanState)
+    tls13_ecdhe_reuse = FieldsEnumString(enum_class=tls.ScanState)
 
 
 class SPFeatures(SPObject):
@@ -340,35 +363,43 @@ class SPFeaturesSchema(ProfileSchema):
 
     __profile_class__ = SPFeatures
     compression = fields.List(fields.Nested(SPCompressionEnumSchema))
-    encrypt_then_mac = FieldsEnumString(enum_class=tls.SPBool)
-    extended_master_secret = FieldsEnumString(enum_class=tls.SPBool)
-    session_id = FieldsEnumString(enum_class=tls.SPBool)
-    session_ticket = FieldsEnumString(enum_class=tls.SPBool)
+    encrypt_then_mac = FieldsEnumString(enum_class=tls.ScanState)
+    extended_master_secret = FieldsEnumString(enum_class=tls.ScanState)
+    session_id = FieldsEnumString(enum_class=tls.ScanState)
+    session_ticket = FieldsEnumString(enum_class=tls.ScanState)
     session_ticket_lifetime = fields.Integer()
-    resumption_psk = FieldsEnumString(enum_class=tls.SPBool)
-    early_data = FieldsEnumString(enum_class=tls.SPBool)
+    resumption_psk = FieldsEnumString(enum_class=tls.ScanState)
+    early_data = FieldsEnumString(enum_class=tls.ScanState)
     psk_lifetime = fields.Integer()
-    insecure_renegotiation = FieldsEnumString(enum_class=tls.SPBool)
-    secure_renegotation = FieldsEnumString(enum_class=tls.SPBool)
-    scsv_renegotiation = FieldsEnumString(enum_class=tls.SPBool)
-    heartbeat = FieldsEnumString(enum_class=tls.SPHeartbeat)
+    insecure_renegotiation = FieldsEnumString(enum_class=tls.ScanState)
+    secure_renegotation = FieldsEnumString(enum_class=tls.ScanState)
+    scsv_renegotiation = FieldsEnumString(enum_class=tls.ScanState)
+    heartbeat = FieldsEnumString(enum_class=tls.HeartbeatState)
     grease = fields.Nested(SPGreaseSchema)
+    ephemeral_key_reuse = fields.Nested(SPEphemeralKeyReuseSchema)
+    ocsp_stapling = FieldsEnumString(enum_class=tls.ScanState)
+    ocsp_multi_stapling = FieldsEnumString(enum_class=tls.ScanState)
+    downgrade_attack_prevention = FieldsEnumString(enum_class=tls.ScanState)
 
 
 class SPPublicKey(SPObject):
     """Data class for all types of public key
     """
 
-    def _init_from_args(self, pub_key):
-        self.key_size = pub_key.key_size
+    def __init__(self, pub_key=None, **kwargs):
+        super().__init__(**kwargs)
+        if not pub_key:
+            return
 
         if isinstance(pub_key, rsa.RSAPublicKey):
+            self.key_size = pub_key.key_size
             self.key_type = tls.SignatureAlgorithm.RSA
             pub_numbers = pub_key.public_numbers()
             self.key_exponent = pub_numbers.e
             self.key = pub_numbers.n.to_bytes(int(pub_key.key_size / 8), "big")
 
         elif isinstance(pub_key, dsa.DSAPublicKey):
+            self.key_size = pub_key.key_size
             self.key_type = tls.SignatureAlgorithm.DSA
             pub_numbers = pub_key.public_numbers()
             self.key = pub_numbers.y.to_bytes(int(pub_key.key_size / 8), "big")
@@ -377,6 +408,7 @@ class SPPublicKey(SPObject):
             self.key_g = utils.int_to_bytes(pub_numbers.parameter_numbers.g)
 
         elif isinstance(pub_key, ec.EllipticCurvePublicKey):
+            self.key_size = pub_key.key_size
             self.key_type = tls.SignatureAlgorithm.ECDSA
             group = mappings.curve_to_group.get(pub_key.curve.name)
             if group is None:
@@ -387,10 +419,12 @@ class SPPublicKey(SPObject):
             )
 
         elif isinstance(pub_key, ed25519.Ed25519PublicKey):
+            self.key_size = 256
             self.key_type = tls.SignatureAlgorithm.ED25519
             self.key = pub_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
 
         elif isinstance(pub_key, ed448.Ed448PublicKey):
+            self.key_size = 456
             self.key_type = tls.SignatureAlgorithm.ED448
             self.key = pub_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
 
@@ -460,7 +494,11 @@ class SPCertGeneralName(SPObject):
     """Data class for general name
     """
 
-    def _init_from_args(self, name):
+    def __init__(self, name=None, **kwargs):
+        super().__init__(**kwargs)
+        if not name:
+            return
+
         if isinstance(name, x509.RFC822Name):
             self.rfc822_name = name.value
 
@@ -501,7 +539,11 @@ class SPCertNoticeReference(SPObject):
     """Data class for notice reference
     """
 
-    def _init_from_args(self, ref):
+    def __init__(self, ref=None, **kwargs):
+        super().__init__(**kwargs)
+        if not ref:
+            return
+
         self.organization = ref.organization
         self.notice_numbers = [number for number in ref.notice_numbers]
 
@@ -519,7 +561,11 @@ class SPCertUserNotice(SPObject):
     """Data class for user notice
     """
 
-    def _init_from_args(self, notice):
+    def __init__(self, notice=None, **kwargs):
+        super().__init__(**kwargs)
+        if not notice:
+            return
+
         if isinstance(notice, x509.UserNotice):
             self.explicit_text = notice.explicit_text
             if notice.notice_reference is not None:
@@ -545,7 +591,11 @@ class SPDistrPoint(SPObject):
     """Data class for distribution point
     """
 
-    def _init_from_args(self, point):
+    def __init__(self, point=None, **kwargs):
+        super().__init__(**kwargs)
+        if not point:
+            return
+
         if point.full_name is not None:
             self.full_name = [SPCertGeneralName(name=name) for name in point.full_name]
 
@@ -578,7 +628,11 @@ class SPCertPolicyInfo(SPObject):
     """Data class for policy info
     """
 
-    def _init_from_args(self, policy):
+    def __init__(self, policy=None, **kwargs):
+        super().__init__(**kwargs)
+        if not policy:
+            return
+
         self.policy_name = policy.policy_identifier._name
         self.policy_oid = policy.policy_identifier.dotted_string
         if policy.policy_qualifiers is not None:
@@ -601,7 +655,11 @@ class SPCertAccessDescription(SPObject):
     """Data class for access description
     """
 
-    def _init_from_args(self, descr):
+    def __init__(self, descr=None, **kwargs):
+        super().__init__(**kwargs)
+        if not descr:
+            return
+
         self.access_method = descr.access_method._name
         self.access_location = descr.access_location.value
 
@@ -619,7 +677,11 @@ class SPCertSignedTimestamp(SPObject):
     """Data class for signed certificate timestamp
     """
 
-    def _init_from_args(self, timestamp):
+    def __init__(self, timestamp=None, **kwargs):
+        super().__init__(**kwargs)
+        if not timestamp:
+            return
+
         self.version = timestamp.version.name
         self.log_id = timestamp.log_id
         self.timestamp = timestamp.timestamp
@@ -675,7 +737,7 @@ class SPCertExtension(SPObject):
         self.key_usage = key_usage
 
     def _ext_basic_constraints(self, value):
-        self.ca = tls.SPBool(value.ca)
+        self.ca = tls.ScanState(value.ca)
         if value.path_length is not None:
             self.path_length = value.path_length
 
@@ -764,7 +826,6 @@ class SPCertExtension(SPObject):
 
     def _ext_cert_issuer(self, value):
         raise NotImplementedError
-        pass
 
     def _ext_crl_reason(self, value):
         logging.error("Certificate extensions CertIssuer not implemented")
@@ -806,10 +867,14 @@ class SPCertExtension(SPObject):
         x509.extensions.OCSPNonce: _ext_ocsp_nonce,
     }
 
-    def _init_from_args(self, ext):
+    def __init__(self, ext=None, **kwargs):
+        super().__init__(**kwargs)
+        if not ext:
+            return
+
         self.name = ext.value.__class__.__name__
         self.oid = ext.oid.dotted_string
-        self.criticality = tls.SPBool(ext.critical)
+        self.criticality = tls.ScanState(ext.critical)
         func = self._map_ext.get(type(ext.value))
         if func is not None:
             func(self, ext.value)
@@ -822,7 +887,7 @@ class SPCertExtUnrecognizedExtensionSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
     bytes = FieldsBytes()
 
 
@@ -833,7 +898,7 @@ class SPCertExtKeyUsageSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
     key_usage = fields.List(FieldsEnumString(enum_class=tls.CertKeyUsage))
 
 
@@ -844,8 +909,8 @@ class SPCertExtBasicConstraintsSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
-    ca = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
+    ca = FieldsEnumString(enum_class=tls.ScanState)
     path_length = fields.Integer()
 
 
@@ -856,7 +921,7 @@ class SPCertExtExtendedKeyUsageSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
     extended_key_usage = fields.List(fields.String())
 
 
@@ -867,7 +932,7 @@ class SPCertExtOCSPNoCheckSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
 
 
 class SPCertExtTLSFeatureSchema(ProfileSchema):
@@ -877,7 +942,7 @@ class SPCertExtTLSFeatureSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
     tls_features = fields.List(FieldsEnumString(enum_class=tls.Extension))
 
 
@@ -888,7 +953,7 @@ class SPCertExtNameConstraintsSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
     permitted_subtrees = fields.List(fields.Nested(SPCertGeneralNameSchema))
     excluded_subtrees = fields.List(fields.Nested(SPCertGeneralNameSchema))
 
@@ -900,7 +965,7 @@ class SPCertExtAuthorityKeyIdentifierSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
     key_identifier = FieldsBytes()
     authority_cert_issuer = fields.List(fields.Nested(SPCertGeneralNameSchema))
     authority_cert_serial_number = fields.Integer()
@@ -913,7 +978,7 @@ class SPCertExtSubjectKeyIdentifierSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
     digest = FieldsBytes()
 
 
@@ -924,7 +989,7 @@ class SPCertExtSubjectAlternativeNameSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
     subj_alt_names = fields.List(fields.String())
 
 
@@ -935,7 +1000,7 @@ class SPCertExtIssuerAlternativeNameSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
     issuer_alt_name = fields.List(fields.String())
 
 
@@ -946,7 +1011,7 @@ class SPCertExtPrecertSignedCertTimestampsSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
     signed_certificate_timestamps = fields.List(
         fields.Nested(SPCertSignedTimestampSchema)
     )
@@ -959,7 +1024,7 @@ class SPCertExtPrecertPoisonSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
 
 
 class SPCertExtSignedCertificateTimestampsSchema(ProfileSchema):
@@ -969,7 +1034,7 @@ class SPCertExtSignedCertificateTimestampsSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
     signed_certificate_timestamps = fields.List(
         fields.Nested(SPCertSignedTimestampSchema)
     )
@@ -982,7 +1047,7 @@ class SPCertExtDeltaCRLIndicatorSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
 
 
 class SPCertExtAuthorityInformationAccessSchema(ProfileSchema):
@@ -992,7 +1057,7 @@ class SPCertExtAuthorityInformationAccessSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
     authority_info_access = fields.List(fields.Nested(SPCertAccessDescriptionSchema))
 
 
@@ -1003,7 +1068,7 @@ class SPCertExtSubjectInformationAccessSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
 
 
 class SPCertExtFreshestCRLSchema(ProfileSchema):
@@ -1013,7 +1078,7 @@ class SPCertExtFreshestCRLSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
 
 
 class SPCertExtCRLDistributionPointsSchema(ProfileSchema):
@@ -1023,7 +1088,7 @@ class SPCertExtCRLDistributionPointsSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
     distribution_points = fields.List(fields.Nested(SPDistrPointSchema))
 
 
@@ -1034,7 +1099,7 @@ class SPCertExtInhibitAnyPolicySchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
 
 
 class SPCertExtPolicyConstraintsSchema(ProfileSchema):
@@ -1044,7 +1109,7 @@ class SPCertExtPolicyConstraintsSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
     require_explicit_policy = fields.Integer()
     inhibit_policy_mapping = fields.Integer()
 
@@ -1056,7 +1121,7 @@ class SPCertExtCRLNumberSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
 
 
 class SPCertExtIssuingDistributionPointSchema(ProfileSchema):
@@ -1066,7 +1131,7 @@ class SPCertExtIssuingDistributionPointSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
 
 
 class SPCertExtCertificatePoliciesSchema(ProfileSchema):
@@ -1076,7 +1141,7 @@ class SPCertExtCertificatePoliciesSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
     cert_policies = fields.List(fields.Nested(SPCertPolicyInfoSchema))
 
 
@@ -1087,7 +1152,7 @@ class SPCertExtCertificateIssuerSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
 
 
 class SPCertExtCRLReasonSchema(ProfileSchema):
@@ -1097,7 +1162,7 @@ class SPCertExtCRLReasonSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
 
 
 class SPCertExtInvalidityDateSchema(ProfileSchema):
@@ -1107,7 +1172,7 @@ class SPCertExtInvalidityDateSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
 
 
 class SPCertExtOCSPNonceSchema(ProfileSchema):
@@ -1117,7 +1182,7 @@ class SPCertExtOCSPNonceSchema(ProfileSchema):
     __profile_class__ = SPCertExtension
     name = fields.String()
     oid = fields.String()
-    criticality = FieldsEnumString(enum_class=tls.SPBool)
+    criticality = FieldsEnumString(enum_class=tls.ScanState)
 
 
 class SPCertExtensionSchema(OneOfSchema):
@@ -1165,7 +1230,11 @@ class SPCertificate(SPObject):
     """Data class for a certificate.
     """
 
-    def _init_from_args(self, cert):
+    def __init__(self, cert=None, **kwargs):
+        super().__init__(**kwargs)
+        if not cert:
+            return
+
         self.pem = cert.pem.decode()
         self.subject = cert.subject_str
         self.issuer = cert.parsed.issuer.rfc4514_string()
@@ -1177,9 +1246,9 @@ class SPCertificate(SPObject):
         self.not_valid_after = cert.parsed.not_valid_after
         diff = cert.parsed.not_valid_after - cert.parsed.not_valid_before
         self.validity_period_days = diff.days
-        self.self_signed = tls.SPBool(cert.self_signed)
+        self.self_signed = tls.ScanState(cert.self_signed)
         if cert.subject_matches is not None:
-            self.subject_matches = tls.SPBool(cert.subject_matches)
+            self.subject_matches = tls.ScanState(cert.subject_matches)
         self.fingerprint_sha1 = cert.fingerprint_sha1
         self.fingerprint_sha256 = cert.fingerprint_sha256
         self.signature_algorithm = cert.signature_algorithm
@@ -1191,6 +1260,10 @@ class SPCertificate(SPObject):
             self.ocsp_revocation_status = cert.ocsp_status
         if cert.issues:
             self.issues = cert.issues
+        self.ocsp_must_staple = cert.ocsp_must_staple
+        self.ocsp_must_staple_multi = cert.ocsp_must_staple_multi
+        self.extended_validation = cert.extended_validation
+        self.from_trust_store = tls.ScanState(cert.from_trust_store)
 
 
 class SPCertificateSchema(ProfileSchema):
@@ -1208,30 +1281,38 @@ class SPCertificateSchema(ProfileSchema):
     not_valid_before = fields.DateTime()
     not_valid_after = fields.DateTime()
     validity_period_days = fields.Integer()
-    self_signed = FieldsEnumString(enum_class=tls.SPBool)
-    subject_matches = FieldsEnumString(enum_class=tls.SPBool)
+    self_signed = FieldsEnumString(enum_class=tls.ScanState)
+    subject_matches = FieldsEnumString(enum_class=tls.ScanState)
     fingerprint_sha1 = FieldsBytes()
     fingerprint_sha256 = FieldsBytes()
     signature_algorithm = FieldsEnumString(enum_class=tls.SignatureScheme)
     public_key = fields.Nested(SPPublicKeySchema)
     crl_revocation_status = FieldsEnumString(enum_class=tls.CertCrlStatus)
     ocsp_revocation_status = FieldsEnumString(enum_class=tls.OcspStatus)
+    ocsp_must_staple = FieldsEnumString(enum_class=tls.ScanState)
+    ocsp_must_staple_multi = FieldsEnumString(enum_class=tls.ScanState)
     extensions = fields.List(fields.Nested(SPCertExtensionSchema))
+    extended_validation = FieldsEnumString(enum_class=tls.ScanState)
     issues = fields.List(fields.String())
+    from_trust_store = FieldsEnumString(enum_class=tls.ScanState)
 
 
 class SPCertChain(SPObject):
     """Data class for a certificate chain.
     """
 
-    def _init_from_args(self, chain):
+    def __init__(self, chain=None, **kwargs):
+        super().__init__(**kwargs)
+        if not chain:
+            return
+
         self.id = chain.id
-        self.successful_validation = tls.SPBool(chain.successful_validation)
+        self.successful_validation = tls.ScanState(chain.successful_validation)
         self.cert_chain = [SPCertificate(cert=cert) for cert in chain.certificates]
         if chain.issues:
             self.issues = chain.issues
 
-        self.root_cert_transmitted = tls.SPBool(chain.root_cert_transmitted)
+        self.root_cert_transmitted = tls.ScanState(chain.root_cert_transmitted)
         if chain.root_cert is not None:
             self.root_certificate = SPCertificate(cert=chain.root_cert)
 
@@ -1242,10 +1323,10 @@ class SPCertChainSchema(ProfileSchema):
 
     __profile_class__ = SPCertChain
     id = fields.Integer()
-    successful_validation = FieldsEnumString(enum_class=tls.SPBool)
+    successful_validation = FieldsEnumString(enum_class=tls.ScanState)
     cert_chain = fields.List(fields.Nested(SPCertificateSchema))
     issues = fields.List(fields.String())
-    root_cert_transmitted = FieldsEnumString(enum_class=tls.SPBool)
+    root_cert_transmitted = FieldsEnumString(enum_class=tls.ScanState)
     root_certificate = fields.Nested(SPCertificateSchema)
 
 
@@ -1273,9 +1354,9 @@ class SPSupportedGroupsSchema(ProfileSchema):
     """
 
     __profile_class__ = SPSupportedGroups
-    extension_supported = FieldsEnumString(enum_class=tls.SPBool)
-    server_preference = FieldsEnumString(enum_class=tls.SPBool)
-    groups_advertised = FieldsEnumString(enum_class=tls.SPBool)
+    extension_supported = FieldsEnumString(enum_class=tls.ScanState)
+    server_preference = FieldsEnumString(enum_class=tls.ScanState)
+    groups_advertised = FieldsEnumString(enum_class=tls.ScanState)
     groups = fields.List(fields.Nested(SPSupportedGroupEnumSchema))
 
 
@@ -1290,8 +1371,9 @@ class SPSignatureAlgorithms(SPObject):
     """Data class for signature algorithms
     """
 
-    def _init_from_args(self):
+    def __init__(self, **kwargs):
         self.algorithms = []
+        super().__init__(**kwargs)
 
 
 class SPSignatureAlgorithmsSchema(ProfileSchema):
@@ -1310,6 +1392,13 @@ class SPCipherSuiteSchema(ProfileEnumSchema):
     __profile_class__ = tls.CipherSuite
 
 
+class SPRecordProtocolSchema(ProfileEnumSchema):
+    """Schema for a record protocol type.
+    """
+
+    __profile_class__ = tls.ContentType
+
+
 class SPCiphers(SPObject):
     """Data class for ciphers
     """
@@ -1321,7 +1410,8 @@ class SPCiphersSchema(ProfileSchema):
 
     __profile_class__ = SPCiphers
     cipher_suites = fields.List(fields.Nested(SPCipherSuiteSchema))
-    server_preference = FieldsEnumString(enum_class=tls.SPBool)
+    server_preference = FieldsEnumString(enum_class=tls.ScanState)
+    chacha_poly_preference = FieldsEnumString(enum_class=tls.ScanState)
 
 
 class SPCipherKindSchema(ProfileEnumSchema):
@@ -1394,6 +1484,53 @@ class SPVersionSchema(ProfileSchema):
     supported_groups = fields.Nested(SPSupportedGroupsSchema)
     signature_algorithms = fields.Nested(SPSignatureAlgorithmsSchema)
     version = fields.Nested(SPVersionEnumSchema)
+    support = FieldsEnumString(enum_class=tls.ScanState)
+
+
+class SPCipherGroup(SPObject):
+    """Data class for a cipher group (cipher suite, tls version, record protocol)
+    """
+
+
+class SPCipherGroupSchema(ProfileSchema):
+    """Schema for a cipher group (cipher suite, TLS version, record protocol)
+    """
+
+    __profile_class__ = SPCipherGroup
+    version = fields.Nested(SPVersionEnumSchema)
+    cipher_suite = fields.Nested(SPCipherSuiteSchema)
+    record_protocol = fields.Nested(SPRecordProtocolSchema)
+
+
+class SPCbcPaddingOracle(SPObject):
+    """Data class for CBC padding oracles
+    """
+
+
+class SPCbcPaddingOracleSchema(ProfileSchema):
+    """Schema for CBC padding oracles
+    """
+
+    __profile_class__ = SPCbcPaddingOracle
+    observable = FieldsEnumString(enum_class=tls.ScanState)
+    strong = FieldsEnumString(enum_class=tls.ScanState)
+    types = fields.List(FieldsEnumString(enum_class=tls.SPCbcPaddingOracle))
+    cipher_group = fields.List(fields.Nested(SPCipherGroupSchema))
+
+
+class SPCbcPaddingOracleInfo(SPObject):
+    """Data class for CBC padding oracle info
+    """
+
+
+class SPCbcPaddingOracleInfoSchema(ProfileSchema):
+    """Schema for CBC padding oracle info
+    """
+
+    __profile_class__ = SPCbcPaddingOracleInfo
+    vulnerable = FieldsEnumString(enum_class=tls.ScanState)
+    accuracy = FieldsEnumString(enum_class=tls.OracleScanAccuracy)
+    oracles = fields.List(fields.Nested(SPCbcPaddingOracleSchema))
 
 
 class SPVulnerabilities(SPObject):
@@ -1406,9 +1543,81 @@ class SPVulnerabilitiesSchema(ProfileSchema):
     """
 
     __profile_class__ = SPVulnerabilities
-    ccs_injection = FieldsEnumString(enum_class=tls.SPBool)
+    ccs_injection = FieldsEnumString(enum_class=tls.ScanState)
     heartbleed = FieldsEnumString(enum_class=tls.HeartbleedStatus)
     robot = FieldsEnumString(enum_class=tls.RobotVulnerability)
+    poodle = FieldsEnumString(enum_class=tls.ScanState)
+    tls_poodle = FieldsEnumString(enum_class=tls.ScanState)
+    lucky_minus_20 = FieldsEnumString(enum_class=tls.ScanState)
+    cbc_padding_oracle = fields.Nested(SPCbcPaddingOracleInfoSchema)
+    beast = FieldsEnumString(enum_class=tls.ScanState)
+    crime = FieldsEnumString(enum_class=tls.ScanState)
+    sweet_32 = FieldsEnumString(enum_class=tls.ScanState)
+    freak = FieldsEnumString(enum_class=tls.ScanState)
+    logjam = FieldsEnumString(enum_class=tls.Logjam)
+
+
+class SPMalfunctionIssue(SPObject):
+    """Data class for a server issue
+    """
+
+    def __init__(self, issue=None, **kwargs):
+        super().__init__(**kwargs)
+        if not issue:
+            return
+
+        self.name = issue.name
+        self.description = issue.value
+
+
+class SPMalfunctionIssueSchema(ProfileSchema):
+    """Schema for malfunction issue
+    """
+
+    __profile_class__ = SPMalfunctionIssue
+    name = fields.String()
+    description = fields.String()
+
+
+class SPMalfunctionMessageSchema(ProfileEnumSchema):
+    """Schema for malfunction message
+    """
+
+    __profile_class__ = tls.HandshakeType
+
+
+class SPMalfunctionExtensionSchema(ProfileEnumSchema):
+    """Schema for malfunction extension
+    """
+
+    __profile_class__ = tls.Extension
+
+
+class SPServerMalfunction(SPObject):
+    """Data class for server malfunction
+    """
+
+    def __init__(self, malfunction=None, **kwargs):
+        super().__init__(**kwargs)
+        if not malfunction:
+            return
+
+        self.issue = SPMalfunctionIssue(issue=malfunction.issue)
+        if malfunction.message:
+            self.message = malfunction.message
+
+        if malfunction.extension:
+            self.extension = malfunction.extension
+
+
+class SPServerMalfunctionSchema(ProfileSchema):
+    """Schema for server malfunction
+    """
+
+    __profile_class__ = SPServerMalfunction
+    issue = fields.Nested(SPMalfunctionIssueSchema)
+    message = fields.Nested(SPMalfunctionMessageSchema)
+    extension = fields.Nested(SPMalfunctionExtensionSchema)
 
 
 class ServerProfile(SPObject):
@@ -1420,21 +1629,39 @@ class ServerProfile(SPObject):
         features (:obj:`SPFeatures`): the profile structure for the features supported
             by the server
         scan_info (:obj:`SPScanInfo`): object describing basic scan information
-        server (:obj:`SPServer`): object describing the sercer's details
+        server (:obj:`SPServer`): object describing the server's details
         versions (list of :obj:`SPVersion`): list versions supported by the server
         vulnerabilities (:obj:`SPVulnerabilities`): object containing infos regarding
             the vulnerabilities
     """
 
-    def _init_from_args(self):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         self._hash = {}
 
-        self.cert_chains = []
-        self.features = SPFeatures()
-        self.scan_info = SPScanInfo()
-        self.server = SPServer()
-        self.versions = []
-        self.vulnerabilities = SPVulnerabilities()
+    def allocate_versions(self):
+        """Ensure that the versions property and cert_chains properties are setup.
+        """
+
+        if not hasattr(self, "versions"):
+            self.versions = []
+
+        if not hasattr(self, "cert_chains"):
+            self.cert_chains = []
+
+    def allocate_features(self):
+        """Ensure that the features property is setup.
+        """
+
+        if not hasattr(self, "features"):
+            self.features = SPFeatures()
+
+    def allocate_vulnerabilities(self):
+        """Ensure that the vulnerabilities property is setup.
+        """
+
+        if not hasattr(self, "vulnerabilities"):
+            self.vulnerabilities = SPVulnerabilities()
 
     def append_unique_cert_chain(self, chain):
         """Append a certificate chain to the profile, if not yet present.
@@ -1462,10 +1689,17 @@ class ServerProfile(SPObject):
             list(:obj:`tlsmate.tls.Version`): A list of all supported versions.
         """
 
+        if not hasattr(self, "versions"):
+            return []
+
         if exclude is None:
             exclude = []
 
-        return [obj.version for obj in self.versions if obj.version not in exclude]
+        return [
+            obj.version
+            for obj in self.versions
+            if obj.version not in exclude and obj.support is tls.ScanState.TRUE
+        ]
 
     def get_version_profile(self, version):
         """Get the profile entry for a given version.
@@ -1475,9 +1709,9 @@ class ServerProfile(SPObject):
             version is not supported by the server.
         """
 
-        for version_obj in self.versions:
-            if version_obj.version is version:
-                return version_obj
+        for vers_obj in self.versions:
+            if vers_obj.version is version and vers_obj.support is tls.ScanState.TRUE:
+                return vers_obj
 
         return None
 
@@ -1645,6 +1879,7 @@ class ServerProfileSchema(ProfileSchema):
     features = fields.Nested(SPFeaturesSchema)
     scan_info = fields.Nested(SPScanInfoSchema)
     server = fields.Nested(SPServerSchema)
+    server_malfunctions = fields.List(fields.Nested(SPServerMalfunctionSchema))
     versions = fields.List(fields.Nested(SPVersionSchema))
     vulnerabilities = fields.Nested(SPVulnerabilitiesSchema)
 
@@ -1654,5 +1889,4 @@ class ServerProfileSchema(ProfileSchema):
 
     @post_load
     def deserialize(self, data, **kwargs):
-        if self._profile is not None:
-            self._profile._init_from_dict(data)
+        super().deserialize(data, reuse_object=self._profile, **kwargs)

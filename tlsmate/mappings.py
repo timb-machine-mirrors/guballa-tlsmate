@@ -2125,3 +2125,22 @@ curve_to_group = {
     "sect571k1": tls.SupportedGroups.SECT571K1,
     "sect571r1": tls.SupportedGroups.SECT571R1,
 }
+
+issue_to_alert_description = {
+    tls.ServerIssue.PSK_OUT_OF_RANGE: tls.AlertDescription.ILLEGAL_PARAMETER,
+    tls.ServerIssue.KEY_SHARE_NOT_PRESENT: tls.AlertDescription.HANDSHAKE_FAILURE,
+    tls.ServerIssue.SECURE_RENEG_FAILED: tls.AlertDescription.ILLEGAL_PARAMETER,
+    tls.ServerIssue.VERIFY_DATA_INVALID: tls.AlertDescription.ILLEGAL_PARAMETER,
+    tls.ServerIssue.CERT_REQ_NO_SIG_ALGO: tls.AlertDescription.MISSING_EXTENSION,
+    tls.ServerIssue.EXTENTION_LENGHT_ERROR: tls.AlertDescription.DECODE_ERROR,
+    tls.ServerIssue.SNI_NO_HOSTNAME: tls.AlertDescription.HANDSHAKE_FAILURE,
+    tls.ServerIssue.FFDH_GROUP_UNKNOWN: tls.AlertDescription.ILLEGAL_PARAMETER,
+    tls.ServerIssue.MESSAGE_LENGTH_ERROR: tls.AlertDescription.DECODE_ERROR,
+    tls.ServerIssue.INCOMPATIBLE_KEY_EXCHANGE: tls.AlertDescription.HANDSHAKE_FAILURE,
+    tls.ServerIssue.PARAMETER_LENGTH_ERROR: tls.AlertDescription.DECODE_ERROR,
+    tls.ServerIssue.RECORD_TOO_SHORT: tls.AlertDescription.BAD_RECORD_MAC,
+    tls.ServerIssue.RECORD_MAC_INVALID: tls.AlertDescription.BAD_RECORD_MAC,
+    tls.ServerIssue.RECORD_WRONG_PADDING_LENGTH: tls.AlertDescription.BAD_RECORD_MAC,
+    tls.ServerIssue.RECORD_WRONG_PADDING_BYTES: tls.AlertDescription.BAD_RECORD_MAC,
+    tls.ServerIssue.ILLEGAL_PARAMETER_VALUE: tls.AlertDescription.ILLEGAL_PARAMETER,
+}

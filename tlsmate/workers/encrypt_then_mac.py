@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
-"""Module containing the test suite
+"""Module scanning for the excrypt-then-mac extension
 """
 # import basic stuff
 
 # import own stuff
 from tlsmate import tls
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 from tlsmate import utils
 
 # import other stuff
 
 
-class ScanEncryptThenMac(WorkerPlugin):
+class ScanEncryptThenMac(Worker):
     name = "encrypt_then_mac"
-    descr = "check if the extension encrypt_then_mac is supported"
+    descr = "scan for extension encrypt_then_mac support"
     prio = 30
 
     def run(self):
-        state = tls.SPBool.C_UNDETERMINED
+        state = tls.ScanState.UNDETERMINED
         versions = [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]
 
         prof_values = self.server_profile.get_profile_values(versions, full_hs=True)
@@ -27,7 +27,7 @@ class ScanEncryptThenMac(WorkerPlugin):
 
         if not cipher_suites:
             # no CBC cipher suite supported
-            state = tls.SPBool.C_NA
+            state = tls.ScanState.NA
         else:
             self.client.init_profile(profile_values=prof_values)
             self.client.profile.cipher_suites = cipher_suites
@@ -36,7 +36,9 @@ class ScanEncryptThenMac(WorkerPlugin):
                 conn.handshake()
             if conn.handshake_completed:
                 if conn.msg.server_hello.get_extension(tls.Extension.ENCRYPT_THEN_MAC):
-                    state = tls.SPBool.C_TRUE
+                    state = tls.ScanState.TRUE
                 else:
-                    state = tls.SPBool.C_FALSE
+                    state = tls.ScanState.FALSE
+
+        self.server_profile.allocate_features()
         self.server_profile.features.encrypt_then_mac = state

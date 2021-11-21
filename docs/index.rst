@@ -15,6 +15,7 @@ The project is hosted on `GitLab <https://gitlab.com/guballa/tlsmate>`_.
    overview
    installation
    usage
+   scanner_output
    tlsfeatures
 
 .. toctree::
@@ -32,6 +33,7 @@ The project is hosted on `GitLab <https://gitlab.com/guballa/tlsmate>`_.
    plugin
    class_description
    testcase
+   style
 
 .. toctree::
    :caption: Python Modules

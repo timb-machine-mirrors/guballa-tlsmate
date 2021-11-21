@@ -7,7 +7,7 @@ import abc
 import time
 
 # import own stuff
-from tlsmate.exception import FatalAlert
+from tlsmate.exception import ServerMalfunction
 from tlsmate import tls
 from tlsmate import structs
 from tlsmate import pdu
@@ -73,7 +73,7 @@ class Extension(metaclass=abc.ABCMeta):
         ext_body, offset = pdu.unpack_bytes(fragment, offset, ext_len)
         cls_name = deserialization_map.get(ext_id)
         if cls_name is None:
-            return ExtUnknownExtension(id=ext_id_int, bytes=fragment)
+            return ExtUnknownExtension(id=ext_id_int, bytes=fragment[4:]), len(fragment)
 
         extension = cls_name()
         extension._deserialize_ext_body(ext_body)
@@ -139,9 +139,8 @@ class ExtServerNameIndication(Extension):
 
         list_length, offset = pdu.unpack_uint16(fragment, 0)
         if offset + list_length != len(fragment):
-            raise FatalAlert(
-                f"Extension {self.extension_id}: list length incorrect",
-                tls.AlertDescription.DECODE_ERROR,
+            raise ServerMalfunction(
+                tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
         while offset < len(fragment):
@@ -152,9 +151,8 @@ class ExtServerNameIndication(Extension):
                 self.host_name = name.decode()
 
         if self.host_name is None:
-            raise FatalAlert(
-                f"{self.extension_id}: host_name not present",
-                tls.AlertDescription.DECODE_ERROR,
+            raise ServerMalfunction(
+                tls.ServerIssue.SNI_NO_HOSTNAME, extension=self.extension_id
             )
 
 
@@ -171,9 +169,8 @@ class ExtExtendedMasterSecret(Extension):
 
     def _deserialize_ext_body(self, ext_body):
         if ext_body:
-            raise FatalAlert(
-                f"Message length error for {self.extension_id}",
-                tls.AlertDescription.DECODE_ERROR,
+            raise ServerMalfunction(
+                tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
 
@@ -190,9 +187,8 @@ class ExtEncryptThenMac(Extension):
 
     def _deserialize_ext_body(self, ext_body):
         if ext_body:
-            raise FatalAlert(
-                f"Message length error for {self.extension_id}",
-                tls.AlertDescription.DECODE_ERROR,
+            raise ServerMalfunction(
+                tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
 
@@ -259,9 +255,8 @@ class ExtEcPointFormats(Extension):
         self.ec_point_formats = []
         length, offset = pdu.unpack_uint8(ext_body, 0)
         if offset + length != len(ext_body):
-            raise FatalAlert(
-                f"Message length error for {self.extension_id}",
-                tls.AlertDescription.DECODE_ERROR,
+            raise ServerMalfunction(
+                tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
         for i in range(length):
@@ -273,7 +268,7 @@ class ExtSupportedGroups(Extension):
     """Represents the SupportedGroup extension.
 
     Attributes:
-        supported_groups (list of :obj:`tlsmate.tls.SupportedGroup`): The list
+        supported_groups (list of :obj:`tlsmate.tls.SupportedGroups`): The list
             of supported groups.
     """
 
@@ -428,6 +423,132 @@ class ExtSessionTicket(Extension):
         pass
 
 
+class ExtStatusRequest(Extension):
+    """Represents the status_request extension.
+
+    Attributes:
+        status_type (:obj:`tlsmate.tls.StatusType`): The status type. Defaults to
+            :obj:`tlsmate.tls.StatusType.OCSP`.
+        responder_ids (list of bytes): The list of responder ids. Defaults to an empty
+            list.
+        extensions (list of bytes): The list of extensions. Defaults to an empty
+            list.
+    """
+
+    extension_id = tls.Extension.STATUS_REQUEST
+    """:obj:`tlsmate.tls.Extension.STATUS_REQUEST`
+    """
+
+    def __init__(
+        self, status_type=tls.StatusType.OCSP, responder_ids=None, extensions=None
+    ):
+        self.status_type = status_type
+        if responder_ids is None:
+            responder_ids = []
+
+        self.reponder_ids = responder_ids
+        if extensions is None:
+            extensions = []
+
+        self.extensions = extensions
+        self.ocsp_response = None
+
+    def _serialize_ext_body(self, conn):
+        ext_body = bytearray()
+        ext_body.extend(
+            pdu.pack_uint8(getattr(self.status_type, "value", self.status_type))
+        )
+
+        responders = bytearray()
+        for responder in self.reponder_ids:
+            responders.extend(pdu.pack_uint16(len(responder)))
+            responders.extend(responder)
+
+        ext_body.extend(pdu.pack_uint16(len(responders)))
+        ext_body.extend(responders)
+
+        extensions = bytearray()
+        for extension in self.extensions:
+            extensions.extend(pdu.pack_uint16(len(extension)))
+            extensions.extend(extension)
+
+        ext_body.extend(pdu.pack_uint16(len(extensions)))
+        ext_body.extend(extensions)
+        return ext_body
+
+    def _deserialize_ext_body(self, ext_body):
+        if not len(ext_body):
+            self.status_type = tls.StatusType.NONE
+            return
+
+        status_type, offset = pdu.unpack_uint8(ext_body, 0)
+        self.status_type = tls.StatusType.val2enum(status_type)
+        length, offset = pdu.unpack_uint24(ext_body, offset)
+        self.ocsp_response, offset = pdu.unpack_bytes(ext_body, offset, length)
+
+
+class ExtStatusRequestV2(Extension):
+    """Represents the status_requestv2 extension.
+
+    Attributes:
+        status_type (:obj:`tlsmate.tls.StatusType`): The status type. Defaults to
+            :obj:`tlsmate.tls.StatusType.OCSP`.
+        responder_ids (list of bytes): The list of responder ids. Defaults to an empty
+            list.
+        extensions (list of bytes): The list of extensions. Defaults to an empty
+            list.
+    """
+
+    extension_id = tls.Extension.STATUS_REQUEST_V2
+    """:obj:`tlsmate.tls.Extension.STATUS_REQUEST_V2`
+    """
+
+    def __init__(
+        self, status_type=tls.StatusType.OCSP_MULTI, responder_ids=None, extensions=b""
+    ):
+        self._requests = []
+        self.add_request(status_type, responder_ids, extensions)
+
+    def add_request(self, status_type, responder_ids=None, extensions=b""):
+        if responder_ids is None:
+            responder_ids = []
+
+        self._requests.append((status_type, responder_ids, extensions))
+
+    def _serialize_ext_body(self, conn):
+
+        ext_body = bytearray()
+        for status_type, responder_ids, extensions in self._requests:
+            request_item = bytearray(
+                pdu.pack_uint8(getattr(status_type, "value", status_type))
+            )
+            status_request = bytearray()
+            responders = bytearray()
+            for responder in responder_ids:
+                responders.extend(pdu.pack_uint16(len(responder)))
+                responders.extend(responder)
+            status_request.extend(pdu.pack_uint16(len(responders)))
+            status_request.extend(responders)
+            status_request.extend(pdu.pack_uint16(len(extensions)))
+            status_request.extend(extensions)
+            request_item.extend(pdu.pack_uint16(len(status_request)))
+            request_item.extend(status_request)
+            ext_body.extend(pdu.pack_uint16(len(request_item)))
+            ext_body.extend(request_item)
+
+        return ext_body
+
+    def _deserialize_ext_body(self, ext_body):
+        if not len(ext_body):
+            self.status_type = tls.StatusType.NONE
+            return
+
+        status_type, offset = pdu.unpack_uint8(ext_body, 0)
+        self.status_type = tls.StatusType.val2enum(status_type)
+        length, offset = pdu.unpack_uint24(ext_body, offset)
+        self.ocsp_response, offset = pdu.unpack_bytes(ext_body, offset, length)
+
+
 class ExtSupportedVersions(Extension):
     """Represents the SupportedVersion extension.
 
@@ -471,7 +592,7 @@ class ExtKeyShare(Extension):
     provided in the SupportedGroup extension.
 
     Attributes:
-        key_shares (list of :obj:`tlsmate.tls.SupportedGroup`): The list of
+        key_shares (list of :obj:`tlsmate.tls.SupportedGroups`): The list of
             supported groups for which key shares shall be generated.
     """
 
@@ -616,21 +737,19 @@ class ExtPostHandshakeAuth(Extension):
 
     def _deserialize_ext_body(self, ext_body):
         if ext_body:
-            raise FatalAlert(
-                f"Message length error for {self.extension_id}",
-                tls.AlertDescription.DECODE_ERROR,
+            raise ServerMalfunction(
+                tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
 
-"""Map the extensions id to the corresponding class.
-"""
+# Map the extensions id to the corresponding class.
 deserialization_map = {
     tls.Extension.SERVER_NAME: ExtServerNameIndication,
     # tls.Extension.MAX_FRAGMENT_LENGTH = 1
     # tls.Extension.CLIENT_CERTIFICATE_URL = 2
     # tls.Extension.TRUSTED_CA_KEYS = 3
     # tls.Extension.TRUNCATED_HMAC = 4
-    # tls.Extension.STATUS_REQUEST = 5
+    tls.Extension.STATUS_REQUEST: ExtStatusRequest,
     # tls.Extension.USER_MAPPING = 6
     # tls.Extension.CLIENT_AUTHZ = 7
     # tls.Extension.SERVER_AUTHZ = 8
@@ -642,7 +761,7 @@ deserialization_map = {
     # tls.Extension.USE_SRTP = 14
     tls.Extension.HEARTBEAT: ExtHeartbeat,
     # tls.Extension.APPLICATION_LAYER_PROTOCOL_NEGOTIATION = 16
-    # tls.Extension.STATUS_REQUEST_V2 = 17
+    tls.Extension.STATUS_REQUEST_V2: ExtStatusRequestV2,
     # tls.Extension.SIGNED_CERTIFICATE_TIMESTAMP = 18
     # tls.Extension.CLIENT_CERTIFICATE_TYPE = 19
     # tls.Extension.SERVER_CERTIFICATE_TYPE = 20

@@ -7,7 +7,7 @@ a test case.
 .. note::
 
     In all of the following code snippets we will assume that we are
-    subclassing from the class :class:`tlsmate.plugin.WorkerPlugin`. Thus, if
+    subclassing from the class :class:`tlsmate.plugin.Worker`. Thus, if
     ``self`` is used, it always refers to an object of that class.
     The code snippets shown here are typically implemented in the ``run`` method.
     Futhermore, we will assume that all required tlsmate modules have been
@@ -28,7 +28,7 @@ The client profile basically provides a comfortable way of specifying the
 behavior of the client. Refer to :class:`tlsmate.client.ClientProfile` to
 get a complete overview which attributes are supported.
 
-When using :class:`tlsmate.plugin.WorkerPlugin` as a base class, the
+When using :class:`tlsmate.plugin.Worker` as a base class, the
 client profile can be accessed with ``self.client.profile``.
 
 For example, if only the TLS versions TLS1.1 and TLS1.2 shall be supported in a
@@ -47,7 +47,7 @@ accept server responses where the version in the ServerHello is set to TLS1.1.
 
 .. note::
 
-    We focus in the example on the TLS version. Of course, the other
+    In the example we focus on the TLS version. Of course, the other
     parameters in the ClientHello will be set according to the current
     attributes of the client profile.
 
@@ -74,9 +74,9 @@ Using TLS messages
 ------------------
 
 There are two ways of setting up TLS messages. Either, do it yourself, or let
-``tlsmate`` do that work.
+``tlsmate`` do that work. An example for the latter case is shown above.
 
-Here is an example of the first case:
+Here is an example where a message is setup "manually":
 
 .. code-block:: python
 
@@ -102,6 +102,15 @@ Here is an example of the first case:
     For the documentation of the message properties refer to
     :doc:`py_msg`.
 
+The latter case where ``tlsmate`` generates the ClientHello by itself
+has been shown in the previous example. Instead of an message object
+the message class is passed to the connection method ``send``.
+
+.. code-block:: python
+
+    with self.client.create_connection() as conn:
+        conn.send(msg.ClientHello)
+
 .. note::
 
     The application data message is special, as it must be always
@@ -113,15 +122,6 @@ Here is an example of the first case:
         with self.client.create_connection() as conn:
             conn.handshake()
             conn.send(msg.AppData(b'this is a dummy text'))
-
-The latter case where ``tlsmate`` generates the ClientHello by itself
-has been shown in the previous example. Instead of an message object
-the message class is passed to the connection method ``send``.
-
-.. code-block:: python
-
-    with self.client.create_connection() as conn:
-        conn.send(msg.ClientHello)
 
 When a message is received, :meth:`tlsmate.connection.TlsConnection.wait`
 will return a message object, and the message attributes can be accessed,
@@ -211,7 +211,7 @@ E.g.:
 
 .. code-block:: python
 
-    sv_hello_done, sv_hello_done_bytes = conn.wait(msg.ServerHelloDone)
+    sv_hello_done, sv_hello_done_bytes = conn.wait_msg_bytes(msg.ServerHelloDone)
     assert sv_hello_done_bytes == bytes.fromhex("0e 00 00 00")
 
 All other arguments are the same for both methods. Refer to
@@ -326,7 +326,7 @@ Example:
 In the example above nothing will be printed, as the timeout
 exception is raised and the context manager will be left prematurely.
 
-However, the argument ``fail_on_timout`` can be set to False, in which
+However, the argument ``fail_on_timeout`` can be set to False, in which
 case the ``wait`` method will return None, but the scenario continues:
 
 .. code-block:: python
@@ -466,7 +466,7 @@ suites defined officially by IANA:
     TLS_RSA_PSK_WITH_CHACHA20_POLY1305_SHA256
 
 Another example: Filter all cipher suites using either ECDHE_ECDSA or
-ECDHE_RSA, and for which ``tlamate`` supports a full handshake:
+ECDHE_RSA, and for which ``tlsmate`` supports a full handshake:
 
 .. code-block:: python
 
@@ -542,7 +542,7 @@ The server profile was originally intended for scans only, but nothing prevents
 an ordinary plugin to deserialize a stored server profile and use it for its
 own purpose.
 
-For classes derived from :class:`tlsmate.plugin.WorkerPlugin` access to the server
+For classes derived from :class:`tlsmate.plugin.Worker` access to the server
 profile is provided by ``self.server_profile``.
 
 Several methods are defined to retrieve basic information from the profile. Of
@@ -562,11 +562,12 @@ part of the profile that is related to the given TLS version.
 the list of supported cipher suites, supported groups or supported signature
 algorithms for the given TLS protocol version.
 
-The method :meth:`tlsmate.server_profile.ServerProfile.get_profile_values` collects
-the list of supported cipher suites, supported groups and supported signature
-algorithms for the given list of cipher suites, and provides this information
-as a named tuple :class:`tlsmate.structs.ProfileValues`. This named tuple
-can be used to initialize the client profile.
+The method :meth:`tlsmate.server_profile.ServerProfile.get_profile_values`
+collects the list of supported cipher suites, supported groups and
+supported signature algorithms for the given list of TLS protocol versions,
+and provides this information as a named tuple
+:class:`tlsmate.structs.ProfileValues`. This named tuple can be used to
+initialize the client profile.
 
 For example, the following code sets up the client profile based on the server
 profile for testing for session_id support:
@@ -593,7 +594,7 @@ Information retrieved from a test case may be stored in the server profile.
 
 .. code-block:: python
 
-    session_id_supported = tls.SPBool.C_TRUE
+    session_id_supported = tls.ScanState.TRUE
     self.server_profile.features.session_id = session_id_supported
 
 The structure of the server profile is defined by so called "schema" classes.

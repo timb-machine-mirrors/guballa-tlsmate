@@ -1,0 +1,340 @@
+cert_chains:
+- cert_chain:
+  - crl_revocation_status: NOT_REVOKED
+    extended_validation: 'FALSE'
+    extensions:
+    - ca: 'FALSE'
+      criticality: 'TRUE'
+      name: BasicConstraints
+      oid: 2.5.29.19
+    - criticality: 'FALSE'
+      name: SubjectAlternativeName
+      oid: 2.5.29.17
+      subj_alt_names:
+      - test.localhost
+      - '*.wildcard.localhost'
+    - criticality: 'FALSE'
+      extended_key_usage:
+      - serverAuth
+      name: ExtendedKeyUsage
+      oid: 2.5.29.37
+    - criticality: 'FALSE'
+      digest: 49:61:c3:21:e8:ae:98:53:04:bb:f1:55:28:af:fd:7d:04:8b:24:36
+      name: SubjectKeyIdentifier
+      oid: 2.5.29.14
+    - criticality: 'FALSE'
+      key_identifier: ed:0f:4f:b8:b9:0e:4e:e5:a8:70:07:a1:ea:83:8d:8d:e2:d9:6d:f9
+      name: AuthorityKeyIdentifier
+      oid: 2.5.29.35
+    - authority_info_access:
+      - access_location: http://crt.localhost:44400/certs/ca-ecdsa.crt
+        access_method: caIssuers
+      - access_location: http://ocsp.localhost:44402
+        access_method: OCSP
+      criticality: 'FALSE'
+      name: AuthorityInformationAccess
+      oid: 1.3.6.1.5.5.7.1.1
+    - criticality: 'FALSE'
+      distribution_points:
+      - full_name:
+        - uri: http://crl.localhost:44400/crl/ca-ecdsa.crl
+      name: CRLDistributionPoints
+      oid: 2.5.29.31
+    - cert_policies:
+      - policy_name: Unknown OID
+        policy_oid: 2.23.140.1.2.1
+      criticality: 'FALSE'
+      name: CertificatePolicies
+      oid: 2.5.29.32
+    - criticality: 'FALSE'
+      name: TLSFeature
+      oid: 1.3.6.1.5.5.7.1.24
+      tls_features:
+      - STATUS_REQUEST
+      - STATUS_REQUEST_V2
+    fingerprint_sha1: 22:de:0c:88:cb:af:cd:5e:97:d8:25:68:57:42:42:60:c6:75:3f:ee
+    fingerprint_sha256: db:b3:4e:01:1e:c2:54:51:51:d5:99:9b:70:ff:a6:a8:94:e2:ee:ca:2b:2f:49:46:57:96:b4:63:f8:b7:71:1f
+    from_trust_store: 'FALSE'
+    issuer: CN=localhost Intermediate CA ECDSA,O=The TlsMate Company,C=DE
+    not_valid_after: '2031-10-22T15:52:08'
+    not_valid_before: '2021-10-24T15:52:08'
+    ocsp_must_staple: 'TRUE'
+    ocsp_must_staple_multi: 'TRUE'
+    ocsp_revocation_status: NOT_REVOKED
+    pem: |
+      -----BEGIN CERTIFICATE-----
+      MIIDCDCCAo6gAwIBAgIICKYM6V9/OvowCgYIKoZIzj0EAwIwVTELMAkGA1UEBhMC
+      REUxHDAaBgNVBAoME1RoZSBUbHNNYXRlIENvbXBhbnkxKDAmBgNVBAMMH2xvY2Fs
+      aG9zdCBJbnRlcm1lZGlhdGUgQ0EgRUNEU0EwHhcNMjExMDI0MTU1MjA4WhcNMzEx
+      MDIyMTU1MjA4WjBVMQswCQYDVQQGEwJERTEyMDAGA1UECgwpVGhlIFRsc01hdGUg
+      Q29tcGFueSAoU2VydmVyIHNpZGUpIEVkMjU1MTkxEjAQBgNVBAMMCWxvY2FsaG9z
+      dDAqMAUGAytlcAMhABn0qGSBBtBIQAOl1jnc+rr9H2PBwwkNrc5/04oq0S3Co4IB
+      dTCCAXEwDAYDVR0TAQH/BAIwADAvBgNVHREEKDAmgg50ZXN0LmxvY2FsaG9zdIIU
+      Ki53aWxkY2FyZC5sb2NhbGhvc3QwEwYDVR0lBAwwCgYIKwYBBQUHAwEwHQYDVR0O
+      BBYEFElhwyHorphTBLvxVSiv/X0EiyQ2MB8GA1UdIwQYMBaAFO0PT7i5Dk7lqHAH
+      oeqDjY3i2W35MHIGCCsGAQUFBwEBBGYwZDA5BggrBgEFBQcwAoYtaHR0cDovL2Ny
+      dC5sb2NhbGhvc3Q6NDQ0MDAvY2VydHMvY2EtZWNkc2EuY3J0MCcGCCsGAQUFBzAB
+      hhtodHRwOi8vb2NzcC5sb2NhbGhvc3Q6NDQ0MDIwPAYDVR0fBDUwMzAxoC+gLYYr
+      aHR0cDovL2NybC5sb2NhbGhvc3Q6NDQ0MDAvY3JsL2NhLWVjZHNhLmNybDATBgNV
+      HSAEDDAKMAgGBmeBDAECATAUBggrBgEFBQcBGAQIMAYCAQUCAREwCgYIKoZIzj0E
+      AwIDaAAwZQIxANEBmhu5vMm2clHn92HjRXwzCuFzsYgiXYEI/mOQ1BbRzOzay8yW
+      LJ872o07BcDCVAIwLej454fYALgVNI8IZW1G2KvKmUW8UDc2NQOXXhOJJG/qEObv
+      /D7d2DT8q+fSFTyz
+      -----END CERTIFICATE-----
+    public_key:
+      key: 19:f4:a8:64:81:06:d0:48:40:03:a5:d6:39:dc:fa:ba:fd:1f:63:c1:c3:09:0d:ad:ce:7f:d3:8a:2a:d1:2d:c2
+      key_type: ED25519
+    self_signed: 'FALSE'
+    serial_number_bytes: 08:a6:0c:e9:5f:7f:3a:fa
+    serial_number_int: 623199794906479354
+    signature: 30:65:02:31:00:d1:01:9a:1b:b9:bc:c9:b6:72:51:e7:f7:61:e3:45:7c:33:0a:e1:73:b1:88:22:5d:81:08:fe:63:90:d4:16:d1:cc:ec:da:cb:cc:96:2c:9f:3b:da:8d:3b:05:c0:c2:54:02:30:2d:e8:f8:e7:87:d8:00:b8:15:34:8f:08:65:6d:46:d8:ab:ca:99:45:bc:50:37:36:35:03:97:5e:13:89:24:6f:ea:10:e6:ef:fc:3e:dd:d8:34:fc:ab:e7:d2:15:3c:b3
+    signature_algorithm: ECDSA_SECP256R1_SHA256
+    subject: CN=localhost,O=The TlsMate Company (Server side) Ed25519,C=DE
+    subject_matches: 'TRUE'
+    validity_period_days: 3650
+    version: Version.v3
+  - crl_revocation_status: NOT_REVOKED
+    extended_validation: NA
+    extensions:
+    - ca: 'TRUE'
+      criticality: 'TRUE'
+      name: BasicConstraints
+      oid: 2.5.29.19
+      path_length: 0
+    - criticality: 'TRUE'
+      key_usage:
+      - KEY_CERT_SIGN
+      - CRL_SIGN
+      name: KeyUsage
+      oid: 2.5.29.15
+    - criticality: 'FALSE'
+      digest: ed:0f:4f:b8:b9:0e:4e:e5:a8:70:07:a1:ea:83:8d:8d:e2:d9:6d:f9
+      name: SubjectKeyIdentifier
+      oid: 2.5.29.14
+    - criticality: 'FALSE'
+      key_identifier: 18:61:69:ff:74:2d:f6:44:ba:dc:14:fd:04:00:55:48:b9:f9:98:5a
+      name: AuthorityKeyIdentifier
+      oid: 2.5.29.35
+    - authority_info_access:
+      - access_location: http://crt.localhost:44400/certs/root-ecdsa.crt
+        access_method: caIssuers
+      - access_location: http://ocsp.localhost:44404
+        access_method: OCSP
+      criticality: 'FALSE'
+      name: AuthorityInformationAccess
+      oid: 1.3.6.1.5.5.7.1.1
+    - criticality: 'FALSE'
+      distribution_points:
+      - full_name:
+        - uri: http://crl.localhost:44400/crl/root-ecdsa.crl
+      name: CRLDistributionPoints
+      oid: 2.5.29.31
+    - criticality: 'TRUE'
+      excluded_subtrees:
+      - ip_address: 0.0.0.0/0
+      - ip_address: ::/0
+      name: NameConstraints
+      oid: 2.5.29.30
+      permitted_subtrees:
+      - dns_name: .localhost
+    - criticality: 'FALSE'
+      name: TLSFeature
+      oid: 1.3.6.1.5.5.7.1.24
+      tls_features:
+      - STATUS_REQUEST
+      - STATUS_REQUEST_V2
+    fingerprint_sha1: c4:4a:ba:d7:61:62:84:f6:43:bc:97:bd:5e:7d:d8:67:3e:23:04:64
+    fingerprint_sha256: 59:b7:e7:6e:9b:b7:a4:a4:05:32:57:34:bf:16:fe:8e:ab:62:55:a1:1d:2a:3d:14:75:3c:17:05:0d:55:5c:c4
+    from_trust_store: 'FALSE'
+    issuer: CN=localhost Root CA ECDSA,O=The TlsMate Company,C=DE
+    not_valid_after: '2031-10-22T15:52:08'
+    not_valid_before: '2021-10-24T15:52:08'
+    ocsp_must_staple: 'TRUE'
+    ocsp_must_staple_multi: 'TRUE'
+    ocsp_revocation_status: NOT_REVOKED
+    pem: |
+      -----BEGIN CERTIFICATE-----
+      MIIDWjCCAuGgAwIBAgIIBT8V9bC4xVAwCgYIKoZIzj0EAwIwTTELMAkGA1UEBhMC
+      REUxHDAaBgNVBAoME1RoZSBUbHNNYXRlIENvbXBhbnkxIDAeBgNVBAMMF2xvY2Fs
+      aG9zdCBSb290IENBIEVDRFNBMB4XDTIxMTAyNDE1NTIwOFoXDTMxMTAyMjE1NTIw
+      OFowVTELMAkGA1UEBhMCREUxHDAaBgNVBAoME1RoZSBUbHNNYXRlIENvbXBhbnkx
+      KDAmBgNVBAMMH2xvY2FsaG9zdCBJbnRlcm1lZGlhdGUgQ0EgRUNEU0EwdjAQBgcq
+      hkjOPQIBBgUrgQQAIgNiAAQsNxE4PisxNR+cq+Qo5zUyi3g83PbjE76qUMwOy32k
+      pd7+2Zv2RHpTgMzhyJhEIw/tFwBwQq0vTmZzn17GgnprvQ0ExI98CmRYof3XvfG9
+      MWdd7gb5TKGbrMkAzN7pwEmjggGEMIIBgDASBgNVHRMBAf8ECDAGAQH/AgEAMA4G
+      A1UdDwEB/wQEAwIBBjAdBgNVHQ4EFgQU7Q9PuLkOTuWocAeh6oONjeLZbfkwHwYD
+      VR0jBBgwFoAUGGFp/3Qt9kS63BT9BABVSLn5mFowdAYIKwYBBQUHAQEEaDBmMDsG
+      CCsGAQUFBzAChi9odHRwOi8vY3J0LmxvY2FsaG9zdDo0NDQwMC9jZXJ0cy9yb290
+      LWVjZHNhLmNydDAnBggrBgEFBQcwAYYbaHR0cDovL29jc3AubG9jYWxob3N0OjQ0
+      NDA0MD4GA1UdHwQ3MDUwM6AxoC+GLWh0dHA6Ly9jcmwubG9jYWxob3N0OjQ0NDAw
+      L2NybC9yb290LWVjZHNhLmNybDBOBgNVHR4BAf8ERDBCoA4wDIIKLmxvY2FsaG9z
+      dKEwMAqHCAAAAAAAAAAAMCKHIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+      AAAAMBQGCCsGAQUFBwEYBAgwBgIBBQIBETAKBggqhkjOPQQDAgNnADBkAi8FA05X
+      z/pAX9yJliFwe6XVzew7HS/kjvLqDCeE/4X5/0uOVUitBoX31AgAo3st+QIxAP1e
+      rbNpzUxFduCGp2Wy4lvaXSNtbY1Nx8GBwAosODEqxRoLV2CrhNw5YjclNZTwkQ==
+      -----END CERTIFICATE-----
+    public_key:
+      curve: SECP384R1
+      key: 04:2c:37:11:38:3e:2b:31:35:1f:9c:ab:e4:28:e7:35:32:8b:78:3c:dc:f6:e3:13:be:aa:50:cc:0e:cb:7d:a4:a5:de:fe:d9:9b:f6:44:7a:53:80:cc:e1:c8:98:44:23:0f:ed:17:00:70:42:ad:2f:4e:66:73:9f:5e:c6:82:7a:6b:bd:0d:04:c4:8f:7c:0a:64:58:a1:fd:d7:bd:f1:bd:31:67:5d:ee:06:f9:4c:a1:9b:ac:c9:00:cc:de:e9:c0:49
+      key_size: 384
+      key_type: ECDSA
+    self_signed: 'FALSE'
+    serial_number_bytes: 05:3f:15:f5:b0:b8:c5:50
+    serial_number_int: 378045038698480976
+    signature: 30:64:02:2f:05:03:4e:57:cf:fa:40:5f:dc:89:96:21:70:7b:a5:d5:cd:ec:3b:1d:2f:e4:8e:f2:ea:0c:27:84:ff:85:f9:ff:4b:8e:55:48:ad:06:85:f7:d4:08:00:a3:7b:2d:f9:02:31:00:fd:5e:ad:b3:69:cd:4c:45:76:e0:86:a7:65:b2:e2:5b:da:5d:23:6d:6d:8d:4d:c7:c1:81:c0:0a:2c:38:31:2a:c5:1a:0b:57:60:ab:84:dc:39:62:37:25:35:94:f0:91
+    signature_algorithm: ECDSA_SECP256R1_SHA256
+    subject: CN=localhost Intermediate CA ECDSA,O=The TlsMate Company,C=DE
+    validity_period_days: 3650
+    version: Version.v3
+  id: 1
+  root_cert_transmitted: 'FALSE'
+  root_certificate:
+    extended_validation: NA
+    extensions:
+    - ca: 'TRUE'
+      criticality: 'TRUE'
+      name: BasicConstraints
+      oid: 2.5.29.19
+    - criticality: 'TRUE'
+      key_usage:
+      - KEY_CERT_SIGN
+      - CRL_SIGN
+      name: KeyUsage
+      oid: 2.5.29.15
+    - criticality: 'FALSE'
+      digest: 18:61:69:ff:74:2d:f6:44:ba:dc:14:fd:04:00:55:48:b9:f9:98:5a
+      name: SubjectKeyIdentifier
+      oid: 2.5.29.14
+    - criticality: 'FALSE'
+      key_identifier: 18:61:69:ff:74:2d:f6:44:ba:dc:14:fd:04:00:55:48:b9:f9:98:5a
+      name: AuthorityKeyIdentifier
+      oid: 2.5.29.35
+    fingerprint_sha1: 95:d4:be:b1:6f:72:2e:a8:9c:2d:85:cc:d7:b6:64:3c:65:45:9e:37
+    fingerprint_sha256: 59:aa:21:6a:13:26:e8:ae:a4:89:7e:2d:c1:b4:8d:f2:27:f7:bc:b6:fe:32:58:bd:b4:4e:94:05:58:b4:95:a7
+    from_trust_store: 'TRUE'
+    issuer: CN=localhost Root CA ECDSA,O=The TlsMate Company,C=DE
+    not_valid_after: '2031-10-22T15:52:07'
+    not_valid_before: '2021-10-24T15:52:07'
+    ocsp_must_staple: 'FALSE'
+    ocsp_must_staple_multi: 'FALSE'
+    pem: |
+      -----BEGIN CERTIFICATE-----
+      MIICPDCCAcKgAwIBAgIUW4Ic+oCwfTxh8zF+frivtKr/ea0wCgYIKoZIzj0EAwIw
+      TTELMAkGA1UEBhMCREUxHDAaBgNVBAoME1RoZSBUbHNNYXRlIENvbXBhbnkxIDAe
+      BgNVBAMMF2xvY2FsaG9zdCBSb290IENBIEVDRFNBMB4XDTIxMTAyNDE1NTIwN1oX
+      DTMxMTAyMjE1NTIwN1owTTELMAkGA1UEBhMCREUxHDAaBgNVBAoME1RoZSBUbHNN
+      YXRlIENvbXBhbnkxIDAeBgNVBAMMF2xvY2FsaG9zdCBSb290IENBIEVDRFNBMHYw
+      EAYHKoZIzj0CAQYFK4EEACIDYgAEtayupn92fUWIYRdcLjdkyK2JJZ0zdl8dPY93
+      MTR0zv5nAwwIpF3lkTKunnMhwNZTSmEjhNpW8w5/UlT3ds2r4XLf/t6itqu6dVb9
+      tgPGKUvueZr8+Vf01m4DfaNhhwvqo2MwYTAPBgNVHRMBAf8EBTADAQH/MA4GA1Ud
+      DwEB/wQEAwIBBjAdBgNVHQ4EFgQUGGFp/3Qt9kS63BT9BABVSLn5mFowHwYDVR0j
+      BBgwFoAUGGFp/3Qt9kS63BT9BABVSLn5mFowCgYIKoZIzj0EAwIDaAAwZQIxAJuR
+      GhhkBRptwy8QVtWciskWdXkgUit3l6vE7Lg8injQbLHcT68C/s/rAFv728sKRwIw
+      WCdoPSwipXGf5FsoA3dCanodxxdEo8yl4qKX3Jjzm3UkYE6mteEwXFiPVRqfMTqv
+      -----END CERTIFICATE-----
+    public_key:
+      curve: SECP384R1
+      key: 04:b5:ac:ae:a6:7f:76:7d:45:88:61:17:5c:2e:37:64:c8:ad:89:25:9d:33:76:5f:1d:3d:8f:77:31:34:74:ce:fe:67:03:0c:08:a4:5d:e5:91:32:ae:9e:73:21:c0:d6:53:4a:61:23:84:da:56:f3:0e:7f:52:54:f7:76:cd:ab:e1:72:df:fe:de:a2:b6:ab:ba:75:56:fd:b6:03:c6:29:4b:ee:79:9a:fc:f9:57:f4:d6:6e:03:7d:a3:61:87:0b:ea
+      key_size: 384
+      key_type: ECDSA
+    self_signed: 'TRUE'
+    serial_number_bytes: 5b:82:1c:fa:80:b0:7d:3c:61:f3:31:7e:7e:b8:af:b4:aa:ff:79:ad
+    serial_number_int: 522419781406433765027913324933085847475332282797
+    signature: 30:65:02:31:00:9b:91:1a:18:64:05:1a:6d:c3:2f:10:56:d5:9c:8a:c9:16:75:79:20:52:2b:77:97:ab:c4:ec:b8:3c:8a:78:d0:6c:b1:dc:4f:af:02:fe:cf:eb:00:5b:fb:db:cb:0a:47:02:30:58:27:68:3d:2c:22:a5:71:9f:e4:5b:28:03:77:42:6a:7a:1d:c7:17:44:a3:cc:a5:e2:a2:97:dc:98:f3:9b:75:24:60:4e:a6:b5:e1:30:5c:58:8f:55:1a:9f:31:3a:af
+    signature_algorithm: ECDSA_SECP256R1_SHA256
+    subject: CN=localhost Root CA ECDSA,O=The TlsMate Company,C=DE
+    validity_period_days: 3650
+    version: Version.v3
+  successful_validation: 'TRUE'
+versions:
+- support: 'FALSE'
+  version:
+    id: 512
+    name: SSL20
+- support: 'FALSE'
+  version:
+    id: 768
+    name: SSL30
+- support: 'FALSE'
+  version:
+    id: 769
+    name: TLS10
+- support: 'FALSE'
+  version:
+    id: 770
+    name: TLS11
+- ciphers:
+    chacha_poly_preference: NA
+    cipher_suites:
+    - id: 49161
+      name: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA
+    - id: 49162
+      name: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+    - id: 49187
+      name: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256
+    - id: 49188
+      name: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384
+    - id: 49195
+      name: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+    - id: 49196
+      name: TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+    - id: 52393
+      name: TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+    server_preference: 'FALSE'
+  support: 'TRUE'
+  supported_groups:
+    extension_supported: 'TRUE'
+    groups:
+    - id: 23
+      name: SECP256R1
+    - id: 24
+      name: SECP384R1
+    - id: 25
+      name: SECP521R1
+    - id: 29
+      name: X25519
+    - id: 30
+      name: X448
+    groups_advertised: NA
+    server_preference: 'FALSE'
+  version:
+    id: 771
+    name: TLS12
+- ciphers:
+    cipher_suites:
+    - id: 4865
+      name: TLS_AES_128_GCM_SHA256
+    - id: 4866
+      name: TLS_AES_256_GCM_SHA384
+    - id: 4867
+      name: TLS_CHACHA20_POLY1305_SHA256
+    server_preference: 'FALSE'
+  support: 'TRUE'
+  supported_groups:
+    extension_supported: 'TRUE'
+    groups:
+    - id: 23
+      name: SECP256R1
+    - id: 24
+      name: SECP384R1
+    - id: 25
+      name: SECP521R1
+    - id: 29
+      name: X25519
+    - id: 30
+      name: X448
+    - id: 256
+      name: FFDHE2048
+    - id: 257
+      name: FFDHE3072
+    - id: 258
+      name: FFDHE4096
+    - id: 259
+      name: FFDHE6144
+    - id: 260
+      name: FFDHE8192
+    groups_advertised: 'TRUE'
+    server_preference: 'FALSE'
+  version:
+    id: 772
+    name: TLS13

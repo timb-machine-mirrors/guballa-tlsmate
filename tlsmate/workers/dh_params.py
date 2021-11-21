@@ -5,7 +5,7 @@
 
 # import own stuff
 from tlsmate import tls
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 from tlsmate import msg
 from tlsmate import utils
 from tlsmate.dh_numbers import DHNumbers, KnownDhGroups
@@ -14,9 +14,9 @@ from tlsmate.server_profile import SPDhGroup
 # import other stuff
 
 
-class ScanDhGroups(WorkerPlugin):
+class ScanDhGroups(Worker):
     name = "dh_groups"
-    descr = "check for DH groups"
+    descr = "scan for supported DH groups"
     prio = 30
 
     def _update_profile(self, version, g_val, p_val):

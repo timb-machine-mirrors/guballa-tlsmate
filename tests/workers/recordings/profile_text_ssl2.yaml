@@ -1,0 +1,98 @@
+cert_chains: []
+features:
+    downgrade_attack_prevention: NA
+    early_data: NA
+    encrypt_then_mac: NA
+    ephemeral_key_reuse:
+        tls12_dhe_reuse: NA
+        tls12_ecdhe_reuse: NA
+        tls13_dhe_reuse: NA
+        tls13_ecdhe_reuse: NA
+    extended_master_secret: NA
+    grease:
+        cipher_suite_tolerance: 'FALSE'
+        extension_tolerance: NA
+        group_tolerance: NA
+        psk_mode_tolerance: NA
+        sig_algo_tolerance: NA
+        version_tolerance: 'FALSE'
+    heartbeat: NA
+    insecure_renegotiation: NA
+    ocsp_multi_stapling: NA
+    ocsp_stapling: NA
+    resumption_psk: NA
+    scsv_renegotiation: NA
+    secure_renegotation: NA
+    session_id: NA
+    session_ticket: NA
+scan_info:
+    command: tlsmate scan localhost --port=44330 --format=yaml --write-profile=/home/jens/project/tlsmate/tests/workers/recordings/profile_text_ssl2.yaml
+    run_time: 0.321
+    start_date: '2021-11-11T23:03:31'
+    start_timestamp: 1636668211.3567374
+    stop_date: '2021-11-11T23:03:31'
+    stop_timestamp: 1636668211.677475
+    version: 1.0.1.dev194
+server:
+    ip: 127.0.0.1
+    name_resolution:
+        domain_name: localhost
+        ipv4_addresses:
+        - 127.0.0.1
+    port: 44330
+    sni: localhost
+versions:
+-   cipher_kinds:
+    -   id: 65664
+        name: SSL_CK_RC4_128_WITH_MD5
+    -   id: 131200
+        name: SSL_CK_RC4_128_EXPORT40_WITH_MD5
+    -   id: 196736
+        name: SSL_CK_RC2_128_CBC_WITH_MD5
+    -   id: 262272
+        name: SSL_CK_RC2_128_CBC_EXPORT40_WITH_MD5
+    -   id: 327808
+        name: SSL_CK_IDEA_128_CBC_WITH_MD5
+    -   id: 393280
+        name: SSL_CK_DES_64_CBC_WITH_MD5
+    -   id: 458944
+        name: SSL_CK_DES_192_EDE3_CBC_WITH_MD5
+    support: 'TRUE'
+    version:
+        id: 512
+        name: SSL20
+-   support: 'FALSE'
+    version:
+        id: 768
+        name: SSL30
+-   support: 'FALSE'
+    version:
+        id: 769
+        name: TLS10
+-   support: 'FALSE'
+    version:
+        id: 770
+        name: TLS11
+-   support: 'FALSE'
+    version:
+        id: 771
+        name: TLS12
+-   support: 'FALSE'
+    version:
+        id: 772
+        name: TLS13
+vulnerabilities:
+    beast: 'FALSE'
+    cbc_padding_oracle:
+        accuracy: MEDIUM
+        vulnerable: NA
+    ccs_injection: NA
+    crime: UNDETERMINED
+    freak: 'FALSE'
+    heartbleed: NOT_APPLICABLE
+    logjam: NA
+    lucky_minus_20: NA
+    poodle: 'FALSE'
+    robot: NOT_APPLICABLE
+    sweet_32: 'FALSE'
+    tls_poodle: NA

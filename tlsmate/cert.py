@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Module for handling a certificate chain
+"""Module for certificates
 """
 # import basic stuff
 import logging
@@ -21,6 +21,48 @@ from cryptography.hazmat.primitives.asymmetric import (
     ed448,
 )
 from cryptography.hazmat.primitives.serialization import Encoding
+
+
+# list of EV OIDs. Sources:
+# - https://chromium.googlesource.com/chromium/src/net/+/refs/heads/main/cert/ev_root_ca_metadata.cc  # noqa
+# - https://hg.mozilla.org/mozilla-central/file/tip/security/certverifier/ExtendedValidation.cpp  # noqa
+_ev_oids = [
+    "1.2.156.112559.1.1.6.1",
+    "1.2.392.200091.100.721.1",
+    "1.2.616.1.113527.2.5.1.1",
+    "1.3.159.1.17.1",
+    "1.3.171.1.1.10.5.2",
+    "1.3.6.1.4.1.13177.10.1.3.10",
+    "1.3.6.1.4.1.14777.6.1.1",
+    "1.3.6.1.4.1.14777.6.1.2",
+    "1.3.6.1.4.1.17326.10.14.2.1.2",
+    "1.3.6.1.4.1.17326.10.14.2.2.2",
+    "1.3.6.1.4.1.34697.2.1",
+    "1.3.6.1.4.1.34697.2.2",
+    "1.3.6.1.4.1.34697.2.3",
+    "1.3.6.1.4.1.34697.2.4",
+    "1.3.6.1.4.1.40869.1.1.22.3",
+    "1.3.6.1.4.1.4146.1.1",
+    "1.3.6.1.4.1.4788.2.202.1",
+    "1.3.6.1.4.1.6334.1.100.1",
+    "1.3.6.1.4.1.6449.1.2.1.5.1",
+    "1.3.6.1.4.1.782.1.2.1.8.1",
+    "1.3.6.1.4.1.7879.13.24.1",
+    "1.3.6.1.4.1.8024.0.2.100.1.2",
+    "2.16.156.112554.3",
+    "2.16.528.1.1003.1.2.7",
+    "2.16.578.1.26.1.3.3",
+    "2.16.756.1.89.1.2.1.1",
+    "2.16.756.5.14.7.4.8",
+    "2.16.792.3.0.4.1.1.4",
+    "2.16.840.1.114028.10.1.2",
+    "2.16.840.1.114404.1.1.2.4.1",
+    "2.16.840.1.114412.2.1",
+    "2.16.840.1.114413.1.7.23.3",
+    "2.16.840.1.114414.1.7.23.3",
+    "2.16.840.1.114414.1.7.24.3",
+    "2.23.140.1.1",
+]
 
 
 class Certificate(object):
@@ -57,7 +99,13 @@ class Certificate(object):
         self.crl_status = None
         self.ocsp_status = None
         self.issues = []
-        self.trusted = None
+        self.trusted = tls.ScanState.UNDETERMINED
+        self.tls_extensions = []
+        self.issuer_cert = None
+        self.ocsp_must_staple = tls.ScanState.FALSE
+        self.ocsp_must_staple_multi = tls.ScanState.FALSE
+        self.extended_validation = tls.ScanState.NA
+        self.from_trust_store = False
 
         if der is not None:
             self._bytes = der
@@ -103,7 +151,8 @@ class Certificate(object):
 
     @property
     def bytes(self):
-        """bytes: the certificate in raw format"""
+        """bytes: the certificate in raw format, i.e. in DER format.
+        """
         if self._bytes is None:
             self._bytes = self.parsed.public_bytes(Encoding.DER)
         return self._bytes
@@ -165,7 +214,7 @@ class Certificate(object):
             sig_scheme = size_to_algo.get(public_key.curve.key_size)
             if sig_scheme is None:
                 raise ValueError(
-                    f"unknown keysize {public_key.curve.key_size} for ECDSA public key"
+                    f"unknown key size {public_key.curve.key_size} for ECDSA public key"
                 )
 
             self.tls12_signature_algorithms = [sig_scheme]
@@ -215,6 +264,45 @@ class Certificate(object):
         except x509.ExtensionNotFound:
             self.subject_key_id = None
 
+        try:
+            tls_features = self._parsed.extensions.get_extension_for_oid(
+                ExtensionOID.TLS_FEATURE
+            ).value
+
+            if x509.TLSFeatureType.status_request in tls_features:
+                self.ocsp_must_staple = tls.ScanState.TRUE
+
+            if x509.TLSFeatureType.status_request_v2 in tls_features:
+                self.ocsp_must_staple_multi = tls.ScanState.TRUE
+
+        except x509.ExtensionNotFound:
+            pass
+
+        try:
+            basic_constr = self._parsed.extensions.get_extension_for_oid(
+                ExtensionOID.BASIC_CONSTRAINTS
+            ).value
+            if not basic_constr.ca:
+                try:
+                    cert_policies = self._parsed.extensions.get_extension_for_oid(
+                        ExtensionOID.CERTIFICATE_POLICIES
+                    ).value
+
+                    if any(
+                        pol.policy_identifier.dotted_string in _ev_oids
+                        for pol in cert_policies
+                    ):
+                        self.extended_validation = tls.ScanState.TRUE
+
+                    else:
+                        self.extended_validation = tls.ScanState.FALSE
+
+                except x509.ExtensionNotFound:
+                    pass
+
+        except x509.ExtensionNotFound:
+            pass
+
     def _common_name(self, name):
         """From a given name, extract the common name
 
@@ -236,13 +324,20 @@ class Certificate(object):
             )
         return self._self_signed
 
-    def _raise_untrusted(self, issue, raise_on_failure):
-        self.trusted = False
+    def mark_untrusted(self, issue):
+        """Mark the certificate as untrusted.
+
+        Arguments:
+            issue (str): the error message containing the reason
+
+        Raises:
+            :obj:`tlsmate.exception.UntrustedCertificate`: if raise_on_failure is True
+        """
+
+        self.trusted = tls.ScanState.FALSE
         issue_long = f"certificate {self}: {issue}"
         logging.debug(issue_long)
         self.issues.append(issue)
-        if raise_on_failure:
-            raise UntrustedCertificate(issue_long)
 
     def validate_period(self, datetime, raise_on_failure=True):
         """Validate the period of the certificate against a given timestamp.
@@ -256,17 +351,37 @@ class Certificate(object):
             bool: The validation state
 
         Raises:
-            UntrustedCertificate: if the timestamp is outside the validity period and
-            raise_on_failure is True
+            :obj:`tlsmate.exception.UntrustedCertificate`: if the timestamp is
+                outside the validity period and raise_on_failure is True
         """
 
         if datetime < self.parsed.not_valid_before:
-            self._raise_untrusted("validity period not yet reached", raise_on_failure)
+            self.mark_untrusted("validity period not yet reached", raise_on_failure)
 
         if datetime > self.parsed.not_valid_after:
-            self._raise_untrusted("validity period exceeded", raise_on_failure)
+            self.mark_untrusted("validity period exceeded", raise_on_failure)
 
-    def validate_subject(self, domain, raise_on_failure=True):
+    def has_valid_period(self, timestamp):
+        """Determines if the period is valid.
+
+        Arguments:
+            timestamp (datetime.datetime): the timestamp to check against
+
+        Returns:
+            bool: An indication if the period is valid
+        """
+        valid = True
+        if timestamp < self.parsed.not_valid_before:
+            self.mark_untrusted("validity period not yet reached")
+            valid = False
+
+        if timestamp > self.parsed.not_valid_after:
+            self.mark_untrusted("validity period exceeded")
+            valid = False
+
+        return valid
+
+    def has_valid_subject(self, domain):
         """Validate if the certificate matches the given domain
 
         It takes the subject and the subject alternative name into account, and
@@ -285,27 +400,33 @@ class Certificate(object):
             UntrustedCertificate: if the certificate is not issued for the given
             domain
         """
+
+        subject_matches = False
         domain = cert_utils.string_prep(domain)
         no_subdomain = cert_utils.remove_subdomain(domain)
 
         subject_cn = self._common_name(self.parsed.subject)
         if cert_utils.subject_matches(subject_cn, domain, no_subdomain):
-            self.subject_matches = True
-            return
+            subject_matches = True
 
-        try:
-            subj_alt_names = self.parsed.extensions.get_extension_for_oid(
-                ExtensionOID.SUBJECT_ALTERNATIVE_NAME
-            )
-            for name in subj_alt_names.value.get_values_for_type(x509.DNSName):
-                if cert_utils.subject_matches(name, domain, no_subdomain):
-                    self.subject_matches = True
-                    return
-        except x509.ExtensionNotFound:
-            pass
+        else:
+            try:
+                subj_alt_names = self.parsed.extensions.get_extension_for_oid(
+                    ExtensionOID.SUBJECT_ALTERNATIVE_NAME
+                )
+                for name in subj_alt_names.value.get_values_for_type(x509.DNSName):
+                    if cert_utils.subject_matches(name, domain, no_subdomain):
+                        subject_matches = True
+                        break
 
-        self.subject_matches = False
-        self._raise_untrusted("subject name does not match", raise_on_failure)
+            except x509.ExtensionNotFound:
+                pass
+
+        if not subject_matches:
+            self.mark_untrusted("subject name does not match")
+
+        self.subject_matches = subject_matches
+        return subject_matches
 
     def validate_signature(self, sig_scheme, data, signature):
         """Validate a signature using the public key from the certificate.

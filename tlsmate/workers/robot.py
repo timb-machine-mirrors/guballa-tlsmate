@@ -12,7 +12,7 @@ import math
 from tlsmate import msg
 from tlsmate import tls
 from tlsmate import utils
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 
 # import other stuff
 
@@ -21,9 +21,9 @@ def _rsa_encrypt(msg, e, n, mod_bytes):
     return int(pow(msg, e, n)).to_bytes(mod_bytes, byteorder="big")
 
 
-class ScanRobot(WorkerPlugin):
+class ScanRobot(Worker):
     name = "robot"
-    descr = "check if server is vulnerable to ROBOT vulnerability"
+    descr = "scan for ROBOT vulnerability"
     prio = 41
 
     def _get_oracle_results(self, with_ccs):
@@ -123,4 +123,5 @@ class ScanRobot(WorkerPlugin):
         else:
             status = tls.RobotVulnerability.NOT_APPLICABLE
 
+        self.server_profile.allocate_vulnerabilities()
         self.server_profile.vulnerabilities.robot = status

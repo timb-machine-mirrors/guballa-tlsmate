@@ -1,46 +1,186 @@
 # -*- coding: utf-8 -*-
-"""Module for a worker handling the server profile (de)serialization
+"""Module for displaying the server profile in (colored) text format
 """
 # import basic stuff
+import sys
+import enum
+from dataclasses import dataclass
 
 # import own stuff
 
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 from tlsmate import tls
 from tlsmate import utils
 from tlsmate import pdu
 from tlsmate.version import __version__
 
 # import other stuff
-from colorama import init, Fore, Style
+import colorama
 
 
-class Mood(object):
-    GOOD = Fore.GREEN
-    NEUTRAL = ""
-    SOSO = Fore.YELLOW + Style.BRIGHT
-    BAD = Fore.RED
-    HEADLINE = Fore.MAGENTA + Style.BRIGHT
-    BOLD = Style.BRIGHT
-    RESET = Style.RESET_ALL
+class Color(tls.ExtendedEnum):
+    GREEN = enum.auto()
+    RED = enum.auto()
+    BLUE = enum.auto()
+    WHITE = enum.auto()
+    BLACK = enum.auto()
+    MAGENTA = enum.auto()
+    CYAN = enum.auto()
+    YELLOW = enum.auto()
 
 
-def apply_mood(txt, mood):
-    if mood == "":
-        return str(txt)
+class FontStyle:
+    html = False
 
-    return mood + str(txt) + Mood.RESET
+    def __init__(self, color=None, bold=False):
+        self.color = color
+        self.bold = bold
+
+    def decorate(self, txt, with_orig_len=False):
+        orig_len = len(str(txt))
+        if self.html:
+            if self.bold:
+                txt = f"<b>{txt}</b>"
+
+            if self.color:
+                txt = f"<font color={self.color.name.lower()}>{txt}</font>"
+
+        else:
+            if self.color:
+                txt = f"{getattr(colorama.Fore, self.color.name)}{txt}"
+
+            if self.bold:
+                txt = f"{colorama.Style.BRIGHT}{txt}"
+
+            if self.color or self.bold:
+                txt = f"{txt}{colorama.Style.RESET_ALL}"
+
+        if with_orig_len:
+            return txt, orig_len
+
+        else:
+            return txt
 
 
-def merge_moods(moods):
-    for mood in [Mood.BAD, Mood.SOSO, Mood.NEUTRAL, Mood.GOOD]:
-        if mood in moods:
-            return mood
+@dataclass
+class Style:
+    GOOD: FontStyle = FontStyle(color=Color.GREEN)
+    NEUTRAL: FontStyle = FontStyle()
+    SOSO: FontStyle = FontStyle(color=Color.YELLOW, bold=True)
+    BAD: FontStyle = FontStyle(color=Color.RED)
+    HEADLINE: FontStyle = FontStyle(color=Color.MAGENTA, bold=True)
+    BOLD: FontStyle = FontStyle(bold=True)
+    ERROR: FontStyle = FontStyle(color=Color.RED, bold=True)
 
-    raise ValueError("cannot merge moods")
+
+def merge_styles(styles):
+    """Returns the "worst" style from a given list
+
+    Arguments:
+        styles (list of styles): the list of style strings
+    """
+    for style in [Style.ERROR, Style.BAD, Style.SOSO, Style.NEUTRAL, Style.GOOD]:
+        if style in styles:
+            return style
+
+    raise ValueError("cannot merge styles")
+
+
+def get_dict_value(profile, *keys, default=None):
+    """Save function to get an item from a nested dict
+
+    Arguments:
+        profile (dict): the dict to start with
+        *keys (str): a list the keys to descent to the wanted item of the profile
+        default(any): the value to return if a key does not exist. Defaults to None.
+
+    Returns:
+        object: the item
+    """
+
+    if not profile:
+        return default
+
+    for key in keys:
+        if key in profile:
+            profile = profile[key]
+
+        else:
+            return default
+
+    return profile
+
+
+def get_style(profile, *keys):
+    """Get the style string from a nested dict, descending according to the keys
+
+    The leaf must be in ["good", "neutral", "soso", "bad", "headline", "bold", "reset",
+    "error"] (case insensitive). These style names are translated to the corresponding
+    ANSI escape code.
+
+    Arguments:
+        profile (dict): the nested dict
+        *keys (str): the keys applied in sequence to descent to the style
+
+    Returns:
+        str: ANSI escape code string. If anything fails, Style.ERROR is returned.
+    """
+    return getattr(
+        Style, get_dict_value(profile, *keys, default="error").upper(), Style.ERROR
+    )
+
+
+def get_style_applied(txt, profile, *keys, **kwargs):
+    """Descent into a nested dict and apply the found style to the given text.
+
+    Arguments:
+        txt (str): the text to decorate
+        profile (dict): the nested dict
+        *keys (str): the keys to descent into the nested dict
+
+    Returns:
+        str: the given text, decorated with the found ANSI escape code.
+    """
+
+    return get_style(profile, *keys).decorate(txt, **kwargs)
+
+
+def get_styled_text(data, *path, **kwargs):
+    """Comfortable way to use common structure to apply a style to a text.
+
+    The item determined by data and path must be a dict with the following structure:
+    {
+        "txt": str,
+        "style": str
+    }
+    The text given by the "txt" item will be decorated with the ANSI escape code
+    which related to the "style" item.
+
+    Arguments:
+        data (dict): the nested dict to use
+        *keys (str): the keys to descent into the nested dict
+
+    Returns:
+        str: the "txt" string decorated with the "style" style.
+    """
+    prof = get_dict_value(data, *path)
+    if not prof:
+        return Style.ERROR.decorate("???", **kwargs)
+
+    return get_style_applied(get_dict_value(prof, "txt"), prof, "style", **kwargs)
 
 
 def get_cert_ext(cert, name):
+    """Extract the given extension from a certificate.
+
+    Arguments:
+        cert (:obj:`tlsmate.server_profile.SPCertificate`): the certificate object
+        name (str): the name of the extension
+
+    Returns:
+        :obj:`tlsmate.server_profile.SPCertExtension`: the extension or None if not
+        found
+    """
     if not hasattr(cert, "extensions"):
         return None
 
@@ -51,415 +191,120 @@ def get_cert_ext(cert, name):
     return None
 
 
-_versions = {
-    tls.Version.SSL20: (Mood.GOOD, Mood.BAD),
-    tls.Version.SSL30: (Mood.GOOD, Mood.BAD),
-    tls.Version.TLS10: (Mood.NEUTRAL, Mood.SOSO),
-    tls.Version.TLS11: (Mood.NEUTRAL, Mood.SOSO),
-    tls.Version.TLS12: (Mood.NEUTRAL, Mood.GOOD),
-    tls.Version.TLS13: (Mood.NEUTRAL, Mood.GOOD),
-}
-
-_cipher_order = {
-    tls.Version.SSL20: (Mood.BAD, Mood.GOOD),
-    tls.Version.SSL30: (Mood.BAD, Mood.GOOD),
-    tls.Version.TLS10: (Mood.BAD, Mood.GOOD),
-    tls.Version.TLS11: (Mood.BAD, Mood.GOOD),
-    tls.Version.TLS12: (Mood.BAD, Mood.GOOD),
-    tls.Version.TLS13: (Mood.NEUTRAL, Mood.NEUTRAL),
-}
-
-_supported_key_exchange = {
-    tls.KeyExchangeAlgorithm.DHE_DSS: Mood.SOSO,
-    tls.KeyExchangeAlgorithm.DHE_RSA: Mood.SOSO,
-    tls.KeyExchangeAlgorithm.DH_ANON: Mood.BAD,
-    tls.KeyExchangeAlgorithm.RSA: Mood.SOSO,
-    tls.KeyExchangeAlgorithm.DH_DSS: Mood.BAD,
-    tls.KeyExchangeAlgorithm.DH_RSA: Mood.BAD,
-    tls.KeyExchangeAlgorithm.ECDH_ECDSA: Mood.BAD,
-    tls.KeyExchangeAlgorithm.ECDHE_ECDSA: Mood.GOOD,
-    tls.KeyExchangeAlgorithm.ECDH_RSA: Mood.BAD,
-    tls.KeyExchangeAlgorithm.ECDHE_RSA: Mood.GOOD,
-    tls.KeyExchangeAlgorithm.TLS13_KEY_SHARE: Mood.GOOD,
-    tls.KeyExchangeAlgorithm.DHE_DSS_EXPORT: Mood.BAD,
-    tls.KeyExchangeAlgorithm.DHE_PSK: Mood.SOSO,
-    tls.KeyExchangeAlgorithm.DHE_RSA_EXPORT: Mood.BAD,
-    tls.KeyExchangeAlgorithm.DH_ANON_EXPORT: Mood.BAD,
-    tls.KeyExchangeAlgorithm.DH_DSS_EXPORT: Mood.BAD,
-    tls.KeyExchangeAlgorithm.DH_RSA_EXPORT: Mood.BAD,
-    tls.KeyExchangeAlgorithm.ECCPWD: Mood.NEUTRAL,
-    tls.KeyExchangeAlgorithm.ECDHE_PSK: Mood.NEUTRAL,
-    tls.KeyExchangeAlgorithm.ECDH_ANON: Mood.BAD,
-    tls.KeyExchangeAlgorithm.KRB5: Mood.NEUTRAL,
-    tls.KeyExchangeAlgorithm.KRB5_EXPORT: Mood.BAD,
-    tls.KeyExchangeAlgorithm.NULL: Mood.BAD,
-    tls.KeyExchangeAlgorithm.PSK: Mood.BAD,
-    tls.KeyExchangeAlgorithm.PSK_DHE: Mood.SOSO,
-    tls.KeyExchangeAlgorithm.RSA_EXPORT: Mood.BAD,
-    tls.KeyExchangeAlgorithm.RSA_PSK: Mood.NEUTRAL,
-    tls.KeyExchangeAlgorithm.SRP_SHA: Mood.BAD,
-    tls.KeyExchangeAlgorithm.SRP_SHA_DSS: Mood.BAD,
-    tls.KeyExchangeAlgorithm.SRP_SHA_RSA: Mood.BAD,
-}
-
-_supported_ciphers = {
-    tls.SymmetricCipher.AES_128_CBC: Mood.SOSO,
-    tls.SymmetricCipher.AES_256_CBC: Mood.SOSO,
-    tls.SymmetricCipher.AES_128_GCM: Mood.GOOD,
-    tls.SymmetricCipher.AES_256_GCM: Mood.GOOD,
-    tls.SymmetricCipher.AES_128_CCM: Mood.GOOD,
-    tls.SymmetricCipher.AES_128_CCM_8: Mood.GOOD,
-    tls.SymmetricCipher.AES_256_CCM: Mood.GOOD,
-    tls.SymmetricCipher.AES_256_CCM_8: Mood.GOOD,
-    tls.SymmetricCipher.CHACHA20_POLY1305: Mood.GOOD,
-    tls.SymmetricCipher.TRIPPLE_DES_EDE_CBC: Mood.BAD,
-    tls.SymmetricCipher.CAMELLIA_128_CBC: Mood.SOSO,
-    tls.SymmetricCipher.CAMELLIA_256_CBC: Mood.SOSO,
-    tls.SymmetricCipher.IDEA_CBC: Mood.BAD,
-    tls.SymmetricCipher.RC4_128: Mood.BAD,
-    tls.SymmetricCipher.SEED_CBC: Mood.SOSO,
-    tls.SymmetricCipher.TLS13_AES_128_GCM: Mood.GOOD,
-    tls.SymmetricCipher.TLS13_AES_256_GCM: Mood.GOOD,
-    tls.SymmetricCipher.TLS13_AES_128_CCM: Mood.GOOD,
-    tls.SymmetricCipher.TLS13_AES_128_CCM_8: Mood.GOOD,
-    tls.SymmetricCipher.ARIA_128_CBC: Mood.SOSO,
-    tls.SymmetricCipher.ARIA_128_GCM: Mood.GOOD,
-    tls.SymmetricCipher.ARIA_256_CBC: Mood.SOSO,
-    tls.SymmetricCipher.ARIA_256_GCM: Mood.GOOD,
-    tls.SymmetricCipher.CAMELLIA_128_GCM: Mood.GOOD,
-    tls.SymmetricCipher.CAMELLIA_256_GCM: Mood.GOOD,
-    tls.SymmetricCipher.DES40_CBC: Mood.BAD,
-    tls.SymmetricCipher.DES_CBC: Mood.BAD,
-    tls.SymmetricCipher.DES_CBC_40: Mood.BAD,
-    tls.SymmetricCipher.NULL: Mood.BAD,
-    tls.SymmetricCipher.RC2_CBC_40: Mood.BAD,
-    tls.SymmetricCipher.RC4_40: Mood.BAD,
-}
-
-_supported_macs = {
-    tls.HashPrimitive.SHA1: Mood.SOSO,
-    tls.HashPrimitive.SHA256: Mood.GOOD,
-    tls.HashPrimitive.SHA384: Mood.GOOD,
-    tls.HashPrimitive.SHA512: Mood.GOOD,
-    tls.HashPrimitive.MD5: Mood.BAD,
-}
-
-_cipher_order = {
-    "text": {
-        tls.SPBool.C_FALSE: "server does not enforce cipher suite order",
-        tls.SPBool.C_TRUE: "server enforces cipher suite order",
-        tls.SPBool.C_NA: "",
-        tls.SPBool.C_UNDETERMINED: (
-            "no indication if server enforces cipher suite order"
-        ),
-    },
-    "mood": {
-        tls.Version.SSL20: (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL),
-        tls.Version.SSL30: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS10: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS11: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS12: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS13: (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL),
-    },
-}
-
-_supported_groups = {
-    "support_txt": {
-        tls.SPBool.C_FALSE: 'extension "supported_groups" not supported',
-        tls.SPBool.C_TRUE: 'extension "supported_groups" supported',
-        tls.SPBool.C_NA: None,
-        tls.SPBool.C_UNDETERMINED: 'support for extensions "supported_group" unknown',
-    },
-    "support_mood": {
-        tls.Version.SSL20: (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL),
-        tls.Version.SSL30: (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL),
-        tls.Version.TLS10: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS11: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS12: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS13: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-    },
-    "preference_txt": {
-        tls.SPBool.C_FALSE: "server does not enforce order of supported groups",
-        tls.SPBool.C_TRUE: "server enforces order of supported groups",
-        tls.SPBool.C_NA: None,
-        tls.SPBool.C_UNDETERMINED: "server preference for supported groups unknown",
-    },
-    "preference_mood": {
-        tls.Version.SSL20: (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL),
-        tls.Version.SSL30: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.NEUTRAL),
-        tls.Version.TLS10: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS11: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS12: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS13: (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-    },
-    "advertised_txt": {
-        tls.SPBool.C_FALSE: "server does not advertise supported groups",
-        tls.SPBool.C_TRUE: "server advertises supported groups",
-        tls.SPBool.C_NA: None,
-        tls.SPBool.C_UNDETERMINED: "advertisement of supported groups unknown",
-    },
-    "advertised_mood": {
-        tls.Version.SSL20: (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL),
-        tls.Version.SSL30: (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL),
-        tls.Version.TLS10: (Mood.SOSO, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS11: (Mood.SOSO, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS12: (Mood.SOSO, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-        tls.Version.TLS13: (Mood.SOSO, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-    },
-    "groups": {
-        tls.SupportedGroups.SECT163K1: Mood.BAD,
-        tls.SupportedGroups.SECT163R1: Mood.BAD,
-        tls.SupportedGroups.SECT163R2: Mood.BAD,
-        tls.SupportedGroups.SECT193R1: Mood.BAD,
-        tls.SupportedGroups.SECT193R2: Mood.BAD,
-        tls.SupportedGroups.SECT233K1: Mood.BAD,
-        tls.SupportedGroups.SECT233R1: Mood.BAD,
-        tls.SupportedGroups.SECT239K1: Mood.BAD,
-        tls.SupportedGroups.SECT283K1: Mood.BAD,
-        tls.SupportedGroups.SECT283R1: Mood.BAD,
-        tls.SupportedGroups.SECT409K1: Mood.SOSO,
-        tls.SupportedGroups.SECT409R1: Mood.SOSO,
-        tls.SupportedGroups.SECT571K1: Mood.SOSO,
-        tls.SupportedGroups.SECT571R1: Mood.SOSO,
-        tls.SupportedGroups.SECP160K1: Mood.BAD,
-        tls.SupportedGroups.SECP160R1: Mood.BAD,
-        tls.SupportedGroups.SECP160R2: Mood.BAD,
-        tls.SupportedGroups.SECP192K1: Mood.BAD,
-        tls.SupportedGroups.SECP192R1: Mood.BAD,
-        tls.SupportedGroups.SECP224K1: Mood.BAD,
-        tls.SupportedGroups.SECP224R1: Mood.BAD,
-        tls.SupportedGroups.SECP256K1: Mood.SOSO,
-        tls.SupportedGroups.SECP256R1: Mood.GOOD,
-        tls.SupportedGroups.SECP384R1: Mood.GOOD,
-        tls.SupportedGroups.SECP521R1: Mood.GOOD,
-        tls.SupportedGroups.BRAINPOOLP256R1: Mood.SOSO,
-        tls.SupportedGroups.BRAINPOOLP384R1: Mood.SOSO,
-        tls.SupportedGroups.BRAINPOOLP512R1: Mood.SOSO,
-        tls.SupportedGroups.X25519: Mood.GOOD,
-        tls.SupportedGroups.X448: Mood.GOOD,
-        tls.SupportedGroups.BRAINPOOLP256R1TLS13: Mood.SOSO,
-        tls.SupportedGroups.BRAINPOOLP384R1TLS13: Mood.SOSO,
-        tls.SupportedGroups.BRAINPOOLP512R1TLS13: Mood.SOSO,
-        tls.SupportedGroups.GC256A: Mood.BAD,
-        tls.SupportedGroups.GC256B: Mood.BAD,
-        tls.SupportedGroups.GC256C: Mood.BAD,
-        tls.SupportedGroups.GC256D: Mood.BAD,
-        tls.SupportedGroups.GC512A: Mood.BAD,
-        tls.SupportedGroups.GC512B: Mood.BAD,
-        tls.SupportedGroups.GC512C: Mood.BAD,
-        tls.SupportedGroups.CURVESM2: Mood.BAD,
-        tls.SupportedGroups.FFDHE2048: Mood.SOSO,
-        tls.SupportedGroups.FFDHE3072: Mood.GOOD,
-        tls.SupportedGroups.FFDHE4096: Mood.GOOD,
-        tls.SupportedGroups.FFDHE6144: Mood.GOOD,
-        tls.SupportedGroups.FFDHE8192: Mood.GOOD,
-        tls.SupportedGroups.ARBITRARY_EXPLICIT_PRIME_CURVES: Mood.BAD,
-        tls.SupportedGroups.ARBITRARY_EXPLICIT_CHAR2_CURVES: Mood.BAD,
-    },
-}
-
-_sig_algo = {
-    "algos": {
-        tls.SignatureScheme.RSA_PKCS1_SHA1: Mood.SOSO,
-        tls.SignatureScheme.ECDSA_SHA1: Mood.SOSO,
-        tls.SignatureScheme.RSA_PKCS1_SHA256: Mood.GOOD,
-        tls.SignatureScheme.ECDSA_SECP256R1_SHA256: Mood.GOOD,
-        tls.SignatureScheme.RSA_PKCS1_SHA384: Mood.GOOD,
-        tls.SignatureScheme.ECDSA_SECP384R1_SHA384: Mood.GOOD,
-        tls.SignatureScheme.RSA_PKCS1_SHA512: Mood.GOOD,
-        tls.SignatureScheme.ECDSA_SECP521R1_SHA512: Mood.GOOD,
-        tls.SignatureScheme.ECCSI_SHA256: Mood.BAD,
-        tls.SignatureScheme.RSA_PSS_RSAE_SHA256: Mood.GOOD,
-        tls.SignatureScheme.RSA_PSS_RSAE_SHA384: Mood.GOOD,
-        tls.SignatureScheme.RSA_PSS_RSAE_SHA512: Mood.GOOD,
-        tls.SignatureScheme.ED25519: Mood.GOOD,
-        tls.SignatureScheme.ED448: Mood.GOOD,
-        tls.SignatureScheme.RSA_PSS_PSS_SHA256: Mood.GOOD,
-        tls.SignatureScheme.RSA_PSS_PSS_SHA384: Mood.GOOD,
-        tls.SignatureScheme.RSA_PSS_PSS_SHA512: Mood.GOOD,
-        tls.SignatureScheme.ECDSA_BRAINPOOLP256R1TLS13_SHA256: Mood.SOSO,
-        tls.SignatureScheme.ECDSA_BRAINPOOLP384R1TLS13_SHA384: Mood.SOSO,
-        tls.SignatureScheme.ECDSA_BRAINPOOLP512R1TLS13_SHA512: Mood.SOSO,
-        tls.SignatureScheme.RSA_PKCS1_MD5: Mood.BAD,
-        tls.SignatureScheme.RSA_PKCS1_SHA224: Mood.SOSO,
-        tls.SignatureScheme.DSA_MD5: Mood.BAD,
-        tls.SignatureScheme.DSA_SHA1: Mood.SOSO,
-        tls.SignatureScheme.DSA_SHA224: Mood.SOSO,
-        tls.SignatureScheme.DSA_SHA256: Mood.SOSO,
-        tls.SignatureScheme.DSA_SHA384: Mood.SOSO,
-        tls.SignatureScheme.DSA_SHA512: Mood.SOSO,
-        tls.SignatureScheme.ECDSA_SECP224R1_SHA224: Mood.SOSO,
-    },
-}
-
-_assym_key_sizes = {3072: Mood.GOOD, 2048: Mood.SOSO, 0: Mood.BAD}
-_assym_ec_key_sizes = {256: Mood.GOOD, 0: Mood.BAD}
-
-_features = {
-    "text": ("not supported", "supported", "not applicable", "undetermined"),
-    "scsv_renegotiation": (Mood.SOSO, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-    "encrypt_then_mac": (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-    "extended_master_secret": (Mood.BAD, Mood.GOOD, Mood.NEUTRAL, Mood.SOSO),
-    "insecure_renegotiation": (Mood.GOOD, Mood.BAD, Mood.NEUTRAL, Mood.SOSO),
-    "secure_renegotiation": (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.SOSO),
-    "session_id": (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL),
-    "session_ticket": (Mood.GOOD, Mood.SOSO, Mood.NEUTRAL, Mood.SOSO),
-    "resumption_psk": (Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL, Mood.NEUTRAL),
-    "early_data": (Mood.GOOD, Mood.BAD, Mood.NEUTRAL, Mood.SOSO),
-}
-
-_heartbeat = {
-    tls.SPHeartbeat.C_FALSE: ("not supported", Mood.GOOD),
-    tls.SPHeartbeat.C_TRUE: ("supported", Mood.BAD),
-    tls.SPHeartbeat.C_NA: ("not applicable", Mood.NEUTRAL),
-    tls.SPHeartbeat.C_UNDETERMINED: ("undetermined", Mood.SOSO),
-    tls.SPHeartbeat.C_NOT_REPONDING: ("supported, but no response", Mood.BAD),
-    tls.SPHeartbeat.C_WRONG_RESPONSE: (
-        "supported, but invalid response received",
-        Mood.BAD,
-    ),
-}
-
-_grease = {
-    "parameters": (
-        ("version_tolerance", "protocol versions"),
-        ("cipher_suite_tolerance", "cipher suites"),
-        ("extension_tolerance", "extensions"),
-        ("group_tolerance", "named groups"),
-        ("sig_algo_tolerance", "signature algorithms"),
-        ("psk_mode_tolerance", "PSK exchange modes (TLS1.3)"),
-    ),
-    "result": {
-        tls.SPBool.C_FALSE: ("not tolerant", Mood.BAD),
-        tls.SPBool.C_TRUE: ("tolerant", Mood.GOOD),
-        tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
-        tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
-    },
-}
-
-
-_cert = {
-    "chain_valid": {
-        tls.SPBool.C_FALSE: ("validation failed", Mood.BAD),
-        tls.SPBool.C_TRUE: ("successfully validated", Mood.GOOD),
-        tls.SPBool.C_NA: ("", Mood.NEUTRAL),
-        tls.SPBool.C_UNDETERMINED: ("validation status undetermined", Mood.SOSO),
-    },
-    "root_transmitted": {
-        tls.SPBool.C_FALSE: (
-            "root certificate was not provided by the server",
-            Mood.GOOD,
-        ),
-        tls.SPBool.C_TRUE: ("root certificate was provided by the server", Mood.SOSO),
-    },
-    "subject_matches": {
-        tls.SPBool.C_FALSE: ("no, URI not matched against subject/SAN", Mood.BAD),
-        tls.SPBool.C_TRUE: ("yes, URI matches subject/SAN", Mood.GOOD),
-        tls.SPBool.C_NA: ("", Mood.NEUTRAL),
-        tls.SPBool.C_UNDETERMINED: ("validation status undetermined", Mood.SOSO),
-    },
-    "crl_status": {
-        tls.CertCrlStatus.UNDETERMINED: ("unknown", Mood.SOSO),
-        tls.CertCrlStatus.NOT_REVOKED: ("certificate not revoked", Mood.GOOD),
-        tls.CertCrlStatus.REVOKED: ("certificate revoked", Mood.BAD),
-        tls.CertCrlStatus.CRL_DOWNLOAD_FAILED: ("CRL download failed", Mood.BAD),
-        tls.CertCrlStatus.WRONG_CRL_ISSUER: ("wrong CRL issuer", Mood.BAD),
-        tls.CertCrlStatus.CRL_SIGNATURE_INVALID: ("CRL signature invalid", Mood.BAD),
-    },
-    "ocsp_status": {
-        tls.OcspStatus.UNDETERMINED: ("not checked", Mood.NEUTRAL),
-        tls.OcspStatus.NOT_REVOKED: ("certificate not revoked", Mood.GOOD),
-        tls.OcspStatus.REVOKED: ("certificate revoked", Mood.BAD),
-        tls.OcspStatus.UNKNOWN: ("certificate unknwon", Mood.BAD),
-        tls.OcspStatus.TIMEOUT: ("OCSP server timeout", Mood.BAD),
-        tls.OcspStatus.INVALID_RESPONSE: (
-            "invalid response from OCSP server",
-            Mood.BAD,
-        ),
-        tls.OcspStatus.SIGNATURE_INVALID: (
-            "OCSP response has invalid signature",
-            Mood.BAD,
-        ),
-        tls.OcspStatus.INVALID_TIMESTAMP: (
-            "OCSP response has invalid timestamp",
-            Mood.BAD,
-        ),
-    },
-}
-
-_cert_sig_algo = {}
-
-_vulnerabilities = {
-    tls.SPBool.C_FALSE: ("not vulnerable", Mood.GOOD),
-    tls.SPBool.C_TRUE: ("vulnerable", Mood.BAD),
-    tls.SPBool.C_NA: ("not applicable", Mood.NEUTRAL),
-    tls.SPBool.C_UNDETERMINED: ("undetermined", Mood.SOSO),
-}
-
-_heartbleed = {
-    tls.HeartbleedStatus.NOT_APPLICABLE: ("not applicable", Mood.NEUTRAL),
-    tls.HeartbleedStatus.UNDETERMINED: ("undetermined", Mood.SOSO),
-    tls.HeartbleedStatus.VULNERABLE: ("vulnerable", Mood.BAD),
-    tls.HeartbleedStatus.NOT_VULNERABLE: ("not vulnerable", Mood.GOOD),
-    tls.HeartbleedStatus.TIMEOUT: ("timeout, probably not vulnerable", Mood.GOOD),
-    tls.HeartbleedStatus.CONNECTION_CLOSED: (
-        "not vulnerable (connection closed)",
-        Mood.GOOD,
-    ),
-}
-
-_robot = {
-    tls.RobotVulnerability.NOT_APPLICABLE: ("not applicable", Mood.NEUTRAL),
-    tls.RobotVulnerability.UNDETERMINED: ("undetermined", Mood.NEUTRAL),
-    tls.RobotVulnerability.INCONSITENT_RESULTS: ("inconsistent results", Mood.BAD),
-    tls.RobotVulnerability.WEAK_ORACLE: ("vulnerable, weak oracle", Mood.BAD),
-    tls.RobotVulnerability.STRONG_ORACLE: ("vulnerable, strong oracle", Mood.BAD),
-    tls.RobotVulnerability.NOT_VULNERABLE: ("not vulnerable", Mood.GOOD),
-}
-
-
-def _check_version(version, reference):
-    support = version in reference
-    mood = _versions[version][support]
-    txt = "supported" if support else "not supported"
-
-    return apply_mood(txt, mood)
-
-
-class TextProfileWorker(WorkerPlugin):
-    """WorkerPlugin class which serializes a server profile.
+class TextProfileWorker(Worker):
+    """Worker class which serializes a server profile.
     """
 
     name = "text_profile_dumper"
+    descr = "dump the scan results"
     prio = 1002
 
+    _callbacks = []
+
+    @classmethod
+    def augment_output(cls, callback):
+        """Decorator which can be used to register additional callbacks.
+
+        Arguments:
+            callback (callable): the callback to register. After the TextProfileWorker
+            is finished with its output, the registered callbacks will be called with
+            the TextProfileWorker object as its only argument. No return value is
+            expected from the callback.
+        """
+        cls._callbacks.append(callback)
+        return callback
+
+    def _parse_style(self):
+        if not self._style:
+            return
+
+        if "style" in self._style:
+            for style in [
+                "good",
+                "neutral",
+                "soso",
+                "bad",
+                "headline",
+                "bold",
+                "error",
+            ]:
+                style_def = self._style["style"].get(style)
+                if style_def is not None:
+                    color = None
+                    fg = style_def.get("fg")
+                    if fg in [c.name.lower() for c in Color.all()]:
+                        color = Color.str2enum(fg.upper())
+
+                    bold = style_def.get("style") == "bright"
+                    setattr(Style, style.upper(), FontStyle(color=color, bold=bold))
+
+    def _read_style(self):
+        self._style = utils.deserialize_data(self.style_file)
+        self._parse_style()
+
+    def style_for_cipher_suite(self, cs):
+        det = utils.get_cipher_suite_details(cs)
+        key_style = get_style(self._style, "key_exchange", det.key_algo.name)
+        cipher_style = get_style(self._style, "symmetric_ciphers", det.cipher.name)
+        mac_style = get_style(self._style, "macs", det.mac.name)
+        return merge_styles([key_style, cipher_style, mac_style])
+
+    def _style_for_assym_key_size(self, bits, style_entry):
+        key_sizes = get_dict_value(self._style, style_entry)
+        if not key_sizes:
+            return Style.NEUTRAL
+
+        for prof in key_sizes:
+            if bits >= prof["size"]:
+                break
+
+        return get_style(prof, "style")
+
+    def style_for_rsa_dh_key_size(self, bits):
+        return self._style_for_assym_key_size(bits, "assymetric_key_sizes")
+
+    def style_for_ec_key_size(self, bits):
+        return self._style_for_assym_key_size(bits, "assymetric_ec_key_sizes")
+
     def _print_tlsmate(self):
-        print(apply_mood("A TLS configuration scanner (and more)", Mood.HEADLINE))
+        print(Style.HEADLINE.decorate("A TLS configuration scanner (and more)"))
         print()
-        print(f"  tlsmate, version {__version__}")
-        print()
-        print("  Repository: https://gitlab.com/guballa/tlsmate")
+        table = utils.Table(indent=2, sep="  ")
+        table.row("tlsmate version", __version__)
+        table.row("repository", "https://gitlab.com/guballa/tlsmate")
+        table.dump()
         print(
             "  Please file bug reports at https://gitlab.com/guballa/tlsmate/-/issues"
         )
         print()
 
     def _print_scan_info(self):
+        if not hasattr(self.server_profile, "scan_info"):
+            return
+
         scan_info = self.server_profile.scan_info
         self._start_date = scan_info.start_date
-        print(apply_mood("Basic scan information", Mood.HEADLINE))
+        print(Style.HEADLINE.decorate("Basic scan information"))
         print()
-        print(f"  Command: {scan_info.command}")
-        print(f"  tlsmate version used for the scan: {scan_info.version}")
-        print(
-            f"  The scan took place on {scan_info.start_date}, "
-            f"scan duration: {scan_info.run_time} seconds"
+        print(f"  command: {scan_info.command}")
+        table = utils.Table(indent=2, sep="  ")
+        table.row("tlsmate version", f"{scan_info.version} (producing the scan)")
+        table.row("scan start timestamp", str(scan_info.start_date))
+        table.row("scan duration", f"{scan_info.run_time} seconds")
+        table.row("applied style", self.style_file)
+        table.row(
+            "style description",
+            get_dict_value(self._style, "description", "short", default="-"),
         )
+        table.dump()
         print()
 
     def _print_host(self):
+        if not hasattr(self.server_profile, "server"):
+            return
+
         host_info = self.server_profile.server
-        print(apply_mood("Scanned host", Mood.HEADLINE))
+        print(Style.HEADLINE.decorate("Scanned host"))
         print()
         table = utils.Table(indent=2, sep="  ")
         name_resolution = hasattr(host_info, "name_resolution")
@@ -469,7 +314,8 @@ class TextProfileWorker(WorkerPlugin):
         else:
             host = host_info.ip
 
-        table.row("Host", f"{host}, port: {host_info.port}")
+        table.row("host", host)
+        table.row("port", str(host_info.port))
         table.row("SNI", host_info.sni)
         if name_resolution:
             if hasattr(host_info.name_resolution, "ipv4_addresses"):
@@ -483,74 +329,151 @@ class TextProfileWorker(WorkerPlugin):
         table.dump()
         print()
 
-    def _print_versions(self):
-        print(apply_mood("TLS protocol versions:", Mood.HEADLINE))
-        print()
-        for version in tls.Version.all():
-            txt = apply_mood(version, Mood.BOLD)
-            print(f"  {txt}: {_check_version(version, self._prof_values.versions)}")
+    def _print_server_malfunctions(self):
+        malfunctions = getattr(self.server_profile, "server_malfunctions", None)
+        if not malfunctions:
+            return
 
+        print(Style.HEADLINE.decorate("Severe server implementation flaws"))
+        print()
+        for malfunction in malfunctions:
+            add_info = []
+            if hasattr(malfunction, "message"):
+                add_info.append(f"message: {malfunction.message.name}")
+
+            if hasattr(malfunction, "extension"):
+                add_info.append(f"extension: {malfunction.extension.name}")
+
+            txt = "  - " + get_dict_value(
+                self._style,
+                "server_malfunction",
+                malfunction.issue.name,
+                default=malfunction.issue.description,
+            )
+            if add_info:
+                txt += f" ({'; '.join(add_info)})"
+
+            print(Style.BAD.decorate(txt))
+
+        print()
+
+    def _print_versions(self):
+        if not hasattr(self.server_profile, "versions"):
+            return
+
+        print(Style.HEADLINE.decorate("TLS protocol versions"))
+        print()
+        table = utils.Table(indent=2, sep="  ")
+        for version_prof in self.server_profile.versions:
+            table.row(
+                version_prof.version.name,
+                get_styled_text(
+                    self._style,
+                    "version",
+                    version_prof.version.name,
+                    "supported",
+                    version_prof.support.name,
+                ),
+            )
+
+        table.dump()
         print()
 
     def _print_cipher_suites(self):
+        if not hasattr(self.server_profile, "versions"):
+            return
+
         cipher_hash = {}
-        print(apply_mood("Cipher suites", Mood.HEADLINE))
-        for version in self._prof_values.versions:
+        print(Style.HEADLINE.decorate("Cipher suites"))
+
+        for version in self._prof_versions:
             version_prof = self.server_profile.get_version_profile(version)
             if version is tls.Version.SSL20:
                 cipher_list = version_prof.cipher_kinds
-                txt = ""
-                mood_txt = ""
+                pref_txt = ""
+                style_txt = (
+                    ""
+                    if cipher_list
+                    else Style.BAD.decorate("no cipher kinds provided by server")
+                )
+                chacha_txt = ""
             else:
                 cipher_list = version_prof.ciphers.cipher_suites
                 order = version_prof.ciphers.server_preference
-                txt = _cipher_order["text"][order]
-                mood = _cipher_order["mood"][version][order.value]
-                mood_txt = apply_mood(txt, mood)
 
-            hashed = hash((mood_txt, tuple(cipher_list)))
+                struct = get_dict_value(
+                    self._style, "version", version.name, "cipher_order", order.name
+                )
+                pref_txt = get_dict_value(struct, "txt", default="???")
+                style_txt = get_style_applied(pref_txt, struct, "style")
+
+                chacha_pref = getattr(
+                    version_prof.ciphers, "chacha_poly_preference", None
+                )
+                if chacha_pref:
+                    struct = get_dict_value(
+                        self._style,
+                        "version",
+                        version.name,
+                        "chacha_preference",
+                        chacha_pref.name,
+                    )
+                    chacha_txt = get_style_applied(
+                        get_dict_value(struct, "txt", default="???"), struct, "style"
+                    )
+
+                else:
+                    chacha_txt = ""
+
+            hashed = hash((style_txt, chacha_txt, tuple(cipher_list)))
             if hashed in cipher_hash:
                 cipher_hash[hashed]["versions"].append(str(version))
 
             else:
                 cipher_hash[hashed] = {
                     "versions": [str(version)],
-                    "lines": [],
-                    "preference": mood_txt,
+                    "table": utils.Table(indent=4, sep="  "),
+                    "preference": style_txt,
+                    "chacha_preference": chacha_txt,
                 }
-                all_good = True
+                all_good = bool(cipher_list)
                 for cs in cipher_list:
                     if version is tls.Version.SSL20:
-                        cipher_hash[hashed]["lines"].append(
-                            f"    0x{cs.value:06x} {apply_mood(cs, Mood.BAD)}"
+                        cipher_hash[hashed]["table"].row(
+                            f"0x{cs.value:06x}", Style.BAD.decorate(cs)
                         )
+
                     else:
-                        det = utils.get_cipher_suite_details(cs)
-                        key_mood = _supported_key_exchange[det.key_algo]
-                        cipher_mood = _supported_ciphers[det.cipher]
-                        mac_mood = _supported_macs[det.mac]
-                        mood = merge_moods([key_mood, cipher_mood, mac_mood])
-                        if mood is not Mood.GOOD:
+                        style = self.style_for_cipher_suite(cs)
+                        if style is not Style.GOOD:
                             all_good = False
-                        cipher_hash[hashed]["lines"].append(
-                            f"    0x{cs.value:04x} {apply_mood(cs, mood)}"
+
+                        cipher_hash[hashed]["table"].row(
+                            f"0x{cs.value:04x}", style.decorate(cs.name)
                         )
 
                 if all_good:
-                    cipher_hash[hashed]["preference"] = apply_mood(txt, Mood.NEUTRAL)
+                    cipher_hash[hashed]["preference"] = Style.NEUTRAL.decorate(pref_txt)
 
         for values in cipher_hash.values():
-            versions = apply_mood(", ".join(values["versions"]), Mood.BOLD)
-            print(f'\n  {versions}: {values["preference"]}')
-            for line in values["lines"]:
-                print(line)
+            versions = Style.BOLD.decorate(", ".join(values["versions"]))
+            print(f"\n  {versions}:")
+            print(f'    {values["preference"]}')
+            if values["chacha_preference"] != "":
+                print(f'    {values["chacha_preference"]}')
+
+            values["table"].dump()
 
         print()
 
     def _print_supported_groups(self):
+        if not hasattr(self.server_profile, "versions"):
+            return
+
+        prof_grps = get_dict_value(self._style, "supported_groups", "groups")
         group_hash = {}
-        print(apply_mood("Supported groups", Mood.HEADLINE))
-        for version in self._prof_values.versions:
+        for version in self._prof_versions:
+            prof_version = get_dict_value(self._style, "supported_groups", version.name)
             version_prof = self.server_profile.get_version_profile(version)
             group_prof = getattr(version_prof, "supported_groups", None)
             if group_prof is None:
@@ -564,46 +487,38 @@ class TextProfileWorker(WorkerPlugin):
                 supp_txt = None
 
             else:
-                supp_txt = _supported_groups["support_txt"][supported]
-                if supp_txt is not None:
-                    supp_mood = _supported_groups["support_mood"][version][
-                        supported.value
-                    ]
-                    supp_txt = apply_mood(supp_txt, supp_mood)
+                prof = get_dict_value(prof_version, "support", supported.name)
+                supp_txt = get_dict_value(prof, "txt", default="???")
+                if supp_txt:
+                    supp_txt = get_style_applied(supp_txt, prof, "style")
 
             preference = getattr(group_prof, "server_preference", None)
             if preference is None:
                 pref_txt = None
 
             else:
-                pref_txt = _supported_groups["preference_txt"][preference]
-                if pref_txt is not None:
-                    if all(
-                        [
-                            _supported_groups["groups"][grp] is Mood.GOOD
-                            for grp in group_prof.groups
-                        ]
+                prof = get_dict_value(prof_version, "preference", preference.name)
+                pref_txt = get_dict_value(prof, "txt", default="???")
+                if pref_txt:
+                    if prof_grps and all(
+                        [prof_grps[grp.name] == "good" for grp in group_prof.groups]
                     ):
-                        pref_mood = Mood.NEUTRAL
+                        pref_style = Style.NEUTRAL
 
                     else:
-                        pref_mood = _supported_groups["preference_mood"][version][
-                            preference.value
-                        ]
+                        pref_style = get_style(prof, "style")
 
-                    pref_txt = apply_mood(pref_txt, pref_mood)
+                    pref_txt = pref_style.decorate(pref_txt)
 
             advertised = getattr(group_prof, "groups_advertised", None)
             if advertised is None:
                 ad_txt = None
 
             else:
-                ad_txt = _supported_groups["advertised_txt"][advertised]
-                if ad_txt is not None:
-                    ad_mood = _supported_groups["advertised_mood"][version][
-                        advertised.value
-                    ]
-                    ad_txt = apply_mood(ad_txt, ad_mood)
+                prof = get_dict_value(prof_version, "advertised", advertised.name)
+                ad_txt = get_dict_value(prof, "txt", default="???")
+                if ad_txt:
+                    ad_txt = get_style_applied(ad_txt, prof, "style")
 
             combined = (supp_txt, pref_txt, ad_txt, tuple(group_prof.groups))
             hashed = hash(combined)
@@ -613,31 +528,42 @@ class TextProfileWorker(WorkerPlugin):
             else:
                 group_hash[hashed] = {"versions": [str(version)], "combined": combined}
 
+        if not group_hash:
+            return
+
+        print(Style.HEADLINE.decorate("Supported groups"))
         for group in group_hash.values():
             versions = ", ".join(group["versions"])
-            print(f"\n  {apply_mood(versions, Mood.BOLD)}:")
+            print(f"\n  {Style.BOLD.decorate(versions)}:")
             supp_txt, pref_txt, ad_txt, groups = group["combined"]
 
-            if supp_txt is not None:
+            if supp_txt:
                 print(f"    {supp_txt}")
 
-            if pref_txt is not None:
+            if pref_txt:
                 print(f"    {pref_txt}")
 
-            if ad_txt is not None:
+            if ad_txt:
                 print(f"    {ad_txt}")
 
             print("    supported groups:")
+            table = utils.Table(indent=6, sep="  ")
             for grp in groups:
-                grp_txt = apply_mood(grp, _supported_groups["groups"][grp])
-                print(f"      0x{grp.value:02x} {grp_txt}")
+                table.row(
+                    f"0x{grp.value:02x}",
+                    get_style_applied(grp.name, prof_grps, grp.name),
+                )
+
+            table.dump()
 
         print()
 
     def _print_sig_algos(self):
+        if not hasattr(self.server_profile, "versions"):
+            return
+
         algo_hash = {}
-        print(apply_mood("Signature algorithms", Mood.HEADLINE))
-        for version in self._prof_values.versions:
+        for version in self._prof_versions:
             version_prof = self.server_profile.get_version_profile(version)
             if not hasattr(version_prof, "signature_algorithms"):
                 continue
@@ -653,19 +579,39 @@ class TextProfileWorker(WorkerPlugin):
                     "algos": algo_prof.algorithms,
                 }
 
+        if not algo_hash:
+            return
+
+        print(Style.HEADLINE.decorate("Signature algorithms"))
         for algo in algo_hash.values():
             versions = ", ".join(algo["versions"])
-            print(f"\n  {apply_mood(versions, Mood.BOLD)}:")
+            print(f"\n  {Style.BOLD.decorate(versions)}:")
 
-            print("    signature algorithms:")
-            for alg in algo["algos"]:
-                alg_txt = apply_mood(alg, _sig_algo["algos"][alg])
-                print(f"      0x{alg.value:04x} {alg_txt}")
+            if not algo["algos"]:
+                print("    no signature algorithms supported")
+
+            else:
+                print("    signature algorithms:")
+                table = utils.Table(indent=6, sep="  ")
+                if algo["algos"]:
+                    for alg in algo["algos"]:
+                        table.row(
+                            f"0x{alg.value:04x}",
+                            get_style_applied(
+                                alg.name, self._style, "signature_schemes", alg.name
+                            ),
+                        )
+
+                table.dump()
+
         print()
 
     def _print_dh_groups(self):
+        if not hasattr(self.server_profile, "versions"):
+            return
+
         dh_groups = {}
-        for version in self._prof_values.versions:
+        for version in self._prof_versions:
             version_prof = self.server_profile.get_version_profile(version)
             dh_prof = getattr(version_prof, "dh_group", None)
             if dh_prof is None:
@@ -684,142 +630,254 @@ class TextProfileWorker(WorkerPlugin):
                 }
 
         if dh_groups:
-            print(apply_mood("DH groups (finite field)", Mood.HEADLINE))
+            print(Style.HEADLINE.decorate("DH groups (finite field)"))
             for values in dh_groups.values():
                 versions = ", ".join(values["versions"])
-                print(f"\n  {apply_mood(versions, Mood.BOLD)}:")
+                print(f"\n  {Style.BOLD.decorate(versions)}:")
                 name, size = values["combined"]
                 if name is None:
                     name = "unknown group"
                 txt = f"{name} ({size} bits)"
-                for val, mood in _assym_key_sizes.items():
-                    if size >= val:
-                        break
-                print(f"    {apply_mood(txt, mood)}")
+                style = self.style_for_rsa_dh_key_size(size)
+                print(f"    {style.decorate(txt)}")
 
             print()
 
     def _print_common_features(self, feat_prof):
-        print(f'  {apply_mood("Common features", Mood.BOLD)}')
+
+        if not any(
+            hasattr(feat_prof, prop)
+            for prop in [
+                "ocsp_stapling",
+                "ocsp_multi_stapling",
+                "heartbeat",
+                "downgrade_attack_prevention",
+            ]
+        ):
+            return
+
+        print(f'  {Style.BOLD.decorate("Common features")}')
         table = utils.Table(indent=4, sep="  ")
+
+        ocsp_state = getattr(feat_prof, "ocsp_stapling", None)
+        if ocsp_state is not None:
+            table.row(
+                "OCSP stapling (status_request)",
+                get_styled_text(self._style, "ocsp_stapling", ocsp_state.name),
+            )
+
+        ocsp_state = getattr(feat_prof, "ocsp_multi_stapling", None)
+        if ocsp_state is not None:
+            table.row(
+                "OCSP multi stapling (status_request_v2)",
+                get_styled_text(self._style, "ocsp_multi_stapling", ocsp_state.name),
+            )
+
         hb_state = getattr(feat_prof, "heartbeat", None)
         if hb_state is not None:
-            txt, mood = _heartbeat[hb_state]
-            table.row("Heartbeat", apply_mood(txt, mood))
+            table.row(
+                "Heartbeat", get_styled_text(self._style, "heartbeat", hb_state.name)
+            )
+
+        fallback = getattr(feat_prof, "downgrade_attack_prevention", None)
+        if fallback is not None:
+            table.row(
+                "Downgrade attack prevention",
+                get_styled_text(self._style, "fallback", fallback.name),
+            )
 
         table.dump()
         print()
 
     def _print_features_tls12(self, feat_prof):
-        print(f'  {apply_mood("Features for TLS1.2 and below", Mood.BOLD)}')
+        if not any(
+            hasattr(feat_prof, prop)
+            for prop in [
+                "compression",
+                "scsv_renegotiation",
+                "encrypt_then_mac",
+                "extended_master_secret",
+                "insecure_renegotiation",
+                "secure_renegotation",
+                "session_id",
+                "session_ticket",
+            ]
+        ):
+            return
+
+        print(f'  {Style.BOLD.decorate("Features for TLS1.2 and below")}')
         table = utils.Table(indent=4, sep="  ")
         if hasattr(feat_prof, "compression"):
             if (len(feat_prof.compression) == 1) and feat_prof.compression[
                 0
             ] is tls.CompressionMethod.NULL:
-                txt = apply_mood("not supported", Mood.GOOD)
+                compr = tls.ScanState.FALSE
 
             else:
-                txt = apply_mood("supported", Mood.BAD)
+                compr = tls.ScanState.TRUE
 
-            table.row("compression", txt)
-
-        scsv = getattr(feat_prof, "scsv_renegotiation", None)
-        if scsv is not None:
-            txt = _features["text"][scsv.value]
-            mood = _features["scsv_renegotiation"][scsv.value]
-            table.row("SCSV-renegotiation", apply_mood(txt, mood))
+            table.row(
+                "compression", get_styled_text(self._style, "compression", compr.name)
+            )
 
         etm = getattr(feat_prof, "encrypt_then_mac", None)
         if etm is not None:
-            txt = _features["text"][etm.value]
-            mood = _features["encrypt_then_mac"][etm.value]
-            table.row("encrypt-then-mac", apply_mood(txt, mood))
+            table.row(
+                "encrypt-then-mac",
+                get_styled_text(self._style, "encrypt_then_mac", etm.name),
+            )
 
         ems = getattr(feat_prof, "extended_master_secret", None)
         if ems is not None:
-            txt = _features["text"][ems.value]
-            mood = _features["extended_master_secret"][ems.value]
-            table.row("extended master secret", apply_mood(txt, mood))
+            table.row(
+                "extended master secret",
+                get_styled_text(self._style, "extended_master_secret", ems.name),
+            )
 
         insec_reneg = getattr(feat_prof, "insecure_renegotiation", None)
         if insec_reneg is not None:
-            txt = _features["text"][insec_reneg.value]
-            mood = _features["insecure_renegotiation"][insec_reneg.value]
-            table.row("insecure renegotiation", apply_mood(txt, mood))
+            table.row(
+                "insecure renegotiation",
+                get_styled_text(
+                    self._style, "insecure_renegotiation", insec_reneg.name
+                ),
+            )
 
         sec_reneg = getattr(feat_prof, "secure_renegotation", None)
         if sec_reneg is not None:
-            txt = _features["text"][sec_reneg.value]
-            mood = _features["secure_renegotiation"][sec_reneg.value]
-            table.row("secure renegotiation", apply_mood(txt, mood))
+            table.row(
+                "secure renegotiation (extension)",
+                get_styled_text(self._style, "secure_renegotiation", sec_reneg.name),
+            )
+
+        scsv = getattr(feat_prof, "scsv_renegotiation", None)
+        if scsv is not None:
+            table.row(
+                "secure renegotiation (SCSV)",
+                get_styled_text(self._style, "scsv_renegotiation", scsv.name),
+            )
 
         session_id = getattr(feat_prof, "session_id", None)
         if session_id is not None:
-            txt = _features["text"][session_id.value]
-            mood = _features["session_id"][session_id.value]
-            table.row("resumption with session_id", apply_mood(txt, mood))
+            table.row(
+                "resumption with session_id",
+                get_styled_text(self._style, "session_id", session_id.name),
+            )
 
         session_ticket = getattr(feat_prof, "session_ticket", None)
         if session_ticket is not None:
-            txt = _features["text"][session_ticket.value]
-            mood = _features["session_ticket"][session_ticket.value]
+            txt = get_styled_text(self._style, "session_ticket", session_ticket.name)
             life_time = getattr(feat_prof, "session_ticket_lifetime", None)
             if life_time is None:
                 add_txt = ""
+
             else:
                 add_txt = f", life time: {feat_prof.session_ticket_lifetime} seconds"
-            table.row(
-                "resumption with session ticket", f"{apply_mood(txt, mood)}{add_txt}"
-            )
+
+            table.row("resumption with session ticket", f"{txt}{add_txt}")
+
         table.dump()
         print()
 
     def _print_features_tls13(self, feat_prof):
-        print(f'  {apply_mood("Features for TLS1.3", Mood.BOLD)}')
+        if not any(
+            hasattr(feat_prof, prop) for prop in ["resumption_psk", "early_data"]
+        ):
+            return
+
+        print(f'  {Style.BOLD.decorate("Features for TLS1.3")}')
 
         table = utils.Table(indent=4, sep="  ")
         resumption_psk = getattr(feat_prof, "resumption_psk", None)
         if resumption_psk is not None:
-            txt = _features["text"][resumption_psk.value]
-            mood = _features["resumption_psk"][resumption_psk.value]
+            txt = get_styled_text(self._style, "resumption_psk", resumption_psk.name)
             life_time = getattr(feat_prof, "psk_lifetime", None)
             if life_time is None:
                 add_txt = ""
+
             else:
                 add_txt = f", life time: {feat_prof.psk_lifetime} seconds"
-            table.row("resumption with PSK", f"{apply_mood(txt, mood)}{add_txt}")
+
+            table.row("resumption with PSK", f"{txt}{add_txt}")
 
         early_data = getattr(feat_prof, "early_data", None)
         if early_data is not None:
-            txt = _features["text"][early_data.value]
-            mood = _features["early_data"][early_data.value]
-            table.row("early data (0-RTT)", apply_mood(txt, mood))
+            table.row(
+                "early data (0-RTT)",
+                get_styled_text(self._style, "early_data", early_data.name),
+            )
 
         table.dump()
         print()
 
     def _print_grease(self, grease_prof):
-        caption = apply_mood(
-            "Server tolerance to unknown values (GREASE, RFC8701)", Mood.BOLD
+        grease = (
+            ("version_tolerance", "version"),
+            ("cipher_suite_tolerance", "cipher_suite"),
+            ("extension_tolerance", "extension"),
+            ("group_tolerance", "group"),
+            ("sig_algo_tolerance", "sig_algo"),
+            ("psk_mode_tolerance", "psk_mode"),
+        )
+
+        caption = Style.BOLD.decorate(
+            "Server tolerance to unknown values (GREASE, RFC8701)"
         )
         print(f"  {caption}")
         table = utils.Table(indent=4, sep="  ")
 
-        for attribute, text in _grease["parameters"]:
-            val = getattr(grease_prof, attribute, tls.SPBool.C_UNDETERMINED)
-            result, mood = _grease["result"][val]
-            table.row(text, apply_mood(result, mood))
+        for prof_prop, style_prop in grease:
+            val = getattr(grease_prof, prof_prop, tls.ScanState.UNDETERMINED)
+            table.row(
+                get_dict_value(
+                    self._style, "grease", style_prop, "descr", default="???"
+                ),
+                get_styled_text(self._style, "grease", style_prop, val.name),
+            )
 
+        table.dump()
+        print()
+
+    def _print_ephemeral_key_reuse(self):
+        if not hasattr(self.server_profile.features, "ephemeral_key_reuse"):
+            return
+
+        ekr = self.server_profile.features.ephemeral_key_reuse
+        print(Style.BOLD.decorate("  Ephemeral key reuse"))
+        table = utils.Table(indent=4, sep="  ")
+        table.row(
+            "DHE key reuse (TLS1.2 or below)",
+            get_styled_text(
+                self._style, "ephemeral_key_reuse", ekr.tls12_dhe_reuse.name
+            ),
+        )
+        table.row(
+            "ECDHE key reuse (TLS1.2 or below)",
+            get_styled_text(
+                self._style, "ephemeral_key_reuse", ekr.tls12_ecdhe_reuse.name
+            ),
+        )
+        table.row(
+            "DHE key reuse (TLS1.3)",
+            get_styled_text(
+                self._style, "ephemeral_key_reuse", ekr.tls13_dhe_reuse.name
+            ),
+        )
+        table.row(
+            "ECDHE key reuse (TLS1.3)",
+            get_styled_text(
+                self._style, "ephemeral_key_reuse", ekr.tls13_ecdhe_reuse.name
+            ),
+        )
         table.dump()
         print()
 
     def _print_features(self):
         feat_prof = getattr(self.server_profile, "features", None)
-        if feat_prof is None:
+        if not feat_prof:
             return
 
-        print(apply_mood("Features", Mood.HEADLINE))
+        print(Style.HEADLINE.decorate("Features"))
         print()
 
         self._print_common_features(feat_prof)
@@ -840,11 +898,17 @@ class TextProfileWorker(WorkerPlugin):
         if hasattr(feat_prof, "grease"):
             self._print_grease(feat_prof.grease)
 
+        self._print_ephemeral_key_reuse()
+
     def _print_cert(self, cert, idx):
         items = [str(getattr(cert, "version", ""))]
         self_signed = getattr(cert, "self_signed", None)
-        if self_signed is tls.SPBool.C_TRUE:
+        if self_signed is tls.ScanState.TRUE:
             items.append("self-signed")
+
+        from_trust_store = getattr(cert, "from_trust_store", tls.ScanState.FALSE)
+        if from_trust_store is tls.ScanState.TRUE:
+            items.append("certificate taken from trust store")
 
         print(f'  Certificate #{idx}: {", ".join(items)}')
         table = utils.Table(indent=4, sep="  ")
@@ -852,13 +916,15 @@ class TextProfileWorker(WorkerPlugin):
         issues = getattr(cert, "issues", None)
         if issues:
             issue_txt = []
+            style = get_style(self._style, "certificate", "issues")
             for issue in issues:
                 folded_lines = utils.fold_string(issue, max_length=100)
                 issue_txt.append("- " + folded_lines.pop(0))
                 issue_txt.extend(["  " + item for item in folded_lines])
-            table.row("Issues", apply_mood(issue_txt[0], Mood.BAD))
+
+            table.row("Issues", style.decorate(issue_txt[0]))
             for line in issue_txt[1:]:
-                table.row("", apply_mood(line, Mood.BAD))
+                table.row("", style.decorate(line))
 
         table.row("Serial number", f"{cert.serial_number_int} (integer)")
         table.row("", f"{pdu.string(cert.serial_number_bytes)} (hex)")
@@ -876,8 +942,24 @@ class TextProfileWorker(WorkerPlugin):
                 table.row("", line)
 
         if hasattr(cert, "subject_matches"):
-            txt, mood = _cert["subject_matches"][cert.subject_matches]
-            table.row("URI matches", apply_mood(txt, mood))
+            table.row(
+                "URI matches",
+                get_styled_text(
+                    self._style,
+                    "certificate",
+                    "subject_matches",
+                    cert.subject_matches.name,
+                ),
+            )
+
+        ev = getattr(cert, "extended_validation", tls.ScanState.NA)
+        if ev is not tls.ScanState.NA:
+            table.row(
+                "Extended validation",
+                get_styled_text(
+                    self._style, "certificate", "extended_validation", ev.name
+                ),
+            )
 
         lines = utils.fold_string(cert.issuer, max_length=100, sep=",")
         table.row("Issuer", lines.pop(0))
@@ -886,8 +968,15 @@ class TextProfileWorker(WorkerPlugin):
 
         sig_algo = getattr(cert, "signature_algorithm", None)
         if sig_algo is not None:
-            mood = _sig_algo["algos"][sig_algo]
-            table.row("Signature algorithm", apply_mood(str(sig_algo), mood))
+            if self_signed is tls.ScanState.TRUE:
+                txt = sig_algo.name
+
+            else:
+                txt = get_style_applied(
+                    sig_algo.name, self._style, "signature_schemes", sig_algo.name
+                )
+
+            table.row("Signature algorithm", txt)
 
         pub_key = getattr(cert, "public_key", None)
         if pub_key is not None:
@@ -896,18 +985,14 @@ class TextProfileWorker(WorkerPlugin):
                 tls.SignatureAlgorithm.RSA,
                 tls.SignatureAlgorithm.DSA,
             ]:
-                mood_reference = _assym_key_sizes
+                style = self.style_for_rsa_dh_key_size(key_size)
 
             else:
-                mood_reference = _assym_ec_key_sizes
-
-            for val, mood in mood_reference.items():
-                if key_size >= val:
-                    break
+                style = self.style_for_ec_key_size(key_size)
 
             table.row(
                 "Public key",
-                f'{pub_key.key_type}, {apply_mood(f"{key_size} bits", mood)}',
+                f'{pub_key.key_type}, {style.decorate(f"{key_size} bits")}',
             )
 
         key_usage_ext = get_cert_ext(cert, "KeyUsage")
@@ -923,25 +1008,36 @@ class TextProfileWorker(WorkerPlugin):
             table.row("Extended key usage", usage_txt)
 
         if hasattr(cert, "not_valid_before"):
-            valid = True
-            mood = Mood.GOOD
+            valid = tls.ScanState.TRUE
+            valid_from = tls.ScanState.TRUE
             if cert.not_valid_before > self._start_date:
-                valid = False
-                mood = Mood.BAD
+                valid_from = tls.ScanState.FALSE
+                valid = tls.ScanState.FALSE
 
-            from_txt = apply_mood(cert.not_valid_before, mood)
-            mood = Mood.GOOD
+            valid_to = tls.ScanState.TRUE
             if cert.not_valid_after < self._start_date:
-                valid = False
-                mood = Mood.BAD
-            to_txt = apply_mood(cert.not_valid_after, mood)
+                valid_to = tls.ScanState.FALSE
+                valid = tls.ScanState.FALSE
 
-            if valid:
-                valid_txt = apply_mood("valid period", Mood.GOOD)
-
-            else:
-                valid_txt = apply_mood("invalid period", Mood.BAD)
-
+            from_txt = get_style_applied(
+                cert.not_valid_before,
+                self._style,
+                "certificate",
+                "validity",
+                valid_from.name,
+                "style",
+            )
+            to_txt = get_style_applied(
+                cert.not_valid_after,
+                self._style,
+                "certificate",
+                "validity",
+                valid_to.name,
+                "style",
+            )
+            valid_txt = get_styled_text(
+                self._style, "certificate", "validity", valid.name
+            )
             table.row(
                 "Validity period",
                 (
@@ -964,13 +1060,54 @@ class TextProfileWorker(WorkerPlugin):
 
         crl_status = getattr(cert, "crl_revocation_status", None)
         if crl_status is not None:
-            txt, mood = _cert["crl_status"][crl_status]
-            table.row("CRL revocation status", apply_mood(txt, mood))
+            table.row(
+                "CRL revocation status",
+                get_styled_text(
+                    self._style, "certificate", "crl_status", crl_status.name
+                ),
+            )
 
         ocsp_status = getattr(cert, "ocsp_revocation_status", None)
         if ocsp_status is not None:
-            txt, mood = _cert["ocsp_status"][ocsp_status]
-            table.row("OCSP revocation status", apply_mood(txt, mood))
+            table.row(
+                "OCSP revocation status",
+                get_styled_text(
+                    self._style, "certificate", "ocsp_status", ocsp_status.name
+                ),
+            )
+
+            text = []
+            must_staple = tls.ScanState.FALSE
+            if cert.ocsp_must_staple is tls.ScanState.TRUE:
+                text.append("must staple")
+                must_staple = tls.ScanState.TRUE
+
+            if cert.ocsp_must_staple_multi is tls.ScanState.TRUE:
+                text.append("must multi-staple")
+                must_staple = tls.ScanState.TRUE
+
+            txt = get_dict_value(
+                self._style,
+                "certificate",
+                "must_staple",
+                must_staple.name,
+                "txt",
+                default="???",
+            )
+            if text:
+                txt += f" ({', '.join(text)})"
+
+            table.row(
+                "OCSP must staple",
+                get_style_applied(
+                    txt,
+                    self._style,
+                    "certificate",
+                    "must_staple",
+                    must_staple.name,
+                    "style",
+                ),
+            )
 
         if hasattr(cert, "fingerprint_sha1"):
             table.row("Fingerprint SHA1", pdu.string(cert.fingerprint_sha1))
@@ -983,32 +1120,41 @@ class TextProfileWorker(WorkerPlugin):
 
     def _print_certificates(self):
         cert_chains = getattr(self.server_profile, "cert_chains", None)
-        if cert_chains is None:
+        if not cert_chains:
             return
 
-        print(apply_mood("Certificate chains", Mood.HEADLINE))
+        print(Style.HEADLINE.decorate("Certificate chains"))
         for cert_chain in cert_chains:
             print()
             if hasattr(cert_chain, "successful_validation"):
-                txt, mood = _cert["chain_valid"][cert_chain.successful_validation]
-                valid_txt = apply_mood(txt, mood)
+                valid_txt = get_styled_text(
+                    self._style,
+                    "cert_chain",
+                    "validation",
+                    cert_chain.successful_validation.name,
+                )
 
             else:
                 valid_txt = ""
 
-            head_line = apply_mood(f"Certificate chain #{cert_chain.id}:", Mood.BOLD)
+            head_line = Style.BOLD.decorate(f"Certificate chain #{cert_chain.id}:")
             print(f"  {head_line} {valid_txt}")
             if hasattr(cert_chain, "issues"):
+                style = get_style(self._style, "cert_chain", "issues")
                 print("    Issues:")
                 for issue in cert_chain.issues:
                     lines = utils.fold_string(issue, max_length=100)
                     txt = "    - " + "\n      ".join(lines)
-                    print(apply_mood(txt, Mood.BAD))
+                    print(style.decorate(txt))
 
             if hasattr(cert_chain, "root_cert_transmitted"):
-                root_transmitted = cert_chain.root_cert_transmitted
-                txt, mood = _cert["root_transmitted"][root_transmitted]
-                print(f"    {apply_mood(txt, mood)}")
+                txt = get_styled_text(
+                    self._style,
+                    "cert_chain",
+                    "root_cert_transmitted",
+                    cert_chain.root_cert_transmitted.name,
+                )
+                print("    ", txt)
 
             for idx, cert in enumerate(cert_chain.cert_chain, start=1):
                 self._print_cert(cert, idx)
@@ -1019,43 +1165,214 @@ class TextProfileWorker(WorkerPlugin):
 
     def _print_vulnerabilities(self):
         vuln_prof = getattr(self.server_profile, "vulnerabilities", None)
-        if vuln_prof is None:
+        if not vuln_prof:
             return
 
         table = utils.Table(indent=2, sep="  ")
-        print(apply_mood("Vulnerabilities", Mood.HEADLINE))
+        print(Style.HEADLINE.decorate("Vulnerabilities"))
         print()
+
+        beast = getattr(vuln_prof, "beast", None)
+        if beast is not None:
+            table.row(
+                "BEAST (CVE-2011-3389)",
+                get_styled_text(self._style, "vulnerabilities", "beast", beast.name),
+            )
+
         ccs = getattr(vuln_prof, "ccs_injection", None)
         if ccs is not None:
-            txt, mood = _vulnerabilities[ccs]
-            table.row("CCS injection (CVE-2014-0224)", apply_mood(txt, mood))
+            table.row(
+                "CCS injection (CVE-2014-0224)",
+                get_styled_text(
+                    self._style, "vulnerabilities", "ccs_injection", ccs.name
+                ),
+            )
+
+        crime = getattr(vuln_prof, "crime", None)
+        if crime is not None:
+            table.row(
+                "CRIME (CVE-2012-4929)",
+                get_styled_text(self._style, "vulnerabilities", "crime", crime.name),
+            )
+
+        freak = getattr(vuln_prof, "freak", None)
+        if freak is not None:
+            table.row(
+                "FREAK (CVE-2015-0204)",
+                get_styled_text(self._style, "vulnerabilities", "freak", freak.name),
+            )
 
         hb = getattr(vuln_prof, "heartbleed", None)
         if hb is not None:
-            txt, mood = _heartbleed[hb]
-            table.row("Heartbleed (CVE-2014-0160)", apply_mood(txt, mood))
+            table.row(
+                "Heartbleed (CVE-2014-0160)",
+                get_styled_text(self._style, "vulnerabilities", "heartbleed", hb.name),
+            )
+
+        logjam = getattr(vuln_prof, "logjam", None)
+        if logjam is not None:
+            table.row(
+                "Logjam (CVE-2015-0204)",
+                get_styled_text(self._style, "vulnerabilities", "logjam", logjam.name),
+            )
 
         robot = getattr(vuln_prof, "robot", None)
         if robot is not None:
-            txt, mood = _robot[robot]
             table.row(
-                "ROBOT vulnerability (CVE-2017-13099, ...)", apply_mood(txt, mood)
+                "ROBOT (CVE-2017-13099, ...)",
+                get_styled_text(self._style, "vulnerabilities", "robot", robot.name),
+            )
+
+        sweet_32 = getattr(vuln_prof, "sweet_32", None)
+        if sweet_32 is not None:
+            table.row(
+                "Sweet32 (CVE-2016-2183, CVE-2016-6329)",
+                get_styled_text(
+                    self._style, "vulnerabilities", "sweet_32", sweet_32.name
+                ),
+            )
+
+        poodle = getattr(vuln_prof, "poodle", None)
+        if poodle is not None:
+            table.row(
+                "POODLE (CVE-2014-3566)",
+                get_styled_text(self._style, "vulnerabilities", "poodle", poodle.name),
+            )
+
+        tls_poodle = getattr(vuln_prof, "tls_poodle", None)
+        if tls_poodle is not None:
+            table.row(
+                "TLS POODLE",
+                get_styled_text(
+                    self._style, "vulnerabilities", "tls_poodle", tls_poodle.name
+                ),
+            )
+
+        lucky_minus_20 = getattr(vuln_prof, "lucky_minus_20", None)
+        if lucky_minus_20 is not None:
+            table.row(
+                "Lucky-Minus-20 (CVE-2016-2107)",
+                get_styled_text(
+                    self._style,
+                    "vulnerabilities",
+                    "lucky_minus_20",
+                    lucky_minus_20.name,
+                ),
+            )
+
+        # cbc padding oracle shall be the last vulnerability in the list
+        cbc_padding_oracle = getattr(vuln_prof, "cbc_padding_oracle", None)
+        if cbc_padding_oracle:
+            style_cbc = get_dict_value(
+                self._style, "vulnerabilities", "cbc_padding_oracle"
+            )
+            vulnerable = getattr(cbc_padding_oracle, "vulnerable", None)
+            txt = get_dict_value(
+                style_cbc, "vulnerable", vulnerable.name, "txt", default="???"
+            )
+            oracles = getattr(cbc_padding_oracle, "oracles", None)
+            if oracles:
+                txt += f", number of oracles: {len(oracles)}"
+
+            table.row(
+                "CBC padding oracle",
+                get_style_applied(
+                    txt, style_cbc, "vulnerable", vulnerable.name, "style"
+                ),
+            )
+            accuracy = getattr(cbc_padding_oracle, "accuracy", None)
+            table.row(
+                "  scan accuracy", get_styled_text(style_cbc, "accuracy", accuracy.name)
             )
 
         table.dump()
+        if cbc_padding_oracle and oracles:
+            style_oracle = get_dict_value(style_cbc, "oracle")
+            for oracle in oracles:
+                print("\n    oracle properties")
+                table = utils.Table(indent=6, sep="  ")
+                strong = getattr(oracle, "strong", None)
+                table.row(
+                    "strength", get_styled_text(style_oracle, "strong", strong.name),
+                )
+                observable = getattr(oracle, "observable", None)
+                table.row(
+                    "observable",
+                    get_styled_text(style_oracle, "observable", observable.name),
+                )
+                oracle_types = getattr(oracle, "types", None)
+                if oracle_types:
+                    str_types = []
+                    for oracle_type in oracle_types:
+                        str_types.append(
+                            get_dict_value(
+                                style_oracle, "type", oracle_type.name, default="???"
+                            )
+                        )
+
+                    table.row("oracle type(s)", str_types.pop(0))
+                    for line in str_types:
+                        table.row("", line)
+
+                cipher_groups = getattr(oracle, "cipher_group", None)
+                if cipher_groups:
+                    str_group = []
+                    max_len = 0
+                    for group in cipher_groups:
+                        version = getattr(group, "version", None)
+                        version_str = version.name if version else "???"
+                        cs = getattr(group, "cipher_suite", None)
+                        cs_str = cs.name if cs else "???"
+                        protocol = getattr(group, "record_protocol", None)
+                        protocol_str = get_dict_value(
+                            style_oracle,
+                            "cipher_group",
+                            "record_protocol",
+                            protocol.name,
+                        )
+                        str_group.append((version_str, cs_str, protocol_str))
+                        max_len = max(max_len, len(cs_str))
+                        # str_group.append(f"  {version_str} {cs_str}   {protocol_str}")
+
+                    txt = "cipher suite groups"
+                    for version, cs, prot in str_group:
+                        table.row(txt, f"{version} {cs:{max_len}} {prot}")
+                        txt = ""
+
+                table.dump()
+
         print()
 
     def run(self):
-        init(strip=not self.config.get("color"))
-        self._prof_values = self.server_profile.get_profile_values(tls.Version.all())
+        self.style_file = self.config.get("style")
+        self._read_style()
+        if self.config.get("progress"):
+            sys.stderr.write("\n")
+
+        if self.config.get("format") == "html":
+            FontStyle.html = True
+            print("<pre>")
+
+        else:
+            colorama.init(strip=not self.config.get("color"))
+
+        self._prof_versions = self.server_profile.get_versions()
         self._print_tlsmate()
         self._print_scan_info()
         self._print_host()
+        self._print_server_malfunctions()
         self._print_versions()
-        self._print_cipher_suites()
-        self._print_supported_groups()
-        self._print_sig_algos()
-        self._print_dh_groups()
-        self._print_features()
-        self._print_certificates()
-        self._print_vulnerabilities()
+        if self._prof_versions:
+            self._print_cipher_suites()
+            self._print_supported_groups()
+            self._print_sig_algos()
+            self._print_dh_groups()
+            self._print_features()
+            self._print_certificates()
+            self._print_vulnerabilities()
+
+        for callback in self._callbacks:
+            callback(self)
+
+        if self.config.get("format") == "html":
+            print("</pre>")

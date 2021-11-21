@@ -53,9 +53,21 @@ if [ -z "$port" ]; then
             port=$TLSMATE_CA_ECDSA_OCSP_PORT
         fi
     fi
+    if [ "$ca" == "root-rsa" ]; then
+        port=44403
+        if [ -n "$TLSMATE_ROOT_RSA_OCSP_PORT" ]; then
+            port=$TLSMATE_ROOT_RSA_OCSP_PORT
+        fi
+    fi
+    if [ "$ca" == "root-ecdsa" ]; then
+        port=44404
+        if [ -n "$TLSMATE_ROOT_ECDSA_OCSP_PORT" ]; then
+            port=$TLSMATE_ROOT_ECDSA_OCSP_PORT
+        fi
+    fi
 fi
 
 kill `lsof -t -i :$port`
-cmd="$OPENSSL ocsp -index $ca_dir/db/$ca/index -port $port -rsigner $ca_dir/certs/$ca.crt -rkey $ca_dir/private/$ca.key -CA $ca_dir/certs/$ca.crt -resp_no_certs"
+cmd="$OPENSSL ocsp -index $ca_dir/db/$ca/index -port $port -rsigner $ca_dir/certs/$ca.pem -rkey $ca_dir/private/$ca.key -CA $ca_dir/certs/$ca.pem -resp_no_certs"
 echo $cmd
 $cmd

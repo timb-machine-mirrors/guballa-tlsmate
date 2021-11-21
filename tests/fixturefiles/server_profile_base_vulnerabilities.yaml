@@ -1,0 +1,214 @@
+cert_chains:
+-   cert_chain:
+    -   crl_revocation_status: NOT_REVOKED
+        extended_validation: "FALSE"
+        extensions:
+        -   ca: "FALSE"
+            criticality: "TRUE"
+            name: BasicConstraints
+            oid: 2.5.29.19
+        -   criticality: "FALSE"
+            name: SubjectAlternativeName
+            oid: 2.5.29.17
+            subj_alt_names:
+            - test.localhost
+            - '*.wildcard.localhost'
+        -   criticality: "FALSE"
+            extended_key_usage:
+            - serverAuth
+            name: ExtendedKeyUsage
+            oid: 2.5.29.37
+        -   criticality: "FALSE"
+            digest: 51:61:85:72:f8:df:d4:50:3b:ea:4a:03:1c:97:ac:7c:f2:c2:42:15
+            name: SubjectKeyIdentifier
+            oid: 2.5.29.14
+        -   criticality: "FALSE"
+            key_identifier: d5:7c:a3:16:ac:51:15:e8:9e:72:1b:d1:ed:61:ff:3a:f6:25:e5:f6
+            name: AuthorityKeyIdentifier
+            oid: 2.5.29.35
+        -   authority_info_access:
+            -   access_location: http://crt.localhost:44400/certs/ca-rsa.crt
+                access_method: caIssuers
+            -   access_location: http://ocsp.localhost:44401
+                access_method: OCSP
+            criticality: "FALSE"
+            name: AuthorityInformationAccess
+            oid: 1.3.6.1.5.5.7.1.1
+        -   criticality: "FALSE"
+            distribution_points:
+            -   full_name:
+                -   uri: http://crl.localhost:44400/crl/ca-rsa.crl
+            name: CRLDistributionPoints
+            oid: 2.5.29.31
+        -   cert_policies:
+            -   policy_name: Unknown OID
+                policy_oid: 2.23.140.1.2.1
+            criticality: "FALSE"
+            name: CertificatePolicies
+            oid: 2.5.29.32
+        -   criticality: "FALSE"
+            name: TLSFeature
+            oid: 1.3.6.1.5.5.7.1.24
+            tls_features:
+            - STATUS_REQUEST
+            - STATUS_REQUEST_V2
+        fingerprint_sha1: 18:50:27:e2:a9:72:14:15:77:55:c3:57:b8:54:8e:b2:d2:b9:cc:0f
+        fingerprint_sha256: d2:23:4e:5c:2d:65:2e:7a:18:71:be:3d:35:f9:9a:49:08:14:a4:f9:4e:fb:d2:ac:3b:a3:08:76:eb:ec:f0:14
+        issuer: CN=localhost Intermediate CA RSA,O=The TlsMate Company,C=DE
+        issues:
+        - validity period exceeded
+        - subject name does not match
+        not_valid_after: '2020-10-01T01:00:00'
+        not_valid_before: '2020-08-01T01:00:00'
+        ocsp_must_staple: "TRUE"
+        ocsp_must_staple_multi: "TRUE"
+        ocsp_revocation_status: NOT_REVOKED
+        pem: |
+            -----BEGIN CERTIFICATE-----
+            MIIEoTCCA4mgAwIBAgIIA2Yo9tKHFD0wDQYJKoZIhvcNAQELBQAwUzELMAkGA1UE
+            BhMCREUxHDAaBgNVBAoME1RoZSBUbHNNYXRlIENvbXBhbnkxJjAkBgNVBAMMHWxv
+            Y2FsaG9zdCBJbnRlcm1lZGlhdGUgQ0EgUlNBMB4XDTIwMDgwMTAxMDAwMFoXDTIw
+            MTAwMTAxMDAwMFowWTELMAkGA1UEBhMCREUxLjAsBgNVBAoMJVRoZSBUbHNNYXRl
+            IENvbXBhbnkgKFNlcnZlciBzaWRlKSBSU0ExGjAYBgNVBAMMEWV4cGlyZWQubG9j
+            YWxob3N0MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3KGkGj+oQ561
+            jDSBvOyyP2bAFq1mH+fMXabXOtB+IgZQw8+tCS3NqEkljG0ywdc0WbmzRf5WoJEb
+            VBcnzhaPJWO+9bd6FoHfzVpo5FVqc6rxAcQMgz9Q0icKhRVwF6U1GAzbHFqucLzW
+            Dwqz+D8tpyE1cGtZrqOH/2AL6vTYH5JNQTGmTEK/GtTrYMfUAQSP5sFbZur8F2iJ
+            wtZRVEqw1cUrhJIHsUSrtymNX8Al2etGEnN2JeJxgIJBt0Y/OPxi+R5lMtzoBNm0
+            TzIZLcmR++a9tNzu66gVpYHl+xTTSHPUwRNGNq0/mFbiw4u+UB8NuKdplGFSELJv
+            NaJ+9SJFwwIDAQABo4IBcTCCAW0wDAYDVR0TAQH/BAIwADAvBgNVHREEKDAmgg50
+            ZXN0LmxvY2FsaG9zdIIUKi53aWxkY2FyZC5sb2NhbGhvc3QwEwYDVR0lBAwwCgYI
+            KwYBBQUHAwEwHQYDVR0OBBYEFFFhhXL439RQO+pKAxyXrHzywkIVMB8GA1UdIwQY
+            MBaAFNV8oxasURXonnIb0e1h/zr2JeX2MHAGCCsGAQUFBwEBBGQwYjA3BggrBgEF
+            BQcwAoYraHR0cDovL2NydC5sb2NhbGhvc3Q6NDQ0MDAvY2VydHMvY2EtcnNhLmNy
+            dDAnBggrBgEFBQcwAYYbaHR0cDovL29jc3AubG9jYWxob3N0OjQ0NDAxMDoGA1Ud
+            HwQzMDEwL6AtoCuGKWh0dHA6Ly9jcmwubG9jYWxob3N0OjQ0NDAwL2NybC9jYS1y
+            c2EuY3JsMBMGA1UdIAQMMAowCAYGZ4EMAQIBMBQGCCsGAQUFBwEYBAgwBgIBBQIB
+            ETANBgkqhkiG9w0BAQsFAAOCAQEAqprUkwmry13iu/e7t50MEFIMybVZfCrtyb7t
+            K1HzcBWENMrc+S9QNX0BRP8jifzsqKG87w68dTVSeTWoeK2Ri5HQJ2u2c+lFem8v
+            VUMQseo/1nPJvd6bYyohbDpdlqIu9UQPYruQj+1xB6AsS2Flzab9CYnqliZM6s6K
+            G6koQkvIhRlQs/a+9Z+sZkjcQyroYhi9ozv8hhVfNw/uEMeYByjCvW9v5wxjRYam
+            O9eFm/KFTPIPvCdKuLiGXY3rWpOAEfjf05yY2bbKRN0PRW/Tg5Zk4j8xe6QeNcbF
+            BdKzDqRJzPGKiuuJE/hoHPw2RTAC/JMnkxqHtz+MJG/M0t3ysQ==
+            -----END CERTIFICATE-----
+        public_key:
+            key: dc:a1:a4:1a:3f:a8:43:9e:b5:8c:34:81:bc:ec:b2:3f:66:c0:16:ad:66:1f:e7:cc:5d:a6:d7:3a:d0:7e:22:06:50:c3:cf:ad:09:2d:cd:a8:49:25:8c:6d:32:c1:d7:34:59:b9:b3:45:fe:56:a0:91:1b:54:17:27:ce:16:8f:25:63:be:f5:b7:7a:16:81:df:cd:5a:68:e4:55:6a:73:aa:f1:01:c4:0c:83:3f:50:d2:27:0a:85:15:70:17:a5:35:18:0c:db:1c:5a:ae:70:bc:d6:0f:0a:b3:f8:3f:2d:a7:21:35:70:6b:59:ae:a3:87:ff:60:0b:ea:f4:d8:1f:92:4d:41:31:a6:4c:42:bf:1a:d4:eb:60:c7:d4:01:04:8f:e6:c1:5b:66:ea:fc:17:68:89:c2:d6:51:54:4a:b0:d5:c5:2b:84:92:07:b1:44:ab:b7:29:8d:5f:c0:25:d9:eb:46:12:73:76:25:e2:71:80:82:41:b7:46:3f:38:fc:62:f9:1e:65:32:dc:e8:04:d9:b4:4f:32:19:2d:c9:91:fb:e6:bd:b4:dc:ee:eb:a8:15:a5:81:e5:fb:14:d3:48:73:d4:c1:13:46:36:ad:3f:98:56:e2:c3:8b:be:50:1f:0d:b8:a7:69:94:61:52:10:b2:6f:35:a2:7e:f5:22:45:c3
+            key_exponent: 65537
+            key_size: 2048
+            key_type: RSA
+        self_signed: "FALSE"
+        serial_number_bytes: 03:66:28:f6:d2:87:14:3d
+        serial_number_int: 244928270297404477
+        signature: aa:9a:d4:93:09:ab:cb:5d:e2:bb:f7:bb:b7:9d:0c:10:52:0c:c9:b5:59:7c:2a:ed:c9:be:ed:2b:51:f3:70:15:84:34:ca:dc:f9:2f:50:35:7d:01:44:ff:23:89:fc:ec:a8:a1:bc:ef:0e:bc:75:35:52:79:35:a8:78:ad:91:8b:91:d0:27:6b:b6:73:e9:45:7a:6f:2f:55:43:10:b1:ea:3f:d6:73:c9:bd:de:9b:63:2a:21:6c:3a:5d:96:a2:2e:f5:44:0f:62:bb:90:8f:ed:71:07:a0:2c:4b:61:65:cd:a6:fd:09:89:ea:96:26:4c:ea:ce:8a:1b:a9:28:42:4b:c8:85:19:50:b3:f6:be:f5:9f:ac:66:48:dc:43:2a:e8:62:18:bd:a3:3b:fc:86:15:5f:37:0f:ee:10:c7:98:07:28:c2:bd:6f:6f:e7:0c:63:45:86:a6:3b:d7:85:9b:f2:85:4c:f2:0f:bc:27:4a:b8:b8:86:5d:8d:eb:5a:93:80:11:f8:df:d3:9c:98:d9:b6:ca:44:dd:0f:45:6f:d3:83:96:64:e2:3f:31:7b:a4:1e:35:c6:c5:05:d2:b3:0e:a4:49:cc:f1:8a:8a:eb:89:13:f8:68:1c:fc:36:45:30:02:fc:93:27:93:1a:87:b7:3f:8c:24:6f:cc:d2:dd:f2:b1
+        signature_algorithm: RSA_PKCS1_SHA256
+        subject: CN=expired.localhost,O=The TlsMate Company (Server side) RSA,C=DE
+        subject_matches: "FALSE"
+        validity_period_days: 61
+        version: Version.v3
+    -   extended_validation: NA
+        extensions:
+        -   ca: "TRUE"
+            criticality: "TRUE"
+            name: BasicConstraints
+            oid: 2.5.29.19
+        -   criticality: "TRUE"
+            key_usage:
+            - KEY_CERT_SIGN
+            - CRL_SIGN
+            name: KeyUsage
+            oid: 2.5.29.15
+        -   criticality: "FALSE"
+            digest: 2b:48:f0:60:f4:04:84:21:8e:71:c8:0d:d1:38:b0:2c:89:8d:ba:ba
+            name: SubjectKeyIdentifier
+            oid: 2.5.29.14
+        -   criticality: "FALSE"
+            key_identifier: 2b:48:f0:60:f4:04:84:21:8e:71:c8:0d:d1:38:b0:2c:89:8d:ba:ba
+            name: AuthorityKeyIdentifier
+            oid: 2.5.29.35
+        fingerprint_sha1: 34:b4:24:4e:07:7f:76:31:f0:a9:39:91:8c:e0:0d:8e:20:2e:08:63
+        fingerprint_sha256: 75:2a:a6:ec:8e:9d:26:7e:e3:cc:18:92:4a:af:6c:0f:dc:05:99:c0:8d:78:62:fa:74:99:b7:f8:6c:ea:fa:ca
+        issuer: CN=localhost Root CA RSA,O=The TlsMate Company,C=DE
+        not_valid_after: '2031-08-20T14:17:44'
+        not_valid_before: '2021-08-22T14:17:44'
+        ocsp_must_staple: "FALSE"
+        ocsp_must_staple_multi: "FALSE"
+        pem: |
+            -----BEGIN CERTIFICATE-----
+            MIIDhzCCAm+gAwIBAgIUR7B/xYABToiAv76ByGyQVg5oz+0wDQYJKoZIhvcNAQEL
+            BQAwSzELMAkGA1UEBhMCREUxHDAaBgNVBAoME1RoZSBUbHNNYXRlIENvbXBhbnkx
+            HjAcBgNVBAMMFWxvY2FsaG9zdCBSb290IENBIFJTQTAeFw0yMTA4MjIxNDE3NDRa
+            Fw0zMTA4MjAxNDE3NDRaMEsxCzAJBgNVBAYTAkRFMRwwGgYDVQQKDBNUaGUgVGxz
+            TWF0ZSBDb21wYW55MR4wHAYDVQQDDBVsb2NhbGhvc3QgUm9vdCBDQSBSU0EwggEi
+            MA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDttyNMrwazgGdjsxgJgfm9s4qI
+            WGxxopn7I9VTnkHSOF31KrPdts6MDXU67Y9jJXFZsGa0YhsWVt82Urk95Sebqm6E
+            ciXTiAhQCfG/bnso9y1/X9dWWZ/EY4QH/kWvweJhQP4ci/wiarDg0wWzbwSEZQVp
+            EhjEAQSo1pDChgLA5SveWQ1y2oICgawvYtPNbFl8xiBfpr0EIuSMhM4leBcFAFPv
+            McsmsgAteRWygO/ZeF4T3xdU5pbzdnmsdiih4dm7Isper+WbNNX+CcD3hQWRVW4N
+            BKVydeFAj5i894cMOobIttagLThMHtNggdONiLcgJOfxXVvDP4IZsSJwi0odAgMB
+            AAGjYzBhMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQW
+            BBQrSPBg9ASEIY5xyA3ROLAsiY26ujAfBgNVHSMEGDAWgBQrSPBg9ASEIY5xyA3R
+            OLAsiY26ujANBgkqhkiG9w0BAQsFAAOCAQEAk8nR/3/H/1M7QgUJt1u3ul2Jtkca
+            n0xqkfAbXPgneU4G/f2HZhJ1fiFt7pGpO9ozW6goo1axNqvO64PQYo2Zmpb2oiXw
+            vXqR0FgE+L7yyMDBYcYxLFXBCQOHtcKgg3+3F3+7JmQDVNEwBT4ognnKDyvyK/8i
+            5QF36r2H8M6UCXBwzoKSF+MeNEwfSxNyut/BNxHf85qStGLPCGLTomXvMNy5GxWW
+            HDomMgkRhicyO58cpD07Wvzf57HVxGRsw4bBIfdhIYBCTBh76XAzDmzAOaWqtom7
+            tcbJEjoYyjfMU/hJd2+Qsk9sOOFmrdJlu/EV+KriActs36Rc7nM/uGVYxA==
+            -----END CERTIFICATE-----
+        public_key:
+            key: ed:b7:23:4c:af:06:b3:80:67:63:b3:18:09:81:f9:bd:b3:8a:88:58:6c:71:a2:99:fb:23:d5:53:9e:41:d2:38:5d:f5:2a:b3:dd:b6:ce:8c:0d:75:3a:ed:8f:63:25:71:59:b0:66:b4:62:1b:16:56:df:36:52:b9:3d:e5:27:9b:aa:6e:84:72:25:d3:88:08:50:09:f1:bf:6e:7b:28:f7:2d:7f:5f:d7:56:59:9f:c4:63:84:07:fe:45:af:c1:e2:61:40:fe:1c:8b:fc:22:6a:b0:e0:d3:05:b3:6f:04:84:65:05:69:12:18:c4:01:04:a8:d6:90:c2:86:02:c0:e5:2b:de:59:0d:72:da:82:02:81:ac:2f:62:d3:cd:6c:59:7c:c6:20:5f:a6:bd:04:22:e4:8c:84:ce:25:78:17:05:00:53:ef:31:cb:26:b2:00:2d:79:15:b2:80:ef:d9:78:5e:13:df:17:54:e6:96:f3:76:79:ac:76:28:a1:e1:d9:bb:22:ca:5e:af:e5:9b:34:d5:fe:09:c0:f7:85:05:91:55:6e:0d:04:a5:72:75:e1:40:8f:98:bc:f7:87:0c:3a:86:c8:b6:d6:a0:2d:38:4c:1e:d3:60:81:d3:8d:88:b7:20:24:e7:f1:5d:5b:c3:3f:82:19:b1:22:70:8b:4a:1d
+            key_exponent: 65537
+            key_size: 2048
+            key_type: RSA
+        self_signed: "TRUE"
+        serial_number_bytes: 47:b0:7f:c5:80:01:4e:88:80:bf:be:81:c8:6c:90:56:0e:68:cf:ed
+        serial_number_int: 409274406349521581469817764321618401398589280237
+        signature: 93:c9:d1:ff:7f:c7:ff:53:3b:42:05:09:b7:5b:b7:ba:5d:89:b6:47:1a:9f:4c:6a:91:f0:1b:5c:f8:27:79:4e:06:fd:fd:87:66:12:75:7e:21:6d:ee:91:a9:3b:da:33:5b:a8:28:a3:56:b1:36:ab:ce:eb:83:d0:62:8d:99:9a:96:f6:a2:25:f0:bd:7a:91:d0:58:04:f8:be:f2:c8:c0:c1:61:c6:31:2c:55:c1:09:03:87:b5:c2:a0:83:7f:b7:17:7f:bb:26:64:03:54:d1:30:05:3e:28:82:79:ca:0f:2b:f2:2b:ff:22:e5:01:77:ea:bd:87:f0:ce:94:09:70:70:ce:82:92:17:e3:1e:34:4c:1f:4b:13:72:ba:df:c1:37:11:df:f3:9a:92:b4:62:cf:08:62:d3:a2:65:ef:30:dc:b9:1b:15:96:1c:3a:26:32:09:11:86:27:32:3b:9f:1c:a4:3d:3b:5a:fc:df:e7:b1:d5:c4:64:6c:c3:86:c1:21:f7:61:21:80:42:4c:18:7b:e9:70:33:0e:6c:c0:39:a5:aa:b6:89:bb:b5:c6:c9:12:3a:18:ca:37:cc:53:f8:49:77:6f:90:b2:4f:6c:38:e1:66:ad:d2:65:bb:f1:15:f8:aa:e2:01:cb:6c:df:a4:5c:ee:73:3f:b8:65:58:c4
+        signature_algorithm: RSA_PKCS1_SHA256
+        subject: CN=localhost Root CA RSA,O=The TlsMate Company,C=DE
+        validity_period_days: 3650
+        version: Version.v3
+features:
+    compression:
+    -   id: 0
+        name: 'NULL'
+    -   id: 1
+        name: DEFLATE
+versions:
+-   support: "FALSE"
+    version:
+        id: 512
+        name: SSL20
+-   support: "FALSE"
+    version:
+        id: 768
+        name: SSL30
+-   ciphers:
+        chacha_poly_preference: "FALSE"
+        cipher_suites:
+        -   id: 0x0033
+            name: TLS_DHE_RSA_WITH_AES_128_CBC_SHA
+        -   id: 0x0007
+            name: TLS_RSA_WITH_IDEA_CBC_SHA
+        -   id: 0x0008
+            name: TLS_RSA_EXPORT_WITH_DES40_CBC_SHA
+        server_preference: "TRUE"
+    dh_group:
+        g_value: 2
+        p_value: ff:ff:ff:ff:ff:ff:ff:ff
+        size: 512
+    support: "TRUE"
+    version:
+        id: 769
+        name: TLS10
+-   support: "FALSE"
+    version:
+        id: 770
+        name: TLS11
+-   support: "FALSE"
+    version:
+        id: 771
+        name: TLS12
+-   support: "FALSE"
+    version:
+        id: 772
+        name: TLS13

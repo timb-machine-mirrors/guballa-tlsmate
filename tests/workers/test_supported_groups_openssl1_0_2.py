@@ -27,22 +27,22 @@ class TestCase(TlsSuiteTester):
     server = "localhost"
 
     def check_ssl30(self, profile):
-        assert profile["extension_supported"] == "C_FALSE"
+        assert profile["extension_supported"] == "FALSE"
         assert len(profile["groups"]) == 1
         assert profile["groups"][0]["name"] == "SECP256R1"
 
     def check_tls(self, profile):
-        assert profile["extension_supported"] == "C_TRUE"
-        assert profile["server_preference"] == "C_NA"
-        assert profile["groups_advertised"] == "C_NA"
+        assert profile["extension_supported"] == "TRUE"
+        assert profile["server_preference"] == "NA"
+        assert profile["groups_advertised"] == "NA"
         assert len(profile["groups"]) == 1
         assert profile["groups"][0]["name"] == "SECP256R1"
 
     def check_profile(self, profile):
-        self.check_ssl30(profile["versions"][0]["supported_groups"])
-        self.check_tls(profile["versions"][1]["supported_groups"])
+        self.check_ssl30(profile["versions"][1]["supported_groups"])
         self.check_tls(profile["versions"][2]["supported_groups"])
         self.check_tls(profile["versions"][3]["supported_groups"])
+        self.check_tls(profile["versions"][4]["supported_groups"])
 
     def run(self, tlsmate, is_replaying):
         server_profile = tlsmate.server_profile

@@ -15,23 +15,23 @@ were regarded as protected records.
 from tlsmate import msg
 from tlsmate import tls
 from tlsmate.exception import TlsConnectionClosedError
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 
 # import other stuff
 
 
-class ScanCcsInjection(WorkerPlugin):
+class ScanCcsInjection(Worker):
     name = "ccsinjection"
-    descr = "check if server is vulnerable to CCS injection (CVE-2014-0224)"
+    descr = "scan for CCS injection vulnerability (CVE-2014-0224)"
     prio = 40
 
     def run(self):
-        status = tls.SPBool.C_NA
+        status = tls.ScanState.NA
         values = self.server_profile.get_profile_values(
             [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12], full_hs=True
         )
         if values.versions:
-            status = tls.SPBool.C_UNDETERMINED
+            status = tls.ScanState.UNDETERMINED
             self.client.init_profile(profile_values=values)
             with self.client.create_connection() as conn:
                 conn.send(msg.ClientHello)
@@ -54,12 +54,13 @@ class ScanCcsInjection(WorkerPlugin):
                         or alert.description is tls.AlertDescription.DECRYPTION_FAILED
                     ):
                         # vulnerable
-                        status = tls.SPBool.C_TRUE
+                        status = tls.ScanState.TRUE
 
                     else:
-                        status = tls.SPBool.C_FALSE
+                        status = tls.ScanState.FALSE
 
                 except TlsConnectionClosedError:
-                    status = tls.SPBool.C_FALSE
+                    status = tls.ScanState.FALSE
 
+        self.server_profile.allocate_vulnerabilities()
         self.server_profile.vulnerabilities.ccs_injection = status

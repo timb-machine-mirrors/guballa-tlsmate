@@ -38,6 +38,7 @@ SSLv2 is not supported.
 
 For the other protocol versions the following messages are supported:
 
+* HelloRequest
 * ClientHello
 * ServerHello
 * NewSessionTicket
@@ -48,6 +49,7 @@ For the other protocol versions the following messages are supported:
 * CertificateRequest
 * ServerHelloDone
 * CertificateVerify
+* CertificateStatus
 * ClientKeyExchange
 * Finished
 * ChangeCipherSpec
@@ -288,6 +290,23 @@ HEARTBEAT
 ^^^^^^^^^
 
 Sending and receiving Heartbeat messages (requests and responses) is supported.
+
+STATUS_REQUEST
+^^^^^^^^^^^^^^
+
+Requesting OCSP stapling is supported. The stapled response from the server is
+check for validity. This extension is supported for TLS version 1.0 - 1.3.
+
+.. note::
+   For versions below TLS1.3 the response is sent in a CertificateStatus message,
+   while for TLS1.3 the response is provided in an TLS extensions associated
+   with the certificate in the Certificate message.
+
+STATUS_REQUEST_V2
+^^^^^^^^^^^^^^^^^
+
+Requesting single responses (status_type = ocsp) and requesting multi stapling
+(status_type = ocsp_multi) is supported (TLS versions 1.0 - 1.2)
 
 
 Certificates and certificate chains

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Module containing the test suite
+"""Module scanning for supported groups
 """
 # import basic stuff
 import logging
@@ -8,7 +8,7 @@ import abc
 # import own stuff
 from tlsmate import msg
 from tlsmate import tls
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 from tlsmate.exception import ScanError
 from tlsmate.server_profile import SPSupportedGroups
 from tlsmate import utils
@@ -49,7 +49,7 @@ class _Scan(metaclass=abc.ABCMeta):
                     break
                 supported_groups.append(server_group)
                 if server_group not in sub_set:
-                    self._profile_groups.extension_supported = tls.SPBool.C_FALSE
+                    self._profile_groups.extension_supported = tls.ScanState.FALSE
                     self._profile_groups.groups = supported_groups
                     return
                 sub_set.remove(server_group)
@@ -57,7 +57,7 @@ class _Scan(metaclass=abc.ABCMeta):
         if not supported_groups:
             raise ScanError("ECDHE cipher suites negotiated, but no groups supported")
 
-        self._profile_groups.extension_supported = tls.SPBool.C_TRUE
+        self._profile_groups.extension_supported = tls.ScanState.TRUE
         self._profile_groups.groups = supported_groups
 
     def _determine_server_preference(self):
@@ -69,12 +69,12 @@ class _Scan(metaclass=abc.ABCMeta):
             server_group = self._get_group_from_server(groups)
             if server_group is not None:
                 if server_group is ref_group:
-                    status = tls.SPBool.C_TRUE
+                    status = tls.ScanState.TRUE
                 else:
-                    status = tls.SPBool.C_FALSE
+                    status = tls.ScanState.FALSE
             groups.insert(0, groups.pop())
         else:
-            status = tls.SPBool.C_NA
+            status = tls.ScanState.NA
         if status is not None:
             self._profile_groups.server_preference = status
 
@@ -83,36 +83,32 @@ class _Scan(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     def scan(self, testsuite_name):
-        try:
-            self._client.profile.cipher_suites = self._get_cipher_suites()
-            if not self._client.profile.cipher_suites:
-                raise ScanError("No (EC)DH cipher suites supported")
-            self._client.profile.versions = [self._version]
-            self._client.profile.signature_algorithms = [
-                tls.SignatureScheme.ED25519,
-                tls.SignatureScheme.ED448,
-                tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
-                tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
-                tls.SignatureScheme.ECDSA_SECP521R1_SHA512,
-                tls.SignatureScheme.RSA_PSS_RSAE_SHA256,
-                tls.SignatureScheme.RSA_PSS_RSAE_SHA384,
-                tls.SignatureScheme.RSA_PSS_RSAE_SHA512,
-                tls.SignatureScheme.RSA_PKCS1_SHA256,
-                tls.SignatureScheme.RSA_PKCS1_SHA384,
-                tls.SignatureScheme.RSA_PKCS1_SHA512,
-                tls.SignatureScheme.ECDSA_SHA1,
-                tls.SignatureScheme.RSA_PKCS1_SHA1,
-            ]
-            self._determine_supported_groups()
+        self._client.profile.cipher_suites = self._get_cipher_suites()
+        if not self._client.profile.cipher_suites:
+            logging.info(f'no (EC)DH cipher suites supported ("{testsuite_name}")')
+            return
 
-            if self._profile_groups.extension_supported is tls.SPBool.C_TRUE:
-                self._determine_server_preference()
-                self._determine_advertised_group()
+        self._client.profile.versions = [self._version]
+        self._client.profile.signature_algorithms = [
+            tls.SignatureScheme.ED25519,
+            tls.SignatureScheme.ED448,
+            tls.SignatureScheme.ECDSA_SECP384R1_SHA384,
+            tls.SignatureScheme.ECDSA_SECP256R1_SHA256,
+            tls.SignatureScheme.ECDSA_SECP521R1_SHA512,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA256,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA384,
+            tls.SignatureScheme.RSA_PSS_RSAE_SHA512,
+            tls.SignatureScheme.RSA_PKCS1_SHA256,
+            tls.SignatureScheme.RSA_PKCS1_SHA384,
+            tls.SignatureScheme.RSA_PKCS1_SHA512,
+            tls.SignatureScheme.ECDSA_SHA1,
+            tls.SignatureScheme.RSA_PKCS1_SHA1,
+        ]
+        self._determine_supported_groups()
 
-        except ScanError as exc:
-            logging.info(f'scan error in "{testsuite_name}": {exc.message}')
-            # TODO: strategy for handling status messages
-            # self._profile_groups.set_status(exc.message)
+        if self._profile_groups.extension_supported is tls.ScanState.TRUE:
+            self._determine_server_preference()
+            self._determine_advertised_group()
 
 
 class _TLS12_Scan(_Scan):
@@ -147,7 +143,7 @@ class _TLS12_Scan(_Scan):
         return None
 
     def _determine_advertised_group(self):
-        self._profile_groups.groups_advertised = tls.SPBool.C_NA
+        self._profile_groups.groups_advertised = tls.ScanState.NA
 
 
 class _TLS13_Scan(_Scan):
@@ -214,12 +210,12 @@ class _TLS13_Scan(_Scan):
             )
 
             if supported_group_ext is None:
-                status = tls.SPBool.C_FALSE
+                status = tls.ScanState.FALSE
             else:
                 advertised_groups = supported_group_ext.supported_groups
-                status = tls.SPBool.C_TRUE
+                status = tls.ScanState.TRUE
 
-                if self._profile_groups.server_preference is not tls.SPBool.C_TRUE:
+                if self._profile_groups.server_preference is not tls.ScanState.TRUE:
                     if set(advertised_groups) != set(groups):
                         raise ScanError(
                             "server's advertised groups differ from accepted groups"
@@ -228,9 +224,9 @@ class _TLS13_Scan(_Scan):
             self._profile_groups.groups_advertised = status
 
 
-class ScanSupportedGroups(WorkerPlugin):
+class ScanSupportedGroups(Worker):
     name = "groups"
-    descr = "check for FF-DH and EC groups"
+    descr = "scan for supported groups"
     prio = 20
 
     def run(self):

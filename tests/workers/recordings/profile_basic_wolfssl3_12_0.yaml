@@ -1,29 +1,33 @@
 cert_chains:
 - cert_chain:
-  - extensions:
-    - criticality: C_FALSE
+  - extended_validation: NA
+    extensions:
+    - criticality: 'FALSE'
       digest: b3:11:32:c9:92:98:84:e2:c9:f8:d0:3b:6e:03:42:ca:1f:0e:8e:3c
       name: SubjectKeyIdentifier
       oid: 2.5.29.14
     - authority_cert_issuer:
       - directory_name: 1.2.840.113549.1.9.1=info@wolfssl.com,CN=www.wolfssl.com,OU=Consulting,O=Sawtooth,L=Bozeman,ST=Montana,C=US
       authority_cert_serial_number: 13237926705132956451
-      criticality: C_FALSE
+      criticality: 'FALSE'
       key_identifier: 27:8e:67:11:74:c3:26:1d:3f:ed:33:63:b3:a4:d8:1d:30:e5:e8:d5
       name: AuthorityKeyIdentifier
       oid: 2.5.29.35
-    - ca: C_TRUE
-      criticality: C_FALSE
+    - ca: 'TRUE'
+      criticality: 'FALSE'
       name: BasicConstraints
       oid: 2.5.29.19
     fingerprint_sha1: 0d:bf:f0:cc:30:b6:ee:b5:6f:c5:64:47:e9:66:96:ba:a1:7b:4e:07
     fingerprint_sha256: c1:95:7e:4a:55:8f:f2:a3:73:a8:3d:ca:62:f0:59:cb:3f:29:3f:c7:d4:f5:bd:2c:5f:a8:de:20:83:e8:2e:f0
+    from_trust_store: 'FALSE'
     issuer: 1.2.840.113549.1.9.1=info@wolfssl.com,CN=www.wolfssl.com,OU=Consulting,O=Sawtooth,L=Bozeman,ST=Montana,C=US
     issues:
     - validity period exceeded
     - subject name does not match
     not_valid_after: '2019-05-08T20:07:37'
     not_valid_before: '2016-08-11T20:07:37'
+    ocsp_must_staple: 'FALSE'
+    ocsp_must_staple_multi: 'FALSE'
     pem: |
       -----BEGIN CERTIFICATE-----
       MIIEnjCCA4agAwIBAgIBATANBgkqhkiG9w0BAQsFADCBlDELMAkGA1UEBhMCVVMx
@@ -57,39 +61,43 @@ cert_chains:
       key_exponent: 65537
       key_size: 2048
       key_type: RSA
-    self_signed: C_FALSE
+    self_signed: 'FALSE'
     serial_number_bytes: '01'
     serial_number_int: 1
     signature: 51:fe:2a:df:07:7e:43:ca:66:8d:15:c4:2b:db:57:b2:06:6d:0d:90:66:ff:a5:24:9c:14:ef:81:f2:a4:ab:99:a9:6a:49:20:a5:d2:71:e7:1c:3c:99:07:c7:47:fc:e8:96:b4:f5:42:30:ce:39:01:4b:d1:c2:e8:bc:95:84:87:ce:55:5d:97:9f:cf:78:f3:56:9b:a5:08:6d:ac:f6:a5:5c:c4:ef:3e:2a:39:a6:48:26:29:7b:2d:e0:cd:a6:8c:57:48:0b:bb:31:32:c2:bf:d9:43:4c:47:25:18:81:a8:c9:33:82:41:9b:ba:61:86:d7:84:93:17:24:25:36:ca:4d:63:6b:4f:95:79:d8:60:e0:1e:f5:ac:c1:8a:a1:b1:7e:85:8e:87:20:2f:08:31:ad:5e:c6:4a:c8:61:f4:9e:07:1e:a2:22:ed:73:7c:85:ee:fa:62:dc:50:36:aa:fd:c7:9d:aa:18:04:fb:ea:cc:2c:68:9b:b3:a9:c2:96:d8:c1:cc:5a:7e:f7:0d:9e:08:e0:9d:29:8b:84:46:8f:d3:91:6a:b5:b8:7a:5c:cc:4f:55:01:b8:9a:48:a0:94:43:ca:25:47:52:0a:f7:f4:be:b0:d1:71:6d:a5:52:4a:65:50:b2:ad:4e:1d:e0:6c:01:d8:fb:43:80:e6:e4:0c:37
     signature_algorithm: RSA_PKCS1_SHA256
     subject: 1.2.840.113549.1.9.1=info@wolfssl.com,CN=www.wolfssl.com,OU=Support,O=wolfSSL,L=Bozeman,ST=Montana,C=US
-    subject_matches: C_FALSE
+    subject_matches: 'FALSE'
     validity_period_days: 1000
     version: Version.v3
-  - extensions:
-    - criticality: C_FALSE
+  - extended_validation: NA
+    extensions:
+    - criticality: 'FALSE'
       digest: 27:8e:67:11:74:c3:26:1d:3f:ed:33:63:b3:a4:d8:1d:30:e5:e8:d5
       name: SubjectKeyIdentifier
       oid: 2.5.29.14
     - authority_cert_issuer:
       - directory_name: 1.2.840.113549.1.9.1=info@wolfssl.com,CN=www.wolfssl.com,OU=Consulting,O=Sawtooth,L=Bozeman,ST=Montana,C=US
       authority_cert_serial_number: 13237926705132956451
-      criticality: C_FALSE
+      criticality: 'FALSE'
       key_identifier: 27:8e:67:11:74:c3:26:1d:3f:ed:33:63:b3:a4:d8:1d:30:e5:e8:d5
       name: AuthorityKeyIdentifier
       oid: 2.5.29.35
-    - ca: C_TRUE
-      criticality: C_FALSE
+    - ca: 'TRUE'
+      criticality: 'FALSE'
       name: BasicConstraints
       oid: 2.5.29.19
     fingerprint_sha1: 66:0c:41:00:cc:33:b4:cc:eb:ec:0f:2f:8f:b4:9b:9a:76:63:16:a0
     fingerprint_sha256: ea:bb:36:a2:52:72:36:78:b1:e2:02:69:35:eb:1e:5e:c8:d8:29:29:86:db:ac:70:6d:28:a6:54:1a:ab:a7:d8
+    from_trust_store: 'FALSE'
     issuer: 1.2.840.113549.1.9.1=info@wolfssl.com,CN=www.wolfssl.com,OU=Consulting,O=Sawtooth,L=Bozeman,ST=Montana,C=US
     issues:
     - validity period exceeded
     - self-signed certificate not found in trust store
     not_valid_after: '2019-05-08T20:07:37'
     not_valid_before: '2016-08-11T20:07:37'
+    ocsp_must_staple: 'FALSE'
+    ocsp_must_staple_multi: 'FALSE'
     pem: |
       -----BEGIN CERTIFICATE-----
       MIIEqjCCA5KgAwIBAgIJALe2kDNmG2sjMA0GCSqGSIb3DQEBCwUAMIGUMQswCQYD
@@ -123,7 +131,7 @@ cert_chains:
       key_exponent: 65537
       key_size: 2048
       key_type: RSA
-    self_signed: C_TRUE
+    self_signed: 'TRUE'
     serial_number_bytes: b7:b6:90:33:66:1b:6b:23
     serial_number_int: 13237926705132956451
     signature: 0e:93:48:44:4a:72:96:60:71:25:82:a9:2c:ca:60:5b:f2:88:3e:cf:11:74:5a:11:4a:dc:d9:d8:f6:58:2c:05:d3:56:d9:e9:8f:37:ef:8e:3e:3b:ff:22:36:00:ca:d8:e2:96:3f:a7:d1:ed:1f:de:7a:b0:d7:8f:36:bd:41:55:1e:d4:b9:86:3b:87:25:69:35:60:48:d6:e4:5a:94:ce:a2:fa:70:38:36:c4:85:b4:4b:23:fe:71:9e:2f:db:06:c7:b5:9c:21:f0:3e:7c:eb:91:f8:5c:09:fd:84:43:a4:b3:4e:04:0c:22:31:71:6a:48:c8:ab:bb:e8:ce:fa:67:15:1a:3a:82:98:43:33:b5:0e:1f:1e:89:f8:37:de:1b:e6:b5:a0:f4:a2:8b:b7:1c:90:ba:98:6d:94:21:08:80:5d:f3:bf:66:ad:c9:72:28:7a:6a:48:ee:cf:63:69:31:8c:c5:8e:66:da:4b:78:65:e8:03:3a:4b:f8:cc:42:54:d3:52:5c:2d:04:ae:26:87:e1:7e:40:cb:45:41:16:4b:6e:a3:2e:4a:76:bd:29:7f:1c:53:37:06:ad:e9:5b:6a:d6:b7:4e:94:a2:7c:e8:ac:4e:a6:50:3e:2b:32:9e:68:42:1b:e4:59:67:61:ea:c7:9a:51:9c:1c:55:a3:77:76
@@ -132,13 +140,27 @@ cert_chains:
     validity_period_days: 1000
     version: Version.v3
   id: 1
-  root_cert_transmitted: C_FALSE
-  successful_validation: C_FALSE
-features: {}
-scan_info: {}
-server: {}
+  root_cert_transmitted: 'FALSE'
+  successful_validation: 'FALSE'
 versions:
+- support: 'FALSE'
+  version:
+    id: 512
+    name: SSL20
+- support: 'FALSE'
+  version:
+    id: 768
+    name: SSL30
+- support: 'FALSE'
+  version:
+    id: 769
+    name: TLS10
+- support: 'FALSE'
+  version:
+    id: 770
+    name: TLS11
 - ciphers:
+    chacha_poly_preference: 'TRUE'
     cipher_suites:
     - id: 49200
       name: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
@@ -180,15 +202,16 @@ versions:
       name: TLS_RSA_WITH_AES_256_CBC_SHA
     - id: 47
       name: TLS_RSA_WITH_AES_128_CBC_SHA
-    server_preference: C_TRUE
+    server_preference: 'TRUE'
   signature_algorithms:
     algorithms:
     - id: 1025
       name: RSA_PKCS1_SHA256
     info:
     - server selects sig_alg RSA_PKCS1_SHA256 even when not offered
+  support: 'TRUE'
   supported_groups:
-    extension_supported: C_TRUE
+    extension_supported: 'TRUE'
     groups:
     - id: 23
       name: SECP256R1
@@ -196,9 +219,12 @@ versions:
       name: SECP384R1
     - id: 25
       name: SECP521R1
-    groups_advertised: C_NA
-    server_preference: C_TRUE
+    groups_advertised: NA
+    server_preference: 'TRUE'
   version:
     id: 771
     name: TLS12
-vulnerabilities: {}
+- support: 'FALSE'
+  version:
+    id: 772
+    name: TLS13

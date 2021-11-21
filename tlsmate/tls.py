@@ -5,7 +5,7 @@
 import enum
 
 # import own stuff
-from tlsmate.exception import FatalAlert
+from tlsmate.exception import ServerMalfunction
 
 # import other stuff
 
@@ -21,7 +21,7 @@ class ExtendedEnum(enum.Enum):
         Args:
             value (int): The enum value which is used to map to an enum
             alert_on_failure (bool, optional): If set to True and the value is
-                not a valid enum value, an :obj:`FatalAlert` exception will be
+                not a valid enum value, an :obj:`ServerMalfunction` exception will be
                 raised. Defaults to False.
 
         Returns:
@@ -29,14 +29,13 @@ class ExtendedEnum(enum.Enum):
             `alert_on_failure` is set to False.
 
         Raises:
-            FatalAlert: In case the given value is not a valid enum and
+            ServerMalfunction: In case the given value is not a valid enum and
                 `alert_on_failure` is True
         """
 
         enum = cls._value2member_map_.get(value)
         if (enum is None) and alert_on_failure:
-            message = f"Value {value} not defined for {cls}"
-            raise FatalAlert(message, AlertDescription.ILLEGAL_PARAMETER)
+            raise ServerMalfunction(ServerIssue.ILLEGAL_PARAMETER_VALUE)
 
         return enum
 
@@ -47,7 +46,7 @@ class ExtendedEnum(enum.Enum):
         Args:
             name (str): The name which must correspond to the name of the enum.
             alert_on_failure (bool, optional): If set to True and the name is
-                not a valid enum value, an :obj:`FatalAlert` exception will be
+                not a valid enum value, an :obj:`ServerMalfunction` exception will be
                 raised. Defaults to False.
 
         Returns:
@@ -55,14 +54,13 @@ class ExtendedEnum(enum.Enum):
             `alert_on_failure` is set to False.
 
         Raises:
-            FatalAlert: In case the given name is not a valid enum and
+            ServerMalfunction: In case the given name is not a valid enum and
                 `alert_on_failure` is True
         """
 
         enum = cls._member_map_.get(name)
         if (enum is None) and alert_on_failure:
-            message = f"Value {name} not defined for {cls}"
-            raise FatalAlert(message, AlertDescription.ILLEGAL_PARAMETER)
+            raise ValueError(f"Value {name} not defined for {cls}")
 
         return enum
 
@@ -87,7 +85,7 @@ class ExtendedEnum(enum.Enum):
 
 
 class ExtendedIntEnum(ExtendedEnum):
-    """Clas for comparable enums
+    """Class for comparable enums
 
     Note, that we us our own class, as we cannot overwrite the __str__ method of the
     enum.IntEnum call (__slots__!)
@@ -639,10 +637,14 @@ class HandshakeType(ExtendedEnum):
     CERTIFICATE_VERIFY = 15
     CLIENT_KEY_EXCHANGE = 16
     FINISHED = 20
+    CERTIFICATE_STATUS = 22
     KEY_UPDATE = 24
     COMPRESSED_CERTIFICATE = 25
     EKT_KEY = 26
     MESSAGE_HASH = 254
+    # HelloRetryRequest is identical to a ServerHello, we assign a value > 256
+    # to it for a clear separation
+    HELLO_RETRY_REQUEST = 258
 
 
 class CCSType(ExtendedEnum):
@@ -912,7 +914,7 @@ class CipherPrimitive(ExtendedEnum):
 class SymmetricCipher(ExtendedEnum):
     """Enum representing the ciphers supported by tlsmate.
 
-    "Supported" means, a handshake can be completed sucessfully, and a secured
+    "Supported" means, a handshake can be completed successfully, and a secured
     channel is established between both peers.
     """
 
@@ -977,23 +979,23 @@ class HeartbeatMode(ExtendedEnum):
     PEER_NOT_ALLOWED_TO_SEND = 2
 
 
-class SPBool(ExtendedEnum):
+class ScanState(ExtendedEnum):
     """Enum representing a pseudo-boolean value in the server profile.
 
     In addition to True and False the two values are defined:
 
-    * C_UNDETERMINED - used when tlsmate has not even tried to determine the
+    * UNDETERMINED - used when tlsmate has not even tried to determine the
       value or if the value could not determined at all (for whatever reason).
 
-    * C_NA - Used as an indication this the boolean value is not applicable, e.g.
+    * NA - Used as an indication this the boolean value is not applicable, e.g.
       when the server does not support any CBC-cipher suite, support for the
       extension ENCRYPT_THEN_MAC is not applicable.
     """
 
-    C_FALSE = 0
-    C_TRUE = 1
-    C_NA = 2
-    C_UNDETERMINED = 3
+    FALSE = 0
+    TRUE = 1
+    NA = 2
+    UNDETERMINED = 3
 
 
 class SSLMessagType(ExtendedEnum):
@@ -1099,6 +1101,8 @@ class OcspStatus(ExtendedEnum):
     """OCSP revocation status
     """
 
+    NOT_APPLICABLE = enum.auto()
+    NOT_SUPPORTED = enum.auto()
     UNDETERMINED = enum.auto()
     NOT_REVOKED = enum.auto()
     REVOKED = enum.auto()
@@ -1107,6 +1111,8 @@ class OcspStatus(ExtendedEnum):
     INVALID_RESPONSE = enum.auto()
     SIGNATURE_INVALID = enum.auto()
     INVALID_TIMESTAMP = enum.auto()
+    NO_ISSUER = enum.auto()
+    INVALID_ISSUER_CERT = enum.auto()
 
 
 class Profile(ExtendedEnum):
@@ -1152,13 +1158,81 @@ class HeartbleedStatus(ExtendedEnum):
     CONNECTION_CLOSED = enum.auto()
 
 
-class SPHeartbeat(ExtendedEnum):
+class HeartbeatState(ExtendedEnum):
     """Status for heartbeart support
     """
 
-    C_FALSE = 0
-    C_TRUE = 1
-    C_NA = 2
-    C_UNDETERMINED = 3
-    C_NOT_REPONDING = 3
-    C_WRONG_RESPONSE = 4
+    FALSE = 0
+    TRUE = 1
+    NA = 2
+    UNDETERMINED = 3
+    NOT_REPONDING = 3
+    WRONG_RESPONSE = 4
+
+
+class StatusType(ExtendedEnum):
+    """Status type for TLS extension status_request
+    """
+
+    OCSP = 1
+    OCSP_MULTI = 2
+    NONE = 256
+
+
+class SPCbcPaddingOracle(ExtendedEnum):
+    """Different types of CBC padding oracles
+    """
+
+    LUCKY_MINUS_20 = enum.auto()
+    PADDING_FILLS_RECORD = enum.auto()
+    PADDING_EXCEEDS_RECORD = enum.auto()
+    INVALID_PADDING = enum.auto()
+    INVALID_MAC = enum.auto()
+
+
+class OracleScanAccuracy(ExtendedEnum):
+    """How accurate the scan for CBC padding oracles shall be
+    """
+
+    LOW = enum.auto()
+    MEDIUM = enum.auto()
+    HIGH = enum.auto()
+
+
+class ServerIssue(ExtendedEnum):
+    """Indication of a severe server violation
+    """
+
+    PSK_OUT_OF_RANGE = "selected PSK out of range (TLS1.3)"
+    KEY_SHARE_NOT_PRESENT = "ServerHello, TLS13: extension KEY_SHARE not present"
+    SECURE_RENEG_FAILED = "secure renegotiation check failed"
+    VERIFY_DATA_INVALID = "received Finished: verify data does not match"
+    CERT_REQ_NO_SIG_ALGO = (
+        "certificate request without extension SignatureAlgorithms received"
+    )
+    EXTENTION_LENGHT_ERROR = "extension length incorrect"
+    SNI_NO_HOSTNAME = "host_name not present"
+    FFDH_GROUP_UNKNOWN = "FF-DH group unknown"
+    MESSAGE_LENGTH_ERROR = "message length incorrect"
+    INCOMPATIBLE_KEY_EXCHANGE = (
+        "key exchange algorithm in ServerKeyExchange message incompatible with "
+        "offered cipher suite"
+    )
+    PARAMETER_LENGTH_ERROR = "message length error when unpacking parameter"
+    RECORD_TOO_SHORT = "decoded record shorter than MAC length"
+    RECORD_MAC_INVALID = "MAC verification failed"
+    RECORD_WRONG_PADDING_LENGTH = "wrong padding length"
+    RECORD_WRONG_PADDING_BYTES = "wrong padding byte contents"
+    ILLEGAL_PARAMETER_VALUE = "received parameter value is illegal"
+    KEX_INVALID_SIGNATURE = "signature of server's key exchange parameters invalid"
+
+
+class Logjam(ExtendedEnum):
+    """The type of logjam weakness
+    """
+
+    NA = enum.auto()
+    OK = enum.auto()
+    PRIME512 = enum.auto()
+    PRIME1024_COMMON = enum.auto()
+    PRIME1024_CUSTOMIZED = enum.auto()

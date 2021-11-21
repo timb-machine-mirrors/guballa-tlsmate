@@ -27,7 +27,7 @@ transmit sensitive data! Here are some reasons:
   when not used anymore. Such sensitive data are even logged for debugging purpose.
 * quite a lot of checks are missing which are essential for productive use cases.
 * `random values` are not always random
-* side channels? Probably there are some.
+* Side channels? Definitely. Constant time implementation? No.
 * Extensive tests and proven in practice? No!
 * etc.
 
@@ -70,7 +70,6 @@ in the future:
 
 * proxy support
 * simulating a TLS server (thus allowing to test TLS clients)
-* scan for more vulnerabilities
 
 .. _`TLS features`: https://guballa.gitlab.io/tlsmate/tlsfeatures.html
 
@@ -102,7 +101,6 @@ applications.
 
 In the following only some basic examples for using the CLI are
 given. Use the ``tlsmate --help`` command to get all supported subcommands.
-Well, currently there are not that many.
 
 .. note::
 
@@ -114,12 +112,15 @@ Well, currently there are not that many.
    $ tlsmate scan --progress mytlsmatedomain.net
 
 This command will perform a TLS scan against the domain ``mytlsmatedomain.net``, and the
-result will be displayed as colored console output.
+result will be displayed as colored console output. For an example refer to the
+`output of the scan command`_.
 
 Using the tlsmate library from other python applications is described in the
 `Python API documentation`_.
 
 .. _`CLI documentation`: https://guballa.gitlab.io/tlsmate/cli.html
+
+.. _`output of the scan command`: https://guballa.gitlab.io/tlsmate/scanner_output.html
 
 .. _`Python API documentation`: https://guballa.gitlab.io/tlsmate/modules.html
 

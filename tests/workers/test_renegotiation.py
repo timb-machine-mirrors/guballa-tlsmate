@@ -29,9 +29,9 @@ class TestCase(TlsSuiteTester):
         server_profile = tlsmate.server_profile
         ScanRenegotiation(tlsmate).run()
         profile = server_profile.make_serializable()
-        assert profile["features"]["insecure_renegotiation"] == "C_FALSE"
-        assert profile["features"]["scsv_renegotiation"] == "C_TRUE"
-        assert profile["features"]["secure_renegotation"] == "C_TRUE"
+        assert profile["features"]["insecure_renegotiation"] == "FALSE"
+        assert profile["features"]["scsv_renegotiation"] == "TRUE"
+        assert profile["features"]["secure_renegotation"] == "TRUE"
 
 
 if __name__ == "__main__":

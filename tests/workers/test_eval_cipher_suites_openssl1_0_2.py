@@ -120,22 +120,36 @@ class TestCase(TlsSuiteTester):
         assert len(cert_chain[1]["cert_chain"]) == 2
 
     def check_versions(self, versions):
-        assert len(versions) == 4
-        assert versions[0]["version"]["name"] == "SSL30"
-        assert versions[0]["ciphers"]["server_preference"] == "C_FALSE"
-        assert versions[1]["version"]["name"] == "TLS10"
-        assert versions[1]["ciphers"]["server_preference"] == "C_FALSE"
-        assert versions[2]["version"]["name"] == "TLS11"
-        assert versions[2]["ciphers"]["server_preference"] == "C_FALSE"
-        assert versions[3]["version"]["name"] == "TLS12"
-        assert versions[3]["ciphers"]["server_preference"] == "C_FALSE"
-        for a, b in zip(tls10_cs, versions[0]["ciphers"]["cipher_suites"]):
-            assert a == b["name"]
+        assert len(versions) == 6
+        assert versions[0]["version"]["name"] == "SSL20"
+        assert versions[0]["support"] == "FALSE"
+
+        assert versions[1]["version"]["name"] == "SSL30"
+        assert versions[1]["support"] == "TRUE"
+        assert versions[1]["ciphers"]["server_preference"] == "FALSE"
+
+        assert versions[2]["version"]["name"] == "TLS10"
+        assert versions[2]["support"] == "TRUE"
+        assert versions[2]["ciphers"]["server_preference"] == "FALSE"
+
+        assert versions[3]["version"]["name"] == "TLS11"
+        assert versions[3]["support"] == "TRUE"
+        assert versions[3]["ciphers"]["server_preference"] == "FALSE"
+
+        assert versions[4]["version"]["name"] == "TLS12"
+        assert versions[4]["support"] == "TRUE"
+        assert versions[4]["ciphers"]["server_preference"] == "FALSE"
+
+        assert versions[5]["version"]["name"] == "TLS13"
+        assert versions[5]["support"] == "FALSE"
+
         for a, b in zip(tls10_cs, versions[1]["ciphers"]["cipher_suites"]):
             assert a == b["name"]
         for a, b in zip(tls10_cs, versions[2]["ciphers"]["cipher_suites"]):
             assert a == b["name"]
-        for a, b in zip(tls12_cs, versions[3]["ciphers"]["cipher_suites"]):
+        for a, b in zip(tls10_cs, versions[3]["ciphers"]["cipher_suites"]):
+            assert a == b["name"]
+        for a, b in zip(tls12_cs, versions[4]["ciphers"]["cipher_suites"]):
             assert a == b["name"]
 
     def check_profile(self, profile):

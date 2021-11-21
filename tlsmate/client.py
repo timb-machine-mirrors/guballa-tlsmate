@@ -9,6 +9,7 @@ from typing import List
 # import own stuff
 from tlsmate import tls
 from tlsmate import ext
+from tlsmate import structs
 from tlsmate.msg import ClientHello
 from tlsmate.connection import TlsConnection
 
@@ -47,7 +48,7 @@ class ClientProfile(object):
             Default: [:obj:`tlsmate.tls.CompressionMethod.NULL`]
         cipher_suites (list (:obj:`tlsmate.tls.CipherSuite` or int)):
             A list of cipher suites which will be offered to the server in the
-            sequence given. Note, that arbitraty interger values are supported
+            sequence given. Note, that arbitrary integer values are supported
             as well, allowing to check if the server ignores unknown values.
             Default: []
         support_sni (bool):
@@ -60,12 +61,12 @@ class ClientProfile(object):
         supported_groups (list (:obj:`tlsmate.tls.SupportedGroups` or int)): The list
             of named groups supported by the client. If set to None, the
             extension will not be present in the ClientHello message. Note,
-            that arbitraty interger values are supported as well, allowing to
+            that arbitrary integer values are supported as well, allowing to
             check if the server ignores unknown values. Default: None
         signature_algorithms (list (:obj:`tlsmate.tls.SignatureScheme` or int)):
             The list of signature algorithms supported by the client. If
             set to None, the extension will not be present in the ClientHello
-            message. Note, that arbitraty interger values are supported as
+            message. Note, that arbitrary integer values are supported as
             well, allowing to check if the server ignores unknown values.
             Default: None
         heartbeat_mode (:class:`tlsmate.tls.HeartbeatMode` or None): The mode which is
@@ -93,13 +94,18 @@ class ClientProfile(object):
         support_psk (bool): An indication whether the client offers a PSK with
             the ClientHello (i.e. NewSessionTicket message have been received
             before). Default: False
+        support_status_request (bool): An indication, if the extensions status request
+            shall be supported. Default: False
+        support_status_request_v2 (:obj:`tlsmate.tls.StatusType`): The status type of
+            the request. NONE is used to suppress the extension.
+            Default: NONE
         key_shares (list (:obj:`tlsmate.tls.SupportedGroups` or int)): The list
-            of key shares supported for TLS1.3. Note, that arbitraty interger
+            of key shares supported for TLS1.3. Note, that arbitrary integer
             values are supported as well, allowing to check if the server
             ignores unknown values. Default: None
         psk_key_exchange_modes (list (:obj:`tlsmate.tls.PskKeyExchangeMode` or int)):
             The list of PSK key exchange modes used in the extension
-            psk_key_exchange_modes. Note, that arbitraty interger values are
+            psk_key_exchange_modes. Note, that arbitrary integer values are
             supported as well, allowing to check if the server ignores unknown
             values. Default: None
         early_data (bytes): The application data to be sent with 0-RTT. TLS1.3 only.
@@ -119,6 +125,8 @@ class ClientProfile(object):
     supported_groups: List = None
     signature_algorithms: List = None
     heartbeat_mode: tls.HeartbeatMode = None
+    support_status_request: bool = False
+    support_status_request_v2: tls.StatusType = tls.StatusType.NONE
 
     # TLS1.2 and below
     support_session_id: bool = False
@@ -161,6 +169,8 @@ class Client(object):
             If True, the connection will be closed with a fatal alert. If False,
             the connection continues. The latter is useful for scanning a server, as
             the handshake would be aborted prematurely otherwise.
+        server_issues (list of :obj:`tlsmate.tls.ServerIssue`): a list of severe server
+            issues.
     """
 
     def __init__(self, tlsmate):
@@ -177,6 +187,23 @@ class Client(object):
         self.session_state_id = None
         self.psks = []
         self._host = None
+        self.server_issues = []
+
+    def report_server_issue(self, issue, message=None, extension=None):
+        """Store a server issue, if not done
+
+        Arguments:
+            issue (:obj:tlsmate.tls.`ServerMalfunction`): the reason for the exception
+            message (:obj:`tlsmate.tls.HandshakeType`): the message, if applicable
+            extension (:obj:`tlsmate.tls.Extension`): the extension, if applicable
+        """
+
+        malfunction = structs.Malfunction(
+            issue=issue, message=message, extension=extension
+        )
+
+        if malfunction not in self.server_issues:
+            self.server_issues.append(malfunction)
 
     def init_profile(self, profile_values=None):
         """Resets the client profile to a very basic state
@@ -197,9 +224,16 @@ class Client(object):
         if profile_values is not None:
             self.profile.versions = profile_values.versions[:]
             self.profile.cipher_suites = profile_values.cipher_suites[:]
-            self.profile.supported_groups = profile_values.supported_groups[:]
-            self.profile.signature_algorithms = profile_values.signature_algorithms[:]
-            self.profile.key_shares = profile_values.key_shares[:]
+            if profile_values.supported_groups:
+                self.profile.supported_groups = profile_values.supported_groups[:]
+
+            if profile_values.signature_algorithms:
+                self.profile.signature_algorithms = profile_values.signature_algorithms[
+                    :
+                ]
+
+            if profile_values.key_shares:
+                self.profile.key_shares = profile_values.key_shares[:]
 
     def _set_profile_interoperability(self):
         """Define profile for interoperability, like used in modern browsers
@@ -545,8 +579,8 @@ class Client(object):
 
         Arguments:
             psk (:obj:`tlsmate.structs.Psk`): A pre-shared key be stored on the
-            client level, usable to resume connections using the pre-shared key
-            extension.
+                client level, usable to resume connections using the pre-shared key
+                extension.
         """
         self.psks.append(psk)
 
@@ -590,7 +624,7 @@ class Client(object):
             self.profile.support_session_ticket
             and self.session_state_ticket is not None
         ):
-            msg.session_id = bytes.fromhex("dead beaf")
+            msg.session_id = bytes.fromhex("dead beef")
 
         elif self.profile.support_session_id and self.session_state_id is not None:
             msg.session_id = self.session_state_id.session_id
@@ -626,6 +660,16 @@ class Client(object):
                         supported_groups=self.profile.supported_groups
                     )
                 )
+
+            if self.profile.support_status_request_v2 is not tls.StatusType.NONE:
+                msg.extensions.append(
+                    ext.ExtStatusRequestV2(
+                        status_type=self.profile.support_status_request_v2
+                    )
+                )
+
+            if self.profile.support_status_request:
+                msg.extensions.append(ext.ExtStatusRequest())
 
             # RFC5246, 7.4.1.4.1.: Clients prior to TLS12 MUST NOT send this extension
             if (

@@ -13,8 +13,8 @@ import logging
 # import own stuff
 from tlsmate.tlsmate import TlsMate, TLSMATE_DIR
 from tlsmate import utils
-from tlsmate.config import Configuration, ConfigItem
-from tlsmate.connection import TlsConnection
+from tlsmate.config import Configuration
+from tlsmate.structs import ConfigItem
 
 # import other stuff
 
@@ -38,6 +38,7 @@ class TlsLibrary(enum.Enum):
     openssl1_1_1 = enum.auto()
     openssl3_0_0 = enum.auto()
     wolfssl3_12_0 = enum.auto()
+    wolfssl4_8_0 = enum.auto()
 
 
 class TlsSuiteTester(metaclass=abc.ABCMeta):
@@ -70,7 +71,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             str(TLSMATE_DIR)
             + "/"
             + self.server_cmd.format(
-                library=self.library.name, server_port=self.config.get("server_port"),
+                library=self.library.name, server_port=self.config.get("port"),
             )
         )
 
@@ -117,14 +118,6 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
 
         return self.path.resolve().parent / "recordings" / (name + ".yaml")
 
-    def _init_classes(self):
-        """Init class attributes.
-
-        Between two test cases some class attributes must be reset.
-        """
-
-        TlsConnection.reset()
-
     def entry(self, is_replaying=False):
         """Entry point for a test case.
 
@@ -133,7 +126,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
                 Defaults to False.
         """
 
-        self._init_classes()
+        utils.set_logging_format()
 
         if is_replaying:
             ini_file = None
@@ -154,7 +147,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         self.config.set("read_profile", self.get_yaml_file(self.sp_in_yaml))
         self.config.set("pytest_recorder_file", self.get_yaml_file(self.recorder_yaml))
         self.config.set("pytest_recorder_replaying", is_replaying)
-        utils.set_logging(self.config.get("logging"))
+        utils.set_logging_level(self.config.get("logging"))
 
         self.tlsmate = TlsMate(self.config)
         self.recorder = self.tlsmate.recorder

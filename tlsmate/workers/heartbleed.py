@@ -9,27 +9,33 @@ for the heartbeat request. Refer to https://heartbleed.com/
 # import own stuff
 from tlsmate import msg
 from tlsmate import tls
-from tlsmate.plugin import WorkerPlugin
+from tlsmate.plugin import Worker
 from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
 
 # import other stuff
 
 
-class ScanHeartbleed(WorkerPlugin):
+class ScanHeartbleed(Worker):
     name = "heartbleed"
-    descr = "check if server is vulnerable to Heartbleed vulnerability"
+    descr = "scan for Heartbleed vulnerability"
     prio = 41
 
     def run(self):
-        hb = getattr(
-            self.server_profile.features, "heartbeat", tls.SPHeartbeat.C_UNDETERMINED
-        )
+        if not hasattr(self.server_profile, "features"):
+            hb = tls.HeartbeatState.UNDETERMINED
+
+        else:
+            hb = getattr(
+                self.server_profile.features,
+                "heartbeat",
+                tls.HeartbeatState.UNDETERMINED,
+            )
 
         state = tls.HeartbleedStatus.UNDETERMINED
-        if hb in (tls.SPHeartbeat.C_FALSE, tls.SPHeartbeat.C_NA):
+        if hb in (tls.HeartbeatState.FALSE, tls.HeartbeatState.NA):
             state = tls.HeartbleedStatus.NOT_APPLICABLE
 
-        elif hb is tls.SPHeartbeat.C_TRUE:
+        elif hb is tls.HeartbeatState.TRUE:
             values = self.server_profile.get_profile_values(
                 tls.Version.all(), full_hs=True
             )
@@ -57,4 +63,5 @@ class ScanHeartbleed(WorkerPlugin):
                 except TlsConnectionClosedError:
                     state = tls.HeartbleedStatus.CONNECTION_CLOSED
 
+        self.server_profile.allocate_vulnerabilities()
         self.server_profile.vulnerabilities.heartbleed = state

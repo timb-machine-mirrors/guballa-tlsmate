@@ -1,7 +1,4 @@
 cert_chains: []
-features: {}
-scan_info: {}
-server: {}
 versions:
 - cipher_kinds:
   - id: 65664
@@ -12,7 +9,27 @@ versions:
     name: SSL_CK_IDEA_128_CBC_WITH_MD5
   - id: 458944
     name: SSL_CK_DES_192_EDE3_CBC_WITH_MD5
+  support: 'TRUE'
   version:
     id: 512
     name: SSL20
-vulnerabilities: {}
+- support: 'FALSE'
+  version:
+    id: 768
+    name: SSL30
+- support: 'FALSE'
+  version:
+    id: 769
+    name: TLS10
+- support: 'FALSE'
+  version:
+    id: 770
+    name: TLS11
+- support: 'FALSE'
+  version:
+    id: 771
+    name: TLS12
+- support: 'FALSE'
+  version:
+    id: 772
+    name: TLS13

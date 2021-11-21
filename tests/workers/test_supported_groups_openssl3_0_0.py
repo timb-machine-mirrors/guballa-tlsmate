@@ -43,24 +43,24 @@ class TestCase(TlsSuiteTester):
     server = "localhost"
 
     def check_tls12(self, profile):
-        assert profile["extension_supported"] == "C_TRUE"
-        assert profile["server_preference"] == "C_FALSE"
-        assert profile["groups_advertised"] == "C_NA"
+        assert profile["extension_supported"] == "TRUE"
+        assert profile["server_preference"] == "FALSE"
+        assert profile["groups_advertised"] == "NA"
         assert len(profile["groups"]) == len(groups_tls12)
         for a, b in zip(groups_tls12, profile["groups"]):
             assert a == b["name"]
 
     def check_tls13(self, profile):
-        assert profile["extension_supported"] == "C_TRUE"
-        assert profile["server_preference"] == "C_FALSE"
-        assert profile["groups_advertised"] == "C_TRUE"
+        assert profile["extension_supported"] == "TRUE"
+        assert profile["server_preference"] == "FALSE"
+        assert profile["groups_advertised"] == "TRUE"
         assert len(profile["groups"]) == len(groups_tls13)
         for a, b in zip(groups_tls13, profile["groups"]):
             assert a == b["name"]
 
     def check_profile(self, profile):
-        self.check_tls12(profile["versions"][0]["supported_groups"])
-        self.check_tls13(profile["versions"][1]["supported_groups"])
+        self.check_tls12(profile["versions"][4]["supported_groups"])
+        self.check_tls13(profile["versions"][5]["supported_groups"])
 
     def run(self, tlsmate, is_replaying):
         server_profile = tlsmate.server_profile

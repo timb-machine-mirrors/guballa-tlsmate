@@ -30,10 +30,10 @@ class TestCase(TlsSuiteTester):
         server_profile = tlsmate.server_profile
         ScanResumption(tlsmate).run()
         profile = server_profile.make_serializable()
-        assert profile["features"]["session_id"] == "C_TRUE"
-        assert profile["features"]["session_ticket"] == "C_TRUE"
+        assert profile["features"]["session_id"] == "TRUE"
+        assert profile["features"]["session_ticket"] == "TRUE"
         assert profile["features"]["session_ticket_lifetime"] == 7200
-        assert profile["features"]["resumption_psk"] == "C_TRUE"
+        assert profile["features"]["resumption_psk"] == "TRUE"
         assert profile["features"]["psk_lifetime"] == 7200
 
 

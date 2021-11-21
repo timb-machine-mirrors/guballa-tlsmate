@@ -1,3 +1,6 @@
-V	310516180740Z		0C8483239826333D	unknown	/C=DE/O=The TlsMate Company (Server side) RSA/CN=localhost
-V	310516180741Z		0C8483239826333E	unknown	/C=DE/O=The TlsMate Company (Server side) DSA/CN=localhost
-R	310516180742Z	210518180742Z,superseded	0C8483239826333F	unknown	/C=DE/O=The TlsMate Company (Server side) RSA/CN=revoked.localhost
+V	311119152618Z		0DF02C230C013723	unknown	/C=DE/O=The TlsMate Company (Server side) RSA/CN=localhost
+V	311119152621Z		0DF02C230C013724	unknown	/C=DE/O=The TlsMate Company (Server side) DSA/CN=localhost
+V	311119152621Z		0DF02C230C013725	unknown	/C=DE/O=The TlsMate Company (Server side) ECDSA+RSA/CN=localhost
+R	311119152621Z	211121152621Z,superseded	0DF02C230C013726	unknown	/C=DE/O=The TlsMate Company (Server side) RSA/CN=revoked.localhost
+V	201001010000Z		0DF02C230C013727	unknown	/C=DE/O=The TlsMate Company (Server side) RSA/CN=expired.localhost
+V	311119152621Z		0DF02C230C013728	unknown	/C=DE/O=The TlsMate Company (Server side, no ids) RSA/CN=localhost

@@ -12,6 +12,19 @@ from tlsmate.structs import ConfigItem
 # import other stuff
 import configparser
 
+config_logging = ConfigItem("logging", type=str, default="error")
+config_host = ConfigItem("host", type=str, default="localhost")
+config_port = ConfigItem("port", type=int, default=443)
+config_interval = ConfigItem("interval", type=int, default=0)
+config_key_log_file = ConfigItem("key_log_file", type=str, default=None)
+config_progress = ConfigItem("progress", type=bool, default=False)
+config_sni = ConfigItem("sni", type=str, default=None)
+config_ca_certs = ConfigItem("ca_certs", type="file_list")
+config_client_key = ConfigItem("client_key", type="file_list")
+config_client_chain = ConfigItem("client_chain", type="file_list")
+config_crl = ConfigItem("crl", type=bool, default=True)
+config_ocsp = ConfigItem("ocsp", type=bool, default=True)
+
 
 class Configuration(object):
     """Class representing the configuration for tlsmate.
@@ -30,39 +43,46 @@ class Configuration(object):
     Example:
         Specifying the logging option:
 
-        Via command line:
-            ::
+        Via command line::
 
-                tlsmate --logging=debug ...
+            tlsmate --logging=debug ...
 
-        Via Enviroment variable:
-            ::
+        Via Enviroment variable::
 
-                export TLSMATE_LOGGING=debug
+            export TLSMATE_LOGGING=debug
 
-        Via ini-file:
-            ::
+        Via ini-file::
 
-                [tlsmate]
-                logging = debug
+            [tlsmate]
+            logging = debug
     """
 
     def __init__(self):
         self._config = {}
         self._descr = {}
-        self.register(ConfigItem("logging", type=str, default="error"))
 
-        self.register(ConfigItem("ca_certs", type="file_list"))
-        self.register(ConfigItem("client_chain", type="file_list"))
-        self.register(ConfigItem("client_key", type="file_list"))
-        self.register(ConfigItem("crl", type=bool, default=True))
-        self.register(ConfigItem("host", type=str, default="localhost"))
-        self.register(ConfigItem("port", type=int, default=443))
-        self.register(ConfigItem("interval", type=int, default=0))
-        self.register(ConfigItem("key_log_file", type=str))
-        self.register(ConfigItem("ocsp", type=bool, default=True))
-        self.register(ConfigItem("progress", type=bool, default=False))
-        self.register(ConfigItem("sni", type=str, default=None))
+        # register configurations which are essential in the core
+        # part of tlsmate.
+        for item in [
+            config_logging,
+            config_host,
+            config_port,
+            config_interval,
+            config_key_log_file,
+            config_progress,
+            config_sni,
+            config_ca_certs,
+            config_client_key,
+            config_client_chain,
+            config_crl,
+            config_ocsp,
+        ]:
+            self.register(item)
+
+        # special configuration item exclusively used for unit tests.
+        # if set to False, the recorder will not use any delays when replaying.
+        self.register(ConfigItem("recorder_delay", type=bool, default=True))
+        self._init_environment_var("recorder_delay")
 
     def _str_to_filelist(self, string):
         """Resolves a string of files paths.
@@ -78,6 +98,7 @@ class Configuration(object):
         Returns:
             list of str: the list of resolved absolute paths.
         """
+
         ret = []
         for val in string.split(","):
             val = val.strip()
@@ -95,6 +116,7 @@ class Configuration(object):
     def _init_from_ini_file(self, ini_file):
         """Helper method to initialize the configuration from an ini-file.
         """
+
         if ini_file is None:
             ini_file = Path.home() / ".tlsmate.ini"
             if not ini_file.is_file():
@@ -119,17 +141,25 @@ class Configuration(object):
                 if val is not None:
                     self._config[item] = self._cast_item(item, val)
 
+    def _init_environment_var(self, item):
+        """Helper method to initialize a single item from the environment variable.
+        """
+
+        val = os.environ.get("TLSMATE_" + item.upper())
+        if val is not None:
+            self._config[item] = self._cast_item(item, val)
+
     def _init_from_environment(self):
         """Helper method to initialize the configuration from environment variables.
         """
+
         for item in self._config:
-            val = os.environ.get("TLSMATE_" + item.upper())
-            if val is not None:
-                self._config[item] = self._cast_item(item, val)
+            self._init_environment_var(item)
 
     def _cast_item(self, item, val):
         """Cast the type of a configuration item into the internal format.
         """
+
         item_type = self._descr[item].type
         if item_type in self._format_option:
             val = self._format_option[item_type](self, val)
@@ -142,6 +172,7 @@ class Configuration(object):
             ini_file (str): the path to the ini file. If None is given, then only
                 the environment variables are taken into account.
         """
+
         self._init_from_ini_file(ini_file)
         self._init_from_environment()
 
@@ -153,6 +184,7 @@ class Configuration(object):
             item name and the item value.
 
         """
+
         return self._config.items()
 
     def get(self, key, default=None):
@@ -167,6 +199,7 @@ class Configuration(object):
             any: the value of the configuration item or the provided default value if
             it is not present.
         """
+
         return self._config.get(key, default)
 
     def set(self, key, val, keep_existing=True):
@@ -194,8 +227,13 @@ class Configuration(object):
         Raises:
             ValueError: if a configuration item with the same name is already existing
         """
+
         name = config_item.name
         if name in self._descr:
-            raise ValueError(f'configuration setting "{name}" already defined')
+            if config_item != self._descr[name]:
+                raise ValueError(
+                    f'configuration setting "{name}" already defined with '
+                    f"different properties"
+                )
         self._descr[name] = config_item
         self._config[name] = config_item.default

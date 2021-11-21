@@ -10,7 +10,7 @@ import os
 from tlsmate import dh_numbers
 from tlsmate import tls
 from tlsmate import pdu
-from tlsmate.exception import FatalAlert, CurveNotSupportedError
+from tlsmate.exception import ServerMalfunction, CurveNotSupportedError
 from tlsmate import kdf
 
 # import other stuff
@@ -27,13 +27,14 @@ from cryptography.hazmat.primitives.serialization import (
 )
 
 
-def verify_signed_params(params, msgs, default_scheme, version):
+def verify_signed_params(prefix, params, cert, default_scheme, version):
     """Verify the signed parameters from a ServerKeyExchange message.
 
     Arguments:
+        prefix (bytes): the bytes to prepend to the data
         params: the parameter block from the ServerKeyExchange message
-        msgs (:obj:`tlsmate.connection.TlsConnectionMsgs`): the object storing
-            received/sent messages
+        cert (:obj:`tlsmate.cert.Certificate`): the certificate used to validate
+            the data
         default_scheme (:class:`tlsmate.tls.SignatureScheme`): the default
             signature scheme to use (if not present in the message)
         version (:class:`tlsmate.tls.Version`): the TLS version. For TLS1.1 and below
@@ -43,10 +44,7 @@ def verify_signed_params(params, msgs, default_scheme, version):
             validate.
     """
 
-    data = bytes(
-        msgs.client_hello.random + msgs.server_hello.random + params.signed_params
-    )
-    cert = msgs.server_certificate.chain.certificates[0]
+    data = prefix + params.signed_params
 
     if (
         default_scheme is tls.SignatureScheme.RSA_PKCS1_SHA1
@@ -66,17 +64,12 @@ def verify_signed_params(params, msgs, default_scheme, version):
             raise InvalidSignature
 
     else:
-        if params.sig_scheme is None:
-            sig_scheme = default_scheme
-
-        else:
-            sig_scheme = params.sig_scheme
-
+        sig_scheme = params.sig_scheme or default_scheme
         cert.validate_signature(sig_scheme, data, params.signature)
 
 
 def verify_certificate_verify(cert_ver, msgs, msg_digest):
-    """Validates the the CertificateVerify message.
+    """Validates the CertificateVerify message.
 
     Arguments:
         cert_ver (:obj:`tlsmate.msg.CertificateVerify`): the CertificateVerify
@@ -90,10 +83,7 @@ def verify_certificate_verify(cert_ver, msgs, msg_digest):
             validate.
     """
 
-    data = (
-        (b" " * 64) + "TLS 1.3, server CertificateVerify".encode() + b"\0" + msg_digest
-    )
-
+    data = (b" " * 64) + b"TLS 1.3, server CertificateVerify" + b"\0" + msg_digest
     cert = msgs.server_certificate.chain.certificates[0]
     cert.validate_signature(cert_ver.signature_scheme, data, cert_ver.signature)
 
@@ -329,10 +319,7 @@ class DhKeyExchange(KeyExchange):
         if group is not None:
             dh_nbrs = dh_numbers.dh_numbers.get(group)
             if dh_nbrs is None:
-                FatalAlert(
-                    f"FF-DH group {group.name} unknown",
-                    tls.AlertDescription.HANDSHAKE_FAILURE,
-                )
+                raise ServerMalfunction(tls.ServerIssue.FFDH_GROUP_UNKNOWN)
 
             p_val = dh_nbrs.p_val
             g_val = dh_nbrs.g_val

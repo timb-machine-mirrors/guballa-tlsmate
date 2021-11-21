@@ -1,0 +1,933 @@
+description:
+  short: very strict profile targeting a security level of 128 bits
+  long: >-
+    From a strict security perspective this profile does not provide any compromises.
+    TLS protocol versions: only TLS1.2 and TLS1.3 are considered as good.
+    Cipher suites:
+      - Key exchange: only ECDHE (RSA & ECDSA) cipher suites are considered as good.
+      - Symmetric cipher: AES and CAMELLIA ciphers in GCM, CCM or CCM_8 mode
+        are considered as good. CHACHA20_POLY1305 are considered as good as well.
+      - MAC: only SHA256 and better is considered as good
+      - All TLS1.3 cipher suites are considered as good.
+      - For TLS1.2 the server shall enforce the cipher suite order
+    Supported groups:
+      Only X25519, X448 and SECP* curves with a security level of at least 128 bits
+      are considered as good.
+      If any supported group is not considered as good the server shall enforce the
+      order of supported groups.
+    DH groups:
+      Only groups with 3072 bits or more are considered as good.
+    Signature Schemes (signing key exchange messages, applicable in certificates):
+      Considered as good: RSA_PKCS1_* with SHA256 or better, ECDSA_SECP* with SHA256 or
+      better, RSA_PSS_RSAE_*, RSA_PSS_PSS_*, ED25519, ED448
+    Required Extensions:
+      status_request, encrypt_then_mac, extended_master_secret
+    Banned extensions:
+      heartbeat, session_ticket (rationale: ticket encryption key is a long term
+      secret, but is typically protected like a short term secret, rotation frequency
+      of the ticket encryption key is another potential issue)
+    The other stuff should be rather obvious.
+
+style:
+  good:
+    fg: green
+  neutral:
+  soso:
+    fg: yellow
+    style: bright
+  bad:
+    fg: red
+  headline:
+    fg: magenta
+    style: bright
+  bold:
+    style: bright
+  error:
+    fg: red
+    style: bright
+
+version:
+  SSL20:
+    supported: &version_deprecated
+      "FALSE": &version_not_supported
+        txt: not supported
+        style: good
+      "TRUE": &version_supported
+        txt: supported
+        style: bad
+      NA:
+        txt: ""
+        style: neutral
+      UNDETERMINED:
+        txt: skipped from scan
+        style: neutral
+    cipher_order: &cipher_order_neutral
+      "FALSE": &cipher_order_false
+        txt: server does not enforce cipher suite order
+        style: neutral
+      "TRUE": &cipher_order_true
+        txt: server enforces cipher suite order
+        style: neutral
+      NA: &cipher_order_na
+        txt: ""
+        style: neutral
+      UNDETERMINED: &cipher_order_undet
+        txt: no indication if server enforces cipher suite order
+        style: neutral
+    chacha_preference: &chacha_preference_all
+      "FALSE":
+        txt: server does not respect client preference for CHACHA20 cipher suites
+        style: neutral
+      "TRUE":
+        txt: server respects client preference for CHACHA20 cipher suites
+        style: good
+      NA:
+        txt: ""
+        style: neutral
+      UNDETERMINED:
+        txt: undetermined if server respects client preference for CHACHA20 cipher suites
+        style: soso
+  SSL30:
+    supported: *version_deprecated
+    cipher_order: &cipher_order_tls
+      "FALSE":
+        <<: *cipher_order_false
+        style: bad
+      "TRUE":
+        <<: *cipher_order_true
+        style: good
+      NA:
+        <<: *cipher_order_na
+        style: neutral
+      UNDETERMINED:
+        <<: *cipher_order_undet
+        style: soso
+    chacha_preference: *chacha_preference_all
+  TLS10:
+    supported: &version_not_recommended
+      <<: *version_deprecated
+      "TRUE":
+        <<: *version_supported
+        style: soso
+    cipher_order: *cipher_order_tls
+    chacha_preference: *chacha_preference_all
+  TLS11:
+    supported: *version_not_recommended
+    cipher_order: *cipher_order_tls
+    chacha_preference: *chacha_preference_all
+  TLS12:
+    supported: &version_recommended
+      <<: *version_not_recommended
+      "FALSE":
+        <<: *version_not_supported
+        style: neutral
+      "TRUE":
+        <<: *version_supported
+        style: good
+    cipher_order: *cipher_order_tls
+    chacha_preference: *chacha_preference_all
+  TLS13:
+    supported: *version_recommended
+    cipher_order: *cipher_order_neutral
+    chacha_preference: *chacha_preference_all
+
+key_exchange:
+  DHE_DSS: soso
+  DHE_RSA: soso
+  DH_ANON: bad
+  RSA: soso
+  DH_DSS: bad
+  DH_RSA: bad
+  ECDH_ECDSA: bad
+  ECDHE_ECDSA: good
+  ECDH_RSA: bad
+  ECDHE_RSA: good
+  TLS13_KEY_SHARE: good
+  DHE_DSS_EXPORT: bad
+  DHE_PSK: soso
+  DHE_RSA_EXPORT: bad
+  DH_ANON_EXPORT: bad
+  DH_DSS_EXPORT: bad
+  DH_RSA_EXPORT: bad
+  ECCPWD: neutral
+  ECDHE_PSK: neutral
+  ECDH_ANON: bad
+  KRB5: neutral
+  KRB5_EXPORT: bad
+  "NULL": bad
+  PSK: bad
+  PSK_DHE: soso
+  RSA_EXPORT: bad
+  RSA_PSK: neutral
+  SRP_SHA: bad
+  SRP_SHA_DSS: bad
+  SRP_SHA_RSA: bad
+
+symmetric_ciphers:
+  AES_128_CBC: soso
+  AES_256_CBC: soso
+  AES_128_GCM: good
+  AES_256_GCM: good
+  AES_128_CCM: good
+  AES_128_CCM_8: good
+  AES_256_CCM: good
+  AES_256_CCM_8: good
+  CHACHA20_POLY1305: good
+  TRIPPLE_DES_EDE_CBC: bad
+  CAMELLIA_128_CBC: soso
+  CAMELLIA_256_CBC: soso
+  IDEA_CBC: bad
+  RC4_128: bad
+  SEED_CBC: soso
+  TLS13_AES_128_GCM: good
+  TLS13_AES_256_GCM: good
+  TLS13_AES_128_CCM: good
+  TLS13_AES_128_CCM_8: good
+  ARIA_128_CBC: soso
+  ARIA_128_GCM: soso
+  ARIA_256_CBC: soso
+  ARIA_256_GCM: soso
+  CAMELLIA_128_GCM: good
+  CAMELLIA_256_GCM: good
+  DES40_CBC: bad
+  DES_CBC: bad
+  DES_CBC_40: bad
+  "NULL": bad
+  RC2_CBC_40: bad
+  RC4_40: bad
+
+macs:
+  SHA1: soso
+  SHA256: good
+  SHA384: good
+  SHA512: good
+  MD5: bad
+
+supported_groups:
+  SSL20: &supported_groups_ssl
+    support:
+      "FALSE": &supported_groups_supp_false
+        txt: 'extension "supported_groups" not supported'
+        style: neutral
+      "TRUE": &supported_groups_supp_true
+        txt: 'extension "supported_groups" supported'
+        style: neutral
+      NA: &supported_groups_supp_na
+        txt: ""
+        style: neutral
+      UNDETERMINED: &supported_groups_supp_undet
+        txt: 'support for extensions "supported_group" unknown'
+        style: neutral
+    preference:
+      "FALSE": &supported_groups_pref_false
+        txt: server does not enforce order of supported groups
+        style: neutral
+      "TRUE": &supported_groups_pref_true
+        txt: server enforces order of supported groups
+        style: neutral
+      NA: &supported_groups_pref_na
+        txt: ""
+        style: neutral
+      UNDETERMINED: &supported_groups_pref_undet
+        txt: server preference for supported groups unknown
+        style: neutral
+    advertised:
+      "FALSE": &supported_groups_adv_false
+        txt: server does not advertise supported groups
+        style: neutral
+      "TRUE": &supported_groups_adv_true
+        txt: server advertises supported groups
+        style: neutral
+      NA: &supported_groups_adv_na
+        txt: ""
+        style: neutral
+      UNDETERMINED: &supported_groups_adv_undet
+        txt: advertisement of supported groups unknown
+        style: neutral
+  SSL30:
+    <<: *supported_groups_ssl
+    preference:
+      "FALSE":
+        <<: *supported_groups_pref_false
+        style: bad
+      "TRUE":
+        <<: *supported_groups_pref_true
+        style: good
+      NA:
+        <<: *supported_groups_pref_na
+        style: neutral
+      UNDETERMINED:
+        <<: *supported_groups_pref_undet
+        style: neutral
+  TLS10: &supported_groups_tls
+    support:
+      "FALSE":
+        <<: *supported_groups_supp_false
+        style: bad
+      "TRUE":
+        <<: *supported_groups_supp_true
+        style: good
+      NA:
+        <<: *supported_groups_supp_na
+        style: neutral
+      UNDETERMINED:
+        <<: *supported_groups_supp_undet
+        style: soso
+    preference:
+      "FALSE":
+        <<: *supported_groups_pref_false
+        style: bad
+      "TRUE":
+        <<: *supported_groups_pref_true
+        style: good
+      NA:
+        <<: *supported_groups_pref_na
+        style: neutral
+      UNDETERMINED:
+        <<: *supported_groups_pref_undet
+        style: soso
+    advertised:
+      "FALSE":
+        <<: *supported_groups_adv_false
+        style: neutral
+      "TRUE":
+        <<: *supported_groups_adv_true
+        style: neutral
+      NA:
+        <<: *supported_groups_adv_na
+        style: neutral
+      UNDETERMINED:
+        <<: *supported_groups_adv_undet
+        style: neutral
+  TLS11: *supported_groups_tls
+  TLS12: *supported_groups_tls
+  TLS13: *supported_groups_tls
+  groups:
+    SECT163K1: bad
+    SECT163R1: bad
+    SECT163R2: bad
+    SECT193R1: bad
+    SECT193R2: bad
+    SECT233K1: bad
+    SECT233R1: bad
+    SECT239K1: bad
+    SECT283K1: bad
+    SECT283R1: bad
+    SECT409K1: soso
+    SECT409R1: soso
+    SECT571K1: soso
+    SECT571R1: soso
+    SECP160K1: bad
+    SECP160R1: bad
+    SECP160R2: bad
+    SECP192K1: bad
+    SECP192R1: bad
+    SECP224K1: bad
+    SECP224R1: bad
+    SECP256K1: soso
+    SECP256R1: good
+    SECP384R1: good
+    SECP521R1: good
+    BRAINPOOLP256R1: soso
+    BRAINPOOLP384R1: soso
+    BRAINPOOLP512R1: soso
+    X25519: good
+    X448: good
+    BRAINPOOLP256R1TLS13: soso
+    BRAINPOOLP384R1TLS13: soso
+    BRAINPOOLP512R1TLS13: soso
+    GC256A: bad
+    GC256B: bad
+    GC256C: bad
+    GC256D: bad
+    GC512A: bad
+    GC512B: bad
+    GC512C: bad
+    CURVESM2: bad
+    FFDHE2048: soso
+    FFDHE3072: good
+    FFDHE4096: good
+    FFDHE6144: good
+    FFDHE8192: good
+    ARBITRARY_EXPLICIT_PRIME_CURVES: bad
+    ARBITRARY_EXPLICIT_CHAR2_CURVES: bad
+
+signature_schemes:
+  RSA_PKCS1_SHA1: soso
+  ECDSA_SHA1: soso
+  RSA_PKCS1_SHA256: good
+  ECDSA_SECP256R1_SHA256: good
+  RSA_PKCS1_SHA384: good
+  ECDSA_SECP384R1_SHA384: good
+  RSA_PKCS1_SHA512: good
+  ECDSA_SECP521R1_SHA512: good
+  ECCSI_SHA256: bad
+  RSA_PSS_RSAE_SHA256: good
+  RSA_PSS_RSAE_SHA384: good
+  RSA_PSS_RSAE_SHA512: good
+  ED25519: good
+  ED448: good
+  RSA_PSS_PSS_SHA256: good
+  RSA_PSS_PSS_SHA384: good
+  RSA_PSS_PSS_SHA512: good
+  ECDSA_BRAINPOOLP256R1TLS13_SHA256: soso
+  ECDSA_BRAINPOOLP384R1TLS13_SHA384: soso
+  ECDSA_BRAINPOOLP512R1TLS13_SHA512: soso
+  RSA_PKCS1_MD5: bad
+  RSA_PKCS1_SHA224: soso
+  DSA_MD5: bad
+  DSA_SHA1: soso
+  DSA_SHA224: soso
+  DSA_SHA256: soso
+  DSA_SHA384: soso
+  DSA_SHA512: soso
+  ECDSA_SECP224R1_SHA224: soso
+
+assymetric_key_sizes:
+  - size: 3072
+    style: good
+  - size: 2048
+    style: soso
+  - size: 0
+    style: bad
+
+assymetric_ec_key_sizes:
+  - size: 256
+    style: good
+  - size: 0
+    style: bad
+
+ocsp_stapling:
+  "FALSE":
+    txt: &txt_false not supported
+    style: bad
+  "TRUE":
+    txt: &txt_true supported
+    style: good
+  NA:
+    txt: &txt_na not applicable
+    style: neutral
+  UNDETERMINED:
+    txt: &txt_undet undetermined
+    style: soso
+
+ocsp_multi_stapling:
+  "FALSE":
+    txt: *txt_false
+    style: neutral
+  "TRUE":
+    txt: *txt_true
+    style: good
+  NA:
+    txt: *txt_na
+    style: neutral
+  UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+heartbeat:
+  "FALSE":
+    txt: *txt_false
+    style: good
+  "TRUE":
+    txt: *txt_true
+    style: bad
+  NA:
+    txt: *txt_na
+    style: neutral
+  UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+  NOT_REPONDING:
+    txt: supported, but no response
+    style: bad
+  WRONG_RESPONSE:
+    txt: supported, but invalid response received
+    style: bad
+
+fallback:
+  "FALSE":
+    txt: no, TLS_FALLBACK_SCSV not supported
+    style: bad
+  "TRUE":
+    txt: yes, TLS_FALLBACK_SCSV is supported
+    style: good
+  NA:
+    txt: *txt_na
+    style: neutral
+  UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+compression:
+  "FALSE":
+    txt: *txt_false
+    style: good
+  "TRUE":
+    txt: *txt_true
+    style: bad
+
+encrypt_then_mac:
+  "FALSE":
+    txt: *txt_false
+    style: bad
+  "TRUE":
+    txt: *txt_true
+    style: good
+  NA:
+    txt: *txt_na
+    style: neutral
+  UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+extended_master_secret:
+  "FALSE":
+    txt: *txt_false
+    style: bad
+  "TRUE":
+    txt: *txt_true
+    style: good
+  NA:
+    txt: *txt_na
+    style: neutral
+  UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+insecure_renegotiation:
+  "FALSE":
+    txt: *txt_false
+    style: good
+  "TRUE":
+    txt: *txt_true
+    style: bad
+  NA:
+    txt: *txt_na
+    style: neutral
+  UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+secure_renegotiation:
+  "FALSE":
+    txt: *txt_false
+    style: neutral
+  "TRUE":
+    txt: *txt_true
+    style: good
+  NA:
+    txt: *txt_na
+    style: neutral
+  UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+scsv_renegotiation:
+  "FALSE":
+    txt: *txt_false
+    style: neutral
+  "TRUE":
+    txt: *txt_true
+    style: good
+  NA:
+    txt: *txt_na
+    style: neutral
+  UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+session_id:
+  "FALSE":
+    txt: *txt_false
+    style: neutral
+  "TRUE":
+    txt: *txt_true
+    style: neutral
+  NA:
+    txt: *txt_na
+    style: neutral
+  UNDETERMINED:
+    txt: *txt_undet
+    style: neutral
+
+session_ticket:
+  "FALSE":
+    txt: *txt_false
+    style: good
+  "TRUE":
+    txt: *txt_true
+    style: soso
+  NA:
+    txt: *txt_na
+    style: neutral
+  UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+resumption_psk:
+  "FALSE":
+    txt: *txt_false
+    style: neutral
+  "TRUE":
+    txt: *txt_true
+    style: neutral
+  NA:
+    txt: *txt_na
+    style: neutral
+  UNDETERMINED:
+    txt: *txt_undet
+    style: neutral
+
+early_data:
+  "FALSE":
+    txt: *txt_false
+    style: good
+  "TRUE":
+    txt: *txt_true
+    style: bad
+  NA:
+    txt: *txt_na
+    style: neutral
+  UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+grease:
+  version: &grease_all
+    descr: protocol versions
+    "FALSE":
+      txt: not tolerant
+      style: bad
+    "TRUE":
+      txt: tolerant
+      style: good
+    NA:
+      txt: *txt_na
+      style: neutral
+    UNDETERMINED:
+      txt: *txt_undet
+      style: soso
+  cipher_suite:
+    <<: *grease_all
+    descr: cipher suites
+  extension:
+    <<: *grease_all
+    descr: extensions
+  group:
+    <<: *grease_all
+    descr: named groups
+  sig_algo:
+    <<: *grease_all
+    descr: signature algorithms
+  psk_mode:
+    <<: *grease_all
+    descr: PSK exchange modes (TLS1.3)
+
+ephemeral_key_reuse:
+  "FALSE":
+    txt: keys not reused
+    style: good
+  "TRUE":
+    txt: keys reused
+    style: bad
+  NA:
+    txt: *txt_na
+    style: neutral
+  UNDETERMINED:
+    txt: *txt_undet
+    style: soso
+
+cert_chain:
+  issues: bad
+  validation:
+    "FALSE":
+      txt: validation failed
+      style: bad
+    "TRUE":
+      txt: successfully validated
+      style: good
+    NA:
+      txt: ""
+      style: neutral
+    UNDETERMINED:
+      txt: validation status undetermined
+      style: soso
+  root_cert_transmitted:
+    "FALSE":
+      txt: root certificate was not provided by the server
+      style: good
+    "TRUE":
+      txt: root certificate was provided by the server
+      style: soso
+
+certificate:
+  issues: bad
+  subject_matches:
+    "FALSE":
+      txt: no, URI not matched against subject/SAN
+      style: bad
+    "TRUE":
+      txt: yes, URI matches subject/SAN
+      style: good
+    NA:
+      txt: ""
+      style: neutral
+    UNDETERMINED:
+      txt: validation status undetermined
+      style: soso
+  crl_status:
+    UNDETERMINED:
+      txt: unknown
+      style: soso
+    NOT_REVOKED:
+      txt: certificate not revoked
+      style: good
+    REVOKED:
+      txt: certificate revoked
+      style: bad
+    CRL_DOWNLOAD_FAILED:
+      txt: CRL download failed
+      style: bad
+    WRONG_CRL_ISSUER:
+      txt: wrong CRL issuer
+      style: bad
+    INVALID_TIMESTAMP:
+      txt: CRL timstamp is invalid
+      style: bad
+    CRL_SIGNATURE_INVALID:
+      txt: CRL signature invalid
+      style: bad
+  ocsp_status:
+    NOT_APPLICABLE:
+      txt: not applicable
+      style: neutral
+    NOT_SUPPORTED:
+      txt: not supported
+      style: bad
+    UNDETERMINED:
+      txt: not checked
+      style: neutral
+    NOT_REVOKED:
+      txt: certificate not revoked
+      style: good
+    REVOKED:
+      txt: certificate revoked
+      style: bad
+    UNKNOWN:
+      txt: certificate unknwon
+      style: bad
+    TIMEOUT:
+      txt: OCSP server timeout
+      style: bad
+    INVALID_RESPONSE:
+      txt: invalid response from OCSP server
+      style: bad
+    SIGNATURE_INVALID:
+      txt: OCSP response has invalid signature
+      style: bad
+    INVALID_TIMESTAMP:
+      txt: OCSP response has invalid timestamp
+      style: bad
+    NO_ISSUER:
+      txt: no certificate for issuer found
+      style: bad
+    INVALID_ISSUER_CERT:
+      txt: certificate for issuer is invalid
+      style: bad
+  extended_validation:
+    "FALSE":
+      txt: "no"
+      style: neutral
+    "TRUE":
+      txt: "yes"
+      style: good
+    NA:
+      txt: ""
+      style: neutral
+    UNDETERMINED:
+      txt: undetermined
+      style: soso
+  must_staple:
+    "FALSE":
+      txt: "no"
+      style: neutral
+    "TRUE":
+      txt: "yes"
+      style: good
+  validity:
+    "FALSE":
+      txt: invalid period
+      style: bad
+    "TRUE":
+      txt: valid period
+      style: good
+
+vulnerabilities:
+  ccs_injection: &vulnerabilities_common
+    "FALSE":
+      txt: not vulnerable
+      style: good
+    "TRUE":
+      txt: vulnerable
+      style: bad
+    NA:
+      txt: not applicable
+      style: neutral
+    UNDETERMINED:
+      txt: undetermined
+      style: soso
+  beast:
+    <<: *vulnerabilities_common
+    "TRUE":
+      txt: vulnerable, TLS1.0 is enabled
+      style: bad
+  crime:
+    <<: *vulnerabilities_common
+    "TRUE":
+      txt: vulnerable, compression is enabled
+      style: bad
+  freak:
+    <<: *vulnerabilities_common
+    "TRUE":
+      txt: vulnerable, RSA-export cipher suites are enabled
+      style: bad
+  heartbleed:
+    NOT_APPLICABLE:
+      txt: not applicable
+      style: neutral
+    UNDETERMINED:
+      txt: undetermined
+      style: soso
+    VULNERABLE:
+      txt: vulnerable
+      style: bad
+    NOT_VULNERABLE:
+      txt: not vulnerable
+      style: good
+    TIMEOUT:
+      txt: timeout, probably not vulnerable
+      style: good
+    CONNECTION_CLOSED:
+      txt: not vulnerable (connection closed)
+      style: good
+  logjam:
+    NA:
+      txt: not applicable, DH key exchange not in use
+      style: neutral
+    OK:
+      txt: not vulnerable
+      style: good
+    PRIME512:
+      txt: vulnerable, DH export cipher suites in use (512 bits)
+      style: bad
+    PRIME1024_COMMON:
+      txt: vulnerable, common DH prime used (1024 bits)
+      style: bad
+    PRIME1024_CUTOMIZED:
+      txt: vulnerable, customized DH prime used (1024 bits)
+      style: bad
+  robot:
+    NOT_APPLICABLE:
+      txt: not applicable
+      style: neutral
+    UNDETERMINED:
+      txt: undetermined
+      style: neutral
+    INCONSITENT_RESULTS:
+      txt: inconsistent results
+      style: bad
+    WEAK_ORACLE:
+      txt: vulnerable, weak oracle
+      style: bad
+    STRONG_ORACLE:
+      txt: vulnerable, strong oracle
+      style: bad
+    NOT_VULNERABLE:
+      txt: not vulnerable
+      style: good
+  lucky_minus_20:
+    <<: *vulnerabilities_common
+    "TRUE":
+      txt: vulnerable, see CBC padding oracle details below
+      style: bad
+  sweet_32:
+    <<: *vulnerabilities_common
+    "TRUE":
+      txt: vulnerable, cipher suites with blocksize <= 64 bits used (3DES, IDEA)
+      style: bad
+  poodle:
+    <<: *vulnerabilities_common
+    "TRUE":
+      txt: vulnerable, SSL30 is enabled
+      style: bad
+  tls_poodle: *vulnerabilities_common
+  cbc_padding_oracle:
+    vulnerable: *vulnerabilities_common
+    accuracy:
+      LOW:
+        txt: lowest (scan with minimal set of cipher suites for each TLS version, application data only)
+        style: neutral
+      MEDIUM:
+        txt: medium (scan over all TLS versions and cipher suites, application data only)
+        style: neutral
+      HIGH:
+        txt: high (scan over all TLS versions, all cipher suites and all record layer protocols)
+        style: neutral
+    oracle:
+      observable:
+        "FALSE":
+          txt: no, different oracle behavior hard to observe
+          style: bad
+        "TRUE":
+          txt: yes, different oracle behavior easily observable
+          style: bad
+        NA:
+          txt: not applicable
+          style: neutral
+        UNDETERMINED:
+          txt: undetermined
+          style: soso
+      strong:
+        "FALSE":
+          txt: weak, high number of oracle queries required for exploitation
+          style: bad
+        "TRUE":
+          txt: strong, moderate number of oracle queries sufficient for exploitation
+          style: bad
+        NA:
+          txt: not applicable
+          style: neutral
+        UNDETERMINED:
+          txt: undetermined
+          style: soso
+      type:
+        LUCKY_MINUS_20: OpenSSL padding oracle "Lucky-Minus-20" (CVE-2016-2107)
+        PADDING_FILLS_RECORD: Oracle when padding fills complete record
+        PADDING_EXCEEDS_RECORD: Oracle when padding exceeds the record length
+        INVALID_PADDING: Oracle when padding is invalid (TLS POODLE like)
+        INVALID_MAC: Oracle when MAC is invalid
+      cipher_group:
+        record_protocol:
+          HANDSHAKE: handshake protocol
+          APPLICATION_DATA: application data
+          ALERT: alert protocol
+
+server_malfunction:
+  PSK_OUT_OF_RANGE: selected PSK out of range (TLS1.3)
+  KEY_SHARE_NOT_PRESENT: "ServerHello, TLS13: extension KEY_SHARE not present"
+  SECURE_RENEG_FAILED: secure renegotiation check failed
+  VERIFY_DATA_INVALID: "received Finished: verify data does not match"
+  CERT_REQ_NO_SIG_ALGO:  certificate request without extension SignatureAlgorithms received
+  EXTENTION_LENGHT_ERROR: extension length incorrect
+  SNI_NO_HOSTNAME: host_name not present
+  FFDH_GROUP_UNKNOWN: FF-DH group unknown
+  MESSAGE_LENGTH_ERROR: message length incorrect
+  INCOMPATIBLE_KEY_EXCHANGE: key exchange algorithm in ServerKeyExchange message incompatible with offered cipher suite
+  PARAMETER_LENGTH_ERROR: message length error when unpacking parameter
+  RECORD_TOO_SHORT: decoded record shorter than MAC length
+  RECORD_MAC_INVALID: MAC verification failed
+  RECORD_WRONG_PADDING_LENGTH: wrong padding length
+  RECORD_WRONG_PADDING_BYTES: wrong padding byte contents
+  ILLEGAL_PARAMETER_VALUE: received parameter value is illegal
+  KEX_INVALID_SIGNATURE: signature of server's key exchange parameters invalid
