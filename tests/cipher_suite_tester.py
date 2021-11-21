@@ -107,7 +107,7 @@ class CipherSuiteTester(TlsSuiteTester):
             is_replaying (bool): an indication if the test case is recorded or replayed.
         """
         if not is_replaying:
-            utils.set_logging("debug")
+            utils.set_logging_level("debug")
         name = getattr(self, "name")
         if name is not None:
             self.recorder_yaml = self.name
