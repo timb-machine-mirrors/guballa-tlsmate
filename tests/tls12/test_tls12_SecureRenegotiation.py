@@ -33,6 +33,7 @@ class TestCase(CipherSuiteTester):
 
         client.set_profile(tls.Profile.LEGACY)
         client.profile.support_secure_renegotiation = True
+        end_of_tc_reached = False
         with client.create_connection() as conn:
             conn.handshake()
             conn.timeout(100)
