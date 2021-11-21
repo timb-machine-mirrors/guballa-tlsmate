@@ -33,6 +33,7 @@ The project is hosted on `GitLab <https://gitlab.com/guballa/tlsmate>`_.
    plugin
    class_description
    testcase
+   style
 
 .. toctree::
    :caption: Python Modules
