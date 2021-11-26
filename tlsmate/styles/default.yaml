@@ -442,7 +442,10 @@ heartbeat:
     txt: supported, but no response
     style: bad
   WRONG_RESPONSE:
-    txt: supported, but invalid response received
+    txt: supported, but invalid heart beatresponse received
+    style: bad
+  UNEXPECTED_MESSAGE:
+    txt: supported, but unexpected message received
     style: bad
 
 fallback:

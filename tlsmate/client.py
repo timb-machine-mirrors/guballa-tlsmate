@@ -10,6 +10,7 @@ from typing import List
 from tlsmate import tls
 from tlsmate import ext
 from tlsmate import structs
+from tlsmate import utils
 from tlsmate.msg import ClientHello
 from tlsmate.connection import TlsConnection
 
@@ -655,11 +656,16 @@ class Client(object):
                 )
 
             if self.profile.supported_groups is not None:
-                msg.extensions.append(
-                    ext.ExtSupportedGroups(
-                        supported_groups=self.profile.supported_groups
+                if max_version is tls.Version.TLS13 or bool(
+                    utils.filter_cipher_suites(
+                        msg.cipher_suites, key_exch=[tls.KeyExchangeType.ECDH]
                     )
-                )
+                ):
+                    msg.extensions.append(
+                        ext.ExtSupportedGroups(
+                            supported_groups=self.profile.supported_groups
+                        )
+                    )
 
             if self.profile.support_status_request_v2 is not tls.StatusType.NONE:
                 msg.extensions.append(
