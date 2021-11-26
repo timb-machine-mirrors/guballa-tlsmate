@@ -1166,8 +1166,9 @@ class HeartbeatState(ExtendedEnum):
     TRUE = 1
     NA = 2
     UNDETERMINED = 3
-    NOT_REPONDING = 3
-    WRONG_RESPONSE = 4
+    NOT_REPONDING = 4
+    WRONG_RESPONSE = 5
+    UNEXPECTED_MESSAGE = 6
 
 
 class StatusType(ExtendedEnum):
