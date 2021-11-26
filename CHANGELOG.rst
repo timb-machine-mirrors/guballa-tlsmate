@@ -1,6 +1,18 @@
 Changelog
 #########
 
+
+v1.1.1 (2021-11-26)
+===================
+
+Bugfix
+------
+
+* Support for RSA cipher suites was not detected due to a DECODE_ERROR during the scan (#106)
+
+* Timeout on heatbeat was not detected as such (#105)
+
+
 v1.1.0 (2021-11-21)
 ===================
 

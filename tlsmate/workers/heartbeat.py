@@ -42,19 +42,26 @@ class ScanHeartbeat(Worker):
                             req.payload_length = len(req.payload)
                             req.padding = b"\xff" * 16
                             conn.send(req)
-                            res = conn.wait(msg.HeartbeatResponse, timeout=2000)
-                            if res is None:
+                            rec_msg = conn.wait(
+                                msg.Any,
+                                timeout=2000,
+                                fail_on_timeout=False,
+                            )
+                            if rec_msg is None:
                                 state = tls.HeartbeatState.NOT_REPONDING
 
-                            else:
+                            elif isinstance(rec_msg, msg.HeartbeatResponse):
                                 if (
-                                    req.payload_length == res.payload_length
-                                    and req.payload == res.payload
+                                    req.payload_length == rec_msg.payload_length
+                                    and req.payload == rec_msg.payload
                                 ):
                                     state = tls.HeartbeatState.TRUE
 
                                 else:
                                     state = tls.HeartbeatState.WRONG_RESPONSE
+
+                            else:
+                                state = tls.HeartbeatState.UNEXPECTED_MESSAGE
 
                         else:
                             state = tls.HeartbeatState.FALSE
