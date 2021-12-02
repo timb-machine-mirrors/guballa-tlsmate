@@ -56,3 +56,17 @@ def test_base_vulnerabilities_logjam_1024_cust(tlsmate, server_profile_logjam_cu
     ScanBaseVulnerabilities(tlsmate).run()
     prof_vuln = tlsmate.server_profile.vulnerabilities
     assert prof_vuln.logjam is tls.Logjam.PRIME1024_CUSTOMIZED
+
+
+def test_base_vulnerabilities_logjam_no_dh_group(tlsmate, server_profile_no_dh_group):
+    tlsmate.server_profile.load(utils.deserialize_data(str(server_profile_no_dh_group)))
+    ScanBaseVulnerabilities(tlsmate).run()
+    prof_vuln = tlsmate.server_profile.vulnerabilities
+    assert prof_vuln.logjam is tls.Logjam.UNDETERMINED
+
+
+def test_base_vulnerabilities_logjam_no_dh(tlsmate, server_profile_no_dh):
+    tlsmate.server_profile.load(utils.deserialize_data(str(server_profile_no_dh)))
+    ScanBaseVulnerabilities(tlsmate).run()
+    prof_vuln = tlsmate.server_profile.vulnerabilities
+    assert prof_vuln.logjam is tls.Logjam.NA
