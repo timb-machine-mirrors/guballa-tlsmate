@@ -43,9 +43,7 @@ class ScanHeartbeat(Worker):
                             req.padding = b"\xff" * 16
                             conn.send(req)
                             rec_msg = conn.wait(
-                                msg.Any,
-                                timeout=2000,
-                                fail_on_timeout=False,
+                                msg.Any, timeout=2000, fail_on_timeout=False,
                             )
                             if rec_msg is None:
                                 state = tls.HeartbeatState.NOT_REPONDING
