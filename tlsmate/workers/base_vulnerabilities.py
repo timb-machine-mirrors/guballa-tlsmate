@@ -116,15 +116,15 @@ class ScanBaseVulnerabilities(Worker):
             # used.
             cs = self.server_profile.get_profile_values(tls.Version.all()).cipher_suites
             if utils.filter_cipher_suites(
-                    cs,
-                    key_algo=[
-                        tls.KeyExchangeAlgorithm.DHE_DSS,
-                        tls.KeyExchangeAlgorithm.DHE_DSS_EXPORT,
-                        tls.KeyExchangeAlgorithm.DHE_RSA,
-                        tls.KeyExchangeAlgorithm.DHE_RSA_EXPORT,
-                        tls.KeyExchangeAlgorithm.DH_ANON,
-                    ],
-                    ):
+                cs,
+                key_algo=[
+                    tls.KeyExchangeAlgorithm.DHE_DSS,
+                    tls.KeyExchangeAlgorithm.DHE_DSS_EXPORT,
+                    tls.KeyExchangeAlgorithm.DHE_RSA,
+                    tls.KeyExchangeAlgorithm.DHE_RSA_EXPORT,
+                    tls.KeyExchangeAlgorithm.DH_ANON,
+                ],
+            ):
                 logjam = tls.Logjam.UNDETERMINED
 
             else:
