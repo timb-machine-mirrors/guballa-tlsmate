@@ -821,6 +821,9 @@ vulnerabilities:
     OK:
       txt: not vulnerable
       style: good
+    UNDETERMINED:
+      txt: undetermined
+      style: soso
     PRIME512:
       txt: vulnerable, DH export cipher suites in use (modulus <= 512 bits)
       style: bad
