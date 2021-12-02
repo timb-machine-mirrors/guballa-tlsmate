@@ -822,13 +822,13 @@ vulnerabilities:
       txt: not vulnerable
       style: good
     PRIME512:
-      txt: vulnerable, DH export cipher suites in use (512 bits)
+      txt: vulnerable, DH export cipher suites in use (modulus <= 512 bits)
       style: bad
     PRIME1024_COMMON:
-      txt: vulnerable, common DH prime used (1024 bits)
+      txt: vulnerable, common DH prime used (modulus <= 1024 bits)
       style: bad
-    PRIME1024_CUTOMIZED:
-      txt: vulnerable, customized DH prime used (1024 bits)
+    PRIME1024_CUSTOMIZED:
+      txt: vulnerable, customized DH prime used (modulus <= 1024 bits)
       style: bad
   robot:
     NOT_APPLICABLE:
