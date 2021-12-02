@@ -17,9 +17,12 @@ class ScanDowngrade(Worker):
     prio = 30
 
     def run(self):
-
         versions = self.server_profile.get_versions()
-        if len(versions) < 2:
+        nbr_versions = len(versions)
+        if tls.Version.SSL20 in versions:
+            nbr_versions -= 1
+
+        if nbr_versions < 2:
             status = tls.ScanState.NA
 
         else:
