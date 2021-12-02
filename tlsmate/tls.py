@@ -1234,6 +1234,7 @@ class Logjam(ExtendedEnum):
 
     NA = enum.auto()
     OK = enum.auto()
+    UNDETERMINED = enum.auto()
     PRIME512 = enum.auto()
     PRIME1024_COMMON = enum.auto()
     PRIME1024_CUSTOMIZED = enum.auto()

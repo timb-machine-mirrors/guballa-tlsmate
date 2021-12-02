@@ -2,6 +2,21 @@ Changelog
 #########
 
 
+v1.1.2 (2021-12-02)
+===================
+
+Bugfix
+------
+
+* In special cases the same issue for a certificate was reported multiple times (#111)
+
+* A timeout to a CCS-injection was reported as "UNDETERMINED" (#109)
+
+* Downgrade protection was wrongly set if SSLv2 and SSLv3 were supported only (#108)
+
+* The Logjam state was not correctly displayed in all cases (#107, #112)
+
+
 v1.1.1 (2021-11-26)
 ===================
 

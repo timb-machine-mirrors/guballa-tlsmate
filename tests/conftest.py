@@ -186,5 +186,15 @@ def server_profile_logjam_cust(fixturefiles_dir):
 
 
 @pytest.fixture
+def server_profile_no_dh_group(fixturefiles_dir):
+    return fixturefiles_dir / "server_profile_no_dh_group.yaml"
+
+
+@pytest.fixture
+def server_profile_no_dh(fixturefiles_dir):
+    return fixturefiles_dir / "server_profile_no_dh.yaml"
+
+
+@pytest.fixture
 def full_server_profile(fixturefiles_dir):
     return fixturefiles_dir / "full_server_profile.yaml"

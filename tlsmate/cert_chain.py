@@ -334,8 +334,10 @@ class CertChain(object):
         return issuers
 
     def _determine_trust_path(self, cert, idx, timestamp, domain_name, full_validation):
-
         trust_path = [idx] if idx is not None else []
+        if cert.trusted is not tls.ScanState.UNDETERMINED:
+            return trust_path
+
         cert.trusted = tls.ScanState.TRUE
         if not cert.has_valid_period(timestamp) and not full_validation:
             return trust_path

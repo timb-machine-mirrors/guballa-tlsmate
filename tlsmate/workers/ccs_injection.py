@@ -48,10 +48,10 @@ class ScanCcsInjection(Worker):
                 conn.send(msg.ChangeCipherSpec)
 
                 try:
-                    alert = conn.wait(msg.Alert, timeout=2000)
-                    if isinstance(alert, msg.Alert) and (
-                        alert.description is tls.AlertDescription.BAD_RECORD_MAC
-                        or alert.description is tls.AlertDescription.DECRYPTION_FAILED
+                    rec_msg = conn.wait(msg.Alert, timeout=2000, fail_on_timeout=False)
+                    if isinstance(rec_msg, msg.Alert) and (
+                        rec_msg.description is tls.AlertDescription.BAD_RECORD_MAC
+                        or rec_msg.description is tls.AlertDescription.DECRYPTION_FAILED
                     ):
                         # vulnerable
                         status = tls.ScanState.TRUE

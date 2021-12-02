@@ -111,7 +111,24 @@ class ScanBaseVulnerabilities(Worker):
             logjam = tls.Logjam.PRIME1024_CUSTOMIZED
 
         elif logjam_na:
-            logjam = tls.Logjam.NA
+            # dh group not found in server profile. Check, if any DH(E) cipher suite
+            # is supported by server. If so, it means the DH-param worker was not
+            # used.
+            cs = self.server_profile.get_profile_values(tls.Version.all()).cipher_suites
+            if utils.filter_cipher_suites(
+                cs,
+                key_algo=[
+                    tls.KeyExchangeAlgorithm.DHE_DSS,
+                    tls.KeyExchangeAlgorithm.DHE_DSS_EXPORT,
+                    tls.KeyExchangeAlgorithm.DHE_RSA,
+                    tls.KeyExchangeAlgorithm.DHE_RSA_EXPORT,
+                    tls.KeyExchangeAlgorithm.DH_ANON,
+                ],
+            ):
+                logjam = tls.Logjam.UNDETERMINED
+
+            else:
+                logjam = tls.Logjam.NA
 
         else:
             logjam = tls.Logjam.OK
