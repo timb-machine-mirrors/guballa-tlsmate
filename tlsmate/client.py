@@ -723,7 +723,11 @@ class Client(object):
                         for group in self.profile.supported_groups
                         if group in self.profile.key_shares
                     ]
-                    msg.extensions.append(ext.ExtKeyShare(key_shares=key_shares))
+
+                else:
+                    key_shares = []
+
+                msg.extensions.append(ext.ExtKeyShare(key_shares=key_shares))
 
                 if self.profile.early_data is not None:
                     msg.extensions.append(ext.ExtEarlyData())
