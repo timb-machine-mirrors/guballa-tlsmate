@@ -622,8 +622,13 @@ class ExtKeyShare(Extension):
         while offset < len(ext_body):
             group, offset = pdu.unpack_uint16(ext_body, offset)
             group = tls.SupportedGroups.val2enum(group, alert_on_failure=True)
-            length, offset = pdu.unpack_uint16(ext_body, offset)
-            share, offset = pdu.unpack_bytes(ext_body, offset, length)
+            if offset < len(ext_body):
+                length, offset = pdu.unpack_uint16(ext_body, offset)
+                share, offset = pdu.unpack_bytes(ext_body, offset, length)
+
+            else:
+                share = None
+
             self.key_shares.append(
                 structs.KeyShareEntry(group=group, key_exchange=share)
             )
