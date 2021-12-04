@@ -170,8 +170,8 @@ class TlsConnectionMsgs(object):
             heartbeat response message sent by the client
         server_heartbeat_response (:obj:`tlsmate.msg.HeartbeatResponse`): the
             heartbeat response message sent by the server
-        hello_retry_request (:obj:`tlsmate.msg.HelloRequest`): the
-            HelloRequest message
+        hello_retry_request (:obj:`tlsmate.msg.HelloRetryRequest`): the
+            HelloRetryRequest message
     """
 
     _map_msg2attr = {
@@ -1103,6 +1103,7 @@ class TlsConnection(object):
         logging.info(f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite}")
         self._update_cipher_suite(msg.cipher_suite)
         self._record_layer_version = min(self.version, tls.Version.TLS12)
+        utils.log_extensions(msg.extensions)
         heartbeat_ext = msg.get_extension(tls.Extension.HEARTBEAT)
         if heartbeat_ext:
             self.heartbeat_allowed_to_send = (
@@ -1113,6 +1114,18 @@ class TlsConnection(object):
 
         else:
             self._on_server_hello_tls12(msg)
+
+
+    def _on_hello_retry_request(self, msg):
+        self.server_random = msg.random
+        logging.debug(f"hello_retry_request random: {pdu.dump(msg.random)}")
+        self.version = msg.get_version()
+        logging.info(f"version: {self.version}")
+        logging.info(f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite}")
+        self._update_cipher_suite(msg.cipher_suite)
+        self._record_layer_version = min(self.version, tls.Version.TLS12)
+        utils.log_extensions(msg.extensions)
+
 
     def _handle_signed_params(self, params, string):
         if params:
@@ -1352,6 +1365,7 @@ class TlsConnection(object):
         tls.HandshakeType.FINISHED: _on_finished_received,
         tls.HandshakeType.CERTIFICATE_STATUS: _on_certificate_status_received,
         tls.HandshakeType.NEW_SESSION_TICKET: _on_new_session_ticket_received,
+        tls.HandshakeType.HELLO_RETRY_REQUEST: _on_hello_retry_request,
     }
 
     def _on_msg_received(self, msg):
