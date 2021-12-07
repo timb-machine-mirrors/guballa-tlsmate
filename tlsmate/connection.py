@@ -706,6 +706,8 @@ class TlsConnection(object):
 
             self.binders_bytes = msg_data[binders_offset:]
 
+        self._serialized_ch = msg_data
+
     def _post_sending_ch(self):
         if self._send_early_data:
             self._record_layer_version = tls.Version.TLS12
@@ -1136,13 +1138,15 @@ class TlsConnection(object):
             self._secure_reneg_cl_data = None
             self._secure_reneg_sv_data = None
 
-    def _on_server_hello_received(self, msg):
+    def _on_server_hello_received(self, msg, msg_bytes):
         self.server_random = msg.random
         logging.debug(f"server random: {pdu.dump(msg.random)}")
         self.version = msg.get_version()
         logging.info(f"version: {self.version}")
         logging.info(f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite}")
-        self._update_cipher_suite(msg.cipher_suite)
+        if not self.msg.hello_retry_request:
+            self._update_cipher_suite(msg.cipher_suite)
+
         self._record_layer_version = min(self.version, tls.Version.TLS12)
         utils.log_extensions(msg.extensions)
         heartbeat_ext = msg.get_extension(tls.Extension.HEARTBEAT)
@@ -1156,7 +1160,7 @@ class TlsConnection(object):
         else:
             self._on_server_hello_tls12(msg)
 
-    def _on_hello_retry_request(self, msg):
+    def _on_hello_retry_request(self, msg, msg_bytes):
         self.server_random = msg.random
         logging.debug(f"hello_retry_request random: {pdu.dump(msg.random)}")
         self.version = msg.get_version()
@@ -1165,6 +1169,20 @@ class TlsConnection(object):
         self._update_cipher_suite(msg.cipher_suite)
         self._record_layer_version = min(self.version, tls.Version.TLS12)
         utils.log_extensions(msg.extensions)
+        ch_digest = Kdf()
+        ch_digest.start_msg_digest()
+        ch_digest.set_msg_digest_algo(self.cs_details.mac_struct.hmac_algo)
+        ch_digest.update_msg_digest(self._serialized_ch)
+        self._kdf = Kdf()
+        self._kdf.start_msg_digest()
+        self._kdf.set_msg_digest_algo(self.cs_details.mac_struct.hmac_algo)
+        transcript = (
+            pdu.pack_uint8(tls.HandshakeType.MESSAGE_HASH.value)
+            + pdu.pack_uint24(self.cs_details.mac_struct.mac_len)
+            + ch_digest.current_msg_digest()
+            + msg_bytes
+        )
+        self._kdf.update_msg_digest(transcript)
 
     def _handle_signed_params(self, params, string):
         if params:
@@ -1196,7 +1214,7 @@ class TlsConnection(object):
                 else:
                     self.client.report_server_issue(issue)
 
-    def _on_server_key_exchange_received(self, msg):
+    def _on_server_key_exchange_received(self, msg, msg_bytes):
         if not (msg.ec or msg.dh):
             return
 
@@ -1222,11 +1240,11 @@ class TlsConnection(object):
                 dh.public_key, g_val=dh.g_val, p_val=dh.p_val
             )
 
-    def _on_change_cipher_spec_received(self, msg):
+    def _on_change_cipher_spec_received(self, msg, msg_bytes):
         if self.version is not tls.Version.TLS13:
             self._update_read_state()
 
-    def _on_finished_received(self, msg):
+    def _on_finished_received(self, msg, msg_bytes):
         ciph = self.cs_details.cipher_struct
         logging.debug(f"Finished.verify_data(in): {pdu.dump(msg.verify_data)}")
 
@@ -1304,14 +1322,14 @@ class TlsConnection(object):
         self._finished_treated = True
         return self
 
-    def _on_certificate_status_received(self, msg):
+    def _on_certificate_status_received(self, msg, msg_bytes):
         cert_chain = self.msg.server_certificate.chain
         self._validate_cert_chain(cert_chain)
         self.stapling_status = cert_chain.verify_ocsp_stapling(
             msg.responses, self.client.alert_on_invalid_cert
         )
 
-    def _on_new_session_ticket_received(self, msg):
+    def _on_new_session_ticket_received(self, msg, msg_bytes):
         if self.version is tls.Version.TLS13:
             psk = self._kdf.hkdf_expand_label(
                 self.res_ms, "resumption", msg.nonce, self.cs_details.mac_struct.mac_len
@@ -1342,7 +1360,7 @@ class TlsConnection(object):
                 )
             )
 
-    def _on_encrypted_extensions_received(self, msg):
+    def _on_encrypted_extensions_received(self, msg, msg_bytes):
         for extension in msg.extensions:
             logging.debug(f"extension {extension.extension_id}")
             if extension.extension_id is tls.Extension.SUPPORTED_GROUPS:
@@ -1355,7 +1373,7 @@ class TlsConnection(object):
         if not self.early_data_accepted:
             self._record_layer.update_state(self.hs_write_state)
 
-    def _on_certificate_received(self, msg):
+    def _on_certificate_received(self, msg, msg_bytes):
         self._validate_cert_chain(msg.chain)
         if self.version is tls.Version.TLS13:
             self.certificate_digest = self._kdf.current_msg_digest()
@@ -1367,7 +1385,7 @@ class TlsConnection(object):
                     [ext_status_req.ocsp_response], self.client.alert_on_invalid_cert
                 )
 
-    def _on_certificate_request_received(self, msg):
+    def _on_certificate_request_received(self, msg, msg_bytes):
         if self.version is tls.Version.TLS13:
             sig_algo_ext = msg.get_extension(tls.Extension.SIGNATURE_ALGORITHMS)
             if sig_algo_ext is None:
@@ -1389,7 +1407,7 @@ class TlsConnection(object):
         if idx is None:
             logging.info("No suitable certificate found for client authentication")
 
-    def _on_certificate_verify_received(self, msg):
+    def _on_certificate_verify_received(self, msg, msg_bytes):
         if self.version is tls.Version.TLS13:
             kex.verify_certificate_verify(msg, self.msg, self.certificate_digest)
 
@@ -1407,12 +1425,12 @@ class TlsConnection(object):
         tls.HandshakeType.HELLO_RETRY_REQUEST: _on_hello_retry_request,
     }
 
-    def _on_msg_received(self, msg):
+    def _on_msg_received(self, msg, msg_bytes):
         """Called whenever a message is received before it is passed to the test case
         """
         method = self._on_msg_received_map.get(msg.msg_type)
         if method is not None:
-            method(self, msg)
+            method(self, msg, msg_bytes)
 
     def _auto_heartbeat_request(self, message):
         if self.client.profile.heartbeat_mode is tls.HeartbeatMode.PEER_ALLOWED_TO_SEND:
@@ -1553,7 +1571,7 @@ class TlsConnection(object):
                         return None, None
 
             if (msg_class == msg.Any) or isinstance(message, msg_class):
-                self._on_msg_received(message)
+                self._on_msg_received(message, msg_bytes)
                 cnt += 1
                 if cnt == max_nbr:
                     return message, msg_bytes
@@ -1563,7 +1581,7 @@ class TlsConnection(object):
                     expected_bytes = msg_bytes
 
             elif message.msg_type in self.auto_handler:
-                self._on_msg_received(message)
+                self._on_msg_received(message, msg_bytes)
                 self._auto_responder(message)
 
             else:
