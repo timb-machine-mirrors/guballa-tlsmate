@@ -718,12 +718,16 @@ class Client(object):
                 )
                 # TLS13 key shares: enforce the same sequence as in supported groups
                 if self.profile.key_shares:
-                    key_shares = [
+                    groups = [
                         group
                         for group in self.profile.supported_groups
                         if group in self.profile.key_shares
                     ]
-                    msg.extensions.append(ext.ExtKeyShare(key_shares=key_shares))
+
+                else:
+                    groups = []
+
+                msg.extensions.append(ext.ExtKeyShare(groups=groups))
 
                 if self.profile.early_data is not None:
                     msg.extensions.append(ext.ExtEarlyData())

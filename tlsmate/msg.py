@@ -320,6 +320,99 @@ class ClientHello(HandshakeMessage):
 
         return _get_version(self)
 
+    def replace_extension(self, new_ext):
+        """Replace the extension by the existing one or append it at the end
+
+        Ensure, that the pre-shared key extensions stays the last one if present.
+
+        Arguments:
+            new_ext (:obj:`tlsmate.ext.Extension`): the extension to replace.
+        """
+
+        for idx, extension in enumerate(self.extensions):
+            if extension.extension_id is new_ext.extension_id:
+                self.extensions[idx] = new_ext
+                return
+
+        if (
+            self.extensions
+            and self.extensions[-1].extension_id is tls.Extension.PRE_SHARED_KEY
+        ):
+            self.extensions.insert(-1, new_ext)
+
+        else:
+            self.extensions.append(new_ext)
+
+
+class HelloRetryRequest(HandshakeMessage):
+    """This class represents a HelloRetryRequest message.
+
+    Attributes:
+        version (:obj:`tlsmate.tls.Version`): The version selected by
+            the server.
+        random (bytes): The random value from the server.
+        session_id (bytes): The session id from the server.
+        compression_method (:obj:`tlsmate.tls.CompressionMethod`): The
+            selected compression method by the server.
+        extensions (list of :obj:`tlsmate.ext.Extension`): The list of
+            extensions as returned from the server.
+    """
+
+    msg_type = tls.HandshakeType.HELLO_RETRY_REQUEST
+    """:obj:`tlsmate.tls.HandshakeType.HELLO_RETRY_REQUEST`
+    """
+
+    def __init__(self, server_hello=None):
+        if server_hello:
+            self.version = server_hello.version
+            self.random = server_hello.random
+            self.session_id = server_hello.session_id
+            self.cipher_suite = server_hello.cipher_suite
+            self.compression_method = server_hello.compression_method
+            self.extensions = server_hello.extensions
+
+        else:
+            self.version = None
+            self.random = None
+            self.session_id = None
+            self.cipher_suite = None
+            self.compression_method = None
+            self.extensions = []
+
+    def _serialize_msg_body(self, conn):
+        # TODO if we want to implement the server side as well
+        pass
+
+    def _deserialize_msg_body(self, fragment, offset, conn):
+        return self
+
+    def get_extension(self, ext_id):
+        """Get an extension from the message
+
+        Arguments:
+            ext_id: (:class:`tlsmate.tls`): The extensions to look for
+
+        Returns:
+            :obj:`tlsmate.ext.Extension`: The extension or None if not present.
+        """
+
+        return get_extension(self.extensions, ext_id)
+
+    def get_version(self):
+        """Get the negotiated TLS version from the message.
+
+        Takes the version parameter into account as well as the extension
+        SUPPORTED_VERSIONS (if present).
+
+        Returns:
+            :class:`tlsmate.tls.Version`: The negotiated TLS version.
+        """
+
+        return _get_version(self)
+
+
+HelloRetryRequest.get_extension.__doc__ = ClientHello.get_extension.__doc__
+
 
 class ServerHello(HandshakeMessage):
     """This class represents a ServerHello message.
@@ -375,6 +468,10 @@ class ServerHello(HandshakeMessage):
         )
         self.extensions = []
         _deserialize_extensions(self.extensions, fragment, offset)
+
+        if self.random == self.HELLO_RETRY_REQ_RAND:
+            return HelloRetryRequest(server_hello=self)
+
         return self
 
     def get_extension(self, ext_id):
