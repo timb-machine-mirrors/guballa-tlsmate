@@ -8,6 +8,7 @@ import logging
 import io
 import traceback as tb
 import time
+import copy
 
 # import own stuff
 from tlsmate.exception import (
@@ -204,6 +205,7 @@ class TlsConnectionMsgs(object):
         self.hello_request = None
         self.client_hello = None
         self.server_hello = None
+        self.hello_retry_request = None
         self.encrypted_extensions = None
         self.server_certificate = None
         self.server_key_exchange = None
@@ -541,11 +543,49 @@ class TlsConnection(object):
         tls.SignatureScheme.ECDSA_SECP224R1_SHA224: (_sign_ecdsa, hashes.SHA256),
     }
 
+    def _is_client_hello_retry(self):
+        return self.msg.hello_retry_request and not self.msg.server_hello
+
     # ###########################
     # sending ClientHello methods
     # ###########################
 
+    def _generate_retry_client_hello(self):
+        hrr = self.msg.hello_retry_request
+        ch = copy.deepcopy(self.msg.client_hello)
+
+        # if key_share is present in hrr, use it in the ch.
+        hrr_key_share_ext = hrr.get_extension(tls.Extension.KEY_SHARE)
+        if hrr_key_share_ext:
+            groups = [key_share.group for key_share in hrr_key_share_ext.key_shares]
+            ch.replace_extension(ext.ExtKeyShare(groups=groups))
+
+        # remove early-data extension
+        ed_ext = ch.get_extension(tls.Extension.EARLY_DATA)
+        if ed_ext:
+            ch.extensions.remove(ed_ext)
+
+        # include cookie, if received in the hrr
+        hrr_cookie_ext = hrr.get_extension(tls.Extension.COOKIE)
+        if hrr_cookie_ext:
+            ch.replace_extension(copy.deepcopy(hrr_cookie_ext))
+
+        # update pre-shared keys according to the received cipher suite
+        ch_psk_ext = ch.get_extension(tls.Extension.PRE_SHARED_KEY)
+        if ch_psk_ext:
+            new_psks = [
+                psk
+                for psk in ch_psk_ext.psks
+                if psk.cipher_suite == hrr.cipher_suites[0]
+            ]
+            ch.replace_extension(ext.ExtPreSharedKey(psks=new_psks))
+
+        return ch
+
     def _generate_ch(self, cls):
+        if self._is_client_hello_retry():
+            return self._generate_retry_client_hello()
+
         msg = self.client.client_hello()
         if self._secure_reneg_request:
             if self._initial_handshake is None:
@@ -616,7 +656,8 @@ class TlsConnection(object):
                         f"{pdu.dump(extension.renegotiated_connection)}"
                     )
 
-        self._kdf.start_msg_digest()
+        if not self._is_client_hello_retry():
+            self._kdf.start_msg_digest()
 
     def _post_serialization_ch(self, msg, msg_data):
         if self._ext_psk is not None:
@@ -1115,7 +1156,6 @@ class TlsConnection(object):
         else:
             self._on_server_hello_tls12(msg)
 
-
     def _on_hello_retry_request(self, msg):
         self.server_random = msg.random
         logging.debug(f"hello_retry_request random: {pdu.dump(msg.random)}")
@@ -1125,7 +1165,6 @@ class TlsConnection(object):
         self._update_cipher_suite(msg.cipher_suite)
         self._record_layer_version = min(self.version, tls.Version.TLS12)
         utils.log_extensions(msg.extensions)
-
 
     def _handle_signed_params(self, params, string):
         if params:

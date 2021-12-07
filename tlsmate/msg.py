@@ -320,6 +320,29 @@ class ClientHello(HandshakeMessage):
 
         return _get_version(self)
 
+    def replace_extension(self, new_ext):
+        """Replace the extension by the existing one or append it at the end
+
+        Ensure, that the pre-shared key extensions stays the last one if present.
+
+        Arguments:
+            new_ext (:obj:`tlsmate.ext.Extension`): the extension to replace.
+        """
+
+        for idx, extension in enumerate(self.extensions):
+            if extension.extension_id is new_ext.extension_id:
+                self.extensions[idx] = new_ext
+                return
+
+        if (
+            self.extensions
+            and self.extensions[-1].extension_id is tls.Extension.PRE_SHARED_KEY
+        ):
+            self.extensions.insert(-1, new_ext)
+
+        else:
+            self.extensions.append(new_ext)
+
 
 class HelloRetryRequest(HandshakeMessage):
     """This class represents a HelloRetryRequest message.
@@ -389,6 +412,7 @@ class HelloRetryRequest(HandshakeMessage):
 
 
 HelloRetryRequest.get_extension.__doc__ = ClientHello.get_extension.__doc__
+
 
 class ServerHello(HandshakeMessage):
     """This class represents a ServerHello message.
