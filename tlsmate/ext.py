@@ -583,6 +583,31 @@ class ExtSupportedVersions(Extension):
             self.versions.append(version)
 
 
+class ExtCookie(Extension):
+    """Represents the Cookie extension.
+
+    Attributes:
+        cookie (bytes): The opaque cookie value
+    """
+
+    extension_id = tls.Extension.COOKIE
+    """:obj:`tlsmate.tls.Extension.COOKIE`
+    """
+
+    def __init__(self, cookie=b""):
+        self.cookie = cookie
+
+    def _serialize_ext_body(self, conn):
+        ext_body = bytearray()
+        ext_body.extend(pdu.pack_uint16(len(self.cookie)))
+        ext_body.extend(self.cookie)
+        return ext_body
+
+    def _deserialize_ext_body(self, ext_body):
+        length, offset = pdu.unpack_uint16(ext_body, 0)
+        self.cookie, offset = pdu.unpack_bytes(ext_body, offset, length)
+
+
 class ExtKeyShare(Extension):
     """Represents the KeyShare extension.
 
@@ -592,22 +617,38 @@ class ExtKeyShare(Extension):
     provided in the SupportedGroup extension.
 
     Attributes:
-        key_shares (list of :obj:`tlsmate.tls.SupportedGroups`): The list of
-            supported groups for which key shares shall be generated.
+        key_shares (list of :obj:`tlsmate.structs.KeyShareEntry`): the list of
+            key shares, comprising the group and the public key for each element.
+        groups (list of :obj:`tlsmate.tls.SupportedGroups`): The list of
+            supported groups for which key shares shall be generated. This is an
+            alternative to setup the extension. The public key will be determined
+            when serializing the extension.
     """
 
     extension_id = tls.Extension.KEY_SHARE
     """:obj:`tlsmate.tls.Extension.KEY_SHARE`
     """
 
-    def __init__(self, key_shares=None):
+    def __init__(self, key_shares=None, groups=None):
+        if key_shares is None:
+            key_shares = []
+
+        if groups is None:
+            groups = []
+
+        if not key_shares and groups:
+            key_shares = [
+                structs.KeyShareEntry(group=group, key_exchange=None)
+                for group in groups
+            ]
+
         self.key_shares = key_shares
 
     def _serialize_ext_body(self, conn):
         key_shares = bytearray()
-        for group in self.key_shares:
-            key_shares.extend(pdu.pack_uint16(group.value))
-            share = conn.get_key_share(group)
+        for ks in self.key_shares:
+            key_shares.extend(pdu.pack_uint16(ks.group.value))
+            share = conn.get_key_share(ks.group)
             key_shares.extend(pdu.pack_uint16(len(share)))
             key_shares.extend(share)
 
@@ -789,7 +830,7 @@ deserialization_map = {
     tls.Extension.PRE_SHARED_KEY: ExtPreSharedKey,
     tls.Extension.EARLY_DATA: ExtEarlyData,
     tls.Extension.SUPPORTED_VERSIONS: ExtSupportedVersions,
-    # tls.Extension.COOKIE = 44
+    tls.Extension.COOKIE: ExtCookie,
     # tls.Extension.PSK_KEY_EXCHANGE_MODES = 45
     tls.Extension.CERTIFICATE_AUTHORITIES: ExtCertificateAuthorities,
     # tls.Extension.OID_FILTERS = 48
