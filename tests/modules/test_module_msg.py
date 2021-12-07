@@ -33,7 +33,7 @@ def test_decode_hello_retry_request():
         "00 "
     )
     message = msg.HandshakeMessage.deserialize(data, None)
-    assert type(message) is msg.ServerHello
+    assert type(message) is msg.HelloRetryRequest
     assert message.msg_type is tls.HandshakeType.HELLO_RETRY_REQUEST
 
 
