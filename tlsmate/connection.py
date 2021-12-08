@@ -1869,7 +1869,21 @@ class TlsConnection(object):
         if self.client.profile.early_data is not None:
             self.send(msg.AppData(self.client.profile.early_data))
 
-        self.wait(msg.ServerHello)
+        rec_msg = self.wait(msg.Any)
+        if isinstance(rec_msg, msg.HelloRetryRequest):
+            self.send(msg.ClientHello, pre_serialization=ch_pre_serialization)
+            self.wait(msg.ChangeCipherSpec, optional=True)
+            self.wait(msg.ServerHello)
+
+        elif not isinstance(rec_msg, msg.ServerHello):
+            logging.warning("unexpected message received")
+            raise ScanError(
+                (
+                    f"Unexpected message received: {rec_msg.msg_type}, "
+                    f"expected: {tls.HandshakeType.SERVER_HELLO}"
+                )
+            )
+
         if self.version is tls.Version.TLS13:
             self.wait(msg.ChangeCipherSpec, optional=True)
             self.wait(msg.EncryptedExtensions)

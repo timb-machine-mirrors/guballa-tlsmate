@@ -7,6 +7,7 @@ all: \
 	recordings/ClientAuth_PSS_RSAE_SHA256.yaml \
 	recordings/EarlyData.yaml \
 	recordings/HelloRetryRequest.yaml \
+	recordings/HelloRetryRequest_handshake.yaml \
 	recordings/TLS_AES_128_CCM_8_SHA256.yaml \
 	recordings/TLS_AES_128_CCM_SHA256.yaml \
 	recordings/TLS_AES_128_GCM_SHA256.yaml \
