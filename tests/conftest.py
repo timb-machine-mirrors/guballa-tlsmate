@@ -151,6 +151,16 @@ def root_ecdsa_cert(ca_dir):
 
 
 @pytest.fixture
+def client_rsa_key_filename(ca_dir):
+    return str(ca_dir / "private/client-rsa.key")
+
+
+@pytest.fixture
+def client_rsa_chain_filename(ca_dir):
+    return str(ca_dir / "chains/client-rsa.chn")
+
+
+@pytest.fixture
 def server_profile(fixturefiles_dir):
     return fixturefiles_dir / "server_profile.yaml"
 
