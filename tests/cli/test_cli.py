@@ -219,6 +219,21 @@ def test_client_chain_key_wrong(capsys):
     assert pytest_wrapped_e.value.code == 2
 
 
+def test_client_key_set(monkeypatch, client_rsa_key_filename, client_rsa_chain_filename):
+    monkeypatch.setattr(WorkManager, "run", work_manager_run)
+
+    cmd = (
+        f"tlsmate --no-plugin scan --port=1000 127.0.0.1 "
+        f"--client-chain={client_rsa_chain_filename} "
+        f"--client-key={client_rsa_key_filename}"
+    )
+    sys.argv = cmd.split()
+    command.main()
+    config = TlsMate.instance.config
+    assert config.get("client_key") == [client_rsa_key_filename]
+    assert config.get("client_chain") == [client_rsa_chain_filename]
+
+
 def test_no_version(capsys):
     cmd = (
         "tlsmate --no-plugin scan --port=1000 127.0.0.1 "
