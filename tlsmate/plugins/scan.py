@@ -351,6 +351,8 @@ class GroupX509(Plugin):
                     "be identical"
                 )
 
+        super().args_parsed(args, parser, subcommand, config)
+
 
 class ArgSslv2(Plugin):
     """Argument for SSLv2.
