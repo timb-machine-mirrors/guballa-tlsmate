@@ -2,7 +2,7 @@
 """Module which provides known DH numbers
 """
 # import basic stuff
-from typing import NamedTuple
+from typing import NamedTuple, Dict, Optional
 
 # import own stuff
 from tlsmate import tls
@@ -16,8 +16,8 @@ class DHNumbers(NamedTuple):
 
     g_val: int
     p_val: bytes
-    name: str = None
-    size: int = None
+    name: Optional[str] = None
+    size: Optional[int] = None
 
 
 # RFC7919
@@ -410,7 +410,7 @@ class KnownDhGroups(object):
     This class comes pre-populated with known DH groups from RFC3526 and RFC7919.
     """
 
-    _groups = {}
+    _groups: Dict[int, DHNumbers] = {}
 
     @classmethod
     def add_known_dh_number(cls, dh_number):

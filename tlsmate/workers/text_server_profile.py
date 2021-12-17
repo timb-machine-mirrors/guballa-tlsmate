@@ -5,6 +5,7 @@
 import sys
 import enum
 from dataclasses import dataclass
+from typing import List, Callable
 
 # import own stuff
 
@@ -15,7 +16,7 @@ from tlsmate import pdu
 from tlsmate.version import __version__
 
 # import other stuff
-import colorama
+import colorama  # type: ignore
 
 
 class Color(tls.ExtendedEnum):
@@ -199,7 +200,7 @@ class TextProfileWorker(Worker):
     descr = "dump the scan results"
     prio = 1002
 
-    _callbacks = []
+    _callbacks: List[Callable[["TextProfileWorker"], None]] = []
 
     @classmethod
     def augment_output(cls, callback):

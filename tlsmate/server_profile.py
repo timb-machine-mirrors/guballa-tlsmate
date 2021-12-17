@@ -37,6 +37,7 @@ if you want to see the detailed structure.
 # import basic stuff
 import abc
 import logging
+from typing import List, Tuple, Type
 
 # import own stuff
 from tlsmate import tls
@@ -51,7 +52,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa, ed25519, ed448, dsa, 
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography import x509
 from marshmallow import fields, Schema, post_load, post_dump, pre_dump, INCLUDE
-from marshmallow_oneofschema import OneOfSchema
+from marshmallow_oneofschema import OneOfSchema  # type: ignore
 
 # #### Helper classes
 
@@ -156,7 +157,7 @@ class ProfileSchema(Schema):
     """Wrapper class for easier deserialization to objects
     """
 
-    _augments = []
+    _augments: List[Tuple[Type[Schema], Type[Schema]]] = []
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

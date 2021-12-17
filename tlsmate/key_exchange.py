@@ -5,6 +5,7 @@
 import abc
 from typing import NamedTuple
 import os
+from typing import Optional
 
 # import own stuff
 from tlsmate import dh_numbers
@@ -544,7 +545,7 @@ class _Group(NamedTuple):
     """
 
     cls: type
-    algo: type
+    algo: Optional[type]
 
 
 _supported_groups = {

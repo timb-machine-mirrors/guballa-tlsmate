@@ -80,6 +80,10 @@ class TlsMessage(metaclass=abc.ABCMeta):
     """Abstract base class for TLS messages
     """
 
+    content_type: tls.ContentType
+    """The content type of the message.
+    """
+
     @abc.abstractmethod
     def deserialize(cls, fragment, conn):
         """Method to deserialize the message received from the network
@@ -133,11 +137,9 @@ class HandshakeMessage(TlsMessage):
     """
 
     content_type = tls.ContentType.HANDSHAKE
-    """ :obj:`tlsmate.tls.ContentType.HANDSHAKE`
-    """
 
-    msg_type = None
-    """ :obj:`tlsmate.tls.HandshakeType`: The type of the handshake message.
+    msg_type: tls.HandshakeType
+    """The type of the handshake message.
     """
 
     @classmethod
@@ -197,8 +199,6 @@ class HelloRequest(HandshakeMessage):
     """
 
     msg_type = tls.HandshakeType.HELLO_REQUEST
-    """:obj:`tlsmate.tls.HandshakeType.HELLO_REQUEST`
-    """
 
     def __init__(self):
         pass
@@ -234,8 +234,6 @@ class ClientHello(HandshakeMessage):
     """
 
     msg_type = tls.HandshakeType.CLIENT_HELLO
-    """:obj:`tlsmate.tls.HandshakeType.CLIENT_HELLO`
-    """
 
     def __init__(self):
         self.version = tls.Version.TLS12
@@ -359,8 +357,6 @@ class HelloRetryRequest(HandshakeMessage):
     """
 
     msg_type = tls.HandshakeType.HELLO_RETRY_REQUEST
-    """:obj:`tlsmate.tls.HandshakeType.HELLO_RETRY_REQUEST`
-    """
 
     def __init__(self, server_hello=None):
         if server_hello:
@@ -429,8 +425,6 @@ class ServerHello(HandshakeMessage):
     """
 
     msg_type = tls.HandshakeType.SERVER_HELLO
-    """:obj:`tlsmate.tls.HandshakeType.SERVER_HELLO`
-    """
 
     HELLO_RETRY_REQ_RAND = bytes.fromhex(
         "CF 21 AD 74 E5 9A 61 11 BE 1D 8C 02 1E 65 B8 91 "
@@ -517,8 +511,6 @@ class Certificate(HandshakeMessage):
     """
 
     msg_type = tls.HandshakeType.CERTIFICATE
-    """:obj:`tlsmate.tls.HandshakeType.CERTIFICATE`
-    """
 
     def __init__(self):
         self.request_context = None
@@ -576,8 +568,6 @@ class CertificateVerify(HandshakeMessage):
     """
 
     msg_type = tls.HandshakeType.CERTIFICATE_VERIFY
-    """:obj:`tlsmate.tls.HandshakeType.CERTIFICATE_VERIFY`
-    """
 
     def __init__(self):
         self.signature_scheme = None
@@ -745,8 +735,6 @@ class ServerKeyExchange(HandshakeMessage):
     """
 
     msg_type = tls.HandshakeType.SERVER_KEY_EXCHANGE
-    """:obj:`tlsmate.tls.HandshakeType.SERVER_KEY_EXCHANGE`
-    """
 
     def __init__(self):
         self.ec = None
@@ -786,8 +774,6 @@ class ServerHelloDone(HandshakeMessage):
     """
 
     msg_type = tls.HandshakeType.SERVER_HELLO_DONE
-    """:obj:`tlsmate.tls.HandshakeType.SERVER_HELLO_DONE`
-    """
 
     def __init__(self):
         pass
@@ -820,8 +806,6 @@ class ClientKeyExchange(HandshakeMessage):
     """
 
     msg_type = tls.HandshakeType.CLIENT_KEY_EXCHANGE
-    """:obj:`tlsmate.tls.HandshakeType.CLIENT_KEY_EXCHANGE`
-    """
 
     def __init__(self):
         self.rsa_encrypted_pms = None
@@ -858,8 +842,6 @@ class Finished(HandshakeMessage):
     """
 
     msg_type = tls.HandshakeType.FINISHED
-    """:obj:`tlsmate.tls.HandshakeType.FINISHED`
-    """
 
     def __init__(self):
         self.verify_data = None
@@ -877,8 +859,6 @@ class EndOfEarlyData(HandshakeMessage):
     """
 
     msg_type = tls.HandshakeType.END_OF_EARLY_DATA
-    """:obj:`tlsmate.tls.HandshakeType.END_OF_EARLY_DATA`
-    """
 
     def __init__(self):
         pass
@@ -908,8 +888,6 @@ class NewSessionTicket(HandshakeMessage):
     """
 
     msg_type = tls.HandshakeType.NEW_SESSION_TICKET
-    """:obj:`tlsmate.tls.HandshakeType.NEW_SESSION_TICKET`
-    """
 
     def __init__(self):
         self.lifetime = None
@@ -963,8 +941,6 @@ class CertificateRequest(HandshakeMessage):
     """
 
     msg_type = tls.HandshakeType.CERTIFICATE_REQUEST
-    """:obj:`tlsmate.tls.HandshakeType.CERTIFICATE_REQUEST`
-    """
 
     def __init__(self):
         pass
@@ -1094,11 +1070,9 @@ class ChangeCipherSpecMessage(TlsMessage):
     """
 
     content_type = tls.ContentType.CHANGE_CIPHER_SPEC
-    """ :obj:`tlsmate.tls.ContentType.CHANGE_CIPHER_SPEC`
-    """
 
-    msg_type = None
-    """ :obj:`tlsmate.tls.CCSType`: The type of the CCS message.
+    msg_type: tls.CCSType
+    """The type of the CCS message
     """
 
     @classmethod
@@ -1155,8 +1129,6 @@ class ChangeCipherSpec(ChangeCipherSpecMessage):
     """
 
     msg_type = tls.CCSType.CHANGE_CIPHER_SPEC
-    """:obj:`tlsmate.tls.CCSType.CHANGE_CIPHER_SPEC`
-    """
 
     def __init__(self):
         pass
@@ -1178,6 +1150,8 @@ class Alert(TlsMessage):
 
     content_type = tls.ContentType.ALERT
     msg_type = tls.ContentType.ALERT
+    """The type of the alert message
+    """
 
     def __init__(self, **kwargs):
         self.level = kwargs.get("level", tls.AlertLevel.FATAL)
@@ -1216,11 +1190,9 @@ class AppDataMessage(TlsMessage):
     """
 
     content_type = tls.ContentType.APPLICATION_DATA
-    """ :obj:`tlsmate.tls.ContentType.APPLICATION_DATA`
-    """
 
     msg_type = tls.ContentType.APPLICATION_DATA
-    """ :obj:`tlsmate.tls.ContentType.APPLICATION_DATA`
+    """The type for the application data message.
     """
 
     @classmethod
@@ -1265,11 +1237,9 @@ class HeartbeatMessage(TlsMessage):
     """
 
     content_type = tls.ContentType.HEARTBEAT
-    """ :obj:`tlsmate.tls.ContentType.HEARTBEAT`
-    """
 
-    msg_type = None
-    """ :obj:`tlsmate.tls.HeartbeatType`: The type of the Heartbeat message.
+    msg_type: tls.HeartbeatType
+    """The type of the heartbeat message.
     """
 
     def __init__(self, payload_length=None, payload=None, padding=None):
@@ -1301,8 +1271,6 @@ class HeartbeatRequest(HeartbeatMessage):
     """
 
     msg_type = tls.HeartbeatType.HEARTBEAT_REQUEST
-    """ :obj:`tlsmate.tls.HeartbeatType.HEARTBEAT_REQUEST`
-    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1313,8 +1281,6 @@ class HeartbeatResponse(HeartbeatMessage):
     """
 
     msg_type = tls.HeartbeatType.HEARTBEAT_RESPONSE
-    """ :obj:`tlsmate.tls.HeartbeatType.HEARTBEAT_RESPONSE`
-    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1325,10 +1291,10 @@ class SSL2Message(TlsMessage):
     """
 
     content_type = tls.ContentType.SSL2
-    """:obj:`tlsmate.tls.ContentType.SSL2`
-    """
 
-    msg_type = None
+    msg_type: tls.SSLMessagType
+    """The type of the SSLv2 message.
+    """
 
     @classmethod
     def deserialize(cls, fragment, conn, length=0):
@@ -1360,8 +1326,6 @@ class SSL2ClientHello(SSL2Message):
     """
 
     msg_type = tls.SSLMessagType.SSL2_CLIENT_HELLO
-    """:obj:`tlsmate.tls.SSLMessagType.SSL2_CLIENT_HELLO`
-    """
 
     def __init__(self):
         self.version = tls.SSLVersion.SSL2
@@ -1410,8 +1374,6 @@ class SSL2ServerHello(SSL2Message):
     """
 
     msg_type = tls.SSLMessagType.SSL2_SERVER_HELLO
-    """:obj:`tlsmate.tls.SSLMessagType.SSL2_SERVER_HELLO`
-    """
 
     def __init__(self):
         self.session_id_hit = None
@@ -1456,8 +1418,6 @@ class SSL2Error(SSL2Message):
     """
 
     msg_type = tls.SSLMessagType.SSL2_ERROR
-    """:obj:`tlsmate.tls.SSLMessagType.SSL2_ERROR`
-    """
 
     def __init__(self):
         self.error = None
