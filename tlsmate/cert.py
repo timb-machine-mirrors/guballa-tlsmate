@@ -422,7 +422,7 @@ class Certificate(object):
         """Verify DSA signatures
         """
 
-        self.parsed.public_key().veriVfy(signature, data, hash_algo())
+        self.parsed.public_key().verify(signature, data, hash_algo())
 
     def _verify_ecdsa(self, signature, data, hash_algo):
         """Verify ECDSA signatures

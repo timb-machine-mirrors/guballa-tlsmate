@@ -4,7 +4,7 @@
 # import basic stuff
 import time
 from dataclasses import dataclass, field
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Any
 
 # import own stuff
 from tlsmate import tls
@@ -15,6 +15,8 @@ from tlsmate.msg import ClientHello
 from tlsmate.connection import TlsConnection
 
 # import other stuff
+
+TlsMate = Any
 
 
 @dataclass
@@ -181,29 +183,34 @@ class Client(object):
             issues.
     """
 
-    def __init__(self, tlsmate):
+    def __init__(self, tlsmate: TlsMate) -> None:
         """Initialize the client object
 
         Args:
-            tlsmate (:obj:`tlsmate.tlsmate.TlsMate`): the tlsmate application object.
+            tlsmate: the tlsmate application object.
         """
         self._tlsmate = tlsmate
         self.config = tlsmate.config
         self._set_profile_modern()
         self.alert_on_invalid_cert = True
-        self.session_state_ticket = None
-        self.session_state_id = None
-        self.psks = []
+        self.session_state_ticket: Optional[structs.SessionStateTicket] = None
+        self.session_state_id: Optional[structs.SessionStateId] = None
+        self.psks: List[structs.Psk] = []
         self._host = None
-        self.server_issues = []
+        self.server_issues: List[structs.Malfunction] = []
 
-    def report_server_issue(self, issue, message=None, extension=None):
+    def report_server_issue(
+        self,
+        issue: tls.ServerIssue,
+        message: Optional[tls.HandshakeType] = None,
+        extension: Optional[tls.Extension] = None,
+    ) -> None:
         """Store a server issue, if not done
 
         Arguments:
-            issue (:obj:tlsmate.tls.`ServerMalfunction`): the reason for the exception
-            message (:obj:`tlsmate.tls.HandshakeType`): the message, if applicable
-            extension (:obj:`tlsmate.tls.Extension`): the extension, if applicable
+            issue: the reason for the exception
+            message: the message, if applicable
+            extension: the extension, if applicable
         """
 
         malfunction = structs.Malfunction(
@@ -213,7 +220,9 @@ class Client(object):
         if malfunction not in self.server_issues:
             self.server_issues.append(malfunction)
 
-    def init_profile(self, profile_values=None):
+    def init_profile(
+        self, profile_values: Optional[structs.ProfileValues] = None
+    ) -> None:
         """Resets the client profile to a very basic state
 
         :note:
@@ -224,8 +233,8 @@ class Client(object):
         by default the sni extension is enabled. Everything else is empty or disabled.
 
         Arguments:
-            profile_values (:obj:`tlsmate.structs.ProfileValues`): the profile
-                values to additionally use to initialize the client profile
+            profile_values: the profile values to additionally use to
+                initialize the client profile
         """
 
         self.profile = ClientProfile()
@@ -471,7 +480,7 @@ class Client(object):
             support_sni=True,
         )
 
-    def set_profile(self, profile):
+    def set_profile(self, profile: tls.Profile) -> None:
         """Initializes the client according to the given profile.
 
         The following profiles are supported:
@@ -523,17 +532,18 @@ class Client(object):
         else:
             raise ValueError(f"client profile {profile} unknown")
 
-    def create_connection(self, host=None, port=None):
+    def create_connection(
+        self, host: Optional[str] = None, port: Optional[int] = None
+    ) -> TlsConnection:
         """Create a new connection object
 
         Arguments:
-            host (str): the host to contact. If not given, the host
-                is taken from the configuration. The given string can be
-                a URL or an IP address.
-            port (int): the port number
+            host: the host to contact. If not given, the host is taken from the
+                configuration. The given string can be a URL or an IP address.
+                port (int): the port number
 
         Returns:
-            :obj:`tlsmate.connection.TlsConnection`: the created connection object
+            the created connection object
         """
 
         self._host = host if host is not None else self.config.get("host")
@@ -544,59 +554,61 @@ class Client(object):
 
         return TlsConnection(self._tlsmate, self._host)
 
-    def save_session_state_id(self, session_state):
+    def save_session_state_id(self, session_state: structs.SessionStateId) -> None:
         """Save a session state
 
         Args:
-            session_state (:obj:`tlsmate.structs.SessionStateId`): A session
-                state to be stored on the client level, usable to resume
-                connections using the session_id
+            session_state: A session state to be stored on the client level,
+                usable to resume connections using the session_id
         """
+
         self.session_state_id = session_state
 
-    def get_session_state_id(self):
+    def get_session_state_id(self) -> Optional[structs.SessionStateId]:
         """Get the session state (id)
 
         Returns:
-            :obj:`tlsmate.structs.SessionStateId`: the session state to resume a
-            session from
+            the session state to resume a session from
         """
+
         return self.session_state_id
 
-    def save_session_state_ticket(self, session_state):
+    def save_session_state_ticket(
+        self, session_state: structs.SessionStateTicket
+    ) -> None:
         """Save a session state
 
         Args:
-            session_state (:obj:`tlsmate.structs.SessionStateId`): A session state to be
-                stored on the client level, usable to resume connections using the
-                session ticket.
+            session_state: A session state to be stored on the client level,
+                usable to resume connections using the session ticket.
         """
+
         self.session_state_ticket = session_state
 
-    def get_session_state_ticket(self):
+    def get_session_state_ticket(self) -> Optional[structs.SessionStateTicket]:
         """Get the session state (ticket)
 
         Returns:
-            :obj:`tlsmate.structs.SessionStateTicket`: the session state to resume a
-            session from
+            the session state to resume a session from
         """
+
         return self.session_state_ticket
 
-    def save_psk(self, psk):
+    def save_psk(self, psk: structs.Psk) -> None:
         """Save a TLS1.3 PSK
 
         Arguments:
-            psk (:obj:`tlsmate.structs.Psk`): A pre-shared key be stored on the
-                client level, usable to resume connections using the pre-shared key
-                extension.
+            psk: A pre-shared key be stored on the client level, usable to
+                resume connections using the pre-shared key extension.
         """
+
         self.psks.append(psk)
 
-    def get_sni(self):
+    def get_sni(self) -> str:
         """Get the current SNI
 
         Returns:
-            str: the SNI
+            the SNI
 
         Raises:
             ValueError: if no SNI can be determined
@@ -612,11 +624,11 @@ class Client(object):
 
         return self.config.get("host")
 
-    def client_hello(self):
+    def client_hello(self) -> ClientHello:
         """Populate a ClientHello message according to the current client profile
 
         Returns:
-            :obj:`tlsmate.msg.ClientHello`: the ClientHello object
+            the ClientHello object
         """
         msg = ClientHello()
         max_version = max(self.profile.versions)
@@ -716,15 +728,13 @@ class Client(object):
                 ):
                     msg.extensions.append(ext.ExtPostHandshakeAuth())
 
-                self._key_share_objects = []
-
                 msg.extensions.append(
                     ext.ExtSupportedVersions(
                         versions=sorted(self.profile.versions, reverse=True)
                     )
                 )
                 # TLS13 key shares: enforce the same sequence as in supported groups
-                if self.profile.key_shares:
+                if self.profile.key_shares and self.profile.supported_groups:
                     groups = [
                         group
                         for group in self.profile.supported_groups
