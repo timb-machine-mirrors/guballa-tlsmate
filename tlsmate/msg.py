@@ -149,7 +149,7 @@ class HandshakeMessage(TlsMessage):
         length, offset = pdu.unpack_uint24(fragment, offset)
         if length + offset != len(fragment):
             raise ServerMalfunction(
-                tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=cls.msg_type
+                tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=msg_type
             )
 
         cls_name = _hs_deserialization_map[msg_type]
@@ -1079,7 +1079,8 @@ class ChangeCipherSpecMessage(TlsMessage):
     def deserialize(cls, fragment, conn):
         if len(fragment) != 1:
             raise ServerMalfunction(
-                tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=cls.msg_type
+                tls.ServerIssue.MESSAGE_LENGTH_ERROR,
+                message=tls.CCSType.CHANGE_CIPHER_SPEC,
             )
 
         msg_type, offset = pdu.unpack_uint8(fragment, 0)
