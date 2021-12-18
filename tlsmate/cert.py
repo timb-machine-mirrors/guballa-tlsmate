@@ -3,9 +3,13 @@
 """
 # import basic stuff
 import logging
+from typing import Optional, List, Type
+import datetime
+import builtins
 
 # import own stuff
 from tlsmate import tls
+from tlsmate import ext
 from tlsmate import cert_utils
 from tlsmate.exception import UntrustedCertificate
 
@@ -21,6 +25,7 @@ from cryptography.hazmat.primitives.asymmetric import (
     ed448,
 )
 from cryptography.hazmat.primitives.serialization import Encoding
+from cryptography.hazmat.primitives.asymmetric import padding
 
 
 # list of EV OIDs. Sources:
@@ -71,15 +76,22 @@ class Certificate(object):
     The arguments der and pem are exclusive.
 
     Arguments:
-        der (bytes): the certificate in DER-format (raw bytes)
-        pem (bytes): the certificate in PEM-format
-        parse (bool): whether the certificate shall be parsed (i.e., all relevant
+        der: the certificate in DER-format (raw bytes)
+        pem: the certificate in PEM-format
+        x509_cert: a certificate object from the cryptography library
+        parse: whether the certificate shall be parsed (i.e., all relevant
             data are extracted from the given der/pem structure), or if it shall just
             be stored. In the latter case the certificate will be parsed if a
             property is accessed.
     """
 
-    def __init__(self, der=None, pem=None, x509_cert=None, parse=False):
+    def __init__(
+        self,
+        der: Optional[bytes] = None,
+        pem: Optional[bytes] = None,
+        x509_cert: Optional[x509.Certificate] = None,
+        parse: bool = False,
+    ) -> None:
 
         if (der, pem, x509_cert).count(None) != 2:
             raise ValueError("der, pem and x509_cert are exclusive")
@@ -91,16 +103,16 @@ class Certificate(object):
         self._self_signed = None
         self.auth_key_id = None
         self.subject_key_id = None
-        self.subject_matches = None
+        self.subject_matches: Optional[bool] = None
         self.fingerprint_sha1 = None
         self.fingerprint_sha256 = None
         self.tls12_signature_algorithms = None
         self.tls13_signature_algorithms = None
         self.crl_status = None
         self.ocsp_status = None
-        self.issues = []
+        self.issues: List[str] = []
         self.trusted = tls.ScanState.UNDETERMINED
-        self.tls_extensions = []
+        self.tls_extensions: List[Type[ext.Extension]] = []
         self.issuer_cert = None
         self.ocsp_must_staple = tls.ScanState.FALSE
         self.ocsp_must_staple_multi = tls.ScanState.FALSE
@@ -324,14 +336,12 @@ class Certificate(object):
             )
         return self._self_signed
 
-    def mark_untrusted(self, issue):
+    def mark_untrusted(self, issue: str) -> None:
         """Mark the certificate as untrusted.
 
         Arguments:
-            issue (str): the error message containing the reason
+            issue: the error message containing the reason
 
-        Raises:
-            :obj:`tlsmate.exception.UntrustedCertificate`: if raise_on_failure is True
         """
 
         self.trusted = tls.ScanState.FALSE
@@ -339,37 +349,16 @@ class Certificate(object):
         logging.debug(issue_long)
         self.issues.append(issue)
 
-    def validate_period(self, datetime, raise_on_failure=True):
-        """Validate the period of the certificate against a given timestamp.
-
-        Arguments:
-            datetime (:obj:`datetime.datetime`): the timestamp
-            raise_on_failure (bool): whether an exception shall be raised if the
-                validation fails.
-
-        Returns:
-            bool: The validation state
-
-        Raises:
-            :obj:`tlsmate.exception.UntrustedCertificate`: if the timestamp is
-                outside the validity period and raise_on_failure is True
-        """
-
-        if datetime < self.parsed.not_valid_before:
-            self.mark_untrusted("validity period not yet reached", raise_on_failure)
-
-        if datetime > self.parsed.not_valid_after:
-            self.mark_untrusted("validity period exceeded", raise_on_failure)
-
-    def has_valid_period(self, timestamp):
+    def has_valid_period(self, timestamp: datetime.datetime) -> bool:
         """Determines if the period is valid.
 
         Arguments:
-            timestamp (datetime.datetime): the timestamp to check against
+            timestamp: the timestamp to check against
 
         Returns:
-            bool: An indication if the period is valid
+            An indication if the period is valid
         """
+
         valid = True
         if timestamp < self.parsed.not_valid_before:
             self.mark_untrusted("validity period not yet reached")
@@ -381,24 +370,17 @@ class Certificate(object):
 
         return valid
 
-    def has_valid_subject(self, domain):
+    def has_valid_subject(self, domain: str) -> bool:
         """Validate if the certificate matches the given domain
 
         It takes the subject and the subject alternative name into account, and
         supports wildcards as well.
 
         Arguments:
-            domain (str): the domain to check against (normally used in the SNI)
-            raise_on_failure (bool): whether an exception shall be raised if the
-                validation fails or not. Useful for a TLS scan, as the scan shall
-                continue.
+            domain: the domain to check against (normally used in the SNI)
 
         Returns:
-            bool: indication, if the domain name matches the certificate's subject/SAN
-
-        Raises:
-            UntrustedCertificate: if the certificate is not issued for the given
-            domain
+            indication, if the domain name matches the certificate's subject/SAN
         """
 
         subject_matches = False
@@ -428,28 +410,101 @@ class Certificate(object):
         self.subject_matches = subject_matches
         return subject_matches
 
-    def validate_signature(self, sig_scheme, data, signature):
-        """Validate a signature using the public key from the certificate.
+    def _verify_rsa_pkcs(self, signature, data, hash_algo):
+        """Verify RSA PKCSv15 signatures
+        """
+
+        self.parsed.public_key().verify(
+            signature, data, padding.PKCS1v15(), hash_algo()
+        )
+
+    def _verify_dsa(self, signature, data, hash_algo):
+        """Verify DSA signatures
+        """
+
+        self.parsed.public_key().veriVfy(signature, data, hash_algo())
+
+    def _verify_ecdsa(self, signature, data, hash_algo):
+        """Verify ECDSA signatures
+        """
+
+        self.parsed.public_key().verify(signature, data, ec.ECDSA(hash_algo()))
+
+    def _verify_xcurve(self, signature, data, hash_algo):
+        """Verify X25519 and X488 signatures
+        """
+
+        self.parsed.public_key().verify(signature, bytes(data))
+
+    def _verify_rsae_pss(self, signature, data, hash_algo):
+        """Verify RSA-PSS signatures
+        """
+
+        self.parsed.public_key().verify(
+            signature,
+            data,
+            padding.PSS(
+                mgf=padding.MGF1(hash_algo()), salt_length=hash_algo.digest_size
+            ),
+            hash_algo(),
+        )
+
+    _sig_schemes = {
+        tls.SignatureScheme.RSA_PKCS1_MD5: (_verify_rsa_pkcs, hashes.MD5),
+        tls.SignatureScheme.RSA_PKCS1_SHA1: (_verify_rsa_pkcs, hashes.SHA1),
+        tls.SignatureScheme.RSA_PKCS1_SHA224: (_verify_rsa_pkcs, hashes.SHA224),
+        tls.SignatureScheme.RSA_PKCS1_SHA256: (_verify_rsa_pkcs, hashes.SHA256),
+        tls.SignatureScheme.RSA_PKCS1_SHA384: (_verify_rsa_pkcs, hashes.SHA384),
+        tls.SignatureScheme.RSA_PKCS1_SHA512: (_verify_rsa_pkcs, hashes.SHA512),
+        tls.SignatureScheme.DSA_MD5: (_verify_dsa, hashes.MD5),
+        tls.SignatureScheme.DSA_SHA1: (_verify_dsa, hashes.SHA1),
+        tls.SignatureScheme.DSA_SHA224: (_verify_dsa, hashes.SHA224),
+        tls.SignatureScheme.DSA_SHA256: (_verify_dsa, hashes.SHA256),
+        tls.SignatureScheme.DSA_SHA384: (_verify_dsa, hashes.SHA384),
+        tls.SignatureScheme.DSA_SHA512: (_verify_dsa, hashes.SHA512),
+        tls.SignatureScheme.ECDSA_SHA1: (_verify_ecdsa, hashes.SHA1),
+        tls.SignatureScheme.ECDSA_SECP224R1_SHA224: (_verify_ecdsa, hashes.SHA224),
+        tls.SignatureScheme.ECDSA_SECP256R1_SHA256: (_verify_ecdsa, hashes.SHA256),
+        tls.SignatureScheme.ECDSA_SECP384R1_SHA384: (_verify_ecdsa, hashes.SHA384),
+        tls.SignatureScheme.ECDSA_SECP521R1_SHA512: (_verify_ecdsa, hashes.SHA512),
+        tls.SignatureScheme.RSA_PSS_PSS_SHA256: (_verify_rsae_pss, hashes.SHA256),
+        tls.SignatureScheme.RSA_PSS_PSS_SHA384: (_verify_rsae_pss, hashes.SHA384),
+        tls.SignatureScheme.RSA_PSS_PSS_SHA512: (_verify_rsae_pss, hashes.SHA512),
+        tls.SignatureScheme.RSA_PSS_RSAE_SHA256: (_verify_rsae_pss, hashes.SHA256),
+        tls.SignatureScheme.RSA_PSS_RSAE_SHA384: (_verify_rsae_pss, hashes.SHA384),
+        tls.SignatureScheme.RSA_PSS_RSAE_SHA512: (_verify_rsae_pss, hashes.SHA512),
+        tls.SignatureScheme.ED25519: (_verify_xcurve, None),
+        tls.SignatureScheme.ED448: (_verify_xcurve, None),
+    }
+
+    def validate_signature(
+        self,
+        sig_scheme: tls.SignatureScheme,
+        data: builtins.bytes,
+        signature: builtins.bytes,
+    ) -> None:
+        """Validate a signature with a public key from a given certificate.
 
         Arguments:
-            sig_scheme (:class:`tlsmate.tls.SignatureScheme`): The signature
-                scheme to use
-            data (bytes): the bytes for which the signature is to be validated
-            signature (bytes): the signature
+            sig_scheme: The signature scheme to use
+            data: the bytes for which the signature is to be validated
+            signature: the signature
 
         Raises:
             cryptography.exceptions.InvalidSignature: If the signature does not
-                validate.
-
+            validate.
         """
-        cert_utils.validate_signature(self, sig_scheme, data, signature)
 
-    def validate_cert_signature(self, cert):
+        sig_params = self._sig_schemes.get(sig_scheme)
+        if sig_params is None:
+            raise ValueError(f"signature scheme {sig_scheme} not supported")
+        sig_params[0](self, signature, data, sig_params[1])
+
+    def validate_cert_signature(self, cert: "Certificate") -> None:
         """Validate the signature within a certificate
 
         Arguments:
-            cert (:obj:`Certificate`): the certificate for which the signature
-                shall be checked.
+            cert: the certificate for which the signature shall be checked.
 
         Raises:
             cryptography.exceptions.InvalidSignature: If the signature does not
