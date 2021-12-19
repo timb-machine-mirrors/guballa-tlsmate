@@ -4,6 +4,7 @@
 # import basic stuff
 import abc
 import os
+from typing import Union, TYPE_CHECKING, Type
 
 # import own stuff
 from tlsmate import tls
@@ -11,6 +12,9 @@ from tlsmate import ext
 from tlsmate.exception import ServerMalfunction
 from tlsmate.cert_chain import CertChain
 from tlsmate import pdu
+
+if TYPE_CHECKING:
+    from tlsmate.connection import TlsConnection
 
 # import other stuff
 
@@ -82,6 +86,16 @@ class TlsMessage(metaclass=abc.ABCMeta):
 
     content_type: tls.ContentType
     """The content type of the message.
+    """
+
+    msg_type: Union[
+        tls.HandshakeType,
+        tls.CCSType,
+        tls.HeartbeatType,
+        tls.SSLMessagType,
+        tls.ContentType,
+    ]
+    """The type of the message
     """
 
     @abc.abstractmethod

@@ -5,7 +5,7 @@
 # import basic stuff
 import stringprep
 import unicodedata
-from typing import List, Type
+from typing import List
 
 # import own stuff
 from tlsmate import tls
@@ -157,7 +157,7 @@ def equal_rdn(rdn1: RelativeDistinguishedName, rdn2: RelativeDistinguishedName) 
     )
 
 
-def equal_names(name1: Type[Name], name2: Type[Name]) -> bool:
+def equal_names(name1: Name, name2: Name) -> bool:
     """Check two x509 names for equality
 
     Arguments:
@@ -174,7 +174,7 @@ def equal_names(name1: Type[Name], name2: Type[Name]) -> bool:
 
     return all(
         equal_rdn(rdn1, rdn2)
-        for rdn1, rdn2 in zip(name1.rdns, name2.rdns)  # type: ignore
+        for rdn1, rdn2 in zip(name1.rdns, name2.rdns)
     )
 
 

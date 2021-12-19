@@ -3,7 +3,7 @@
 """
 # import basic stuff
 import logging
-from typing import Optional, List, Type
+from typing import Optional, List
 import datetime
 import builtins
 
@@ -112,7 +112,7 @@ class Certificate(object):
         self.ocsp_status = None
         self.issues: List[str] = []
         self.trusted = tls.ScanState.UNDETERMINED
-        self.tls_extensions: List[Type[ext.Extension]] = []
+        self.tls_extensions: List[ext.Extension] = []
         self.issuer_cert = None
         self.ocsp_must_staple = tls.ScanState.FALSE
         self.ocsp_must_staple_multi = tls.ScanState.FALSE

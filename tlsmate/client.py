@@ -4,7 +4,7 @@
 # import basic stuff
 import time
 from dataclasses import dataclass, field
-from typing import List, Optional, Union, Any
+from typing import List, Optional, Union, TYPE_CHECKING
 
 # import own stuff
 from tlsmate import tls
@@ -14,9 +14,11 @@ from tlsmate import utils
 from tlsmate.msg import ClientHello
 from tlsmate.connection import TlsConnection
 
-# import other stuff
+if TYPE_CHECKING:
+    from tlsmate.tlsmate import TlsMate
 
-TlsMate = Any
+
+# import other stuff
 
 
 @dataclass

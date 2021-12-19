@@ -9,6 +9,7 @@ import io
 import traceback as tb
 import time
 import copy
+from typing import Optional, Any, Type, Dict, Callable, Tuple, Union, cast
 
 # import own stuff
 from tlsmate.exception import (
@@ -17,7 +18,7 @@ from tlsmate.exception import (
     TlsConnectionClosedError,
     TlsMsgTimeoutError,
 )
-from tlsmate.msg import get_extension
+from tlsmate.msg import get_extension, TlsMessage, Timeout
 from tlsmate import msg
 from tlsmate import tls
 from tlsmate import pdu
@@ -41,12 +42,12 @@ class TlsDefragmenter(object):
     """Class to collect as many bytes from the record layer as necessary for a message.
     """
 
-    def __init__(self, record_layer):
+    def __init__(self, record_layer: RecordLayer) -> None:
         self._record_bytes = bytearray()
         self._msg = bytearray()
         self._content_type = None
         self._version = None
-        self._ultimo = None
+        self._ultimo: Optional[float] = None
         self._record_layer = record_layer
 
     def _get_bytes(self, nbr, **kwargs):
@@ -69,17 +70,17 @@ class TlsDefragmenter(object):
         self._record_bytes = bytearray()
         return ret
 
-    def get_message(self, timeout, **kwargs):
+    def get_message(self, timeout: float, **kwargs: Any) -> structs.UpperLayerMsg:
         """Gets a message, constructed from the bytes received from the record layer.
 
         Arguments:
-            timeout (float): the timeout in seconds
+            timeout: the timeout in seconds
 
         Returns:
-            :obj:`tlsmate.structs.UpperLayerMsg`: a defragmented message
+            a defragmented message
         """
 
-        self._ultimo = time.time() + (timeout)
+        self._ultimo = time.time() + timeout
         message = self._get_bytes(1, **kwargs)
         if self._content_type is tls.ContentType.ALERT:
             message.extend(self._get_bytes(1, **kwargs))
@@ -201,7 +202,7 @@ class TlsConnectionMsgs(object):
         tls.HandshakeType.HELLO_RETRY_REQUEST: "hello_retry_request",
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.hello_request = None
         self.client_hello = None
         self.server_hello = None
@@ -224,12 +225,12 @@ class TlsConnectionMsgs(object):
         self.client_heartbeat_response = None
         self.server_heartbeat_response = None
 
-    def store_msg(self, msg, received=True):
+    def store_msg(self, msg: TlsMessage, received: bool = True) -> None:
         """Stores a received/sent message
 
         Arguments:
-            msg (:obj:`tlsmate.msg.TlsMessage`): the message to store
-            received (bool): an indication if the message was received or sent.
+            msg: the message to store
+            received: an indication if the message was received or sent.
                 Defaults to True
         """
 
@@ -332,7 +333,9 @@ class TlsConnection(object):
             Heartbeat messages.
     """
 
-    def __init__(self, tlsmate, host=None, port=None):
+    def __init__(
+        self, tlsmate: Any, host: Optional[str] = None, port: Optional[int] = None
+    ) -> None:
         self._tlsmate = tlsmate
         if host is None:
             host = tlsmate.config.get("host")
@@ -344,7 +347,7 @@ class TlsConnection(object):
         self.msg = TlsConnectionMsgs()
         self._record_layer = RecordLayer(tlsmate, self._server_l4)
         self._defragmenter = TlsDefragmenter(self._record_layer)
-        self._awaited_msg = None
+        self._awaited_msg: Union[Type[TlsMessage], Timeout, Any] = None
         self._queued_msg = None
         self._queued_bytes = None
         self._record_layer_version = tls.Version.TLS10
@@ -377,7 +380,7 @@ class TlsConnection(object):
         self.cipher_suite = None
         self._compression_method = None
         self._encrypt_then_mac = False
-        self._key_shares = {}
+        self._key_shares: Dict[tls.SupportedGroups, kex.KeyExchange] = {}
         self.res_ms = None
 
         # key exchange
@@ -463,15 +466,14 @@ class TlsConnection(object):
         else:
             return True
 
-    def get_key_share(self, group):
+    def get_key_share(self, group: tls.SupportedGroups) -> bytes:
         """Provide the key share for a given group.
 
         Arguments:
-            group (:obj:`tlsmate.tls.SupportedGroups`): the group to create a key
-                share for
+            group: the group to create a key share for
 
         Returns:
-            :obj:`tlsmate.key_exchange.KeyExchange`: the created key exchange object
+            the created key exchange object
         """
 
         key_share = kex.instantiate_named_group(group, self, self.recorder)
@@ -1001,7 +1003,12 @@ class TlsConnection(object):
 
         cert_chain.validate(timestamp, sni, self.client.alert_on_invalid_cert)
 
-    def send(self, *messages, pre_serialization=None, **kwargs):
+    def send(
+        self,
+        *messages: Union[Type[TlsMessage], TlsMessage],
+        pre_serialization: Optional[Callable[[TlsMessage], None]] = None,
+        **kwargs: Any,
+    ) -> None:
         """Interface to send messages.
 
         Each message given here will be sent in a separate record layer record,
@@ -1009,9 +1016,9 @@ class TlsConnection(object):
 
         Arguments:
             *messages: either a class or an object of
-                :class:`tlsmate.msg.TlsMessage`. If a class is passed, appropriate
-                methods will be called to instantiate an object automagically.
-            pre_serialization (func): an optional callback function, which can be used
+                If a class is passed, appropriate methods will be called to
+                instantiate an object automagically.
+            pre_serialization: an optional callback function, which can be used
                 to process an automagically generated message before it is serialized.
                 Can be suitable, e.g. to modify message parameters without the need
                 to setup the message completely by its own (which can be rather
@@ -1026,14 +1033,14 @@ class TlsConnection(object):
                 message = self._generate_outgoing_msg(message)
                 if message is None:
                     continue
-
+            message = cast(TlsMessage, message)
             if pre_serialization is not None:
                 pre_serialization(message)
 
             logging.info(f"{utils.Log.time()}: ==> {message.msg_type}")
             self._pre_serialization_hook(message)
             self._msg_logging(message)
-            msg_data = message.serialize(self)
+            msg_data = message.serialize(self)  # type: ignore
             msg_data = self._post_serialization_hook(message, msg_data)
             self.msg.store_msg(message, received=False)
             if message.content_type == tls.ContentType.HANDSHAKE:
@@ -1432,13 +1439,13 @@ class TlsConnection(object):
         if method is not None:
             method(self, msg, msg_bytes)
 
-    def _auto_heartbeat_request(self, message):
+    def _auto_heartbeat_request(self, message: msg.HeartbeatRequest) -> None:
         if self.client.profile.heartbeat_mode is tls.HeartbeatMode.PEER_ALLOWED_TO_SEND:
             response = msg.HeartbeatResponse()
             response.payload_length = message.payload_length
             response.payload = message.payload
             response.padding = b"\xff" * 16
-            self.send(response)
+            self.send(response)  # type: ignore
 
     _auto_responder_map = {
         tls.HeartbeatType.HEARTBEAT_REQUEST: _auto_heartbeat_request,
@@ -1511,23 +1518,22 @@ class TlsConnection(object):
 
     def wait_msg_bytes(
         self,
-        msg_class,
-        optional=False,
-        max_nbr=1,
-        timeout=5000,
-        fail_on_timeout=True,
-        **kwargs,
-    ):
+        msg_class: Union[Type[TlsMessage], Timeout],
+        optional: bool = False,
+        max_nbr: int = 1,
+        timeout: int = 5000,
+        fail_on_timeout: bool = True,
+        **kwargs: Any,
+    ) -> Tuple[Union[Type[TlsMessage], Timeout, Any, None], Optional[bytes]]:
         """Interface to wait for a message from the peer.
 
         Arguments:
-            msg_class (:class:`tlsmate.msg.TlsMessage`): the class of the awaited
-                message
-            optional (bool): an indication if the message is optional. Defaults to False
-            max_nbr (int): the number of identical message types to wait for. Well
+            msg_class the class of the awaited message
+            optional: an indication if the message is optional. Defaults to False
+            max_nbr: the number of identical message types to wait for. Well
                 suitable for NewSessionTicket messages. Defaults to 1.
-            timeout (int): the message timeout in milliseconds
-            fail_on_timeout (bool): if True, in case of a timeout raise an exception,
+            timeout: the message timeout in milliseconds
+            fail_on_timeout: if True, in case of a timeout raise an exception,
                 otherwise return (None, None)
 
         Returns:
@@ -1570,7 +1576,7 @@ class TlsConnection(object):
                     else:
                         return None, None
 
-            if (msg_class == msg.Any) or isinstance(message, msg_class):
+            if (msg_class == msg.Any) or isinstance(message, msg_class):  # type: ignore
                 self._on_msg_received(message, msg_bytes)
                 cnt += 1
                 if cnt == max_nbr:
@@ -1599,22 +1605,23 @@ class TlsConnection(object):
                         )
                     )
 
-    def wait(self, msg_class, **kwargs):
+    def wait(
+        self, msg_class: Union[Type[TlsMessage], Timeout, Any], **kwargs: Any
+    ) -> Union[Type[TlsMessage], Timeout, None]:
         """Interface to wait for a message from the peer.
 
         Arguments:
-            msg_class (:class:`tlsmate.msg.TlsMessage`): the class of the awaited
-                message
-            optional (bool): an indication if the message is optional. Defaults to False
-            max_nbr (int): the number of identical message types to wait for. Well
+            msg_class: the class of the awaited message
+            optional: an indication if the message is optional. Defaults to False
+            max_nbr: the number of identical message types to wait for. Well
                 suitable for NewSessionTicket messages. Defaults to 1.
-            timeout (int): the message timeout in milliseconds
-            fail_on_timeout (bool): if True, in case of a timeout raise an exception,
+            timeout: the message timeout in milliseconds
+            fail_on_timeout: if True, in case of a timeout raise an exception,
                 otherwise return (None, None)
 
         Returns:
-            :obj:`tlsmate.msg.TlsMessage`: the message received or None in case
-            of a timeout and fail_on_timeout is False.
+            the message received or None in case of a timeout and
+            fail_on_timeout is False.
 
         Raises:
             ScanError: In case an unexpected message is received
@@ -1817,21 +1824,23 @@ class TlsConnection(object):
             is_write_state=(entity is tls.Entity.CLIENT),
         )
 
-    def timeout(self, timeout):
+    def timeout(self, timeout: int) -> None:
         """Implement a timeout function
 
         This function will wait until the timeout expires. Messages received during
         the timeout will cause the function to fail.
 
         Arguments:
-            timeout (int): the timeout in milliseconds
+            timeout: the timeout in milliseconds
 
         Raises:
             ScanError: In case an unexpected message is received
         """
         self.wait(msg.Timeout, timeout=timeout)
 
-    def handshake(self, ch_pre_serialization=None):
+    def handshake(
+        self, ch_pre_serialization: Optional[Callable[[TlsMessage], None]] = None
+    ) -> None:
         """Convenient method to execute a complete handshake.
 
         With this method there is no need to define the exact scenario. The parameters
@@ -1858,7 +1867,7 @@ class TlsConnection(object):
             NewSessionTicket messages in TLS1.3 (if not treated by the auto_handler).
 
         Arguments:
-            ch_pre_serialization (func): a call back function executed after
+            ch_pre_serialization: a call back function executed after
                 the parameters for the ClientHello are setup, but before its
                 serialization. Useful to manipulate the ClientHello.
                 The function receives the client_hello object
@@ -1869,7 +1878,7 @@ class TlsConnection(object):
         if self.client.profile.early_data is not None:
             self.send(msg.AppData(self.client.profile.early_data))
 
-        rec_msg = self.wait(msg.Any)
+        rec_msg = cast(TlsMessage, self.wait(msg.Any))
         if isinstance(rec_msg, msg.HelloRetryRequest):
             self.send(msg.ClientHello, pre_serialization=ch_pre_serialization)
             self.wait(msg.ChangeCipherSpec, optional=True)

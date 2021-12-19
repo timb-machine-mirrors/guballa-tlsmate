@@ -5,6 +5,7 @@
 import importlib
 import pkgutil
 import sys
+import argparse
 
 # import own stuff
 from tlsmate.config import Configuration
@@ -16,17 +17,17 @@ from tlsmate.plugin import WorkManager
 # import other stuff
 
 
-def build_parser():
+def build_parser() -> argparse.ArgumentParser:
     """Creates the parser object
 
     Returns:
-        :obj:`argparse.ArgumentParser`: the parser object as created with argparse
+        the parser object as created with argparse
     """
 
     return BaseCommand.create_parser()
 
 
-def main():
+def main() -> None:
     """The entry point for the command line interface
     """
 

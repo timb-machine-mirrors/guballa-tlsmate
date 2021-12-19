@@ -3,18 +3,20 @@
 """
 # import basic stuff
 import pem
-from typing import Any, List, Tuple, Set, Optional
+from typing import Any, List, Tuple, Set, Optional, TYPE_CHECKING
 
 # import own stuff
 from tlsmate import tls
 from tlsmate.cert_chain import CertChain
+
+if TYPE_CHECKING:
+    from tlsmate.tlsmate import TlsMate
 
 # import other stuff
 from cryptography.hazmat.primitives import serialization
 
 
 PrivateKey = Any
-TlsMate = Any
 
 
 class ClientAuth(object):
