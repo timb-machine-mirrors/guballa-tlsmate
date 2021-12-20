@@ -133,7 +133,7 @@ class ClientProfile(object):
     cipher_suites: List = field(default_factory=lambda: [])
 
     support_sni: bool = True
-    ec_point_formats: Optional[List[tls.EcPointFormat]] = None
+    ec_point_formats: Optional[List[Union[tls.EcPointFormat, int]]] = None
     supported_groups: Optional[List[tls.SupportedGroups]] = None
     signature_algorithms: Optional[List[Union[tls.SignatureScheme, int]]] = None
     heartbeat_mode: Optional[tls.HeartbeatMode] = None
@@ -185,7 +185,7 @@ class Client(object):
             issues.
     """
 
-    def __init__(self, tlsmate: TlsMate) -> None:
+    def __init__(self, tlsmate: "TlsMate") -> None:
         """Initialize the client object
 
         Args:

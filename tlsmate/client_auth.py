@@ -30,7 +30,7 @@ class ClientAuth(object):
         tlsmate: The tlsmate application object.
     """
 
-    def __init__(self, tlsmate: TlsMate) -> None:
+    def __init__(self, tlsmate: "TlsMate") -> None:
         self._used_idx: Set[int] = set()
         self._auth: List[Tuple[PrivateKey, CertChain]] = []
         self._recorder = tlsmate.recorder

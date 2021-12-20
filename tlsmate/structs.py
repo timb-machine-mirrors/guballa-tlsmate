@@ -148,7 +148,7 @@ class KeyShareEntry(NamedTuple):
     """
 
     group: tls.SupportedGroups
-    key_exchange: bytes
+    key_exchange: Optional[bytes]
 
 
 class CipherSuiteDetails(NamedTuple):
