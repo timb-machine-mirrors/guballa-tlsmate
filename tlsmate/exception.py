@@ -2,7 +2,7 @@
 """Module containing exception definitions
 """
 # import basic stuff
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, Union, TYPE_CHECKING
 
 # import own stuff
 if TYPE_CHECKING:
@@ -30,7 +30,7 @@ class ServerMalfunction(TlsmateException):
     def __init__(
         self,
         issue: "tls.ServerIssue",
-        message: Optional["tls.HandshakeType"] = None,
+        message: Optional[Union["tls.HandshakeType", "tls.CCSType"]] = None,
         extension: Optional["tls.Extension"] = None,
     ) -> None:
         super().__init__(issue.value)

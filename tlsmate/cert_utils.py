@@ -172,10 +172,7 @@ def equal_names(name1: Name, name2: Name) -> bool:
     if len(name1.rdns) != len(name2.rdns):  # type: ignore
         return False
 
-    return all(
-        equal_rdn(rdn1, rdn2)
-        for rdn1, rdn2 in zip(name1.rdns, name2.rdns)
-    )
+    return all(equal_rdn(rdn1, rdn2) for rdn1, rdn2 in zip(name1.rdns, name2.rdns))
 
 
 _sig_alg = {

@@ -658,7 +658,7 @@ class Client(object):
 
         msg.compression_methods = self.profile.compression_methods
         if msg.version == tls.Version.SSL30:
-            msg.extensions = None
+            msg.extensions = None  # type: ignore
 
         else:
             if self.profile.support_sni:

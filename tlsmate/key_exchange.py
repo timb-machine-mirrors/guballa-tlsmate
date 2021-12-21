@@ -164,6 +164,7 @@ class KeyExchange(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError
 
+
 class RsaKeyExchange(KeyExchange):
     """Implement an RSA based key transport
     """
@@ -368,7 +369,8 @@ class EcdhKeyExchange(KeyExchange):
         """Sets the remote public key
 
         Arguments:
-            rem_pub_key: the raw remote public key **kwargs: unused
+            rem_pub_key: the raw remote public key
+            **kwargs: unused
         """
 
         self._rem_pub_key = rem_pub_key
