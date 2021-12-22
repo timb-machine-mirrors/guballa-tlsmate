@@ -170,8 +170,8 @@ class HandshakeMessage(TlsMessage):
         Returns:
             the deserialized message object
         """
-        msg_type, offset = pdu.unpack_uint8(fragment, 0)
-        msg_type = tls.HandshakeType.val2enum(msg_type, alert_on_failure=True)
+        msg_tp, offset = pdu.unpack_uint8(fragment, 0)
+        msg_type = tls.HandshakeType.val2enum(msg_tp, alert_on_failure=True)
         length, offset = pdu.unpack_uint24(fragment, offset)
         if length + offset != len(fragment):
             raise ServerMalfunction(
@@ -1152,8 +1152,8 @@ class ChangeCipherSpecMessage(TlsMessage):
                 message=tls.CCSType.CHANGE_CIPHER_SPEC,
             )
 
-        msg_type, offset = pdu.unpack_uint8(fragment, 0)
-        msg_type = tls.CCSType.val2enum(msg_type, alert_on_failure=True)
+        msg_tp, offset = pdu.unpack_uint8(fragment, 0)
+        msg_type = tls.CCSType.val2enum(msg_tp, alert_on_failure=True)
         cls_name = _ccs_deserialization_map[msg_type]
         msg = cls_name()
         msg._deserialize_msg_body(conn)
@@ -1357,7 +1357,7 @@ class HeartbeatMessage(TlsMessage):
 
     def __init__(
         self,
-        payload_length: Optional[int] = None,
+        payload_length: int = 0,
         payload: Optional[bytes] = None,
         padding: Optional[bytes] = None,
     ) -> None:
@@ -1378,8 +1378,8 @@ class HeartbeatMessage(TlsMessage):
             the deserialized message object
         """
 
-        msg_type, offset = pdu.unpack_uint8(fragment, 0)
-        msg_type = tls.HeartbeatType.val2enum(msg_type, alert_on_failure=True)
+        msg_tp, offset = pdu.unpack_uint8(fragment, 0)
+        msg_type = tls.HeartbeatType.val2enum(msg_tp, alert_on_failure=True)
         payload_length, offset = pdu.unpack_uint16(fragment, offset)
         payload, offset = pdu.unpack_bytes(fragment, offset, payload_length)
         padding = fragment[offset:]
@@ -1448,8 +1448,8 @@ class SSL2Message(TlsMessage):
             the deserialized message object
         """
 
-        msg_type, offset = pdu.unpack_uint8(fragment, 0)
-        msg_type = tls.SSLMessagType.val2enum(msg_type, alert_on_failure=True)
+        msg_tp, offset = pdu.unpack_uint8(fragment, 0)
+        msg_type = tls.SSLMessagType.val2enum(msg_tp, alert_on_failure=True)
 
         cls_name = _ssl2_deserialization_map[msg_type]
         msg = cls_name()._deserialize_msg_body(fragment, offset, conn)

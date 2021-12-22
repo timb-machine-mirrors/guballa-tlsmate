@@ -5,7 +5,7 @@
 import os
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional, ItemsView
+from typing import Dict, Any, Optional, ItemsView, Union
 
 # import own stuff
 from tlsmate.structs import ConfigItem
@@ -166,7 +166,7 @@ class Configuration(object):
             val = self._format_option[item_type](self, val)
         return val
 
-    def init_from_external(self, ini_file: Optional[str] = None):
+    def init_from_external(self, ini_file: Optional[Union[str, Path]] = None):
         """Take the configuration from the ini file and from the environment variables.
 
         Arguments:

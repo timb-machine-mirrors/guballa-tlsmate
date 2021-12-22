@@ -3,6 +3,7 @@
 """
 # import basic stuff
 import struct
+from typing import Any
 
 # import own stuff
 from tlsmate import pdu
@@ -23,7 +24,7 @@ class RecordLayerState(object):
             the record layer state.
     """
 
-    def __init__(self, param):
+    def __init__(self, param: structs.StateUpdateParams) -> None:
 
         self._keys = param.keys
         self._mac = param.mac
@@ -35,7 +36,9 @@ class RecordLayerState(object):
         self._cipher_object = None
         self._iv = param.keys.iv
         if self._cipher.c_type == tls.CipherType.STREAM:
-            cipher = Cipher(self._cipher.algo(self._keys.enc), mode=None)
+            cipher = Cipher(
+                self._cipher.algo(self._keys.enc), mode=None  # type: ignore
+            )
             if param.is_write_state:
                 self._cipher_object = cipher.encryptor()
 
@@ -318,13 +321,14 @@ class RecordLayerState(object):
             fragment=cipher.encrypt(nonce, fragment, aad),
         )
 
-    def protect_msg(self, rl_msg, **kwargs):
+    def protect_msg(
+        self, rl_msg: structs.RecordLayerMsg, **kwargs: Any
+    ) -> structs.RecordLayerMsg:
         """Protects a fragment.
 
         Arguments:
-            rl_msg (:obj:`tlsmate.structs.RecordLayerMsg`): The record layer
-                message to protect.
-            kwargs (dict): additional parameters which can be used to control CBC
+            rl_msg: The record layer message to protect.
+            kwargs: additional parameters which can be used to control CBC
                 padding oracle related behavior
 
         Returns:
@@ -646,7 +650,9 @@ class RecordLayerState(object):
             fragment=decoded[:idx],
         )
 
-    def unprotect_msg(self, rl_msg, **kwargs):
+    def unprotect_msg(
+        self, rl_msg: structs.RecordLayerMsg, **kwargs
+    ) -> structs.RecordLayerMsg:
         """Unprotects a record layer message.
 
         The message is decrypted and the authentication is verified.

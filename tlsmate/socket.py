@@ -7,6 +7,7 @@ import select
 import logging
 import time
 import sys
+from typing import Tuple, Optional, TYPE_CHECKING
 
 # import own stuff
 from tlsmate import utils
@@ -14,6 +15,10 @@ from tlsmate import tls
 from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
 from tlsmate import recorder
 from tlsmate import resolver
+from tlsmate import structs
+
+if TYPE_CHECKING:
+    from tlsmate.tlsmate import TlsMate
 
 # import other stuff
 
@@ -22,25 +27,24 @@ class Socket(object):
     """Class implementing the socket interface.
 
     Arguments:
-        server (str): The name of server to connect to.
-        port (int): The port number to connect to.
-        recorder (:obj:`tlsmate.recorder.Recorder`): The recorder object
+        tlsmate: the application object
     """
 
-    def __init__(self, tlsmate):
-        self._socket = None
+    def __init__(self, tlsmate: "TlsMate") -> None:
+        self._socket: Optional[socket.socket] = None
         self._config = tlsmate.config
         self._recorder = tlsmate.recorder
         self._fragment_max_size = 16384
 
-    def open_socket(self, l4_addr):
+    def open_socket(self, l4_addr: structs.TransportEndpoint) -> None:
         """Opens a socket.
 
         Arguments:
-            l4_addr (:obj:`tlsmate.structs.TransportEndpoint`): The L4-endpoint,
-                consisting of the IP-address and the port.
+            l4_addr: The L4-endpoint, consisting of the IP-address and the
+                port.
         """
 
+        addr_info: Tuple
         if l4_addr.host_type is tls.HostType.HOST:
             l4_addr = resolver.get_ip_endpoint(l4_addr)
 
@@ -78,7 +82,7 @@ class Socket(object):
         logging.info(f"local address: {laddr}:{lport}")
         logging.info(f"remote address: {raddr}:{rport}")
 
-    def close_socket(self):
+    def close_socket(self) -> None:
         """Closes a socket.
         """
 
@@ -87,11 +91,11 @@ class Socket(object):
             self._socket.close()
             self._socket = None
 
-    def sendall(self, data):
+    def sendall(self, data: bytes) -> None:
         """Sends data to the network.
 
         Arguments:
-            data (bytes): The data to send.
+            data: The data to send.
         """
 
         cont = self._recorder.trace_socket_sendall(data)
@@ -101,14 +105,14 @@ class Socket(object):
 
             self._socket.sendall(data)
 
-    def recv_data(self, timeout=5):
+    def recv_data(self, timeout: float = 5) -> bytes:
         """Wait for data from the network.
 
         Arguments:
-            timeout (float): The maximum time to wait in seconds.
+            timeout: The maximum time to wait in seconds.
 
         Returns:
-            bytes: The bytes received or None if the timeout expired.
+            The bytes received or None if the timeout expired.
 
         Raises:
             TlsMsgTimeoutError: If no data is received within the given timeout
@@ -117,8 +121,7 @@ class Socket(object):
 
         data = self._recorder.inject_socket_recv()
         if data is None:
-            if self._socket is None:
-                self.open_socket()
+            assert self._socket
 
             start = time.time()
             rfds, wfds, efds = select.select([self._socket], [], [], timeout)

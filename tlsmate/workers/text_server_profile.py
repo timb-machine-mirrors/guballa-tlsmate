@@ -5,7 +5,7 @@
 import sys
 import enum
 from dataclasses import dataclass
-from typing import List, Callable
+from typing import List, Callable, Dict, Optional, Any
 
 # import own stuff
 
@@ -14,6 +14,7 @@ from tlsmate import tls
 from tlsmate import utils
 from tlsmate import pdu
 from tlsmate.version import __version__
+from tlsmate.server_profile import SPCertExtension, SPCertificate
 
 # import other stuff
 import colorama  # type: ignore
@@ -74,11 +75,11 @@ class Style:
     ERROR: FontStyle = FontStyle(color=Color.RED, bold=True)
 
 
-def merge_styles(styles):
+def merge_styles(styles: List[Style]) -> FontStyle:
     """Returns the "worst" style from a given list
 
     Arguments:
-        styles (list of styles): the list of style strings
+        styles: the list of style strings
     """
     for style in [Style.ERROR, Style.BAD, Style.SOSO, Style.NEUTRAL, Style.GOOD]:
         if style in styles:
@@ -87,16 +88,18 @@ def merge_styles(styles):
     raise ValueError("cannot merge styles")
 
 
-def get_dict_value(profile, *keys, default=None):
+def get_dict_value(
+    profile: Dict[str, Any], *keys: str, default: Optional[Any] = None
+) -> Any:
     """Save function to get an item from a nested dict
 
     Arguments:
-        profile (dict): the dict to start with
-        *keys (str): a list the keys to descent to the wanted item of the profile
-        default(any): the value to return if a key does not exist. Defaults to None.
+        profile: the dict to start with
+        *keys: a list the keys to descent to the wanted item of the profile
+        default: the value to return if a key does not exist. Defaults to None.
 
     Returns:
-        object: the item
+        the item
     """
 
     if not profile:
@@ -112,7 +115,7 @@ def get_dict_value(profile, *keys, default=None):
     return profile
 
 
-def get_style(profile, *keys):
+def get_style(profile: Dict[str, Any], *keys: str) -> FontStyle:
     """Get the style string from a nested dict, descending according to the keys
 
     The leaf must be in ["good", "neutral", "soso", "bad", "headline", "bold", "reset",
@@ -120,18 +123,20 @@ def get_style(profile, *keys):
     ANSI escape code.
 
     Arguments:
-        profile (dict): the nested dict
-        *keys (str): the keys applied in sequence to descent to the style
+        profile: the nested dict
+        *keys: the keys applied in sequence to descent to the style
 
     Returns:
-        str: ANSI escape code string. If anything fails, Style.ERROR is returned.
+        ANSI escape code string. If anything fails, Style.ERROR is returned.
     """
     return getattr(
         Style, get_dict_value(profile, *keys, default="error").upper(), Style.ERROR
     )
 
 
-def get_style_applied(txt, profile, *keys, **kwargs):
+def get_style_applied(
+    txt: str, profile: Dict[str, Any], *keys: str, **kwargs: Any
+) -> str:
     """Descent into a nested dict and apply the found style to the given text.
 
     Arguments:
@@ -146,7 +151,7 @@ def get_style_applied(txt, profile, *keys, **kwargs):
     return get_style(profile, *keys).decorate(txt, **kwargs)
 
 
-def get_styled_text(data, *path, **kwargs):
+def get_styled_text(data: Dict[str, Any], *path: str, **kwargs: Any) -> str:
     """Comfortable way to use common structure to apply a style to a text.
 
     The item determined by data and path must be a dict with the following structure:
@@ -158,11 +163,11 @@ def get_styled_text(data, *path, **kwargs):
     which related to the "style" item.
 
     Arguments:
-        data (dict): the nested dict to use
-        *keys (str): the keys to descent into the nested dict
+        data: the nested dict to use
+        *path: the keys to descent into the nested dict
 
     Returns:
-        str: the "txt" string decorated with the "style" style.
+        the "txt" string decorated with the "style" style.
     """
     prof = get_dict_value(data, *path)
     if not prof:
@@ -171,16 +176,15 @@ def get_styled_text(data, *path, **kwargs):
     return get_style_applied(get_dict_value(prof, "txt"), prof, "style", **kwargs)
 
 
-def get_cert_ext(cert, name):
+def get_cert_ext(cert: SPCertificate, name: str) -> Optional[SPCertExtension]:
     """Extract the given extension from a certificate.
 
     Arguments:
-        cert (:obj:`tlsmate.server_profile.SPCertificate`): the certificate object
-        name (str): the name of the extension
+        cert: the certificate object
+        name: the name of the extension
 
     Returns:
-        :obj:`tlsmate.server_profile.SPCertExtension`: the extension or None if not
-        found
+        the extension or None if not found
     """
     if not hasattr(cert, "extensions"):
         return None
@@ -203,7 +207,7 @@ class TextProfileWorker(Worker):
     _callbacks: List[Callable[["TextProfileWorker"], None]] = []
 
     @classmethod
-    def augment_output(cls, callback):
+    def augment_output(cls, callback: Callable) -> Callable:
         """Decorator which can be used to register additional callbacks.
 
         Arguments:

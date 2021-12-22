@@ -5,7 +5,7 @@
 # import basic stuff
 import abc
 import time
-from typing import Tuple, Any, Optional, List, Union, TYPE_CHECKING
+from typing import Tuple, Any, Optional, List, Union, Dict, TYPE_CHECKING
 
 # import own stuff
 from tlsmate.exception import ServerMalfunction
