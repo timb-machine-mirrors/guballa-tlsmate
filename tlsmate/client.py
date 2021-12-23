@@ -4,7 +4,7 @@
 # import basic stuff
 import time
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional, Union, TYPE_CHECKING
 
 # import own stuff
 from tlsmate import tls
@@ -13,6 +13,10 @@ from tlsmate import structs
 from tlsmate import utils
 from tlsmate.msg import ClientHello
 from tlsmate.connection import TlsConnection
+
+if TYPE_CHECKING:
+    from tlsmate.tlsmate import TlsMate
+
 
 # import other stuff
 
@@ -36,82 +40,89 @@ class ClientProfile(object):
     version list of the client profile.
 
     Attributes:
-        versions (list (:obj:`tlsmate.tls.Version` or int)): The list of protocol
-            versions the client shall support. Note, that the highest version
-            will be picked to offer it in a ClientHello. For the extension
-            SupportedVersions this list will be ordered, so that the highest
-            version comes first. Arbitrary integer values can be provided in the
-            list as well, allowing to check if the server ignores unknown values.
+        versions: The list of protocol versions the client shall support. Note,
+            that the highest version will be picked to offer it in a
+            ClientHello. For the extension SupportedVersions this list will be
+            ordered, so that the highest version comes first. Arbitrary integer
+            values can be provided in the list as well, allowing to check if
+            the server ignores unknown values.
             Default: []
-        compression_methods (list (:obj:`tlsmate.tls.CompressionMethod`)):
-            A list of supported compression methods. This list will be used to
-            populate the compression list in the ClientHello message.
+        compression_methods: A list of supported compression methods. This list
+            will be used to populate the compression list in the ClientHello
+            message.
             Default: [:obj:`tlsmate.tls.CompressionMethod.NULL`]
-        cipher_suites (list (:obj:`tlsmate.tls.CipherSuite` or int)):
-            A list of cipher suites which will be offered to the server in the
-            sequence given. Note, that arbitrary integer values are supported
-            as well, allowing to check if the server ignores unknown values.
+        cipher_suites: A list of cipher suites which will be offered to the
+            server in the sequence given. Note, that arbitrary integer values
+            are supported as well, allowing to check if the server ignores
+            unknown values.
             Default: []
-        support_sni (bool):
-            An indication if the SNI extension shall be supported. If True, the SNI
-            will be taken from the CLI parameter ``--sni`` or (if not given), from
-            the host name. Default: True
-        ec_point_formats (list (:obj:`tlsmate.tls.EcPointFormat` or int)): The list
-            of ec-point formats supported by the client. If set to None, the
-            extension will not be generated. Default: None
-        supported_groups (list (:obj:`tlsmate.tls.SupportedGroups` or int)): The list
-            of named groups supported by the client. If set to None, the
-            extension will not be present in the ClientHello message. Note,
-            that arbitrary integer values are supported as well, allowing to
-            check if the server ignores unknown values. Default: None
-        signature_algorithms (list (:obj:`tlsmate.tls.SignatureScheme` or int)):
-            The list of signature algorithms supported by the client. If
-            set to None, the extension will not be present in the ClientHello
-            message. Note, that arbitrary integer values are supported as
-            well, allowing to check if the server ignores unknown values.
+        support_sni: An indication if the SNI extension shall be supported. If
+            True, the SNI will be taken from the CLI parameter ``--sni`` or (if
+            not given), from the host name.
+            Default: True
+        ec_point_formats: The list of ec-point formats supported by the client.
+            If set to None, the extension will not be generated.
             Default: None
-        heartbeat_mode (:class:`tlsmate.tls.HeartbeatMode` or None): The mode which is
-            offered in the heartbeat extension. If set to None, the extension
-            will not be setup when using the :meth:`Client.client_hello`
-            method. Default: None
-        support_session_id (bool): An indication if the client shall support resumption
-            via the session id. Received session ids from the server will be offered
-            in subsequent handshakes. Default: False
-        support_session_ticket (bool): An indication if the client shall
-            support resumption via the extensions SessionTicket. Received
-            session tickets from the server will be offered in subsequent
-            handshakes. Default: False
-        support_extended_master_secret (bool): An indication if the client shall support
-            the extensions ExtendedMasterSecret. Default: False
-        support_encrypt_then_mac (bool): An indication if the client shall support the
-            EncryptThenMac extension. Default: False
-        support_secure_renegotiation (bool): An indication if the client shall support
-            secure renegotiation. This will generate the RenegotiationInfo extension.
+        supported_groups: The list of named groups supported by the client. If
+            set to None, the extension will not be present in the ClientHello
+            message. Note, that arbitrary integer values are supported as well,
+            allowing to check if the server ignores unknown values.
+            Default: None
+        signature_algorithms: The list of signature algorithms supported by the
+            client. If set to None, the extension will not be present in the
+            ClientHello message. Note, that arbitrary integer values are
+            supported as well, allowing to check if the server ignores unknown
+            values.
+            Default: None
+        heartbeat_mode: The mode which is offered in the heartbeat extension.
+            If set to None, the extension will not be setup when using the
+            :meth:`Client.client_hello` method.
+            Default: None
+        support_session_id: An indication if the client shall support
+            resumption via the session id. Received session ids from the server
+            will be offered in subsequent handshakes. Default: False
+        support_session_ticket: An indication if the client shall support
+            resumption via the extensions SessionTicket. Received session
+            tickets from the server will be offered in subsequent handshakes.
             Default: False
-        support_scsv_renegotiation (bool): An indication, if the cipher suite value
+        support_extended_master_secret: An indication if the client shall
+            support the extensions ExtendedMasterSecret.
+            Default: False
+        support_encrypt_then_mac: An indication if the client shall support the
+            EncryptThenMac extension.
+            Default: False
+        support_secure_renegotiation: An indication if the client shall support
+            secure renegotiation. This will generate the RenegotiationInfo
+            extension.
+            Default: False
+        support_scsv_renegotiation: An indication, if the cipher suite value
             TLS_EMPTY_RENEGOTIATION_INFO_SCSV shall be added to the cipher
             suite list. Only applicable if support_secure_renegotiation is
-            True. Default: False
-        support_psk (bool): An indication whether the client offers a PSK with
-            the ClientHello (i.e. NewSessionTicket message have been received
-            before). Default: False
-        support_status_request (bool): An indication, if the extensions status request
-            shall be supported. Default: False
-        support_status_request_v2 (:obj:`tlsmate.tls.StatusType`): The status type of
-            the request. NONE is used to suppress the extension.
+            True.
+            Default: False
+        support_psk: An indication whether the client offers a PSK with the
+            ClientHello (i.e. NewSessionTicket message have been received
+            before).
+            Default: False
+        support_status_request: An indication, if the extensions status request
+            shall be supported.
+            Default: False
+        support_status_request_v2: The status type of the request. NONE is used
+            to suppress the extension.
             Default: NONE
-        key_shares (list (:obj:`tlsmate.tls.SupportedGroups` or int)): The list
-            of key shares supported for TLS1.3. Note, that arbitrary integer
+        key_shares: The list of key shares supported for TLS1.3. Note, that
+            arbitrary integer values are supported as well, allowing to check
+            if the server ignores unknown values.
+            Default: None
+        psk_key_exchange_modes: The list of PSK key exchange modes used in the
+            extension psk_key_exchange_modes. Note, that arbitrary integer
             values are supported as well, allowing to check if the server
-            ignores unknown values. Default: None
-        psk_key_exchange_modes (list (:obj:`tlsmate.tls.PskKeyExchangeMode` or int)):
-            The list of PSK key exchange modes used in the extension
-            psk_key_exchange_modes. Note, that arbitrary integer values are
-            supported as well, allowing to check if the server ignores unknown
-            values. Default: None
-        early_data (bytes): The application data to be sent with 0-RTT. TLS1.3 only.
-            If None, then no early data will be sent. Early data can only be sent
-            in subsequent abbreviated handshakes. Default: None
+            ignores unknown values.
+            Default: None
+        early_data: The application data to be sent with 0-RTT. TLS1.3 only. If
+            None, then no early data will be sent. Early data can only be sent
+            in subsequent abbreviated handshakes.
+            Default: None
     """
 
     # common for all versions
@@ -122,10 +133,10 @@ class ClientProfile(object):
     cipher_suites: List = field(default_factory=lambda: [])
 
     support_sni: bool = True
-    ec_point_formats: List = None
-    supported_groups: List = None
-    signature_algorithms: List = None
-    heartbeat_mode: tls.HeartbeatMode = None
+    ec_point_formats: Optional[List[Union[tls.EcPointFormat, int]]] = None
+    supported_groups: Optional[List[tls.SupportedGroups]] = None
+    signature_algorithms: Optional[List[Union[tls.SignatureScheme, int]]] = None
+    heartbeat_mode: Optional[tls.HeartbeatMode] = None
     support_status_request: bool = False
     support_status_request_v2: tls.StatusType = tls.StatusType.NONE
 
@@ -139,9 +150,9 @@ class ClientProfile(object):
 
     # TLS1.3 specific
     support_psk: bool = False
-    key_shares: List = None
-    psk_key_exchange_modes: List = None
-    early_data: bytes = None
+    key_shares: Optional[List[tls.SupportedGroups]] = None
+    psk_key_exchange_modes: Optional[List[tls.PskKeyExchangeMode]] = None
+    early_data: Optional[bytes] = None
 
 
 class Client(object):
@@ -174,29 +185,34 @@ class Client(object):
             issues.
     """
 
-    def __init__(self, tlsmate):
+    def __init__(self, tlsmate: "TlsMate") -> None:
         """Initialize the client object
 
         Args:
-            tlsmate (:obj:`tlsmate.tlsmate.TlsMate`): the tlsmate application object.
+            tlsmate: the tlsmate application object.
         """
         self._tlsmate = tlsmate
         self.config = tlsmate.config
         self._set_profile_modern()
         self.alert_on_invalid_cert = True
-        self.session_state_ticket = None
-        self.session_state_id = None
-        self.psks = []
+        self.session_state_ticket: Optional[structs.SessionStateTicket] = None
+        self.session_state_id: Optional[structs.SessionStateId] = None
+        self.psks: List[structs.Psk] = []
         self._host = None
-        self.server_issues = []
+        self.server_issues: List[structs.Malfunction] = []
 
-    def report_server_issue(self, issue, message=None, extension=None):
+    def report_server_issue(
+        self,
+        issue: tls.ServerIssue,
+        message: Optional[tls.HandshakeType] = None,
+        extension: Optional[tls.Extension] = None,
+    ) -> None:
         """Store a server issue, if not done
 
         Arguments:
-            issue (:obj:tlsmate.tls.`ServerMalfunction`): the reason for the exception
-            message (:obj:`tlsmate.tls.HandshakeType`): the message, if applicable
-            extension (:obj:`tlsmate.tls.Extension`): the extension, if applicable
+            issue: the reason for the exception
+            message: the message, if applicable
+            extension: the extension, if applicable
         """
 
         malfunction = structs.Malfunction(
@@ -206,7 +222,9 @@ class Client(object):
         if malfunction not in self.server_issues:
             self.server_issues.append(malfunction)
 
-    def init_profile(self, profile_values=None):
+    def init_profile(
+        self, profile_values: Optional[structs.ProfileValues] = None
+    ) -> None:
         """Resets the client profile to a very basic state
 
         :note:
@@ -217,8 +235,8 @@ class Client(object):
         by default the sni extension is enabled. Everything else is empty or disabled.
 
         Arguments:
-            profile_values (:obj:`tlsmate.structs.ProfileValues`): the profile
-                values to additionally use to initialize the client profile
+            profile_values: the profile values to additionally use to
+                initialize the client profile
         """
 
         self.profile = ClientProfile()
@@ -464,7 +482,7 @@ class Client(object):
             support_sni=True,
         )
 
-    def set_profile(self, profile):
+    def set_profile(self, profile: tls.Profile) -> None:
         """Initializes the client according to the given profile.
 
         The following profiles are supported:
@@ -516,17 +534,18 @@ class Client(object):
         else:
             raise ValueError(f"client profile {profile} unknown")
 
-    def create_connection(self, host=None, port=None):
+    def create_connection(
+        self, host: Optional[str] = None, port: Optional[int] = None
+    ) -> TlsConnection:
         """Create a new connection object
 
         Arguments:
-            host (str): the host to contact. If not given, the host
-                is taken from the configuration. The given string can be
-                a URL or an IP address.
-            port (int): the port number
+            host: the host to contact. If not given, the host is taken from the
+                configuration. The given string can be a URL or an IP address.
+                port (int): the port number
 
         Returns:
-            :obj:`tlsmate.connection.TlsConnection`: the created connection object
+            the created connection object
         """
 
         self._host = host if host is not None else self.config.get("host")
@@ -537,59 +556,61 @@ class Client(object):
 
         return TlsConnection(self._tlsmate, self._host)
 
-    def save_session_state_id(self, session_state):
+    def save_session_state_id(self, session_state: structs.SessionStateId) -> None:
         """Save a session state
 
         Args:
-            session_state (:obj:`tlsmate.structs.SessionStateId`): A session
-                state to be stored on the client level, usable to resume
-                connections using the session_id
+            session_state: A session state to be stored on the client level,
+                usable to resume connections using the session_id
         """
+
         self.session_state_id = session_state
 
-    def get_session_state_id(self):
+    def get_session_state_id(self) -> Optional[structs.SessionStateId]:
         """Get the session state (id)
 
         Returns:
-            :obj:`tlsmate.structs.SessionStateId`: the session state to resume a
-            session from
+            the session state to resume a session from
         """
+
         return self.session_state_id
 
-    def save_session_state_ticket(self, session_state):
+    def save_session_state_ticket(
+        self, session_state: structs.SessionStateTicket
+    ) -> None:
         """Save a session state
 
         Args:
-            session_state (:obj:`tlsmate.structs.SessionStateId`): A session state to be
-                stored on the client level, usable to resume connections using the
-                session ticket.
+            session_state: A session state to be stored on the client level,
+                usable to resume connections using the session ticket.
         """
+
         self.session_state_ticket = session_state
 
-    def get_session_state_ticket(self):
+    def get_session_state_ticket(self) -> Optional[structs.SessionStateTicket]:
         """Get the session state (ticket)
 
         Returns:
-            :obj:`tlsmate.structs.SessionStateTicket`: the session state to resume a
-            session from
+            the session state to resume a session from
         """
+
         return self.session_state_ticket
 
-    def save_psk(self, psk):
+    def save_psk(self, psk: structs.Psk) -> None:
         """Save a TLS1.3 PSK
 
         Arguments:
-            psk (:obj:`tlsmate.structs.Psk`): A pre-shared key be stored on the
-                client level, usable to resume connections using the pre-shared key
-                extension.
+            psk: A pre-shared key be stored on the client level, usable to
+                resume connections using the pre-shared key extension.
         """
+
         self.psks.append(psk)
 
-    def get_sni(self):
+    def get_sni(self) -> str:
         """Get the current SNI
 
         Returns:
-            str: the SNI
+            the SNI
 
         Raises:
             ValueError: if no SNI can be determined
@@ -605,11 +626,11 @@ class Client(object):
 
         return self.config.get("host")
 
-    def client_hello(self):
+    def client_hello(self) -> ClientHello:
         """Populate a ClientHello message according to the current client profile
 
         Returns:
-            :obj:`tlsmate.msg.ClientHello`: the ClientHello object
+            the ClientHello object
         """
         msg = ClientHello()
         max_version = max(self.profile.versions)
@@ -637,7 +658,7 @@ class Client(object):
 
         msg.compression_methods = self.profile.compression_methods
         if msg.version == tls.Version.SSL30:
-            msg.extensions = None
+            msg.extensions = None  # type: ignore
 
         else:
             if self.profile.support_sni:
@@ -709,15 +730,13 @@ class Client(object):
                 ):
                     msg.extensions.append(ext.ExtPostHandshakeAuth())
 
-                self._key_share_objects = []
-
                 msg.extensions.append(
                     ext.ExtSupportedVersions(
                         versions=sorted(self.profile.versions, reverse=True)
                     )
                 )
                 # TLS13 key shares: enforce the same sequence as in supported groups
-                if self.profile.key_shares:
+                if self.profile.key_shares and self.profile.supported_groups:
                     groups = [
                         group
                         for group in self.profile.supported_groups

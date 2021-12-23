@@ -3,9 +3,12 @@
 """
 # import basic stuff
 from pathlib import Path
+import argparse
+from typing import Any
 
 # import own stuff
 from tlsmate import utils
+from tlsmate.config import Configuration
 from tlsmate.structs import ConfigItem
 from tlsmate.plugin import BaseCommand, Plugin, Args, WorkManager
 from tlsmate.workers.compression import ScanCompression
@@ -58,7 +61,13 @@ class ArgPort(Plugin):
     )
 
     @classmethod
-    def args_parsed(cls, args, parser, subcommand, config):
+    def args_parsed(
+        cls,
+        args: Any,
+        parser: argparse.ArgumentParser,
+        subcommand: str,
+        config: Configuration,
+    ) -> None:
         if args.port is not None and (args.port < 0 or args.port > 0xFFFF):
             parser.error("port must be in the range [0-65535]")
         super().args_parsed(args, parser, subcommand, config)

@@ -2,16 +2,15 @@
 """Module defining various structures
 """
 # import basic stuff
-from typing import NamedTuple, Any
+from typing import NamedTuple, Any, Optional, Type
 
 # import own stuff
 from tlsmate import tls
 from tlsmate.kdf import Kdf
 
 # import other stuff
-from cryptography.hazmat.primitives.ciphers import algorithms
 from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives._asymmetric import AsymmetricPadding
 
 
 class SessionStateId(NamedTuple):
@@ -42,20 +41,20 @@ class EarlyData(NamedTuple):
     kdf: Kdf
     early_secret: bytes
     mac_len: int
-    binders_bytes: bytes = None
+    binders_bytes: Optional[bytes] = None
 
 
 class Cipher(NamedTuple):
     """Set of properties describing a cipher.
     """
 
-    primitive: tls.CipherPrimitive = None
-    algo: algorithms.AES = None
-    c_type: tls.CipherType = None
-    key_len: int = None
-    block_size: int = None
-    iv_len: int = None
-    tag_length: int = None
+    primitive: Optional[tls.CipherPrimitive] = None
+    algo: Optional[Any] = None
+    c_type: Optional[tls.CipherType] = None
+    key_len: Optional[int] = None
+    block_size: Optional[int] = None
+    iv_len: Optional[int] = None
+    tag_length: Optional[int] = None
     cipher_supported: bool = False
 
 
@@ -63,10 +62,10 @@ class Mac(NamedTuple):
     """Set of properties describing a MAC.
     """
 
-    hash_algo: hashes.SHA1  # just an example
-    mac_len: int
-    key_len: int
-    hmac_algo: hashes.SHA1  # just an example
+    hash_algo: Type[hashes.HashAlgorithm]
+    mac_len: Optional[int]
+    key_len: Optional[int]
+    hmac_algo: Optional[Type[hashes.HashAlgorithm]]
 
 
 class Psk(NamedTuple):
@@ -138,10 +137,10 @@ class KeyExchange(NamedTuple):
     """Set of properties describing a key exchange method.
     """
 
-    key_ex_type: tls.KeyExchangeType = None
-    key_auth: tls.KeyAuthentication = None
+    key_ex_type: Optional[tls.KeyExchangeType] = None
+    key_auth: Optional[tls.KeyAuthentication] = None
     key_ex_supported: bool = False
-    default_sig_scheme: tls.SignatureScheme = None
+    default_sig_scheme: Optional[tls.SignatureScheme] = None
 
 
 class KeyShareEntry(NamedTuple):
@@ -149,7 +148,7 @@ class KeyShareEntry(NamedTuple):
     """
 
     group: tls.SupportedGroups
-    key_exchange: bytes
+    key_exchange: Optional[bytes]
 
 
 class CipherSuiteDetails(NamedTuple):
@@ -159,12 +158,12 @@ class CipherSuiteDetails(NamedTuple):
     cipher_suite: tls.CipherSuite
     full_hs: bool = False
     key_exchange_supported: bool = False
-    key_algo: tls.KeyExchangeAlgorithm = None
-    key_algo_struct: KeyExchange = None
-    cipher: tls.SymmetricCipher = None
-    cipher_struct: Cipher = None
-    mac: tls.HashPrimitive = None
-    mac_struct: Mac = None
+    key_algo: Optional[tls.KeyExchangeAlgorithm] = None
+    key_algo_struct: Optional[KeyExchange] = None
+    cipher: Optional[tls.SymmetricCipher] = None
+    cipher_struct: Optional[Cipher] = None
+    mac: Optional[tls.HashPrimitive] = None
+    mac_struct: Optional[Mac] = None
 
 
 class ProfileValues(NamedTuple):
@@ -183,8 +182,8 @@ class CertSigAlgo(NamedTuple):
     """Structure for certificate signature algorithms
     """
 
-    algo: hashes.SHA1 = None
-    padd: padding.PKCS1v15 = None
+    algo: Optional[Type[hashes.HashAlgorithm]] = None
+    padd: Optional[Type[AsymmetricPadding]] = None
 
 
 class TransportEndpoint(NamedTuple):
@@ -218,5 +217,5 @@ class Malfunction(NamedTuple):
     """
 
     issue: tls.ServerIssue
-    message: tls.HandshakeType = None
-    extension: tls.Extension = None
+    message: Optional[tls.HandshakeType] = None
+    extension: Optional[tls.Extension] = None

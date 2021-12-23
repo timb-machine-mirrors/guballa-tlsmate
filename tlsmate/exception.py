@@ -1,6 +1,14 @@
 # -*- coding: utf-8 -*-
 """Module containing exception definitions
 """
+# import basic stuff
+from typing import Optional, Union, TYPE_CHECKING
+
+# import own stuff
+if TYPE_CHECKING:
+    from tlsmate import tls
+
+# import other stuff
 
 
 class TlsmateException(Exception):
@@ -14,12 +22,17 @@ class ServerMalfunction(TlsmateException):
     This exception basically indicates a specification violation by the server.
 
     Attributes:
-        issue (:obj:`tlsmate.tls.ServerIssue`): the reason for the exception
-        message (:obj:`tlsmate.tls.HandshakeType`): the message, if applicable
-        extension (:obj:`tlsmate.tls.Extension`): the extension, if applicable
+        issue: the reason for the exception
+        message: the message, if applicable
+        extension: the extension, if applicable
     """
 
-    def __init__(self, issue, message=None, extension=None):
+    def __init__(
+        self,
+        issue: "tls.ServerIssue",
+        message: Optional[Union["tls.HandshakeType", "tls.CCSType"]] = None,
+        extension: Optional["tls.Extension"] = None,
+    ) -> None:
         super().__init__(issue.value)
         self.issue = issue
         self.message = message
@@ -30,10 +43,10 @@ class TlsConnectionClosedError(TlsmateException):
     """Exception raised when the TLS connection is closed unexpectedly.
 
     Attributes:
-        exc(Exception): the original exception
+        exc: the original exception
     """
 
-    def __init__(self, exc=None):
+    def __init__(self, exc: Optional[Exception] = None) -> None:
         self.exc = exc
 
 
@@ -48,13 +61,12 @@ class CurveNotSupportedError(TlsmateException):
     """Exception raised when a curve is negotiated which is not supported.
 
     Attributes:
-        message (str): A human readable string providing the cause
-        curve (:class:`tlsmate.tls.SupportedGroups`): The curve has been
-            offered by the client, and selected by the server, but it is not
-            supported for a full key exchange.
+        message: A human readable string providing the cause
+        curve: The curve has been offered by the client, and selected by the
+            server, but it is not supported for a full key exchange.
     """
 
-    def __init__(self, message, curve):
+    def __init__(self, message: str, curve: "tls.SupportedGroups") -> None:
         self.message = message
         self.curve = curve
 
@@ -66,10 +78,10 @@ class ScanError(TlsmateException):
     detected.
 
     Attributes:
-        message (str): A human readable string describing the cause.
+        message: A human readable string describing the cause.
     """
 
-    def __init__(self, message):
+    def __init__(self, message: str) -> None:
         self.message = message
 
 
@@ -77,10 +89,10 @@ class OcspError(TlsmateException):
     """Exception for OCSP errors
 
     Attributes:
-        issue (str): A human readable string describing the cause.
+        issue: A human readable string describing the cause.
     """
 
-    def __init__(self, issue):
+    def __init__(self, issue: str) -> None:
         self.issue = issue
 
 
@@ -88,7 +100,7 @@ class UntrustedCertificate(TlsmateException):
     """Exception for unsuccessful certificate (chain) validation.
 
     Attributes:
-        issue (str): A human readable string describing the cause.
+        issue: A human readable string describing the cause.
     """
 
     def __init__(self, issue):

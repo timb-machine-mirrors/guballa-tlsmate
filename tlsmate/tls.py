@@ -3,11 +3,14 @@
 """
 # import basic stuff
 import enum
+from typing import List, TypeVar, Type
 
 # import own stuff
 from tlsmate.exception import ServerMalfunction
 
 # import other stuff
+
+_T = TypeVar("_T")
 
 
 class ExtendedEnum(enum.Enum):
@@ -15,14 +18,14 @@ class ExtendedEnum(enum.Enum):
     """
 
     @classmethod
-    def val2enum(cls, value, alert_on_failure=False):
+    def val2enum(cls: Type[_T], value: int, alert_on_failure: bool = False) -> _T:
         """Class method to map a value to the corresponding enum.
 
         Args:
-            value (int): The enum value which is used to map to an enum
-            alert_on_failure (bool, optional): If set to True and the value is
-                not a valid enum value, an :obj:`ServerMalfunction` exception will be
-                raised. Defaults to False.
+            value: The enum value which is used to map to an enum
+            alert_on_failure: If set to True and the value is not a valid enum
+                value, an :obj:`ServerMalfunction` exception will be raised.
+                Defaults to False.
 
         Returns:
             The corresponding enum or None, if the mapping fails and
@@ -33,14 +36,15 @@ class ExtendedEnum(enum.Enum):
                 `alert_on_failure` is True
         """
 
-        enum = cls._value2member_map_.get(value)
+        # TODO: resolve type issue
+        enum = cls._value2member_map_.get(value)  # type: ignore
         if (enum is None) and alert_on_failure:
             raise ServerMalfunction(ServerIssue.ILLEGAL_PARAMETER_VALUE)
 
         return enum
 
     @classmethod
-    def str2enum(cls, name, alert_on_failure=False):
+    def str2enum(cls, name: str, alert_on_failure: bool = False) -> "ExtendedEnum":
         """Class method to map a string to the corresponding enum.
 
         Args:
@@ -58,14 +62,15 @@ class ExtendedEnum(enum.Enum):
                 `alert_on_failure` is True
         """
 
-        enum = cls._member_map_.get(name)
+        # TODO: resolve type issue
+        enum = cls._member_map_.get(name)  # type: ignore
         if (enum is None) and alert_on_failure:
             raise ValueError(f"Value {name} not defined for {cls}")
 
         return enum
 
     @classmethod
-    def all(cls):
+    def all(cls) -> List["ExtendedEnum"]:
         """Get all enum items
 
         Returns:
@@ -74,7 +79,7 @@ class ExtendedEnum(enum.Enum):
 
         return list(cls.__members__.values())
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Use the name as a string representation
 
         Returns:
@@ -126,7 +131,7 @@ class Version(ExtendedIntEnum):
     TLS13 = 0x0304
 
     @classmethod
-    def tls_only(cls):
+    def tls_only(cls) -> List["Version"]:
         """Comfortable method to get all TLS versions 1.0 .. 1.3, excluding SSLv2/v3.
         """
 
@@ -722,7 +727,7 @@ class SupportedGroups(ExtendedEnum):
     ARBITRARY_EXPLICIT_CHAR2_CURVES = 65282
 
     @classmethod
-    def all_tls13(cls):
+    def all_tls13(cls) -> List["SupportedGroups"]:
         """Get all supported groups defined for TLS1.3 (RFC8446, 4.2.7)
 
         Returns:

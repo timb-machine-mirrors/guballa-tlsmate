@@ -14,16 +14,15 @@ from tlsmate import utils
 # import other stuff
 
 
-def determine_l4_addr(host, port):
+def determine_l4_addr(host: str, port: int) -> structs.TransportEndpoint:
     """Determine type of the host
 
     Arguments:
-        host (str): the given host. This might be an IP address or a hostname.
-        port (int): the given port.
+        host: the given host. This might be an IP address or a hostname.
+        port: the given port.
 
     Returns:
-        :obj:`tlsmate.structs.TransportEndpoint`: The structure representing a transport
-        protocol endpoint.
+        The structure representing a transport protocol endpoint.
     """
 
     try:
@@ -44,14 +43,14 @@ def determine_l4_addr(host, port):
 _resolved = {}
 
 
-def resolve_hostname(host_name):
+def resolve_hostname(host_name: str) -> structs.ResolvedHost:
     """Resolve a hostname into sets of IPv4 and IPv6 addresses
 
     Arguments:
-        host_name (str): the host name to resolve. May not be an IP address.
+        host_name: the host name to resolve. May not be an IP address.
 
     Returns:
-        :obj:`tlsmate.structs.ResolvedHost`: the structure for a resolved host name.
+        the structure for a resolved host name.
     """
 
     if host_name not in _resolved:
@@ -76,7 +75,7 @@ def resolve_hostname(host_name):
     return _resolved[host_name]
 
 
-def get_ip_endpoint(l4_addr):
+def get_ip_endpoint(l4_addr: structs.TransportEndpoint) -> structs.TransportEndpoint:
     """Resolve the hostname, if applicable.
 
     Arguments:

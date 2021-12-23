@@ -4,7 +4,6 @@
 import pathlib
 from tests.cipher_suite_tester import CipherSuiteTester
 from tlsmate import tls
-from tlsmate import msg
 from tlsmate.tlssuite import TlsLibrary
 
 

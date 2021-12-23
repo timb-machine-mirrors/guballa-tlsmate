@@ -18,6 +18,7 @@ Attributes:
         :obj:`tlsmate.tls.SupportedGroups` objects
 """
 # import basic stuff
+from typing import Dict
 
 # import own stuff
 from tlsmate import tls
@@ -30,7 +31,7 @@ from cryptography.hazmat.primitives.ciphers import algorithms, aead
 # this map contains all cipher suites for which a full handshake is supported,
 # i.e., application data can be exchanged encrypted
 
-supported_cipher_suites = {
+supported_cipher_suites: Dict[tls.CipherSuite, structs.CipherSuite] = {
     tls.CipherSuite.TLS_NULL_WITH_NULL_NULL: structs.CipherSuite(
         key_ex=tls.KeyExchangeAlgorithm.NULL,
         cipher=tls.SymmetricCipher.NULL,
@@ -1723,7 +1724,7 @@ supported_cipher_suites = {
 
 # map cipher to various parameters relevant for the record layer
 
-supported_ciphers = {
+supported_ciphers: Dict[tls.SymmetricCipher, structs.Cipher] = {
     tls.SymmetricCipher.AES_128_CBC: structs.Cipher(
         primitive=tls.CipherPrimitive.AES,
         algo=algorithms.AES,
@@ -1957,7 +1958,7 @@ supported_ciphers = {
 
 # map hash algorithms to mac parameters
 
-supported_macs = {
+supported_macs: Dict[tls.HashPrimitive, structs.Mac] = {
     tls.HashPrimitive.SHA1: structs.Mac(
         hash_algo=hashes.SHA1, mac_len=20, key_len=20, hmac_algo=hashes.SHA256
     ),
@@ -1975,7 +1976,7 @@ supported_macs = {
     ),
 }
 
-key_exchange = {
+key_exchange: Dict[tls.KeyExchangeAlgorithm, structs.KeyExchange] = {
     tls.KeyExchangeAlgorithm.DHE_DSS: structs.KeyExchange(
         key_ex_type=tls.KeyExchangeType.DH,
         key_auth=tls.KeyAuthentication.DSS,
@@ -2104,7 +2105,7 @@ key_exchange = {
     ),
 }
 
-curve_to_group = {
+curve_to_group: Dict[str, tls.SupportedGroups] = {
     "brainpoolP256r1": tls.SupportedGroups.BRAINPOOLP256R1,
     "brainpoolP384r1": tls.SupportedGroups.BRAINPOOLP384R1,
     "brainpoolP512r1": tls.SupportedGroups.BRAINPOOLP512R1,
@@ -2126,7 +2127,7 @@ curve_to_group = {
     "sect571r1": tls.SupportedGroups.SECT571R1,
 }
 
-issue_to_alert_description = {
+issue_to_alert_description: Dict[tls.ServerIssue, tls.AlertDescription] = {
     tls.ServerIssue.PSK_OUT_OF_RANGE: tls.AlertDescription.ILLEGAL_PARAMETER,
     tls.ServerIssue.KEY_SHARE_NOT_PRESENT: tls.AlertDescription.HANDSHAKE_FAILURE,
     tls.ServerIssue.SECURE_RENEG_FAILED: tls.AlertDescription.ILLEGAL_PARAMETER,

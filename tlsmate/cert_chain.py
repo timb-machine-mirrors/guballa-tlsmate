@@ -4,6 +4,8 @@
 # import basic stuff
 import logging
 import time
+import datetime
+from typing import List, Optional
 
 # import own stuff
 from tlsmate import tls
@@ -29,17 +31,17 @@ class CertChainCache(object):
     def __init__(self):
         self._cache = {}
 
-    def get_cached_validation_state(self, cert_chain):
+    def get_cached_validation_state(self, cert_chain: "CertChain") -> bool:
         """Returns the validation state of a certificate chain from the cache.
 
         If not present in the cache, the certificate chain is added with the status
         False.
 
         Arguments:
-            cert_chain (:obj:`CertChain`): the certificate chain object
+            cert_chain: the certificate chain object
 
         Returns:
-            bool: the validation status of the certificate chain from the cache or
+            the validation status of the certificate chain from the cache or
             None if the certificate chain is not found.
         """
 
@@ -53,11 +55,11 @@ class CertChainCache(object):
 
         return val
 
-    def update_cached_validation_state(self, cert_chain):
+    def update_cached_validation_state(self, cert_chain: "CertChain") -> None:
         """Updates a certificate chain entry in the cache.
 
         Arguments:
-            cert_chain (:obj:`CertChain`): the certificate chain object
+            cert_chain: the certificate chain object
         """
 
         self._cache[cert_chain.digest] = cert_chain.successful_validation
@@ -88,20 +90,20 @@ class CertChain(object):
         self._crl_manager = tlsmate.crl_manager
         self._trust_path = None
 
-    def append_bin_cert(self, bin_cert):
+    def append_bin_cert(self, bin_cert: bytes) -> None:
         """Append the chain by a certificate given in raw format.
 
         Arguments:
-            bin_cert (bytes): the certificate to append in raw format
+            bin_cert: the certificate to append in raw format
         """
         self.certificates.append(Certificate(der=bin_cert, parse=True))
         self._digest.update(bin_cert)
 
-    def append_pem_cert(self, pem_cert):
+    def append_pem_cert(self, pem_cert: bytes) -> None:
         """Append the chain by a certificate given in pem format.
 
         Arguments:
-            pem_cert (bytes): the certificate to append in pem format
+            pem_cert: the certificate to append in pem format
         """
         cert = Certificate(pem=pem_cert)
         self.certificates.append(cert)
@@ -202,21 +204,23 @@ class CertChain(object):
         else:
             return tls.OcspStatus.UNKNOWN
 
-    def verify_ocsp_stapling(self, responses, raise_on_failure):
+    def verify_ocsp_stapling(
+        self, responses: List[bytes], raise_on_failure: bool
+    ) -> List[Optional[tls.OcspStatus]]:
         """Check the status for a OCSP response
 
         Arguments:
-            responses (list of bytes): the OCSP response
-            raise_on_failure (bool): An indication, if the validation shall abort
+            responses: the OCSP response
+            raise_on_failure: An indication, if the validation shall abort
                 in case exceptional cases are detected. Normally set to False for
                 server scans.
 
         Returns:
-            list of :obj:`tlsmate.tls.OcspStatus`: the status, one for each response.
-            An list element can be None, if an empty response is provided.
+            the status, one for each response. An list element can be None, if
+            an empty response is provided.
         """
 
-        ret_status = []
+        ret_status: List[Optional[tls.OcspStatus]] = []
         for idx, resp in enumerate(responses):
             if not resp:
                 ret_status.append(None)
@@ -425,18 +429,20 @@ class CertChain(object):
 
         return trust_path + issuer_trust_path
 
-    def validate(self, timestamp, domain_name, raise_on_failure):
+    def validate(
+        self, timestamp: datetime.datetime, domain_name: str, raise_on_failure: bool
+    ) -> None:
         """Validates the certificate chain. Only the minimal checks are supported.
 
         If a discrepancy is found, an exception is raised (depending on
         raise_on_failure).
 
         Arguments:
-            timestamp (datetime.datetime): the timestamp to check against
-            domain_name (str): the domain name to validate the host certificate against
-            raise_on_failure (bool): whether an exception shall be raised if the
-                validation fails or not. Useful for a TLS scan, as the scan shall
-                continue.
+            timestamp: the timestamp to check against
+            domain_name: the domain name to validate the host certificate against
+            raise_on_failure: whether an exception shall be raised if the
+                validation fails or not. Useful for a TLS scan, as the scan
+                shall continue.
 
         Raises:
             UntrustedCertificate: in case a certificate within the chain cannot be
@@ -487,16 +493,16 @@ class CertChain(object):
                             "certificate part of untrusted alternate trust path"
                         )
 
-    def serialize(self):
+    def serialize(self) -> List[str]:
         """Serialize the certificate chain
 
         Returns:
-            list of str: A list of certificates which build the chain. The format is
-            a str, representing the DER-format for each certificate.
+            A list of certificates which build the chain. The format is a str,
+            representing the DER-format for each certificate.
         """
         return [cert.bytes.hex() for cert in self.certificates]
 
-    def deserialize(self, chain):
+    def deserialize(self, chain: List[str]) -> None:
         """Deserializes a certificate chain.
 
         Arguments:

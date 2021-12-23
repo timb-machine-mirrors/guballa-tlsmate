@@ -219,7 +219,9 @@ def test_client_chain_key_wrong(capsys):
     assert pytest_wrapped_e.value.code == 2
 
 
-def test_client_key_set(monkeypatch, client_rsa_key_filename, client_rsa_chain_filename):
+def test_client_key_set(
+    monkeypatch, client_rsa_key_filename, client_rsa_chain_filename
+):
     monkeypatch.setattr(WorkManager, "run", work_manager_run)
 
     cmd = (

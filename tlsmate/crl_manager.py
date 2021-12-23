@@ -4,10 +4,16 @@
 
 # import basic stuff
 import logging
+from typing import Optional, Dict, List, TYPE_CHECKING
+import datetime
 
 # import own stuff
 from tlsmate import tls
 from tlsmate import cert_utils
+from tlsmate.cert import Certificate
+
+if TYPE_CHECKING:
+    from tlsmate.tlsmate import TlsMate
 
 # import other stuff
 import requests
@@ -18,20 +24,23 @@ class CrlManager(object):
     """Handles all CRL related operations and acts as a cache as well
     """
 
-    def __init__(self, tlsmate=None):
-        self._crls = {}
+    def __init__(self, tlsmate: "TlsMate") -> None:
+        self._crls: Dict[str, Optional[x509.CertificateRevocationList]] = {}
         self._recorder = tlsmate.recorder
 
-    def add_crl(self, url, der_crl=None, pem_crl=None):
+    def add_crl(
+        self, url: str, der_crl: Optional[bytes] = None, pem_crl: Optional[bytes] = None
+    ) -> None:
         """Adds a URL and the CRL to the cache.
 
         Either der_crl or pem_crl must be given.
 
         Arguments:
-            url (str): the URL of the CRL
-            der_crl(bytes): the CRL in DER format given as bytes
-            pem_crl(bytes): the CRL in PEM format given as bytes
+            url: the URL of the CRL
+            der_crl: the CRL in DER format given as bytes
+            pem_crl: the CRL in PEM format given as bytes
         """
+
         crl = None
         if der_crl is not None:
             crl = x509.load_der_x509_crl(der_crl)
@@ -67,7 +76,14 @@ class CrlManager(object):
 
         return self._crls[url]
 
-    def get_crl_status(self, urls, serial_nbr, issuer, issuer_cert, timestamp):
+    def get_crl_status(
+        self,
+        urls: List[str],
+        serial_nbr: int,
+        issuer: x509.Name,
+        issuer_cert: Certificate,
+        timestamp: datetime.datetime,
+    ) -> Optional[tls.CertCrlStatus]:
         """Determines the CRL revocation status for a given cert/urls.
 
         Downloads the CRL (if a download fails, the next url is tried), if not yet
@@ -75,13 +91,14 @@ class CrlManager(object):
         the certificate is present in the CRL or not.
 
         Arguments:
-            urls (list of str): a list of CRL-urls
-            serial_nbr (int): the serial number of the certificate to check
-            issuer (:obj:`x509.Name`): the issuer name of the cert to check
-            issuer_cert (:obj:`tlsmate.cert.Certificate`): the certificate of the issuer
+            urls: a list of CRL-urls
+            serial_nbr: the serial number of the certificate to check
+            issuer: the issuer name of the cert to check
+            issuer_cert: the certificate of the issuer
+            timestamp: the time stamp to check the validity of the crl
 
         Returns:
-            :obj:`tlsmate.tls.CertCrlStatus`: the final status.
+            the final status.
         """
         status = None
         for url in urls:

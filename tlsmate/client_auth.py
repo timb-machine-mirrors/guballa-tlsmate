@@ -3,13 +3,20 @@
 """
 # import basic stuff
 import pem
+from typing import Any, List, Tuple, Set, Optional, TYPE_CHECKING
 
 # import own stuff
 from tlsmate import tls
 from tlsmate.cert_chain import CertChain
 
+if TYPE_CHECKING:
+    from tlsmate.tlsmate import TlsMate
+
 # import other stuff
 from cryptography.hazmat.primitives import serialization
+
+
+PrivateKey = Any
 
 
 class ClientAuth(object):
@@ -20,33 +27,33 @@ class ClientAuth(object):
     to the server. Good practice: the chain does not contain the root certificate.
 
     Arguments:
-        tlsmate (:obj:`tlsmate.tlsmate.TlsMate`): The tlsmate application object.
+        tlsmate: The tlsmate application object.
     """
 
-    def __init__(self, tlsmate):
-        self._used_idx = set()
-        self._auth = []
+    def __init__(self, tlsmate: "TlsMate") -> None:
+        self._used_idx: Set[int] = set()
+        self._auth: List[Tuple[PrivateKey, CertChain]] = []
         self._recorder = tlsmate.recorder
 
-    def add_auth(self, key, chain):
+    def add_auth(self, key: PrivateKey, chain: CertChain) -> None:
         """Add a client auth set to this object.
 
         Arguments:
-            key (private key object of cryptography): the private key
-            chain (list of :obj:`tlsmate.cert.Certificate`): the associated certificate
-                chain.
+            key: the private key
+            chain: the associated certificate chain.
         """
+
         self._auth.append((key, chain))
 
-    def add_auth_files(self, key_file, chain_file):
+    def add_auth_files(self, key_file: str, chain_file: str) -> None:
         """Add a set of files to the instances of this class.
 
         A set consists of a file in PEM-format containing the private key, and a file
         containing the certificate chain presented to the server in PEM-format.
 
         Arguments:
-            key_file (str): the name of the key file
-            chain_file (str): the name of the certificate chain file
+            key_file: the name of the key file
+            chain_file: the name of the certificate chain file
         """
         with open(key_file, "rb") as fd:
             key = serialization.load_pem_private_key(fd.read(), password=None)
@@ -58,25 +65,29 @@ class ClientAuth(object):
 
         self.add_auth(key, chain)
 
-    def supported(self):
+    def supported(self) -> bool:
         """Provides an indication if client authentication is actually used.
 
         Returns:
-            bool: An indication if client authentication is actually used.
+            An indication if client authentication is actually used.
         """
+
         return bool(self._auth)
 
-    def find_algo(self, algo, version):
+    def find_algo(
+        self, algo: tls.SignatureScheme, version: tls.Version
+    ) -> Optional[int]:
         """Find a client certificate which supports the given signature algorithm.
 
         Arguments:
-            algo (:obj:`tlsmate.tls.SignatureScheme`): the signature scheme to look for
-            version (:obj:`tlsmate.tls.Version`): the TLS version of the connection
+            algo: the signature scheme to look for
+            version: the TLS version of the connection
 
         Returns:
-            int: a reference to the client certificate/key which supports the given
+            A reference to the client certificate/key which supports the given
             signature algorithm. Returns None if no suitable certificate is found.
         """
+
         for idx, key_chain in enumerate(self._auth):
             cert = key_chain[1].certificates[0]
             if version is tls.Version.TLS13:
@@ -94,54 +105,58 @@ class ClientAuth(object):
 
         return None
 
-    def serialize_key_chain(self, idx):
+    def serialize_key_chain(self, idx: int) -> Tuple[str, List[str]]:
         """Serialize the set of (key, chain) for a given reference.
 
         Arguments:
-            idx (int): the reference to the set of (key, certificate chain)
+            idx: the reference to the set of (key, certificate chain)
 
         Returns:
-            list: A list, where the first element represents the serialized key, and
+            A list, where the first element represents the serialized key, and
             the seconds element represents the serialized certificate chain.
         """
+
         key, chain = self._auth[idx]
         key_bytes = key.private_bytes(
             encoding=serialization.Encoding.DER,
             format=serialization.PrivateFormat.PKCS8,
             encryption_algorithm=serialization.NoEncryption(),
         )
-        return [key_bytes.hex(), chain.serialize()]
+        return key_bytes.hex(), chain.serialize()
 
-    def deserialize_key_chain(self, key_chain):
+    def deserialize_key_chain(self, key_chain: Tuple[str, List[str]]) -> None:
         """Deserializes the pair of the given key/cert-chain.
 
         Arguments:
-            key_chain (list): contains two elements: the key and the certificate chain.
+            key_chain: contains two elements: the key and the certificate chain.
         """
+
         key, chain = key_chain
         priv_key = serialization.load_der_private_key(bytes.fromhex(key), None)
         chn = CertChain()
         chn.deserialize(chain)
         self.add_auth(priv_key, chn)
 
-    def get_chain(self, idx):
+    def get_chain(self, idx: int) -> CertChain:
         """For the given reference return the corresponding certificate chain.
 
         Arguments:
-            idx (int): the reference.
+            idx: the reference.
 
         Returns:
-            :obj:`tlsmate.cert.CertChain`: the certificate chain
+            the certificate chain
         """
+
         return self._auth[idx][1]
 
-    def get_key(self, idx):
+    def get_key(self, idx: int) -> bytes:
         """For the given reference return the corresponding private key.
 
         Arguments:
-            idx (int): the reference.
+            idx: the reference.
 
         Returns:
-            bytes: the cryptography key object
+            the cryptography key object
         """
+
         return self._auth[idx][0]

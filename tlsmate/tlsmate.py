@@ -4,6 +4,7 @@
 # import basic stuff
 import pathlib
 import logging
+from typing import Optional
 
 # import own stuff
 from tlsmate.server_profile import ServerProfile
@@ -54,7 +55,7 @@ class TlsMate(object):
     """The instance of tlsmate
     """
 
-    def __init__(self, config=None):
+    def __init__(self, config: Optional[Configuration] = None) -> None:
         TlsMate.instance = self
         if config is None:
             config = Configuration()
@@ -105,6 +106,7 @@ class TlsMate(object):
                 self.trust_store.add_cert(Certificate(der=bytes.fromhex(cert)))
 
             for key_chain in self.recorder.get_client_auth():
-                self.client_auth.deserialize_key_chain(key_chain)
+                # TODO: resolve type issue
+                self.client_auth.deserialize_key_chain(key_chain)  # type: ignore
 
         self.client = Client(tlsmate=self)

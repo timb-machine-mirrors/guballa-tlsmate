@@ -2,7 +2,7 @@
 """Module which provides known DH numbers
 """
 # import basic stuff
-from typing import NamedTuple
+from typing import NamedTuple, Dict, Optional
 
 # import own stuff
 from tlsmate import tls
@@ -16,8 +16,8 @@ class DHNumbers(NamedTuple):
 
     g_val: int
     p_val: bytes
-    name: str = None
-    size: int = None
+    name: Optional[str] = None
+    size: Optional[int] = None
 
 
 # RFC7919
@@ -390,15 +390,15 @@ well_known_dh_params = [
 ]
 
 
-def dh_number_digest(g_val, p_val):
+def dh_number_digest(g_val: int, p_val: bytes) -> int:
     """Determine hash value for given DH parameters.
 
     Arguments:
-        g_val (int): the value g
-        p_val (bytes): the value p
+        g_val: the value g
+        p_val: the value p
 
     Returns:
-        int: a hash value for the given DH parameters.
+        a hash value for the given DH parameters.
     """
 
     return hash((g_val, p_val))
@@ -410,27 +410,27 @@ class KnownDhGroups(object):
     This class comes pre-populated with known DH groups from RFC3526 and RFC7919.
     """
 
-    _groups = {}
+    _groups: Dict[int, DHNumbers] = {}
 
     @classmethod
-    def add_known_dh_number(cls, dh_number):
+    def add_known_dh_number(cls, dh_number: DHNumbers) -> None:
         """Add a known DH number to the class
 
         Arguments:
-            dh_number (:obj:`DHNumbers`): the named tuple to add
+            dh_number: the named tuple to add
         """
         cls._groups[dh_number_digest(dh_number.g_val, dh_number.p_val)] = dh_number
 
     @classmethod
-    def get_known_group(cls, g_val, p_val):
+    def get_known_group(cls, g_val: int, p_val: bytes) -> Optional[DHNumbers]:
         """Check, if given DH parameters are a known group
 
         Arguments:
-            g_val (int): the g value (generator) of the parameter
-            p_val (bytes): the p value (prime) of the paramter
+            g_val: the g value (generator) of the parameter
+            p_val: the p value (prime) of the paramter
 
         Returns:
-            :obj:`DHNumbers`: The found known group or None.
+            The found known group or None.
         """
         return cls._groups.get(dh_number_digest(g_val, p_val))
 

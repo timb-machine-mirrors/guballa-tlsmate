@@ -37,6 +37,7 @@ if you want to see the detailed structure.
 # import basic stuff
 import abc
 import logging
+from typing import List, Tuple, Type, Any, Dict, Optional
 
 # import own stuff
 from tlsmate import tls
@@ -44,6 +45,8 @@ from tlsmate import utils
 from tlsmate import pdu
 from tlsmate import mappings
 from tlsmate import structs
+from tlsmate.cert import Certificate
+from tlsmate.cert_chain import CertChain
 
 # import other stuff
 import yaml
@@ -51,7 +54,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa, ed25519, ed448, dsa, 
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography import x509
 from marshmallow import fields, Schema, post_load, post_dump, pre_dump, INCLUDE
-from marshmallow_oneofschema import OneOfSchema
+from marshmallow_oneofschema import OneOfSchema  # type: ignore
 
 # #### Helper classes
 
@@ -86,18 +89,18 @@ class FieldsEnumString(fields.String):
                 "field": "TLS10"
 
     Arguments:
-        enum_class(:class:`tls.ExtendedEnum`): The enum class used for deserialization.
-            This argument is mandatory.
+        enum_class: The enum class used for deserialization.
     """
 
     default_error_messages = fields.String.default_error_messages
     default_error_messages.update({"not_in_enum": "String not defined in enum"})
 
-    def __init__(self, enum_class, **kwargs):
+    def __init__(self, enum_class: Type[tls.ExtendedEnum], **kwargs: Any) -> None:
         if enum_class is None:
             raise ValueError("FieldsEnumString: enum_class not given")
 
-        if not issubclass(enum_class, tls.ExtendedEnum):
+        # TODO: replace issubclass with isinstance?
+        if not issubclass(enum_class, tls.ExtendedEnum):  # type: ignore
             raise ValueError("FieldsEnumString: class must be ExtendedEnum")
 
         self.enum_class = enum_class
@@ -156,15 +159,17 @@ class ProfileSchema(Schema):
     """Wrapper class for easier deserialization to objects
     """
 
-    _augments = []
+    _augments: List[Tuple[Type[Schema], Type[Schema]]] = []
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         # self.unknown = INCLUDE
         self.unknown = INCLUDE
 
     @post_load
-    def deserialize(self, data, reuse_object=None, **kwargs):
+    def deserialize(
+        self, data: Dict[str, Any], reuse_object: Optional[bool] = None, **kwargs
+    ) -> Any:
         """Instantiate an object and define the properties according to the given dict.
 
         Arguments:
@@ -183,14 +188,15 @@ class ProfileSchema(Schema):
         cls_data = self._get_schema_data(data)
         if reuse_object:
             obj = reuse_object
-            obj.__init__(data=cls_data)
+            # TODO: avoid calling __init__
+            obj.__init__(data=cls_data)  # type: ignore
 
         else:
             obj = cls(data=cls_data)
 
         for base_cls, ext_cls in self._augments:
             if base_cls is self.__class__:
-                cls_data = ext_cls._get_schema_data(data)
+                cls_data = ext_cls._get_schema_data(data)  # type: ignore
                 ext_data = ext_cls().load(cls_data)
                 for key, val in ext_data.items():
                     setattr(obj, key, val)
@@ -204,15 +210,17 @@ class ProfileSchema(Schema):
         return obj
 
     @post_dump(pass_original=True)
-    def serialize(self, data, orig, **kwargs):
+    def serialize(
+        self, data: Dict[str, Any], orig: Any, **kwargs: Any
+    ) -> Dict[str, Any]:
         """Deserialize properties not covered by the schema as well.
 
         Arguments:
-            data (dict): the serialized data so far
-            orig (object): the original object subject to serialization
+            data: the serialized data so far
+            orig: the original object subject to serialization
 
         Returns:
-            dict: the final dict representing the serialized object
+            the final dict representing the serialized object
         """
 
         for base_cls, ext_cls in self._augments:
@@ -230,7 +238,7 @@ class ProfileSchema(Schema):
         return cls_data
 
     @classmethod
-    def augment(cls, ext_cls):
+    def augment(cls, ext_cls: Type["ProfileSchema"]) -> Type["ProfileSchema"]:
         """Decorator to register scheme extensions.
 
         cls is the class to be extended.
@@ -246,7 +254,7 @@ class ProfileSchema(Schema):
         name of the extension class has no relevance.
 
         Arguments:
-            ext_cls (:class:`ProfileSchema`): the schema class containing the extensions
+            ext_cls: the schema class containing the extensions
 
         Returns:
             the class used to extend the base_cls class
@@ -264,11 +272,12 @@ class ProfileEnumSchema(Schema):
     name = fields.String()
 
     @post_load
-    def deserialize(self, data, **kwargs):
-        return self.__profile_class__(data["id"])
+    def deserialize(self, data: Dict[str, Any], **kwargs: Any) -> Any:
+        # TODO: enable type check
+        return self.__profile_class__(data["id"])  # type: ignore
 
     @pre_dump
-    def serialize(self, obj, **kwargs):
+    def serialize(self, obj: tls.ExtendedEnum, **kwargs: Any) -> Dict[str, Any]:
         return {"id": obj.value, "name": obj.name}
 
 
@@ -280,7 +289,7 @@ class SPObject(metaclass=abc.ABCMeta):
         obj: an object to initialize the instance from.
     """
 
-    def __init__(self, data=None, **kwargs):
+    def __init__(self, data: Optional[Dict[str, Any]] = None, **kwargs: Any) -> None:
         if data is None:
             data = {}
 
@@ -386,7 +395,7 @@ class SPPublicKey(SPObject):
     """Data class for all types of public key
     """
 
-    def __init__(self, pub_key=None, **kwargs):
+    def __init__(self, pub_key: Any = None, **kwargs) -> None:
         super().__init__(**kwargs)
         if not pub_key:
             return
@@ -401,11 +410,20 @@ class SPPublicKey(SPObject):
         elif isinstance(pub_key, dsa.DSAPublicKey):
             self.key_size = pub_key.key_size
             self.key_type = tls.SignatureAlgorithm.DSA
-            pub_numbers = pub_key.public_numbers()
-            self.key = pub_numbers.y.to_bytes(int(pub_key.key_size / 8), "big")
-            self.key_p = utils.int_to_bytes(pub_numbers.parameter_numbers.p)
-            self.key_q = utils.int_to_bytes(pub_numbers.parameter_numbers.q)
-            self.key_g = utils.int_to_bytes(pub_numbers.parameter_numbers.g)
+            pub_numbers = pub_key.public_numbers()  # type: ignore
+            self.key = pub_numbers.y.to_bytes(  # type: ignore
+                int(pub_key.key_size / 8), "big"
+            )
+
+            self.key_p = utils.int_to_bytes(
+                pub_numbers.parameter_numbers.p  # type:ignore
+            )
+            self.key_q = utils.int_to_bytes(
+                pub_numbers.parameter_numbers.q  # type:ignore
+            )
+            self.key_g = utils.int_to_bytes(
+                pub_numbers.parameter_numbers.g  # type:ignore
+            )
 
         elif isinstance(pub_key, ec.EllipticCurvePublicKey):
             self.key_size = pub_key.key_size
@@ -486,7 +504,7 @@ class SPPublicKeySchema(OneOfSchema):
         "ED448": SPPubKeyEdSchema,
     }
 
-    def get_obj_type(self, obj):
+    def get_obj_type(self, obj: Any) -> str:
         return obj.key_type.name
 
 
@@ -494,7 +512,8 @@ class SPCertGeneralName(SPObject):
     """Data class for general name
     """
 
-    def __init__(self, name=None, **kwargs):
+    # TODO: replace Any by x509 class
+    def __init__(self, name: Optional[Any] = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         if not name:
             return
@@ -539,7 +558,8 @@ class SPCertNoticeReference(SPObject):
     """Data class for notice reference
     """
 
-    def __init__(self, ref=None, **kwargs):
+    # TODO: replace Any by x509 class
+    def __init__(self, ref: Optional[Any] = None, **kwargs) -> None:
         super().__init__(**kwargs)
         if not ref:
             return
@@ -561,7 +581,8 @@ class SPCertUserNotice(SPObject):
     """Data class for user notice
     """
 
-    def __init__(self, notice=None, **kwargs):
+    # TODO: replace Any by x509 class
+    def __init__(self, notice: Optional[Any] = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         if not notice:
             return
@@ -591,7 +612,8 @@ class SPDistrPoint(SPObject):
     """Data class for distribution point
     """
 
-    def __init__(self, point=None, **kwargs):
+    # TODO: replace Any by x509 class
+    def __init__(self, point: Optional[Any] = None, **kwargs) -> None:
         super().__init__(**kwargs)
         if not point:
             return
@@ -628,7 +650,8 @@ class SPCertPolicyInfo(SPObject):
     """Data class for policy info
     """
 
-    def __init__(self, policy=None, **kwargs):
+    # TODO: replace Any by x509 class
+    def __init__(self, policy: Optional[Any] = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         if not policy:
             return
@@ -655,7 +678,8 @@ class SPCertAccessDescription(SPObject):
     """Data class for access description
     """
 
-    def __init__(self, descr=None, **kwargs):
+    # TODO: replace Any by x509 class
+    def __init__(self, descr: Optional[Any] = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         if not descr:
             return
@@ -677,7 +701,8 @@ class SPCertSignedTimestamp(SPObject):
     """Data class for signed certificate timestamp
     """
 
-    def __init__(self, timestamp=None, **kwargs):
+    # TODO: replace Any by x509 class
+    def __init__(self, timestamp: Optional[Any] = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         if not timestamp:
             return
@@ -867,7 +892,8 @@ class SPCertExtension(SPObject):
         x509.extensions.OCSPNonce: _ext_ocsp_nonce,
     }
 
-    def __init__(self, ext=None, **kwargs):
+    # TODO: replace Any by x509 class
+    def __init__(self, ext: Optional[Any] = None, **kwargs) -> None:
         super().__init__(**kwargs)
         if not ext:
             return
@@ -875,7 +901,8 @@ class SPCertExtension(SPObject):
         self.name = ext.value.__class__.__name__
         self.oid = ext.oid.dotted_string
         self.criticality = tls.ScanState(ext.critical)
-        func = self._map_ext.get(type(ext.value))
+        # TODO: resolve type issue
+        func = self._map_ext.get(type(ext.value))  # type: ignore
         if func is not None:
             func(self, ext.value)
 
@@ -1222,6 +1249,7 @@ class SPCertExtensionSchema(OneOfSchema):
         "OCSPNonce": SPCertExtOCSPNonceSchema,
     }
 
+    # TODO: add type annotations
     def get_obj_type(self, obj):
         return obj.name
 
@@ -1230,7 +1258,7 @@ class SPCertificate(SPObject):
     """Data class for a certificate.
     """
 
-    def __init__(self, cert=None, **kwargs):
+    def __init__(self, cert: Optional[Certificate] = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         if not cert:
             return
@@ -1301,12 +1329,13 @@ class SPCertChain(SPObject):
     """Data class for a certificate chain.
     """
 
-    def __init__(self, chain=None, **kwargs):
+    def __init__(self, chain: Optional[CertChain] = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         if not chain:
             return
 
-        self.id = chain.id
+        # TODO: resolve type issue
+        self.id = chain.id  # type: ignore
         self.successful_validation = tls.ScanState(chain.successful_validation)
         self.cert_chain = [SPCertificate(cert=cert) for cert in chain.certificates]
         if chain.issues:
@@ -1371,8 +1400,9 @@ class SPSignatureAlgorithms(SPObject):
     """Data class for signature algorithms
     """
 
-    def __init__(self, **kwargs):
-        self.algorithms = []
+    def __init__(self, **kwargs: Any) -> None:
+        # TODO: provide type of list
+        self.algorithms = []  # type: ignore
         super().__init__(**kwargs)
 
 
@@ -1561,7 +1591,8 @@ class SPMalfunctionIssue(SPObject):
     """Data class for a server issue
     """
 
-    def __init__(self, issue=None, **kwargs):
+    # TODO: replace Any
+    def __init__(self, issue: Optional[Any] = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         if not issue:
             return
@@ -1597,7 +1628,8 @@ class SPServerMalfunction(SPObject):
     """Data class for server malfunction
     """
 
-    def __init__(self, malfunction=None, **kwargs):
+    # TODO: replace Any
+    def __init__(self, malfunction: Optional[Any] = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         if not malfunction:
             return
@@ -1635,35 +1667,35 @@ class ServerProfile(SPObject):
             the vulnerabilities
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self._hash = {}
+        self._hash: Dict[int, int] = {}
 
-    def allocate_versions(self):
+    def allocate_versions(self) -> None:
         """Ensure that the versions property and cert_chains properties are setup.
         """
 
         if not hasattr(self, "versions"):
-            self.versions = []
+            self.versions: List[SPVersion] = []
 
         if not hasattr(self, "cert_chains"):
-            self.cert_chains = []
+            self.cert_chains: List[SPCertChain] = []
 
-    def allocate_features(self):
+    def allocate_features(self) -> None:
         """Ensure that the features property is setup.
         """
 
         if not hasattr(self, "features"):
             self.features = SPFeatures()
 
-    def allocate_vulnerabilities(self):
+    def allocate_vulnerabilities(self) -> None:
         """Ensure that the vulnerabilities property is setup.
         """
 
         if not hasattr(self, "vulnerabilities"):
             self.vulnerabilities = SPVulnerabilities()
 
-    def append_unique_cert_chain(self, chain):
+    def append_unique_cert_chain(self, chain: CertChain) -> None:
         """Append a certificate chain to the profile, if not yet present.
 
         Arguments:
@@ -1675,14 +1707,17 @@ class ServerProfile(SPObject):
         """
 
         if chain.digest in self._hash:
-            return self._hash[chain.digest]
+            return self._hash[chain.digest]  # type: ignore
 
         idx = len(self._hash) + 1
         self._hash[chain.digest] = idx
-        chain.id = idx
+        # TODO: resolve type issue
+        chain.id = idx  # type: ignore
         self.cert_chains.append(SPCertChain(chain=chain))
 
-    def get_versions(self, exclude=None):
+    def get_versions(
+        self, exclude: Optional[List[tls.Version]] = None
+    ) -> List[tls.Version]:
         """Get all TLS versions from the profile.
 
         Returns:
@@ -1696,12 +1731,15 @@ class ServerProfile(SPObject):
             exclude = []
 
         return [
-            obj.version
+            obj.version  # type: ignore
             for obj in self.versions
-            if obj.version not in exclude and obj.support is tls.ScanState.TRUE
+            if (
+                obj.version not in exclude  # type: ignore
+                and obj.support is tls.ScanState.TRUE  # type: ignore
+            )
         ]
 
-    def get_version_profile(self, version):
+    def get_version_profile(self, version: tls.Version) -> Optional[SPVersion]:
         """Get the profile entry for a given version.
 
         Returns:
@@ -1710,12 +1748,17 @@ class ServerProfile(SPObject):
         """
 
         for vers_obj in self.versions:
-            if vers_obj.version is version and vers_obj.support is tls.ScanState.TRUE:
+            if (
+                vers_obj.version is version  # type: ignore
+                and vers_obj.support is tls.ScanState.TRUE  # type: ignore
+            ):
                 return vers_obj
 
         return None
 
-    def get_cipher_suites(self, version):
+    def get_cipher_suites(
+        self, version: tls.Version
+    ) -> Optional[List[tls.CipherSuite]]:
         """Get all cipher suites for a given TLS version.
 
         Arguments:
@@ -1730,14 +1773,16 @@ class ServerProfile(SPObject):
         version_prof = self.get_version_profile(version)
         if version_prof is not None:
             if version is tls.Version.SSL20:
-                return version_prof.cipher_kinds
+                return version_prof.cipher_kinds  # type: ignore
 
             else:
-                return version_prof.ciphers.cipher_suites
+                return version_prof.ciphers.cipher_suites  # type: ignore
 
         return None
 
-    def get_supported_groups(self, version):
+    def get_supported_groups(
+        self, version: tls.Version
+    ) -> Optional[List[tls.SupportedGroups]]:
         """Get all supported groups for a given TLS version.
 
         Arguments:
@@ -1750,12 +1795,14 @@ class ServerProfile(SPObject):
 
         version_prof = self.get_version_profile(version)
         try:
-            return version_prof.supported_groups.groups
+            return version_prof.supported_groups.groups  # type: ignore
 
         except AttributeError:
             return None
 
-    def get_signature_algorithms(self, version):
+    def get_signature_algorithms(
+        self, version: tls.Version
+    ) -> Optional[List[tls.SignatureScheme]]:
         """Get all signature algorithms for a given TLS version.
 
         Arguments:
@@ -1768,11 +1815,13 @@ class ServerProfile(SPObject):
 
         version_prof = self.get_version_profile(version)
         if version_prof is not None and hasattr(version_prof, "signature_algorithms"):
-            return version_prof.signature_algorithms.algorithms
+            return version_prof.signature_algorithms.algorithms  # type: ignore
 
         return None
 
-    def get_cert_sig_algos(self, key_types=None):
+    def get_cert_sig_algos(
+        self, key_types: Optional[List[tls.SignatureAlgorithm]] = None
+    ) -> List[tls.SignatureScheme]:
         """Get all signature algorithms from the cert chains for the given key_types
 
         Arguments:
@@ -1797,7 +1846,9 @@ class ServerProfile(SPObject):
 
         return sig_algos
 
-    def get_profile_values(self, filter_versions, full_hs=False):
+    def get_profile_values(
+        self, filter_versions: List[tls.Version], full_hs: bool = False
+    ) -> structs.ProfileValues:
         """Get a set of some common attributes for the given TLS version(s).
 
         Arguments:
@@ -1812,11 +1863,11 @@ class ServerProfile(SPObject):
             signature algorithms
         """
 
-        versions = []
-        cipher_suites = []
-        sig_algos = []
-        groups = []
-        key_shares = []
+        versions: List[tls.Version] = []
+        cipher_suites: List[tls.CipherSuite] = []
+        sig_algos: List[tls.SignatureScheme] = []
+        groups: List[tls.SupportedGroups] = []
+        key_shares: List[tls.SupportedGroups] = []
 
         # We want to treat higer protocol versions first, so that the result
         # provides the most desirable preference
@@ -1828,7 +1879,9 @@ class ServerProfile(SPObject):
             versions.insert(0, version)
 
             vers_cs = self.get_cipher_suites(version)
-            cipher_suites.extend([cs for cs in vers_cs if cs not in cipher_suites])
+            cipher_suites.extend(
+                [cs for cs in vers_cs if cs not in cipher_suites]  # type: ignore
+            )
 
             vers_sig = self.get_signature_algorithms(version)
             if vers_sig is not None:
@@ -1837,14 +1890,18 @@ class ServerProfile(SPObject):
             # Add the signature algorithms used in the certificate chains as well, if
             # not yet present.
             sig_algos.extend(
-                [algo for algo in self.get_cert_sig_algos() if algo not in sig_algos]
+                [
+                    algo
+                    for algo in self.get_cert_sig_algos()  # type: ignore
+                    if algo not in sig_algos
+                ]
             )
             vers_group = self.get_supported_groups(version)
             if vers_group is not None:
                 groups.extend([group for group in vers_group if group not in groups])
 
             if version is tls.Version.TLS13:
-                key_shares = vers_group
+                key_shares = vers_group  # type: ignore
 
         if full_hs:
             cipher_suites = utils.filter_cipher_suites(cipher_suites, full_hs=True)
@@ -1857,7 +1914,7 @@ class ServerProfile(SPObject):
             key_shares=key_shares,
         )
 
-    def make_serializable(self):
+    def make_serializable(self) -> Dict[str, Any]:
         """Convert the object into seralizable types
 
         Returns:
@@ -1866,7 +1923,7 @@ class ServerProfile(SPObject):
 
         return ServerProfileSchema().dump(self)
 
-    def load(self, data):
+    def load(self, data: Any) -> None:
         ServerProfileSchema(profile=self).load(data)
 
 
@@ -1883,10 +1940,10 @@ class ServerProfileSchema(ProfileSchema):
     versions = fields.List(fields.Nested(SPVersionSchema))
     vulnerabilities = fields.Nested(SPVulnerabilitiesSchema)
 
-    def __init__(self, profile=None, **kwargs):
+    def __init__(self, profile: Optional[ServerProfile] = None, **kwargs: Any) -> None:
         self._profile = profile
         super().__init__(**kwargs)
 
     @post_load
-    def deserialize(self, data, **kwargs):
+    def deserialize(self, data: Any, **kwargs: Any) -> None:
         super().deserialize(data, reuse_object=self._profile, **kwargs)

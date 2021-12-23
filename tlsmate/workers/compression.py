@@ -16,7 +16,7 @@ class ScanCompression(Worker):
     descr = "scan for compression support"
     prio = 30
 
-    def compression(self, version):
+    def _compression(self, version):
         self.server_profile.allocate_features()
         features = self.server_profile.features
         if not hasattr(features, "compression"):
@@ -48,4 +48,4 @@ class ScanCompression(Worker):
 
     def run(self):
         for version in self.server_profile.get_versions(exclude=[tls.Version.SSL20]):
-            self.compression(version)
+            self._compression(version)

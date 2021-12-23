@@ -9,6 +9,8 @@ import time
 import enum
 import os
 import logging
+import pathlib
+from typing import Optional
 
 # import own stuff
 from tlsmate.tlsmate import TlsMate, TLSMATE_DIR
@@ -55,9 +57,14 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
     """
 
     recorder_yaml = None
-    sp_in_yaml = None
+    sp_in_yaml: Optional[str] = None
     sp_out_yaml = None
     path = None
+    server_cmd: Optional[str] = None
+
+    @abc.abstractmethod
+    def run(self, tlsmate: TlsMate, is_replaying: bool) -> None:
+        pass
 
     def _start_server(self):
 
@@ -84,12 +91,12 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         )
         time.sleep(2)  # give the TLS server some time for a clean startup
 
-    def server_input(self, input_str, timeout=None):
+    def server_input(self, input_str: str, timeout: Optional[int] = None) -> None:
         """Feed a string to the server process' STDIN pipe
 
         Arguments:
-            input_str (str): the string to provide on the STDIN pipe
-            timeout (int): the timeout to wait before providing the input in
+            input_str: the string to provide on the STDIN pipe
+            timeout: the timeout to wait before providing the input in
                 milliseconds.
         """
 
@@ -102,7 +109,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
 
         print(input_str, file=self.server_proc.stdin, flush=True)
 
-    def get_yaml_file(self, name):
+    def get_yaml_file(self, name: Optional[str]) -> Optional[pathlib.Path]:
         """Determine the file where an object is serialized to.
 
         Arguments:
@@ -116,9 +123,11 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         if name is None:
             return None
 
-        return self.path.resolve().parent / "recordings" / (name + ".yaml")
+        return (
+            self.path.resolve().parent / "recordings" / (name + ".yaml")  # type: ignore
+        )
 
-    def entry(self, is_replaying=False):
+    def entry(self, is_replaying: bool = False) -> None:
         """Entry point for a test case.
 
         Arguments:
@@ -141,7 +150,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         self.config.register(ConfigItem("pytest_recorder_replaying", type=str))
 
         if not is_replaying:
-            self.config.init_from_external(ini_file)
+            self.config.init_from_external(ini_file)  # type: ignore
 
         self.config.set("progress", False)
         self.config.set("read_profile", self.get_yaml_file(self.sp_in_yaml))

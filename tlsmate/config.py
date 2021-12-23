@@ -5,6 +5,7 @@
 import os
 import logging
 from pathlib import Path
+from typing import Dict, Any, Optional, ItemsView, Union
 
 # import own stuff
 from tlsmate.structs import ConfigItem
@@ -57,9 +58,9 @@ class Configuration(object):
             logging = debug
     """
 
-    def __init__(self):
-        self._config = {}
-        self._descr = {}
+    def __init__(self) -> None:
+        self._config: Dict[str, Any] = {}
+        self._descr: Dict[str, ConfigItem] = {}
 
         # register configurations which are essential in the core
         # part of tlsmate.
@@ -165,7 +166,7 @@ class Configuration(object):
             val = self._format_option[item_type](self, val)
         return val
 
-    def init_from_external(self, ini_file=None):
+    def init_from_external(self, ini_file: Optional[Union[str, Path]] = None):
         """Take the configuration from the ini file and from the environment variables.
 
         Arguments:
@@ -176,39 +177,39 @@ class Configuration(object):
         self._init_from_ini_file(ini_file)
         self._init_from_environment()
 
-    def items(self):
+    def items(self) -> ItemsView[str, ConfigItem]:
         """Return the configuration items. Mimics the dict's `items` method.
 
         Returns:
-            list (tuple): The list of configuration items. Each item is a tuple of the
-            item name and the item value.
+            The list of configuration items. Each item is a tuple of the item
+            name and the item value.
 
         """
 
         return self._config.items()
 
-    def get(self, key, default=None):
+    def get(self, key: str, default: Any = None) -> Any:
         """Get the value of a configuration item. Mimics the dict's `get` method.
 
         Arguments:
-            key (str): the name of the configuration item
+            key: the name of the configuration item
             default: the default value to return in case the configuration item is
                 not existing. Defaults to None.
 
         Returns:
-            any: the value of the configuration item or the provided default value if
+            the value of the configuration item or the provided default value if
             it is not present.
         """
 
         return self._config.get(key, default)
 
-    def set(self, key, val, keep_existing=True):
+    def set(self, key: str, val: Any, keep_existing: bool = True) -> None:
         """Add a configuration option.
 
         Arguments:
-            key (str): the name of the option
+            key: the name of the option
             val: the value of the option
-            keep_existing (bool): if set to True and the value is None, an existing
+            keep_existing: if set to True and the value is None, an existing
                 configuration will not be overwritten. Defaults to True
         """
 
@@ -217,12 +218,11 @@ class Configuration(object):
 
         self._config[key] = val
 
-    def register(self, config_item):
+    def register(self, config_item: ConfigItem) -> None:
         """Add a new item to the configuration
 
         Arguments:
-            config_item (:obj:`tlsmate.structs.ConfigItem`): the configuration
-                item to register
+            config_item: the configuration item to register
 
         Raises:
             ValueError: if a configuration item with the same name is already existing
