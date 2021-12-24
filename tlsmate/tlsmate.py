@@ -7,15 +7,15 @@ import logging
 from typing import Optional
 
 # import own stuff
-from tlsmate.server_profile import ServerProfile
-from tlsmate.client import Client
-from tlsmate.client_auth import ClientAuth
-from tlsmate.recorder import Recorder
-from tlsmate.config import Configuration
-from tlsmate.cert import Certificate
-from tlsmate.cert_chain import CertChainCache
-from tlsmate.crl_manager import CrlManager
-from tlsmate.trust_store import TrustStore
+import tlsmate.cert as crt
+import tlsmate.cert_chain as cert_chain
+import tlsmate.client as client
+import tlsmate.client_auth as client_auth
+import tlsmate.config as conf
+import tlsmate.crl_manager as crl_manager
+import tlsmate.recorder as rec
+import tlsmate.server_profile as server_profile
+import tlsmate.trust_store as trust_store
 
 # from tlsmate.plugin import WorkManager
 from tlsmate.key_logging import KeyLogger
@@ -55,21 +55,21 @@ class TlsMate(object):
     """The instance of tlsmate
     """
 
-    def __init__(self, config: Optional[Configuration] = None) -> None:
+    def __init__(self, config: Optional[conf.Configuration] = None) -> None:
         TlsMate.instance = self
         if config is None:
-            config = Configuration()
+            config = conf.Configuration()
 
         for key, val in config.items():
             logging.debug(f"using config {key}={val}")
 
         self.config = config
-        self.server_profile = ServerProfile()
-        self.recorder = Recorder(tlsmate=self)
-        self.trust_store = TrustStore(tlsmate=self)
-        self.client_auth = ClientAuth(tlsmate=self)
-        self.crl_manager = CrlManager(tlsmate=self)
-        self.cert_chain_cache = CertChainCache()
+        self.server_profile = server_profile.ServerProfile()
+        self.recorder = rec.Recorder(tlsmate=self)
+        self.trust_store = trust_store.TrustStore(tlsmate=self)
+        self.client_auth = client_auth.ClientAuth(tlsmate=self)
+        self.crl_manager = crl_manager.CrlManager(tlsmate=self)
+        self.cert_chain_cache = cert_chain.CertChainCache()
         key_log_file = config.get("key_log_file")
         if key_log_file:
             KeyLogger.open_file(key_log_file)
@@ -103,10 +103,10 @@ class TlsMate(object):
             self.recorder.replay()
             # Init trust store and client auth from recorded data
             for cert in self.recorder.get_trust_store():
-                self.trust_store.add_cert(Certificate(der=bytes.fromhex(cert)))
+                self.trust_store.add_cert(crt.Certificate(der=bytes.fromhex(cert)))
 
             for key_chain in self.recorder.get_client_auth():
                 # TODO: resolve type issue
                 self.client_auth.deserialize_key_chain(key_chain)  # type: ignore
 
-        self.client = Client(tlsmate=self)
+        self.client = client.Client(tlsmate=self)

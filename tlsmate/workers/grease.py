@@ -5,11 +5,11 @@
 import random
 
 # import own stuff
-from tlsmate import tls
-from tlsmate.plugin import Worker
-from tlsmate import msg
-from tlsmate import ext
-from tlsmate.server_profile import SPGrease
+import tlsmate.ext as ext
+import tlsmate.msg as msg
+import tlsmate.plugin as plg
+import tlsmate.server_profile as server_profile
+import tlsmate.tls as tls
 
 # import other stuff
 
@@ -54,7 +54,7 @@ _grease_cipher_suites = [
 _grease_psk_modes = [0x0B, 0x2A, 0x49, 0x68, 0x87, 0xA6, 0xC5, 0xE4]
 
 
-class ScanGrease(Worker):
+class ScanGrease(plg.Worker):
     name = "grease"
     descr = "scan for tolerance to unknown parameter values (GREASE)"
     prio = 35
@@ -213,7 +213,7 @@ class ScanGrease(Worker):
         self.server_profile.allocate_features()
         grease_prof = getattr(self.server_profile.features, "grease", None)
         if grease_prof is None:
-            grease_prof = SPGrease
+            grease_prof = server_profile.SPGrease
             self.server_profile.features.grease = grease_prof
 
         self._check_version(grease_prof)

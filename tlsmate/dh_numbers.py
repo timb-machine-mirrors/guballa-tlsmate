@@ -5,7 +5,7 @@
 from typing import NamedTuple, Dict, Optional
 
 # import own stuff
-from tlsmate import tls
+import tlsmate.tls as tls
 
 # import other stuff
 

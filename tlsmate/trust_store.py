@@ -6,8 +6,8 @@ import logging
 from typing import List, Any, Optional, TYPE_CHECKING
 
 # import own stuff
-from tlsmate.cert import Certificate
-from tlsmate import cert_utils
+import tlsmate.cert as crt
+import tlsmate.cert_utils as cert_utils
 
 if TYPE_CHECKING:
     from tlsmate.tlsmate import TlsMate
@@ -30,7 +30,7 @@ class TrustStore(object):
     def __init__(self, tlsmate: "TlsMate") -> None:
         self._recorder = tlsmate.recorder
         self._ca_files: Optional[List[str]] = None
-        self._cert_cache: List[Certificate] = []
+        self._cert_cache: List[crt.Certificate] = []
         self._fingerprint_cache: List[bytes] = []
 
     def set_ca_files(self, ca_files: List[str]) -> None:
@@ -59,9 +59,9 @@ class TrustStore(object):
                 for pem_item in pem_list:
                     if not isinstance(pem_item, pem.Certificate):
                         continue
-                    yield Certificate(pem=pem_item.as_bytes())
+                    yield crt.Certificate(pem=pem_item.as_bytes())
 
-    def add_cert(self, cert: Certificate) -> None:
+    def add_cert(self, cert: crt.Certificate) -> None:
         """Add a certificate to the trust store if not yet present.
 
         Arguments:
@@ -81,7 +81,7 @@ class TrustStore(object):
                 cert_pem = cert.parsed.public_bytes(Encoding.DER).hex()
                 self._recorder.trace(trust_store=cert_pem)
 
-    def cert_in_trust_store(self, cert: Certificate) -> bool:
+    def cert_in_trust_store(self, cert: crt.Certificate) -> bool:
         """Checks if a given certificate is present in the trust store.
 
         Arguments:
@@ -101,7 +101,7 @@ class TrustStore(object):
 
         return False
 
-    def issuer_in_trust_store(self, issuer_name: Any) -> Optional[Certificate]:
+    def issuer_in_trust_store(self, issuer_name: Any) -> Optional[crt.Certificate]:
         """Returns the certificate for a given issuer name from the trust store.
 
         Arguments:

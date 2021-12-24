@@ -8,13 +8,12 @@ from dataclasses import dataclass
 from typing import List, Callable, Dict, Optional, Any
 
 # import own stuff
-
-from tlsmate.plugin import Worker
-from tlsmate import tls
-from tlsmate import utils
-from tlsmate import pdu
-from tlsmate.version import __version__
-from tlsmate.server_profile import SPCertExtension, SPCertificate
+import tlsmate.pdu as pdu
+import tlsmate.plugin as plg
+import tlsmate.server_profile as server_profile
+import tlsmate.tls as tls
+import tlsmate.utils as utils
+import tlsmate.version as vers
 
 # import other stuff
 import colorama  # type: ignore
@@ -176,7 +175,9 @@ def get_styled_text(data: Dict[str, Any], *path: str, **kwargs: Any) -> str:
     return get_style_applied(get_dict_value(prof, "txt"), prof, "style", **kwargs)
 
 
-def get_cert_ext(cert: SPCertificate, name: str) -> Optional[SPCertExtension]:
+def get_cert_ext(
+    cert: server_profile.SPCertificate, name: str
+) -> Optional[server_profile.SPCertExtension]:
     """Extract the given extension from a certificate.
 
     Arguments:
@@ -196,7 +197,7 @@ def get_cert_ext(cert: SPCertificate, name: str) -> Optional[SPCertExtension]:
     return None
 
 
-class TextProfileWorker(Worker):
+class TextProfileWorker(plg.Worker):
     """Worker class which serializes a server profile.
     """
 
@@ -275,7 +276,7 @@ class TextProfileWorker(Worker):
         print(Style.HEADLINE.decorate("A TLS configuration scanner (and more)"))
         print()
         table = utils.Table(indent=2, sep="  ")
-        table.row("tlsmate version", __version__)
+        table.row("tlsmate version", vers.__version__)
         table.row("repository", "https://gitlab.com/guballa/tlsmate")
         table.dump()
         print(

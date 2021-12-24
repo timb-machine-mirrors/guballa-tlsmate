@@ -8,9 +8,9 @@ from typing import Optional, Dict, List, TYPE_CHECKING
 import datetime
 
 # import own stuff
-from tlsmate import tls
-from tlsmate import cert_utils
-from tlsmate.cert import Certificate
+import tlsmate.cert as crt
+import tlsmate.cert_utils as cert_utils
+import tlsmate.tls as tls
 
 if TYPE_CHECKING:
     from tlsmate.tlsmate import TlsMate
@@ -81,7 +81,7 @@ class CrlManager(object):
         urls: List[str],
         serial_nbr: int,
         issuer: x509.Name,
-        issuer_cert: Certificate,
+        issuer_cert: crt.Certificate,
         timestamp: datetime.datetime,
     ) -> Optional[tls.CertCrlStatus]:
         """Determines the CRL revocation status for a given cert/urls.

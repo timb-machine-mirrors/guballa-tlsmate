@@ -7,12 +7,12 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Union, TYPE_CHECKING
 
 # import own stuff
-from tlsmate import tls
-from tlsmate import ext
-from tlsmate import structs
-from tlsmate import utils
-from tlsmate.msg import ClientHello
-from tlsmate.connection import TlsConnection
+import tlsmate.connection as conn
+import tlsmate.ext as ext
+import tlsmate.msg as msg
+import tlsmate.structs as structs
+import tlsmate.tls as tls
+import tlsmate.utils as utils
 
 if TYPE_CHECKING:
     from tlsmate.tlsmate import TlsMate
@@ -536,7 +536,7 @@ class Client(object):
 
     def create_connection(
         self, host: Optional[str] = None, port: Optional[int] = None
-    ) -> TlsConnection:
+    ) -> conn.TlsConnection:
         """Create a new connection object
 
         Arguments:
@@ -554,7 +554,7 @@ class Client(object):
         if interval:
             time.sleep(interval / 1000)
 
-        return TlsConnection(self._tlsmate, self._host)
+        return conn.TlsConnection(self._tlsmate, self._host)
 
     def save_session_state_id(self, session_state: structs.SessionStateId) -> None:
         """Save a session state
@@ -626,51 +626,51 @@ class Client(object):
 
         return self.config.get("host")
 
-    def client_hello(self) -> ClientHello:
+    def client_hello(self) -> msg.ClientHello:
         """Populate a ClientHello message according to the current client profile
 
         Returns:
             the ClientHello object
         """
-        msg = ClientHello()
+        ch = msg.ClientHello()
         max_version = max(self.profile.versions)
         if max_version is tls.Version.TLS13:
-            msg.version = tls.Version.TLS12
+            ch.version = tls.Version.TLS12
 
         else:
-            msg.version = max_version
+            ch.version = max_version
 
-        msg.random = None  # will be provided autonomously
+        ch.random = None  # will be provided autonomously
 
         if (
             self.profile.support_session_ticket
             and self.session_state_ticket is not None
         ):
-            msg.session_id = bytes.fromhex("dead beef")
+            ch.session_id = bytes.fromhex("dead beef")
 
         elif self.profile.support_session_id and self.session_state_id is not None:
-            msg.session_id = self.session_state_id.session_id
+            ch.session_id = self.session_state_id.session_id
 
         else:
-            msg.session_id = b""
+            ch.session_id = b""
 
-        msg.cipher_suites = self.profile.cipher_suites[:]
+        ch.cipher_suites = self.profile.cipher_suites[:]
 
-        msg.compression_methods = self.profile.compression_methods
-        if msg.version == tls.Version.SSL30:
-            msg.extensions = None  # type: ignore
+        ch.compression_methods = self.profile.compression_methods
+        if ch.version == tls.Version.SSL30:
+            ch.extensions = None  # type: ignore
 
         else:
             if self.profile.support_sni:
-                msg.extensions.append(
+                ch.extensions.append(
                     ext.ExtServerNameIndication(host_name=self.get_sni())
                 )
 
             if self.profile.support_extended_master_secret:
-                msg.extensions.append(ext.ExtExtendedMasterSecret())
+                ch.extensions.append(ext.ExtExtendedMasterSecret())
 
             if self.profile.ec_point_formats is not None:
-                msg.extensions.append(
+                ch.extensions.append(
                     ext.ExtEcPointFormats(
                         ec_point_formats=self.profile.ec_point_formats
                     )
@@ -679,48 +679,48 @@ class Client(object):
             if self.profile.supported_groups is not None:
                 if max_version is tls.Version.TLS13 or bool(
                     utils.filter_cipher_suites(
-                        msg.cipher_suites, key_exch=[tls.KeyExchangeType.ECDH]
+                        ch.cipher_suites, key_exch=[tls.KeyExchangeType.ECDH]
                     )
                 ):
-                    msg.extensions.append(
+                    ch.extensions.append(
                         ext.ExtSupportedGroups(
                             supported_groups=self.profile.supported_groups
                         )
                     )
 
             if self.profile.support_status_request_v2 is not tls.StatusType.NONE:
-                msg.extensions.append(
+                ch.extensions.append(
                     ext.ExtStatusRequestV2(
                         status_type=self.profile.support_status_request_v2
                     )
                 )
 
             if self.profile.support_status_request:
-                msg.extensions.append(ext.ExtStatusRequest())
+                ch.extensions.append(ext.ExtStatusRequest())
 
             # RFC5246, 7.4.1.4.1.: Clients prior to TLS12 MUST NOT send this extension
             if (
                 self.profile.signature_algorithms is not None
                 and max_version >= tls.Version.TLS12
             ):
-                msg.extensions.append(
+                ch.extensions.append(
                     ext.ExtSignatureAlgorithms(
                         signature_algorithms=self.profile.signature_algorithms
                     )
                 )
 
             if self.profile.support_encrypt_then_mac:
-                msg.extensions.append(ext.ExtEncryptThenMac())
+                ch.extensions.append(ext.ExtEncryptThenMac())
 
             if self.profile.support_session_ticket:
                 kwargs = {}
                 if self.session_state_ticket is not None:
                     kwargs["ticket"] = self.session_state_ticket.ticket
 
-                msg.extensions.append(ext.ExtSessionTicket(**kwargs))
+                ch.extensions.append(ext.ExtSessionTicket(**kwargs))
 
             if self.profile.heartbeat_mode:
-                msg.extensions.append(
+                ch.extensions.append(
                     ext.ExtHeartbeat(heartbeat_mode=self.profile.heartbeat_mode)
                 )
 
@@ -728,9 +728,9 @@ class Client(object):
                 if self._tlsmate.recorder.inject(
                     client_auth=self._tlsmate.client_auth.supported()
                 ):
-                    msg.extensions.append(ext.ExtPostHandshakeAuth())
+                    ch.extensions.append(ext.ExtPostHandshakeAuth())
 
-                msg.extensions.append(
+                ch.extensions.append(
                     ext.ExtSupportedVersions(
                         versions=sorted(self.profile.versions, reverse=True)
                     )
@@ -746,17 +746,17 @@ class Client(object):
                 else:
                     groups = []
 
-                msg.extensions.append(ext.ExtKeyShare(groups=groups))
+                ch.extensions.append(ext.ExtKeyShare(groups=groups))
 
                 if self.profile.early_data is not None:
-                    msg.extensions.append(ext.ExtEarlyData())
+                    ch.extensions.append(ext.ExtEarlyData())
 
                 if self.profile.support_psk and self.psks:
-                    msg.extensions.append(
+                    ch.extensions.append(
                         ext.ExtPskKeyExchangeMode(
                             modes=self.profile.psk_key_exchange_modes
                         )
                     )
-                    msg.extensions.append(ext.ExtPreSharedKey(psks=self.psks[:1]))
+                    ch.extensions.append(ext.ExtPreSharedKey(psks=self.psks[:1]))
 
-        return msg
+        return ch

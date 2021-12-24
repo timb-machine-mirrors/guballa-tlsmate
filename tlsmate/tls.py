@@ -6,7 +6,7 @@ import enum
 from typing import List, TypeVar, Type
 
 # import own stuff
-from tlsmate.exception import ServerMalfunction
+import tlsmate.exception as ex
 
 # import other stuff
 
@@ -39,7 +39,7 @@ class ExtendedEnum(enum.Enum):
         # TODO: resolve type issue
         enum = cls._value2member_map_.get(value)  # type: ignore
         if (enum is None) and alert_on_failure:
-            raise ServerMalfunction(ServerIssue.ILLEGAL_PARAMETER_VALUE)
+            raise ex.ServerMalfunction(ServerIssue.ILLEGAL_PARAMETER_VALUE)
 
         return enum
 

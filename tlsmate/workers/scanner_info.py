@@ -7,21 +7,16 @@ import time
 import datetime
 
 # import own stuff
-from tlsmate import tls
-from tlsmate.version import __version__
-from tlsmate.plugin import Worker
-from tlsmate.server_profile import (
-    SPServer,
-    SPNameResolution,
-    SPServerMalfunction,
-    SPScanInfo,
-)
-from tlsmate import resolver
+import tlsmate.plugin as plg
+import tlsmate.resolver as resolver
+import tlsmate.server_profile as server_profile
+import tlsmate.tls as tls
+import tlsmate.version as version
 
 # import other stuff
 
 
-class ScanStart(Worker):
+class ScanStart(plg.Worker):
     """Provide basic infos without actually really scanning against the server.
     """
 
@@ -34,12 +29,12 @@ class ScanStart(Worker):
         """
 
         if not hasattr(self.server_profile, "scan_info"):
-            self.server_profile.scan_info = SPScanInfo()
+            self.server_profile.scan_info = server_profile.SPScanInfo()
 
         scan_info = self.server_profile.scan_info
         start_time = time.time()
         scan_info.command = " ".join(sys.argv)
-        scan_info.version = __version__
+        scan_info.version = version.__version__
         scan_info.start_timestamp = start_time
         scan_info.start_date = datetime.datetime.fromtimestamp(int(start_time))
         endp = resolver.determine_l4_addr(
@@ -56,7 +51,9 @@ class ScanStart(Worker):
                 name_res_data["ipv6_addresses"] = ips.ipv6_addresses
 
             endp = resolver.get_ip_endpoint(endp)
-            data["name_resolution"] = SPNameResolution(data=name_res_data)
+            data["name_resolution"] = server_profile.SPNameResolution(
+                data=name_res_data
+            )
 
         data["ip"] = endp.host
         try:
@@ -65,10 +62,10 @@ class ScanStart(Worker):
         except ValueError:
             pass
 
-        self.server_profile.server = SPServer(data=data)
+        self.server_profile.server = server_profile.SPServer(data=data)
 
 
-class ScanEnd(Worker):
+class ScanEnd(plg.Worker):
     """Complement the info after the scan is finished.
     """
 
@@ -86,7 +83,7 @@ class ScanEnd(Worker):
 
             for malfunction in self.client.server_issues:
                 self.server_profile.server_malfunctions.append(
-                    SPServerMalfunction(malfunction=malfunction)
+                    server_profile.SPServerMalfunction(malfunction=malfunction)
                 )
 
         scan_info = self.server_profile.scan_info

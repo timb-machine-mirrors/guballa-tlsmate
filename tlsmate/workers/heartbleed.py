@@ -7,15 +7,15 @@ for the heartbeat request. Refer to https://heartbleed.com/
 # import basic stuff
 
 # import own stuff
-from tlsmate import msg
-from tlsmate import tls
-from tlsmate.plugin import Worker
-from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
+import tlsmate.exception as ex
+import tlsmate.msg as msg
+import tlsmate.plugin as plg
+import tlsmate.tls as tls
 
 # import other stuff
 
 
-class ScanHeartbleed(Worker):
+class ScanHeartbleed(plg.Worker):
     name = "heartbleed"
     descr = "scan for Heartbleed vulnerability"
     prio = 41
@@ -57,10 +57,10 @@ class ScanHeartbleed(Worker):
                             else tls.HeartbleedStatus.NOT_VULNERABLE
                         )
 
-                except TlsMsgTimeoutError:
+                except ex.TlsMsgTimeoutError:
                     state = tls.HeartbleedStatus.TIMEOUT
 
-                except TlsConnectionClosedError:
+                except ex.TlsConnectionClosedError:
                     state = tls.HeartbleedStatus.CONNECTION_CLOSED
 
         self.server_profile.allocate_vulnerabilities()

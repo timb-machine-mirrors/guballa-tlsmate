@@ -6,11 +6,11 @@ import logging
 from typing import Any, Optional, TYPE_CHECKING
 
 # import own stuff
-from tlsmate import tls
-from tlsmate import structs
-from tlsmate import pdu
-from tlsmate.record_layer_state import RecordLayerState
-from tlsmate.socket import Socket
+import tlsmate.pdu as pdu
+import tlsmate.record_layer_state as record_layer_state
+import tlsmate.socket as socket
+import tlsmate.structs as structs
+import tlsmate.tls as tls
 
 if TYPE_CHECKING:
     from tlsmate.tlsmate import TlsMate
@@ -30,7 +30,7 @@ class RecordLayer(object):
         self._fragment_max_size = 4 * 4096
         self._write_state = None
         self._read_state = None
-        self._socket = Socket(tlsmate)
+        self._socket = socket.Socket(tlsmate)
         self._flush_each_fragment = False
         self._recorder = tlsmate.recorder
         self._ssl2 = False
@@ -217,7 +217,7 @@ class RecordLayer(object):
                 keying material for the symmetric ciphers and other relevant elements.
         """
 
-        state = RecordLayerState(new_state)
+        state = record_layer_state.RecordLayerState(new_state)
         if new_state.is_write_state:
             self._write_state = state
             state_type = "WRITE"

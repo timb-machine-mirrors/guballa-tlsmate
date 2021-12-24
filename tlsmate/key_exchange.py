@@ -8,14 +8,14 @@ import os
 from typing import Optional, Any, Dict, Type, Union, TYPE_CHECKING
 
 # import own stuff
-from tlsmate import dh_numbers
-from tlsmate import tls
-from tlsmate import msg
-from tlsmate import pdu
-from tlsmate.exception import ServerMalfunction, CurveNotSupportedError
-from tlsmate import kdf
-from tlsmate.cert import Certificate
-from tlsmate.recorder import Recorder
+import tlsmate.cert as crt
+import tlsmate.dh_numbers as dh_numbers
+import tlsmate.exception as ex
+import tlsmate.kdf as kdf
+import tlsmate.msg as msg
+import tlsmate.pdu as pdu
+import tlsmate.recorder as rec
+import tlsmate.tls as tls
 
 if TYPE_CHECKING:
     from tlsmate.connection import TlsConnectionMsgs, TlsConnection
@@ -37,7 +37,7 @@ from cryptography.hazmat.primitives.serialization import (
 def verify_signed_params(
     prefix: bytes,
     params: Any,
-    cert: Certificate,
+    cert: crt.Certificate,
     default_scheme: tls.SignatureScheme,
     version: tls.Version,
 ) -> None:
@@ -101,7 +101,7 @@ def verify_certificate_verify(
 
 
 def instantiate_named_group(
-    group_name: tls.SupportedGroups, conn: "TlsConnection", recorder: Recorder
+    group_name: tls.SupportedGroups, conn: "TlsConnection", recorder: rec.Recorder
 ) -> "KeyExchange":
     """Create a KeyExchange object according to the given group name.
 
@@ -116,7 +116,7 @@ def instantiate_named_group(
 
     group = _supported_groups.get(group_name)
     if group is None:
-        raise CurveNotSupportedError(
+        raise ex.CurveNotSupportedError(
             f"the group {group_name} is not supported", group_name
         )
 
@@ -132,7 +132,7 @@ class KeyExchange(metaclass=abc.ABCMeta):
     """
 
     def __init__(
-        self, conn: "TlsConnection", recorder: Recorder, **kwargs: Any
+        self, conn: "TlsConnection", recorder: rec.Recorder, **kwargs: Any
     ) -> None:
         self._group_name: Optional[tls.SupportedGroups] = kwargs.get("group_name")
         self._conn = conn
@@ -297,7 +297,7 @@ class DhKeyExchange(KeyExchange):
         if group is not None:
             dh_nbrs = dh_numbers.dh_numbers.get(group)
             if dh_nbrs is None:
-                raise ServerMalfunction(tls.ServerIssue.FFDH_GROUP_UNKNOWN)
+                raise ex.ServerMalfunction(tls.ServerIssue.FFDH_GROUP_UNKNOWN)
 
             p_val = dh_nbrs.p_val
             g_val = dh_nbrs.g_val
@@ -403,7 +403,7 @@ class EcdhKeyExchangeCertificate(object):
     """Implement the key exchange for ECDHE.
     """
 
-    def __init__(self, conn: "TlsConnection", recorder: Recorder) -> None:
+    def __init__(self, conn: "TlsConnection", recorder: rec.Recorder) -> None:
         assert conn.msg.server_certificate
         cert = conn.msg.server_certificate.chain.certificates[0]
         rem_pub_key = cert.parsed.public_key()

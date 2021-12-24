@@ -8,10 +8,10 @@ import datetime
 import builtins
 
 # import own stuff
-from tlsmate import tls
-from tlsmate import ext
-from tlsmate import cert_utils
-from tlsmate.exception import UntrustedCertificate
+import tlsmate.cert_utils as cert_utils
+import tlsmate.exception as ex
+import tlsmate.ext as ext
+import tlsmate.tls as tls
 
 # import other stuff
 from cryptography import x509
@@ -323,7 +323,7 @@ class Certificate(object):
         """
         cns = name.get_attributes_for_oid(NameOID.COMMON_NAME)
         if not cns:
-            raise UntrustedCertificate(f'no common name for "{self}"')
+            raise ex.UntrustedCertificate(f'no common name for "{self}"')
         return cns[0].value
 
     @property

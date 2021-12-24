@@ -6,8 +6,8 @@ import struct
 from typing import Tuple
 
 # import own stuff
-from tlsmate.exception import ServerMalfunction
-from tlsmate import tls
+import tlsmate.exception as ex
+import tlsmate.tls as tls
 
 # import other stuff
 
@@ -137,7 +137,7 @@ def unpack_uint8(data: bytes, offset: int) -> Tuple[int, int]:
     """
 
     if offset >= len(data):
-        raise ServerMalfunction(tls.ServerIssue.PARAMETER_LENGTH_ERROR)
+        raise ex.ServerMalfunction(tls.ServerIssue.PARAMETER_LENGTH_ERROR)
 
     return data[offset], offset + 1
 
@@ -159,7 +159,7 @@ def unpack_uint16(data: bytes, offset: int) -> Tuple[int, int]:
     """
 
     if offset + 1 >= len(data):
-        raise ServerMalfunction(tls.ServerIssue.PARAMETER_LENGTH_ERROR)
+        raise ex.ServerMalfunction(tls.ServerIssue.PARAMETER_LENGTH_ERROR)
 
     return struct.unpack("!H", data[offset : offset + 2])[0], offset + 2
 
@@ -181,7 +181,7 @@ def unpack_uint24(data: bytes, offset: int) -> Tuple[int, int]:
     """
 
     if offset + 2 >= len(data):
-        raise ServerMalfunction(tls.ServerIssue.PARAMETER_LENGTH_ERROR)
+        raise ex.ServerMalfunction(tls.ServerIssue.PARAMETER_LENGTH_ERROR)
 
     high_byte, val = struct.unpack("!BH", data[offset : offset + 3])
     return 0x10000 * high_byte + val, offset + 3
@@ -204,7 +204,7 @@ def unpack_uint32(data: bytes, offset: int) -> Tuple[int, int]:
     """
 
     if offset + 3 >= len(data):
-        raise ServerMalfunction(tls.ServerIssue.PARAMETER_LENGTH_ERROR)
+        raise ex.ServerMalfunction(tls.ServerIssue.PARAMETER_LENGTH_ERROR)
 
     return struct.unpack("!I", data[offset : offset + 4])[0], offset + 4
 
@@ -227,7 +227,7 @@ def unpack_bytes(data: bytes, offset: int, length: int) -> Tuple[bytes, int]:
     """
 
     if offset + length > len(data):
-        raise ServerMalfunction(tls.ServerIssue.PARAMETER_LENGTH_ERROR)
+        raise ex.ServerMalfunction(tls.ServerIssue.PARAMETER_LENGTH_ERROR)
 
     return data[offset : offset + length], offset + length
 

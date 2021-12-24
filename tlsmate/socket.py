@@ -10,12 +10,13 @@ import sys
 from typing import Tuple, Optional, TYPE_CHECKING
 
 # import own stuff
-from tlsmate import utils
-from tlsmate import tls
-from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
-from tlsmate import recorder
-from tlsmate import resolver
-from tlsmate import structs
+import tlsmate.exception as ex
+import tlsmate.recorder as rec
+import tlsmate.resolver as resolver
+import tlsmate.structs as structs
+import tlsmate.tls as tls
+import tlsmate.utils as utils
+
 
 if TYPE_CHECKING:
     from tlsmate.tlsmate import TlsMate
@@ -127,22 +128,20 @@ class Socket(object):
             rfds, wfds, efds = select.select([self._socket], [], [], timeout)
             timeout = time.time() - start
             if not rfds:
-                self._recorder.trace_socket_recv(timeout, recorder.SocketEvent.TIMEOUT)
-                raise TlsMsgTimeoutError
+                self._recorder.trace_socket_recv(timeout, rec.SocketEvent.TIMEOUT)
+                raise ex.TlsMsgTimeoutError
 
             try:
                 data = self._socket.recv(self._fragment_max_size)
 
             except ConnectionResetError as exc:
-                self._recorder.trace_socket_recv(timeout, recorder.SocketEvent.CLOSURE)
+                self._recorder.trace_socket_recv(timeout, rec.SocketEvent.CLOSURE)
                 self.close_socket()
-                raise TlsConnectionClosedError(exc)
+                raise ex.TlsConnectionClosedError(exc)
 
-            self._recorder.trace_socket_recv(
-                timeout, recorder.SocketEvent.DATA, data=data
-            )
+            self._recorder.trace_socket_recv(timeout, rec.SocketEvent.DATA, data=data)
         if data == b"":
             self.close_socket()
-            raise TlsConnectionClosedError()
+            raise ex.TlsConnectionClosedError()
 
         return data

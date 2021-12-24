@@ -9,8 +9,8 @@ import argparse
 from typing import List, Optional, Type, Any
 
 # import own stuff
-from tlsmate import structs
-from tlsmate.config import Configuration
+import tlsmate.config as conf
+import tlsmate.structs as structs
 
 # import other stuff
 
@@ -121,7 +121,7 @@ class Plugin(metaclass=abc.ABCMeta):
                 plugin.extend_parser(parser, subparsers)
 
     @classmethod
-    def register_config(cls, config: Configuration) -> None:
+    def register_config(cls, config: conf.Configuration) -> None:
         """Registers its configuration item, if defined.
 
         Arguments:
@@ -141,7 +141,7 @@ class Plugin(metaclass=abc.ABCMeta):
         args: Any,
         parser: argparse.ArgumentParser,
         subcommand: str,
-        config: Configuration,
+        config: conf.Configuration,
     ) -> None:
         """Callback after the arguments are parsed.
 

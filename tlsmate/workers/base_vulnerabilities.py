@@ -14,14 +14,14 @@ The following vulnerabilities are treated:
 # import basic stuff
 
 # import own stuff
-from tlsmate import tls
-from tlsmate import utils
-from tlsmate.plugin import Worker
+import tlsmate.plugin as plg
+import tlsmate.tls as tls
+import tlsmate.utils as utils
 
 # import other stuff
 
 
-class ScanBaseVulnerabilities(Worker):
+class ScanBaseVulnerabilities(plg.Worker):
     name = "scan_base_vulnerabilities"
     descr = "scan for base vulnerabilities"
     prio = 40

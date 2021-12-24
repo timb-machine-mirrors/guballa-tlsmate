@@ -21,8 +21,8 @@ Attributes:
 from typing import Dict
 
 # import own stuff
-from tlsmate import tls
-from tlsmate import structs
+import tlsmate.structs as structs
+import tlsmate.tls as tls
 
 # import other stuff
 from cryptography.hazmat.primitives import hashes

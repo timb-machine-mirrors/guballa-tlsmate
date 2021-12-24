@@ -7,11 +7,11 @@ import os
 from typing import Union, List, Optional, Any as AnyType, TYPE_CHECKING
 
 # import own stuff
-from tlsmate import tls
-from tlsmate import ext
-from tlsmate.exception import ServerMalfunction
-from tlsmate.cert_chain import CertChain
-from tlsmate import pdu
+import tlsmate.cert_chain as cert_chain
+import tlsmate.exception as ex
+import tlsmate.ext as ext
+import tlsmate.pdu as pdu
+import tlsmate.tls as tls
 
 if TYPE_CHECKING:
     from tlsmate.connection import TlsConnection
@@ -174,7 +174,7 @@ class HandshakeMessage(TlsMessage):
         msg_type = tls.HandshakeType.val2enum(msg_tp, alert_on_failure=True)
         length, offset = pdu.unpack_uint24(fragment, offset)
         if length + offset != len(fragment):
-            raise ServerMalfunction(
+            raise ex.ServerMalfunction(
                 tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=msg_type
             )
 
@@ -243,7 +243,7 @@ class HelloRequest(HandshakeMessage):
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         if offset != len(fragment):
-            raise ServerMalfunction(
+            raise ex.ServerMalfunction(
                 tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=self.msg_type
             )
 
@@ -547,7 +547,7 @@ class Certificate(HandshakeMessage):
 
     def __init__(self) -> None:
         self.request_context = None
-        self.chain = CertChain()
+        self.chain = cert_chain.CertChain()
         self.extensions: List[ext.Extension] = []
 
     def _serialize_msg_body(self, conn):
@@ -797,7 +797,7 @@ class ServerKeyExchange(HandshakeMessage):
             )
 
         else:
-            raise ServerMalfunction(tls.ServerIssue.INCOMPATIBLE_KEY_EXCHANGE)
+            raise ex.ServerMalfunction(tls.ServerIssue.INCOMPATIBLE_KEY_EXCHANGE)
 
         return self
 
@@ -817,7 +817,7 @@ class ServerHelloDone(HandshakeMessage):
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         if offset != len(fragment):
-            raise ServerMalfunction(
+            raise ex.ServerMalfunction(
                 tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=self.msg_type
             )
 
@@ -901,7 +901,7 @@ class EndOfEarlyData(HandshakeMessage):
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         if offset != len(fragment):
-            raise ServerMalfunction(
+            raise ex.ServerMalfunction(
                 tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=self.msg_type
             )
 
@@ -1147,7 +1147,7 @@ class ChangeCipherSpecMessage(TlsMessage):
             the deserialized message object
         """
         if len(fragment) != 1:
-            raise ServerMalfunction(
+            raise ex.ServerMalfunction(
                 tls.ServerIssue.MESSAGE_LENGTH_ERROR,
                 message=tls.CCSType.CHANGE_CIPHER_SPEC,
             )

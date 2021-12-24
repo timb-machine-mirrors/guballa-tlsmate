@@ -62,17 +62,13 @@ import enum
 import logging
 
 # import own stuff
-from tlsmate import msg
-from tlsmate import pdu
-from tlsmate import tls
-from tlsmate import utils
-from tlsmate.exception import TlsConnectionClosedError
-from tlsmate.plugin import Worker
-from tlsmate.server_profile import (
-    SPCbcPaddingOracleInfo,
-    SPCbcPaddingOracle,
-    SPCipherGroup,
-)
+import tlsmate.exception as ex
+import tlsmate.msg as msg
+import tlsmate.pdu as pdu
+import tlsmate.plugin as plg
+import tlsmate.server_profile as server_profile
+import tlsmate.tls as tls
+import tlsmate.utils as utils
 
 # import other stuff
 
@@ -278,7 +274,7 @@ def _vector_17_invalid_short_padding_msb(block_size, mac_len):
     )
 
 
-class ScanPaddingOracle(Worker):
+class ScanPaddingOracle(plg.Worker):
     name = "scan_padding_oracles"
     descr = "scan for CBC padding oracles"
     prio = 40
@@ -313,7 +309,7 @@ class ScanPaddingOracle(Worker):
                     else:
                         fp.add_event(_ResponseEvent.MSG, rec_msg.msg_type)
 
-            except TlsConnectionClosedError as exc:
+            except ex.TlsConnectionClosedError as exc:
                 if exc.exc is None:
                     fp.add_event(_ResponseEvent.TCP_CLOSE)
 
@@ -557,7 +553,7 @@ class ScanPaddingOracle(Worker):
             values = self.server_profile.get_profile_values([version])
             self._scan_version(values)
 
-        oracle_info = SPCbcPaddingOracleInfo()
+        oracle_info = server_profile.SPCbcPaddingOracleInfo()
         oracle_info.accuracy = self.accuracy
         if not self.applicable:
             tls_poodle = tls.ScanState.NA
@@ -572,12 +568,12 @@ class ScanPaddingOracle(Worker):
             if self.fingerprints:
                 for entry in self.fingerprints.values():
                     item = entry["fp"]
-                    sp_oracle = SPCbcPaddingOracle(
+                    sp_oracle = server_profile.SPCbcPaddingOracle(
                         observable=item.observable, strong=item.strong
                     )
                     sp_oracle.types = item.oracle_types
                     sp_oracle.cipher_group = [
-                        SPCipherGroup(
+                        server_profile.SPCipherGroup(
                             version=version,
                             cipher_suite=cipher_suite,
                             record_protocol=protocol,

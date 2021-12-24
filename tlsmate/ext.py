@@ -5,13 +5,13 @@
 # import basic stuff
 import abc
 import time
-from typing import Tuple, Any, Optional, List, Union, Dict, TYPE_CHECKING
+from typing import Tuple, Any, Optional, List, Union, TYPE_CHECKING
 
 # import own stuff
-from tlsmate.exception import ServerMalfunction
-from tlsmate import tls
-from tlsmate import structs
-from tlsmate import pdu
+import tlsmate.exception as ex
+import tlsmate.pdu as pdu
+import tlsmate.structs as structs
+import tlsmate.tls as tls
 
 if TYPE_CHECKING:
     from tlsmate.connection import TlsConnection
@@ -146,7 +146,7 @@ class ExtServerNameIndication(Extension):
 
         list_length, offset = pdu.unpack_uint16(fragment, 0)
         if offset + list_length != len(fragment):
-            raise ServerMalfunction(
+            raise ex.ServerMalfunction(
                 tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
@@ -158,7 +158,7 @@ class ExtServerNameIndication(Extension):
                 self.host_name = name.decode()
 
         if self.host_name is None:
-            raise ServerMalfunction(
+            raise ex.ServerMalfunction(
                 tls.ServerIssue.SNI_NO_HOSTNAME, extension=self.extension_id
             )
 
@@ -176,7 +176,7 @@ class ExtExtendedMasterSecret(Extension):
 
     def _deserialize_ext_body(self, ext_body):
         if ext_body:
-            raise ServerMalfunction(
+            raise ex.ServerMalfunction(
                 tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
@@ -194,7 +194,7 @@ class ExtEncryptThenMac(Extension):
 
     def _deserialize_ext_body(self, ext_body):
         if ext_body:
-            raise ServerMalfunction(
+            raise ex.ServerMalfunction(
                 tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
@@ -263,7 +263,7 @@ class ExtEcPointFormats(Extension):
         self.ec_point_formats = []
         length, offset = pdu.unpack_uint8(ext_body, 0)
         if offset + length != len(ext_body):
-            raise ServerMalfunction(
+            raise ex.ServerMalfunction(
                 tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
@@ -803,7 +803,7 @@ class ExtPostHandshakeAuth(Extension):
 
     def _deserialize_ext_body(self, ext_body):
         if ext_body:
-            raise ServerMalfunction(
+            raise ex.ServerMalfunction(
                 tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 

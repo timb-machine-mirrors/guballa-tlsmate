@@ -11,11 +11,11 @@ import argparse
 from typing import List, Optional, Type, Any, Tuple, Union
 
 # import own stuff
-from tlsmate import tls
-from tlsmate import mappings
-from tlsmate import structs
-from tlsmate import pdu
-from tlsmate import ext
+import tlsmate.ext as ext
+import tlsmate.mappings as mappings
+import tlsmate.pdu as pdu
+import tlsmate.structs as structs
+import tlsmate.tls as tls
 
 # import other stuff
 import yaml

@@ -4,11 +4,11 @@
 # import basic stuff
 
 # import own stuff
-from tlsmate import tls
-from tlsmate import msg
-from tlsmate.plugin import Worker
-from tlsmate import utils
-from tlsmate.server_profile import SPEphemeralKeyReuse
+import tlsmate.msg as msg
+import tlsmate.plugin as plg
+import tlsmate.server_profile as server_profile
+import tlsmate.tls as tls
+import tlsmate.utils as utils
 
 # import other stuff
 
@@ -26,7 +26,7 @@ def _determine_status(keys):
     return tls.ScanState.UNDETERMINED
 
 
-class ScanEphemeralKeyReuse(Worker):
+class ScanEphemeralKeyReuse(plg.Worker):
     name = "ephemeral_key_reuse"
     descr = "scan for ephemeral key reuse"
     prio = 31
@@ -136,7 +136,9 @@ class ScanEphemeralKeyReuse(Worker):
 
         self.server_profile.allocate_features()
         if not hasattr(self.server_profile.features, "ephemeral_key_reuse"):
-            self.server_profile.features.ephemeral_key_reuse = SPEphemeralKeyReuse()
+            self.server_profile.features.ephemeral_key_reuse = (
+                server_profile.SPEphemeralKeyReuse()
+            )
 
         ekr = self.server_profile.features.ephemeral_key_reuse
         ekr.tls12_dhe_reuse = tls12_dhe

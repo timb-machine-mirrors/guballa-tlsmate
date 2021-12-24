@@ -8,8 +8,8 @@ import time
 from typing import List, Any, Dict, Tuple, Optional, TYPE_CHECKING
 
 # import own stuff
-from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
-from tlsmate import utils
+import tlsmate.exception as ex
+import tlsmate.utils as utils
 
 if TYPE_CHECKING:
     from tlsmate.tlsmate import TlsMate
@@ -294,10 +294,10 @@ class Recorder(object):
                 time.sleep(timeout)
 
             if event_type is SocketEvent.CLOSURE:
-                raise TlsConnectionClosedError
+                raise ex.TlsConnectionClosedError
 
             elif event_type is SocketEvent.TIMEOUT:
-                raise TlsMsgTimeoutError
+                raise ex.TlsMsgTimeoutError
 
             return data
 

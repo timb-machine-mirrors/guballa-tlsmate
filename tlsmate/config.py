@@ -8,23 +8,23 @@ from pathlib import Path
 from typing import Dict, Any, Optional, ItemsView, Union
 
 # import own stuff
-from tlsmate.structs import ConfigItem
+import tlsmate.structs as structs
 
 # import other stuff
 import configparser
 
-config_logging = ConfigItem("logging", type=str, default="error")
-config_host = ConfigItem("host", type=str, default="localhost")
-config_port = ConfigItem("port", type=int, default=443)
-config_interval = ConfigItem("interval", type=int, default=0)
-config_key_log_file = ConfigItem("key_log_file", type=str, default=None)
-config_progress = ConfigItem("progress", type=bool, default=False)
-config_sni = ConfigItem("sni", type=str, default=None)
-config_ca_certs = ConfigItem("ca_certs", type="file_list")
-config_client_key = ConfigItem("client_key", type="file_list")
-config_client_chain = ConfigItem("client_chain", type="file_list")
-config_crl = ConfigItem("crl", type=bool, default=True)
-config_ocsp = ConfigItem("ocsp", type=bool, default=True)
+config_logging = structs.ConfigItem("logging", type=str, default="error")
+config_host = structs.ConfigItem("host", type=str, default="localhost")
+config_port = structs.ConfigItem("port", type=int, default=443)
+config_interval = structs.ConfigItem("interval", type=int, default=0)
+config_key_log_file = structs.ConfigItem("key_log_file", type=str, default=None)
+config_progress = structs.ConfigItem("progress", type=bool, default=False)
+config_sni = structs.ConfigItem("sni", type=str, default=None)
+config_ca_certs = structs.ConfigItem("ca_certs", type="file_list")
+config_client_key = structs.ConfigItem("client_key", type="file_list")
+config_client_chain = structs.ConfigItem("client_chain", type="file_list")
+config_crl = structs.ConfigItem("crl", type=bool, default=True)
+config_ocsp = structs.ConfigItem("ocsp", type=bool, default=True)
 
 
 class Configuration(object):
@@ -60,7 +60,7 @@ class Configuration(object):
 
     def __init__(self) -> None:
         self._config: Dict[str, Any] = {}
-        self._descr: Dict[str, ConfigItem] = {}
+        self._descr: Dict[str, structs.ConfigItem] = {}
 
         # register configurations which are essential in the core
         # part of tlsmate.
@@ -82,7 +82,7 @@ class Configuration(object):
 
         # special configuration item exclusively used for unit tests.
         # if set to False, the recorder will not use any delays when replaying.
-        self.register(ConfigItem("recorder_delay", type=bool, default=True))
+        self.register(structs.ConfigItem("recorder_delay", type=bool, default=True))
         self._init_environment_var("recorder_delay")
 
     def _str_to_filelist(self, string):
@@ -177,7 +177,7 @@ class Configuration(object):
         self._init_from_ini_file(ini_file)
         self._init_from_environment()
 
-    def items(self) -> ItemsView[str, ConfigItem]:
+    def items(self) -> ItemsView[str, structs.ConfigItem]:
         """Return the configuration items. Mimics the dict's `items` method.
 
         Returns:
@@ -218,7 +218,7 @@ class Configuration(object):
 
         self._config[key] = val
 
-    def register(self, config_item: ConfigItem) -> None:
+    def register(self, config_item: structs.ConfigItem) -> None:
         """Add a new item to the configuration
 
         Arguments:

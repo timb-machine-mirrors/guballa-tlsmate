@@ -103,7 +103,7 @@ class UntrustedCertificate(TlsmateException):
         issue: A human readable string describing the cause.
     """
 
-    def __init__(self, issue):
+    def __init__(self, issue: str) -> None:
         self.issue = issue
 
 
