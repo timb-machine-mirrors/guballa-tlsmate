@@ -8,9 +8,10 @@ import time
 from typing import List, Any, Dict, Tuple, Optional
 
 # import own stuff
+import tlsmate.config as conf
 import tlsmate.exception as ex
 import tlsmate.utils as utils
-import tlsmate.tlsmate as tm
+
 
 # import other stuff
 import requests
@@ -102,11 +103,11 @@ class Recorder(object):
         "response": "response",
     }
 
-    def __init__(self, tlsmate: "tm.TlsMate" = None) -> None:
+    def __init__(self, config: Optional[conf.Configuration] = None) -> None:
         self.reset()
         self._delay = True
-        if tlsmate:
-            self._delay = tlsmate.config.get("recorder_delay")
+        if config:
+            self._delay = config.get("recorder_delay")
 
     def reset(self) -> None:
         """Reset the recorder to an initial state.
