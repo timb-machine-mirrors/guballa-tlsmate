@@ -5,7 +5,6 @@
 # import own stuff
 import tlsmate.ext as ext
 import tlsmate.tls as tls
-import tlsmate.exception as ex
 
 import pytest
 
@@ -30,25 +29,25 @@ def test_sni_empty():
 
 def test_sni_wrong_length():
     data = bytes.fromhex("00 00 00 0e 00 0d 00 00 09 6c 6f 63 61 6c 68 6f 73 74")
-    with pytest.raises(ex.ServerMalfunction, match="extension length incorrect"):
+    with pytest.raises(tls.ServerMalfunction, match="extension length incorrect"):
         sni, offset = ext.Extension.deserialize(data, 0)
 
 
 def test_sni_wrong_name_type():
     data = bytes.fromhex("00 00 00 0e 00 0c 01 00 09 6c 6f 63 61 6c 68 6f 73 74")
-    with pytest.raises(ex.ServerMalfunction, match="host_name not present"):
+    with pytest.raises(tls.ServerMalfunction, match="host_name not present"):
         sni, offset = ext.Extension.deserialize(data, 0)
 
 
 def test_ems_wrong_length():
     data = bytes.fromhex("00 17 00 01 00")
-    with pytest.raises(ex.ServerMalfunction, match="extension length incorrect"):
+    with pytest.raises(tls.ServerMalfunction, match="extension length incorrect"):
         ems, offset = ext.Extension.deserialize(data, 0)
 
 
 def test_etm_wrong_length():
     data = bytes.fromhex("00 16 00 01 00")
-    with pytest.raises(ex.ServerMalfunction, match="extension length incorrect"):
+    with pytest.raises(tls.ServerMalfunction, match="extension length incorrect"):
         ems, offset = ext.Extension.deserialize(data, 0)
 
 
@@ -59,7 +58,7 @@ def test_ec_point_format():
 
 def test_ec_point_format_wrong_length():
     data = bytes.fromhex("00 0b 00 03 03 00 05")
-    with pytest.raises(ex.ServerMalfunction, match="extension length incorrect"):
+    with pytest.raises(tls.ServerMalfunction, match="extension length incorrect"):
         epf, offset = ext.Extension.deserialize(data, 0)
 
 

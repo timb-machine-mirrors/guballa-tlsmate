@@ -12,7 +12,6 @@ were regarded as protected records.
 # import basic stuff
 
 # import own stuff
-import tlsmate.exception as ex
 import tlsmate.msg as msg
 import tlsmate.plugin as plg
 import tlsmate.tls as tls
@@ -59,7 +58,7 @@ class ScanCcsInjection(plg.Worker):
                     else:
                         status = tls.ScanState.FALSE
 
-                except ex.TlsConnectionClosedError:
+                except tls.TlsConnectionClosedError:
                     status = tls.ScanState.FALSE
 
         self.server_profile.allocate_vulnerabilities()

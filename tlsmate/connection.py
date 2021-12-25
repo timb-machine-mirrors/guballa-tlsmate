@@ -13,7 +13,6 @@ from typing import Optional, Any, Type, Dict, Callable, Tuple, Union, cast
 
 # import own stuff
 import tlsmate.cert as crt
-import tlsmate.exception as ex
 import tlsmate.ext as ext
 import tlsmate.kdf as key_derivation
 import tlsmate.key_exchange as kex
@@ -49,7 +48,7 @@ class TlsDefragmenter(object):
         while len(self._record_bytes) < nbr:
             timeout = self._ultimo - time.time()
             if timeout <= 0:
-                raise ex.TlsMsgTimeoutError
+                raise tls.TlsMsgTimeoutError
 
             rl_msg = self._record_layer.wait_rl_msg(timeout, **kwargs)
             self._content_type = rl_msg.content_type
@@ -425,7 +424,7 @@ class TlsConnection(object):
         """
 
         logging.debug("exiting context manager...")
-        if exc_type is ex.ServerMalfunction:
+        if exc_type is tls.ServerMalfunction:
             self.client.report_server_issue(
                 exc_value.issue, exc_value.message, exc_value.extension
             )
@@ -438,10 +437,10 @@ class TlsConnection(object):
             )
             self._send_alert(tls.AlertLevel.FATAL, descr)
 
-        elif exc_type in (ex.TlsConnectionClosedError, BrokenPipeError):
+        elif exc_type in (tls.TlsConnectionClosedError, BrokenPipeError):
             logging.warning("connected closed, probably by peer")
 
-        elif exc_type is ex.TlsMsgTimeoutError:
+        elif exc_type is tls.TlsMsgTimeoutError:
             logging.warning(f"timeout occurred while waiting for {self._awaited_msg}")
             self._send_alert(tls.AlertLevel.WARNING, tls.AlertDescription.CLOSE_NOTIFY)
 
@@ -1067,7 +1066,7 @@ class TlsConnection(object):
             ch_psks = self.msg.client_hello.get_extension(tls.Extension.PRE_SHARED_KEY)
             if ch_psks is not None:
                 if psk_idx >= len(ch_psks.psks):
-                    raise ex.ServerMalfunction(tls.ServerIssue.PSK_OUT_OF_RANGE)
+                    raise tls.ServerMalfunction(tls.ServerIssue.PSK_OUT_OF_RANGE)
 
                 psk = ch_psks.psks[psk_idx].psk
                 self.abbreviated_hs = True
@@ -1075,7 +1074,7 @@ class TlsConnection(object):
         key_share_ext = sh.get_extension(tls.Extension.KEY_SHARE)
         if key_share_ext is None:
             if not self.abbreviated_hs:
-                raise ex.ServerMalfunction(tls.ServerIssue.KEY_SHARE_NOT_PRESENT)
+                raise tls.ServerMalfunction(tls.ServerIssue.KEY_SHARE_NOT_PRESENT)
 
             shared_secret = None
 
@@ -1127,19 +1126,19 @@ class TlsConnection(object):
                     logging.debug("renegotiation extension successfully verified")
 
                 elif data is not None:
-                    raise ex.ServerMalfunction(tls.ServerIssue.SECURE_RENEG_FAILED)
+                    raise tls.ServerMalfunction(tls.ServerIssue.SECURE_RENEG_FAILED)
 
             elif self._secure_reneg_flag:
                 self._secure_reneg_flag = False
                 if self._secure_reneg_cl_data and self._secure_reneg_sv_data:
                     if data != self._secure_reneg_cl_data + self._secure_reneg_sv_data:
-                        raise ex.ServerMalfunction(tls.ServerIssue.SECURE_RENEG_FAILED)
+                        raise tls.ServerMalfunction(tls.ServerIssue.SECURE_RENEG_FAILED)
 
                     self._secure_reneg_flag = True
                     logging.debug("renegotiation extension successfully verified")
 
                 else:
-                    raise ex.ServerMalfunction(tls.ServerIssue.SECURE_RENEG_FAILED)
+                    raise tls.ServerMalfunction(tls.ServerIssue.SECURE_RENEG_FAILED)
 
             self._secure_reneg_cl_data = None
             self._secure_reneg_sv_data = None
@@ -1213,7 +1212,7 @@ class TlsConnection(object):
                 logging.debug(error)
                 issue = tls.ServerIssue.KEX_INVALID_SIGNATURE
                 if self.client.alert_on_invalid_cert:
-                    raise ex.ServerMalfunction(
+                    raise tls.ServerMalfunction(
                         issue, message=tls.HandshakeType.SERVER_KEY_EXCHANGE
                     )
 
@@ -1268,7 +1267,7 @@ class TlsConnection(object):
             )
             logging.debug(f"calc. verify_data: {pdu.dump(calc_verify_data)}")
             if calc_verify_data != finished.verify_data:
-                raise ex.ServerMalfunction(tls.ServerIssue.VERIFY_DATA_INVALID)
+                raise tls.ServerMalfunction(tls.ServerIssue.VERIFY_DATA_INVALID)
 
             self.server_finished_digest = self._kdf.current_msg_digest()
             s_app_tr_secret = self._kdf.hkdf_expand_label(
@@ -1318,7 +1317,7 @@ class TlsConnection(object):
             self.recorder.trace(verify_data_finished_rec=finished.verify_data)
             self.recorder.trace(verify_data_finished_calc=val)
             if finished.verify_data != val:
-                raise ex.ServerMalfunction(tls.ServerIssue.VERIFY_DATA_INVALID)
+                raise tls.ServerMalfunction(tls.ServerIssue.VERIFY_DATA_INVALID)
 
         logging.debug("Received Finished successfully verified")
         if self._finished_treated:
@@ -1395,7 +1394,7 @@ class TlsConnection(object):
         if self.version is tls.Version.TLS13:
             sig_algo_ext = cert_r.get_extension(tls.Extension.SIGNATURE_ALGORITHMS)
             if sig_algo_ext is None:
-                raise ex.ServerMalfunction(tls.ServerIssue.CERT_REQ_NO_SIG_ALGO)
+                raise tls.ServerMalfunction(tls.ServerIssue.CERT_REQ_NO_SIG_ALGO)
 
             algos = sig_algo_ext.signature_algorithms
 
@@ -1571,7 +1570,7 @@ class TlsConnection(object):
                         ultimo - time.time(), **kwargs
                     )
 
-                except ex.TlsMsgTimeoutError as exc:
+                except tls.TlsMsgTimeoutError as exc:
                     if msg_class is msg.Timeout:
                         return msg.Timeout(), None
 
@@ -1606,7 +1605,7 @@ class TlsConnection(object):
 
                 else:
                     logging.warning("unexpected message received")
-                    raise ex.ScanError(
+                    raise tls.ScanError(
                         (
                             f"Unexpected message received: {message.msg_type}, "
                             f"expected: {msg_class.msg_type}"
@@ -1896,7 +1895,7 @@ class TlsConnection(object):
 
         elif not isinstance(rec_msg, msg.ServerHello):
             logging.warning("unexpected message received")
-            raise ex.ScanError(
+            raise tls.ScanError(
                 (
                     f"Unexpected message received: {rec_msg.msg_type}, "
                     f"expected: {tls.HandshakeType.SERVER_HELLO}"

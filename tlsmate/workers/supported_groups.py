@@ -6,7 +6,6 @@ import logging
 import abc
 
 # import own stuff
-import tlsmate.exception as ex
 import tlsmate.msg as msg
 import tlsmate.plugin as plg
 import tlsmate.server_profile as server_profile
@@ -54,7 +53,7 @@ class _Scan(metaclass=abc.ABCMeta):
                 sub_set.remove(server_group)
 
         if not supported_groups:
-            raise ex.ScanError(
+            raise tls.ScanError(
                 "ECDHE cipher suites negotiated, but no groups supported"
             )
 
@@ -135,7 +134,7 @@ class _TLS12_Scan(_Scan):
             conn.wait(msg.Certificate, optional=True)
             try:
                 msg_ske = conn.wait(msg.ServerKeyExchange)
-            except ex.CurveNotSupportedError as exc:
+            except tls.CurveNotSupportedError as exc:
                 return exc.curve
             if msg_ske is None or msg_ske.ec is None:
                 return None
@@ -180,9 +179,9 @@ class _TLS13_Scan(_Scan):
             key_share_ext = conn.msg.server_hello.get_extension(tls.Extension.KEY_SHARE)
             key_share = key_share_ext.key_shares[0]
             if key_share.group not in offered_groups:
-                raise ex.ScanError("selected group was not offered")
+                raise tls.ScanError("selected group was not offered")
         except AttributeError as exc:
-            raise ex.ScanError("cannot get selected group from server_hello") from exc
+            raise tls.ScanError("cannot get selected group from server_hello") from exc
 
         return key_share
 
@@ -218,7 +217,7 @@ class _TLS13_Scan(_Scan):
 
                 if self._profile_groups.server_preference is not tls.ScanState.TRUE:
                     if set(advertised_groups) != set(groups):
-                        raise ex.ScanError(
+                        raise tls.ScanError(
                             "server's advertised groups differ from accepted groups"
                         )
         if status is not None:

@@ -10,7 +10,6 @@ from typing import List, Optional
 # import own stuff
 import tlsmate.cert as crt
 import tlsmate.cert_utils as cert_utils
-import tlsmate.exception as ex
 import tlsmate.recorder as recorder
 import tlsmate.tls as tls
 
@@ -240,7 +239,7 @@ class CertChain(object):
             issue = f"OCSP stapling status {ocsp_status} for certificate {cert}"
             logging.debug(issue)
             if ocsp_status is not tls.OcspStatus.NOT_REVOKED and raise_on_failure:
-                raise ex.UntrustedCertificate(issue)
+                raise tls.UntrustedCertificate(issue)
 
         return ret_status
 
@@ -447,7 +446,7 @@ class CertChain(object):
                 shall continue.
 
         Raises:
-            ex.UntrustedCertificate: in case a certificate within the chain cannot be
+            tls.UntrustedCertificate: in case a certificate within the chain cannot be
                 validated and `raise_on_failure` is True.
         """
 
@@ -458,7 +457,7 @@ class CertChain(object):
                 f"using certificate chain validation status {valid} from cache"
             )
             if not valid and raise_on_failure:
-                raise ex.UntrustedCertificate(
+                raise tls.UntrustedCertificate(
                     f"cached status for {self.certificates[0]} is not valid"
                 )
             return
@@ -479,7 +478,7 @@ class CertChain(object):
                     issue = self.certificates[idx].issues[0]
                     break
 
-            raise ex.UntrustedCertificate(f"certificate {server_cert}: {issue}")
+            raise tls.UntrustedCertificate(f"certificate {server_cert}: {issue}")
 
         # And now check for gratuitous certificate in the chain
         if not raise_on_failure and trust_path:

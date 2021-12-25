@@ -9,7 +9,7 @@ from typing import List, Any, Dict, Tuple, Optional
 
 # import own stuff
 import tlsmate.config as conf
-import tlsmate.exception as ex
+import tlsmate.tls as tls
 import tlsmate.utils as utils
 
 
@@ -293,10 +293,10 @@ class Recorder(object):
                 time.sleep(timeout)
 
             if event_type is SocketEvent.CLOSURE:
-                raise ex.TlsConnectionClosedError
+                raise tls.TlsConnectionClosedError
 
             elif event_type is SocketEvent.TIMEOUT:
-                raise ex.TlsMsgTimeoutError
+                raise tls.TlsMsgTimeoutError
 
             return data
 

@@ -67,7 +67,7 @@ class TlsMate(object):
         self.server_profile = server_profile.ServerProfile()
         self.recorder = rec.Recorder(config=config)
         self.trust_store = trust_store.TrustStore(recorder=self.recorder)
-        self.client_auth = client_auth.ClientAuth(tlsmate=self)
+        self.client_auth = client_auth.ClientAuth(recorder=self.recorder)
         self.crl_manager = crl_manager.CrlManager(recorder=self.recorder)
         self.cert_chain_cache = cert_chain.CertChainCache()
         key_log_file = config.get("key_log_file")

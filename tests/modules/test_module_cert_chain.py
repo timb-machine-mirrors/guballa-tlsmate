@@ -4,7 +4,7 @@
 import datetime
 from tlsmate.cert_chain import CertChain
 from tlsmate.cert import Certificate
-from tlsmate.exception import UntrustedCertificate
+from tlsmate.tls import UntrustedCertificate
 from tlsmate import tls
 from cryptography.x509 import ocsp, load_pem_x509_certificate, ReasonFlags
 from cryptography.hazmat.primitives.serialization import Encoding

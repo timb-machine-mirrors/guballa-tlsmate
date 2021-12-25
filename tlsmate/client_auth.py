@@ -7,8 +7,8 @@ from typing import Any, List, Tuple, Set, Optional
 
 # import own stuff
 import tlsmate.cert_chain as cert_chain
+import tlsmate.recorder as rec
 import tlsmate.tls as tls
-import tlsmate.tlsmate as tm
 
 # import other stuff
 from cryptography.hazmat.primitives import serialization
@@ -28,10 +28,10 @@ class ClientAuth(object):
         tlsmate: The tlsmate application object.
     """
 
-    def __init__(self, tlsmate: "tm.TlsMate") -> None:
+    def __init__(self, recorder: rec.Recorder) -> None:
         self._used_idx: Set[int] = set()
         self._auth: List[Tuple[PrivateKey, cert_chain.CertChain]] = []
-        self._recorder = tlsmate.recorder
+        self._recorder = recorder
 
     def add_auth(self, key: PrivateKey, chain: "cert_chain.CertChain") -> None:
         """Add a client auth set to this object.

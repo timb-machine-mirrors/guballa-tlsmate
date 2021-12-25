@@ -62,7 +62,6 @@ import enum
 import logging
 
 # import own stuff
-import tlsmate.exception as ex
 import tlsmate.msg as msg
 import tlsmate.pdu as pdu
 import tlsmate.plugin as plg
@@ -309,7 +308,7 @@ class ScanPaddingOracle(plg.Worker):
                     else:
                         fp.add_event(_ResponseEvent.MSG, rec_msg.msg_type)
 
-            except ex.TlsConnectionClosedError as exc:
+            except tls.TlsConnectionClosedError as exc:
                 if exc.exc is None:
                     fp.add_event(_ResponseEvent.TCP_CLOSE)
 

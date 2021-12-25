@@ -10,7 +10,6 @@ import sys
 from typing import Tuple, Optional
 
 # import own stuff
-import tlsmate.exception as ex
 import tlsmate.recorder as rec
 import tlsmate.resolver as resolver
 import tlsmate.structs as structs
@@ -126,7 +125,7 @@ class Socket(object):
             timeout = time.time() - start
             if not rfds:
                 self._recorder.trace_socket_recv(timeout, rec.SocketEvent.TIMEOUT)
-                raise ex.TlsMsgTimeoutError
+                raise tls.TlsMsgTimeoutError
 
             try:
                 data = self._socket.recv(self._fragment_max_size)
@@ -134,11 +133,11 @@ class Socket(object):
             except ConnectionResetError as exc:
                 self._recorder.trace_socket_recv(timeout, rec.SocketEvent.CLOSURE)
                 self.close_socket()
-                raise ex.TlsConnectionClosedError(exc)
+                raise tls.TlsConnectionClosedError(exc)
 
             self._recorder.trace_socket_recv(timeout, rec.SocketEvent.DATA, data=data)
         if data == b"":
             self.close_socket()
-            raise ex.TlsConnectionClosedError()
+            raise tls.TlsConnectionClosedError()
 
         return data

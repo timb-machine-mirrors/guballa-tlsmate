@@ -4,7 +4,6 @@
 from tlsmate import tls
 from tlsmate import msg
 from tlsmate import ext
-from tlsmate.exception import TlsMsgTimeoutError
 from tlsmate.socket import Socket
 from tlsmate.connection import TlsConnection
 from tlsmate.workers.heartbeat import ScanHeartbeat
@@ -137,7 +136,7 @@ def test_no_versions(monkeypatch, tlsmate):
 
 
 def heartbeat_no_response(self, timeout=5):
-    raise TlsMsgTimeoutError
+    raise tls.TlsMsgTimeoutError
 
 
 def test_heartbeat_no_resonse(monkeypatch, tlsmate):

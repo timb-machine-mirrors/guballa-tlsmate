@@ -15,7 +15,6 @@ Python API reference documentation
     py_connection
     py_crl_manager
     py_dh_numbers
-    py_exception
     py_ext
     py_kdf
     py_key_exchange

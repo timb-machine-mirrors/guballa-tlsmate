@@ -9,7 +9,6 @@ import builtins
 
 # import own stuff
 import tlsmate.cert_utils as cert_utils
-import tlsmate.exception as ex
 import tlsmate.ext as ext
 import tlsmate.kdf as kdf
 import tlsmate.tls as tls
@@ -325,7 +324,7 @@ class Certificate(object):
         """
         cns = name.get_attributes_for_oid(NameOID.COMMON_NAME)
         if not cns:
-            raise ex.UntrustedCertificate(f'no common name for "{self}"')
+            raise tls.UntrustedCertificate(f'no common name for "{self}"')
         return cns[0].value
 
     @property

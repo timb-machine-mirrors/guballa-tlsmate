@@ -8,7 +8,6 @@ from typing import Optional, Any, Type, Union, NamedTuple
 
 # import own stuff
 import tlsmate.dh_numbers as dh_numbers
-import tlsmate.exception as ex
 import tlsmate.pdu as pdu
 import tlsmate.recorder as rec
 import tlsmate.tls as tls
@@ -203,7 +202,7 @@ class DhKeyExchange(KeyExchange):
         if group is not None:
             dh_nbrs = dh_numbers.dh_numbers.get(group)
             if dh_nbrs is None:
-                raise ex.ServerMalfunction(tls.ServerIssue.FFDH_GROUP_UNKNOWN)
+                raise tls.ServerMalfunction(tls.ServerIssue.FFDH_GROUP_UNKNOWN)
 
             p_val = dh_nbrs.p_val
             g_val = dh_nbrs.g_val
@@ -490,7 +489,7 @@ def instantiate_named_group(
 
     group = _supported_groups.get(group_name)
     if group is None:
-        raise ex.CurveNotSupportedError(
+        raise tls.CurveNotSupportedError(
             f"the group {group_name} is not supported", group_name
         )
 

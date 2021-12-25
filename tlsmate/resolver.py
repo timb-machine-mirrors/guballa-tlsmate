@@ -6,7 +6,6 @@ import socket
 import logging
 
 # import own stuff
-import tlsmate.exception as ex
 import tlsmate.structs as structs
 import tlsmate.tls as tls
 import tlsmate.utils as utils
@@ -100,6 +99,6 @@ def get_ip_endpoint(l4_addr: structs.TransportEndpoint) -> structs.TransportEndp
             host_type = tls.HostType.IPV4
 
         else:
-            raise ex.ScanError(f"No IP address available for {l4_addr.host}")
+            raise tls.ScanError(f"No IP address available for {l4_addr.host}")
 
     return structs.TransportEndpoint(host=host, port=l4_addr.port, host_type=host_type)

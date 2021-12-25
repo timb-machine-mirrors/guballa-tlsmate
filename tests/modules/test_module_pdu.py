@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Implement unit tests for the module pdu.
 """
+import tlsmate.tls as tls
 from tlsmate import pdu
-from tlsmate import exception as exc
 import pytest
 
 
@@ -46,7 +46,7 @@ def test_unpack_uint8():
     val, offset = pdu.unpack_uint8(data, len(data) - 1)
     assert val == 0x11
     with pytest.raises(
-        exc.ServerMalfunction, match="message length error when unpacking parameter"
+        tls.ServerMalfunction, match="message length error when unpacking parameter"
     ):
         val, offset = pdu.unpack_uint8(data, len(data))
 
@@ -56,7 +56,7 @@ def test_unpack_uint16():
     val, offset = pdu.unpack_uint16(data, len(data) - 2)
     assert val == 0x2211
     with pytest.raises(
-        exc.ServerMalfunction, match="message length error when unpacking parameter"
+        tls.ServerMalfunction, match="message length error when unpacking parameter"
     ):
         val, offset = pdu.unpack_uint16(data, len(data) - 1)
 
@@ -66,7 +66,7 @@ def test_unpack_uint24():
     val, offset = pdu.unpack_uint24(data, len(data) - 3)
     assert val == 0x332211
     with pytest.raises(
-        exc.ServerMalfunction, match="message length error when unpacking parameter"
+        tls.ServerMalfunction, match="message length error when unpacking parameter"
     ):
         val, offset = pdu.unpack_uint24(data, len(data) - 2)
 
@@ -76,7 +76,7 @@ def test_unpack_uint32():
     val, offset = pdu.unpack_uint32(data, len(data) - 4)
     assert val == 0x44332211
     with pytest.raises(
-        exc.ServerMalfunction, match="message length error when unpacking parameter"
+        tls.ServerMalfunction, match="message length error when unpacking parameter"
     ):
         val, offset = pdu.unpack_uint32(data, len(data) - 3)
 
@@ -86,6 +86,6 @@ def test_unpack_bytes():
     val, offset = pdu.unpack_bytes(data, 0, len(data))
     assert val == data
     with pytest.raises(
-        exc.ServerMalfunction, match="message length error when unpacking parameter"
+        tls.ServerMalfunction, match="message length error when unpacking parameter"
     ):
         val, offset = pdu.unpack_bytes(data, 0, len(data) + 1)

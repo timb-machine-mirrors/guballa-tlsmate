@@ -8,7 +8,6 @@ from typing import Union, List, Optional, TypeVar, Any as AnyType
 
 # import own stuff
 import tlsmate.cert_chain as cert_chain
-import tlsmate.exception as ex
 import tlsmate.ext as ext
 import tlsmate.pdu as pdu
 import tlsmate.tls as tls
@@ -127,7 +126,7 @@ class HandshakeMessage(TlsMessage):
         msg_type = tls.HandshakeType.val2enum(msg_tp, alert_on_failure=True)
         length, offset = pdu.unpack_uint24(fragment, offset)
         if length + offset != len(fragment):
-            raise ex.ServerMalfunction(
+            raise tls.ServerMalfunction(
                 tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=msg_type
             )
 
@@ -196,7 +195,7 @@ class HelloRequest(HandshakeMessage):
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         if offset != len(fragment):
-            raise ex.ServerMalfunction(
+            raise tls.ServerMalfunction(
                 tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=self.msg_type
             )
 
@@ -750,7 +749,7 @@ class ServerKeyExchange(HandshakeMessage):
             )
 
         else:
-            raise ex.ServerMalfunction(tls.ServerIssue.INCOMPATIBLE_KEY_EXCHANGE)
+            raise tls.ServerMalfunction(tls.ServerIssue.INCOMPATIBLE_KEY_EXCHANGE)
 
         return self
 
@@ -770,7 +769,7 @@ class ServerHelloDone(HandshakeMessage):
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         if offset != len(fragment):
-            raise ex.ServerMalfunction(
+            raise tls.ServerMalfunction(
                 tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=self.msg_type
             )
 
@@ -854,7 +853,7 @@ class EndOfEarlyData(HandshakeMessage):
 
     def _deserialize_msg_body(self, fragment, offset, conn):
         if offset != len(fragment):
-            raise ex.ServerMalfunction(
+            raise tls.ServerMalfunction(
                 tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=self.msg_type
             )
 
@@ -1100,7 +1099,7 @@ class ChangeCipherSpecMessage(TlsMessage):
             the deserialized message object
         """
         if len(fragment) != 1:
-            raise ex.ServerMalfunction(
+            raise tls.ServerMalfunction(
                 tls.ServerIssue.MESSAGE_LENGTH_ERROR,
                 message=tls.CCSType.CHANGE_CIPHER_SPEC,
             )

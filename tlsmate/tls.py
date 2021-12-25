@@ -3,10 +3,9 @@
 """
 # import basic stuff
 import enum
-from typing import List, TypeVar, Type
+from typing import List, TypeVar, Type, Optional, Union
 
 # import own stuff
-import tlsmate.exception as ex
 
 # import other stuff
 
@@ -39,7 +38,7 @@ class ExtendedEnum(enum.Enum):
         # TODO: resolve type issue
         enum = cls._value2member_map_.get(value)  # type: ignore
         if (enum is None) and alert_on_failure:
-            raise ex.ServerMalfunction(ServerIssue.ILLEGAL_PARAMETER_VALUE)
+            raise ServerMalfunction(ServerIssue.ILLEGAL_PARAMETER_VALUE)
 
         return enum
 
@@ -1243,3 +1242,109 @@ class Logjam(ExtendedEnum):
     PRIME512 = enum.auto()
     PRIME1024_COMMON = enum.auto()
     PRIME1024_CUSTOMIZED = enum.auto()
+
+
+##############
+# Exceptions #
+##############
+
+
+class TlsmateException(Exception):
+    """A class all exception for tlsmate are based on.
+    """
+
+
+class ServerMalfunction(TlsmateException):
+    """Exception raised in case the server response contains unrecoverable errors.
+
+    This exception basically indicates a specification violation by the server.
+
+    Attributes:
+        issue: the reason for the exception
+        message: the message, if applicable
+        extension: the extension, if applicable
+    """
+
+    def __init__(
+        self,
+        issue: ServerIssue,
+        message: Optional[Union[HandshakeType, CCSType]] = None,
+        extension: Optional[Extension] = None,
+    ) -> None:
+        super().__init__(issue.value)
+        self.issue = issue
+        self.message = message
+        self.extension = extension
+
+
+class TlsConnectionClosedError(TlsmateException):
+    """Exception raised when the TLS connection is closed unexpectedly.
+
+    Attributes:
+        exc: the original exception
+    """
+
+    def __init__(self, exc: Optional[Exception] = None) -> None:
+        self.exc = exc
+
+
+class TlsMsgTimeoutError(TlsmateException):
+    """Exception raised when a message is not received within a given timeout.
+    """
+
+    pass
+
+
+class CurveNotSupportedError(TlsmateException):
+    """Exception raised when a curve is negotiated which is not supported.
+
+    Attributes:
+        message: A human readable string providing the cause
+        curve: The curve has been offered by the client, and selected by the
+            server, but it is not supported for a full key exchange.
+    """
+
+    def __init__(self, message: str, curve: SupportedGroups) -> None:
+        self.message = message
+        self.curve = curve
+
+
+class ScanError(TlsmateException):
+    """Exception which might occur during a scan.
+
+    The exception will be raised if an abnormal condition during a scan is
+    detected.
+
+    Attributes:
+        message: A human readable string describing the cause.
+    """
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+
+
+class OcspError(TlsmateException):
+    """Exception for OCSP errors
+
+    Attributes:
+        issue: A human readable string describing the cause.
+    """
+
+    def __init__(self, issue: str) -> None:
+        self.issue = issue
+
+
+class UntrustedCertificate(TlsmateException):
+    """Exception for unsuccessful certificate (chain) validation.
+
+    Attributes:
+        issue: A human readable string describing the cause.
+    """
+
+    def __init__(self, issue: str) -> None:
+        self.issue = issue
+
+
+class ServerParmsSignatureInvalid(TlsmateException):
+    """More user friendly exception than cryptography.exception.InvalidSignature
+    """
