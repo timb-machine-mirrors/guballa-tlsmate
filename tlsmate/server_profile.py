@@ -1330,7 +1330,7 @@ class SPCertChain(SPObject):
     """
 
     def __init__(
-        self, chain: Optional[cert_chain.CertChain] = None, **kwargs: Any
+        self, chain: Optional["cert_chain.CertChain"] = None, **kwargs: Any
     ) -> None:
         super().__init__(**kwargs)
         if not chain:
@@ -1697,7 +1697,7 @@ class ServerProfile(SPObject):
         if not hasattr(self, "vulnerabilities"):
             self.vulnerabilities = SPVulnerabilities()
 
-    def append_unique_cert_chain(self, chain: cert_chain.CertChain) -> None:
+    def append_unique_cert_chain(self, chain: "cert_chain.CertChain") -> None:
         """Append a certificate chain to the profile, if not yet present.
 
         Arguments:

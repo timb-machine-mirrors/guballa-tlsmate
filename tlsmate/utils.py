@@ -11,7 +11,6 @@ import argparse
 from typing import List, Optional, Type, Any, Tuple, Union
 
 # import own stuff
-import tlsmate.ext as ext
 import tlsmate.mappings as mappings
 import tlsmate.pdu as pdu
 import tlsmate.structs as structs
@@ -464,18 +463,6 @@ def get_random_value() -> bytes:
     random.extend(pdu.pack_uint32(int(time.time())))
     random.extend(os.urandom(28))
     return random
-
-
-def log_extensions(extensions: List[ext.Extension]) -> None:
-    """Log extensions
-
-    Arguments:
-        extensions: the list of extensions to iterate over
-    """
-
-    for extension in extensions:
-        ext_id = extension.extension_id
-        logging.debug(f"extension {ext_id.value} {ext_id}")
 
 
 def exit_with_error(error: str) -> None:

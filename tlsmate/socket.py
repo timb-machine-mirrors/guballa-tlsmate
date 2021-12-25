@@ -7,7 +7,7 @@ import select
 import logging
 import time
 import sys
-from typing import Tuple, Optional, TYPE_CHECKING
+from typing import Tuple, Optional
 
 # import own stuff
 import tlsmate.exception as ex
@@ -15,11 +15,8 @@ import tlsmate.recorder as rec
 import tlsmate.resolver as resolver
 import tlsmate.structs as structs
 import tlsmate.tls as tls
+import tlsmate.tlsmate as tm
 import tlsmate.utils as utils
-
-
-if TYPE_CHECKING:
-    from tlsmate.tlsmate import TlsMate
 
 # import other stuff
 
@@ -31,7 +28,7 @@ class Socket(object):
         tlsmate: the application object
     """
 
-    def __init__(self, tlsmate: "TlsMate") -> None:
+    def __init__(self, tlsmate: "tm.TlsMate") -> None:
         self._socket: Optional[socket.socket] = None
         self._config = tlsmate.config
         self._recorder = tlsmate.recorder

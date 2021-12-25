@@ -4,7 +4,7 @@
 # import basic stuff
 import time
 from dataclasses import dataclass, field
-from typing import List, Optional, Union, TYPE_CHECKING
+from typing import List, Optional, Union
 
 # import own stuff
 import tlsmate.connection as conn
@@ -13,10 +13,7 @@ import tlsmate.msg as msg
 import tlsmate.structs as structs
 import tlsmate.tls as tls
 import tlsmate.utils as utils
-
-if TYPE_CHECKING:
-    from tlsmate.tlsmate import TlsMate
-
+import tlsmate.tlsmate as tm
 
 # import other stuff
 
@@ -185,7 +182,7 @@ class Client(object):
             issues.
     """
 
-    def __init__(self, tlsmate: "TlsMate") -> None:
+    def __init__(self, tlsmate: "tm.TlsMate") -> None:
         """Initialize the client object
 
         Args:
@@ -626,7 +623,7 @@ class Client(object):
 
         return self.config.get("host")
 
-    def client_hello(self) -> msg.ClientHello:
+    def client_hello(self) -> "msg.ClientHello":
         """Populate a ClientHello message according to the current client profile
 
         Returns:

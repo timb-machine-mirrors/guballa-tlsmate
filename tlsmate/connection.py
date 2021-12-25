@@ -9,9 +9,10 @@ import io
 import traceback as tb
 import time
 import copy
-from typing import Optional, Any, Type, Dict, Callable, Tuple, Union, cast
+from typing import Optional, Any, Type, Dict, Callable, Tuple, Union, cast, NamedTuple
 
 # import own stuff
+import tlsmate.cert as crt
 import tlsmate.exception as ex
 import tlsmate.ext as ext
 import tlsmate.kdf as key_derivation
@@ -219,7 +220,7 @@ class TlsConnectionMsgs(object):
         self.client_heartbeat_response = None
         self.server_heartbeat_response = None
 
-    def store_msg(self, message: msg.TlsMessage, received: bool = True) -> None:
+    def store_msg(self, message: "msg.TlsMessage", received: bool = True) -> None:
         """Stores a received/sent message
 
         Arguments:
@@ -460,6 +461,30 @@ class TlsConnection(object):
         else:
             return True
 
+    def _instantiate_named_group(
+        self, group_name: tls.SupportedGroups
+    ) -> "kex.KeyExchange":
+        """Create a KeyExchange object according to the given group name.
+
+        Arguments:
+            group_name: the group name
+
+        Returns:
+            the created object
+        """
+
+        group = _supported_groups.get(group_name)
+        if group is None:
+            raise ex.CurveNotSupportedError(
+                f"the group {group_name} is not supported", group_name
+            )
+
+        kwargs: Dict[str, Any] = {"group_name": group_name}
+        if group.algo is not None:
+            kwargs["algo"] = group.algo
+
+        return group.cls(self, self.recorder, **kwargs)
+
     def get_key_share(self, group: tls.SupportedGroups) -> bytes:
         """Provide the key share for a given group.
 
@@ -470,7 +495,7 @@ class TlsConnection(object):
             the created key exchange object
         """
 
-        key_share = kex.instantiate_named_group(group, self, self.recorder)
+        key_share = self._instantiate_named_group(group)
         self._key_shares[group] = key_share
         return key_share.get_key_share()
 
@@ -997,8 +1022,8 @@ class TlsConnection(object):
 
     def send(
         self,
-        *messages: Union[Type[msg.TlsMessage], msg.TlsMessage],
-        pre_serialization: Optional[Callable[[msg.TlsMessage], None]] = None,
+        *messages: Union[Type["msg.TlsMessage"], "msg.TlsMessage"],
+        pre_serialization: Optional[Callable[["msg.TlsMessage"], None]] = None,
         **kwargs: Any,
     ) -> None:
         """Interface to send messages.
@@ -1147,7 +1172,7 @@ class TlsConnection(object):
             self._update_cipher_suite(sh.cipher_suite)
 
         self._record_layer_version = min(self.version, tls.Version.TLS12)
-        utils.log_extensions(sh.extensions)
+        ext.log_extensions(sh.extensions)
         heartbeat_ext = sh.get_extension(tls.Extension.HEARTBEAT)
         if heartbeat_ext:
             self.heartbeat_allowed_to_send = (
@@ -1167,7 +1192,7 @@ class TlsConnection(object):
         logging.info(f"cipher suite: 0x{hrr.cipher_suite.value:04x} {hrr.cipher_suite}")
         self._update_cipher_suite(hrr.cipher_suite)
         self._record_layer_version = min(self.version, tls.Version.TLS12)
-        utils.log_extensions(hrr.extensions)
+        ext.log_extensions(hrr.extensions)
         ch_digest = key_derivation.Kdf()
         ch_digest.start_msg_digest()
         ch_digest.set_msg_digest_algo(self.cs_details.mac_struct.hmac_algo)
@@ -1188,7 +1213,7 @@ class TlsConnection(object):
             randoms = self.msg.client_hello.random + self.msg.server_hello.random
             cert = self.msg.server_certificate.chain.certificates[0]
             try:
-                kex.verify_signed_params(
+                crt.verify_signed_params(
                     randoms,
                     params,
                     cert,
@@ -1223,9 +1248,7 @@ class TlsConnection(object):
 
             if ske.ec.named_curve is not None:
                 logging.debug(f"named curve: {ske.ec.named_curve}")
-                self._key_exchange = kex.instantiate_named_group(
-                    ske.ec.named_curve, self, self.recorder
-                )
+                self._key_exchange = self._instantiate_named_group(ske.ec.named_curve)
                 self._key_exchange.set_remote_key(ske.ec.public)
 
         elif ske.dh is not None:
@@ -1334,7 +1357,7 @@ class TlsConnection(object):
                 self.res_ms, "resumption", nst.nonce, self.cs_details.mac_struct.mac_len
             )
             logging.debug(f"PSK: {pdu.dump(psk)}")
-            utils.log_extensions(nst.extensions)
+            ext.log_extensions(nst.extensions)
             self.client.save_psk(
                 structs.Psk(
                     psk=psk,
@@ -1376,7 +1399,7 @@ class TlsConnection(object):
         self._validate_cert_chain(cert.chain)
         if self.version is tls.Version.TLS13:
             self.certificate_digest = self._kdf.current_msg_digest()
-            ext_status_req = msg.get_extension(
+            ext_status_req = ext.get_extension(
                 cert.chain.certificates[0].tls_extensions, tls.Extension.STATUS_REQUEST
             )
             if ext_status_req:
@@ -1408,7 +1431,14 @@ class TlsConnection(object):
 
     def _on_certificate_verify_received(self, cert_v, msg_bytes):
         if self.version is tls.Version.TLS13:
-            kex.verify_certificate_verify(cert_v, self.msg, self.certificate_digest)
+            data = (
+                (b" " * 64)
+                + b"TLS 1.3, server CertificateVerify"
+                + b"\0"
+                + self.certificate_digest
+            )
+            cert = self.msg.server_certificate.chain.certificates[0]
+            cert.validate_signature(cert_v.signature_scheme, data, cert_v.signature)
 
     _on_msg_received_map = {
         tls.HandshakeType.SERVER_HELLO: _on_server_hello_received,
@@ -1431,7 +1461,7 @@ class TlsConnection(object):
         if method is not None:
             method(self, message, msg_bytes)
 
-    def _auto_heartbeat_request(self, message: msg.HeartbeatRequest) -> None:
+    def _auto_heartbeat_request(self, message: "msg.HeartbeatRequest") -> None:
         if self.client.profile.heartbeat_mode is tls.HeartbeatMode.PEER_ALLOWED_TO_SEND:
             response = msg.HeartbeatResponse()
             response.payload_length = message.payload_length
@@ -1510,13 +1540,15 @@ class TlsConnection(object):
 
     def wait_msg_bytes(
         self,
-        msg_class: Union[Type[msg.TlsMessage], msg.Timeout],
+        msg_class: Union[Type["msg.TlsMessage"], "msg.Timeout"],
         optional: bool = False,
         max_nbr: int = 1,
         timeout: int = 5000,
         fail_on_timeout: bool = True,
         **kwargs: Any,
-    ) -> Tuple[Union[Type[msg.TlsMessage], msg.Timeout, Any, None], Optional[bytes]]:
+    ) -> Tuple[
+        Union[Type["msg.TlsMessage"], "msg.Timeout", Any, None], Optional[bytes]
+    ]:
         """Interface to wait for a message from the peer.
 
         Arguments:
@@ -1598,8 +1630,10 @@ class TlsConnection(object):
                     )
 
     def wait(
-        self, msg_class: Union[Type[msg.TlsMessage], msg.Timeout, Any], **kwargs: Any
-    ) -> Union[Type[msg.TlsMessage], msg.Timeout, None]:
+        self,
+        msg_class: Union[Type["msg.TlsMessage"], "msg.Timeout", Any],
+        **kwargs: Any,
+    ) -> Union[Type["msg.TlsMessage"], "msg.Timeout", None]:
         """Interface to wait for a message from the peer.
 
         Arguments:
@@ -1831,7 +1865,7 @@ class TlsConnection(object):
         self.wait(msg.Timeout, timeout=timeout)
 
     def handshake(
-        self, ch_pre_serialization: Optional[Callable[[msg.TlsMessage], None]] = None
+        self, ch_pre_serialization: Optional[Callable[["msg.TlsMessage"], None]] = None
     ) -> None:
         """Convenient method to execute a complete handshake.
 
@@ -1948,3 +1982,47 @@ class TlsConnection(object):
                 self.send(msg.Finished)
                 self.wait(msg.ChangeCipherSpec)
                 self.wait(msg.Finished)
+
+
+class _Group(NamedTuple):
+    """Structure for a group
+    """
+
+    cls: type
+    algo: Optional[type]
+
+
+_supported_groups = {
+    tls.SupportedGroups.SECT163K1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT163K1),
+    tls.SupportedGroups.SECT163R2: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT163R2),
+    tls.SupportedGroups.SECT233K1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT233K1),
+    tls.SupportedGroups.SECT233R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT233R1),
+    tls.SupportedGroups.SECT283K1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT283K1),
+    tls.SupportedGroups.SECT283R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT283R1),
+    tls.SupportedGroups.SECT409K1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT409K1),
+    tls.SupportedGroups.SECT409R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT409R1),
+    tls.SupportedGroups.SECT571K1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT571K1),
+    tls.SupportedGroups.SECT571R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT571R1),
+    tls.SupportedGroups.SECP192R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECP192R1),
+    tls.SupportedGroups.SECP224R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECP224R1),
+    tls.SupportedGroups.SECP256K1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECP256K1),
+    tls.SupportedGroups.SECP256R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECP256R1),
+    tls.SupportedGroups.SECP384R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECP384R1),
+    tls.SupportedGroups.SECP521R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECP521R1),
+    tls.SupportedGroups.BRAINPOOLP256R1: _Group(
+        cls=kex.EcdhKeyExchange, algo=ec.BrainpoolP256R1
+    ),
+    tls.SupportedGroups.BRAINPOOLP384R1: _Group(
+        cls=kex.EcdhKeyExchange, algo=ec.BrainpoolP384R1
+    ),
+    tls.SupportedGroups.BRAINPOOLP512R1: _Group(
+        cls=kex.EcdhKeyExchange, algo=ec.BrainpoolP512R1
+    ),
+    tls.SupportedGroups.X25519: _Group(cls=kex.XKeyExchange, algo=None),
+    tls.SupportedGroups.X448: _Group(cls=kex.XKeyExchange, algo=None),
+    tls.SupportedGroups.FFDHE2048: _Group(cls=kex.DhKeyExchange, algo=None),
+    tls.SupportedGroups.FFDHE3072: _Group(cls=kex.DhKeyExchange, algo=None),
+    tls.SupportedGroups.FFDHE4096: _Group(cls=kex.DhKeyExchange, algo=None),
+    tls.SupportedGroups.FFDHE6144: _Group(cls=kex.DhKeyExchange, algo=None),
+    tls.SupportedGroups.FFDHE8192: _Group(cls=kex.DhKeyExchange, algo=None),
+}

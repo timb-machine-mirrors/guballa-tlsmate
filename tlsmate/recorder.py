@@ -5,14 +5,12 @@
 import enum
 import datetime
 import time
-from typing import List, Any, Dict, Tuple, Optional, TYPE_CHECKING
+from typing import List, Any, Dict, Tuple, Optional
 
 # import own stuff
 import tlsmate.exception as ex
 import tlsmate.utils as utils
-
-if TYPE_CHECKING:
-    from tlsmate.tlsmate import TlsMate
+import tlsmate.tlsmate as tm
 
 # import other stuff
 import requests
@@ -104,7 +102,7 @@ class Recorder(object):
         "response": "response",
     }
 
-    def __init__(self, tlsmate: "TlsMate" = None) -> None:
+    def __init__(self, tlsmate: "tm.TlsMate" = None) -> None:
         self.reset()
         self._delay = True
         if tlsmate:

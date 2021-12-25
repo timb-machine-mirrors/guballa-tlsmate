@@ -7,7 +7,7 @@ import pem
 import os
 import datetime
 
-from tlsmate.tlsmate import TlsMate
+import tlsmate.tlsmate as tm
 
 
 @pytest.fixture
@@ -68,7 +68,7 @@ def init_crl(ca_dir, crl_manager, ca, port=44400):
 
 @pytest.fixture
 def tlsmate(ca_dir, trust_store_file):
-    mate = TlsMate()
+    mate = tm.TlsMate()
     mate.trust_store.set_ca_files([trust_store_file])
     init_crl(ca_dir, mate.crl_manager, "root-rsa")
     init_crl(ca_dir, mate.crl_manager, "root-ecdsa")

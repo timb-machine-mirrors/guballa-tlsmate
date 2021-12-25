@@ -5,18 +5,19 @@
 # import basic stuff
 import abc
 import time
-from typing import Tuple, Any, Optional, List, Union, TYPE_CHECKING
+import logging
+from typing import Tuple, Any, Optional, List, Union, TypeVar
 
 # import own stuff
 import tlsmate.exception as ex
-import tlsmate.pdu as pdu
-import tlsmate.structs as structs
 import tlsmate.tls as tls
-
-if TYPE_CHECKING:
-    from tlsmate.connection import TlsConnection
+import tlsmate.structs as structs
+import tlsmate.pdu as pdu
 
 # import other stuff
+
+
+TlsConnection = TypeVar("TlsConnection")
 
 
 class Extension(metaclass=abc.ABCMeta):
@@ -40,7 +41,7 @@ class Extension(metaclass=abc.ABCMeta):
         """
         pass
 
-    def serialize(self, conn: "TlsConnection") -> bytes:
+    def serialize(self, conn: TlsConnection) -> bytes:
         """Serializes an extensions, including the extensions header.
 
         Arguments:
@@ -863,3 +864,61 @@ deserialization_map = {
     # tls.Extension.EXTERNAL_SESSION_ID = 56
     tls.Extension.RENEGOTIATION_INFO: ExtRenegotiationInfo,
 }
+
+
+def log_extensions(extensions: List[Extension]) -> None:
+    """Log extensions
+
+    Arguments:
+        extensions: the list of extensions to iterate over
+    """
+
+    for extension in extensions:
+        ext_id = extension.extension_id
+        logging.debug(f"extension {ext_id.value} {ext_id}")
+
+
+def get_extension(
+    extensions: List[Extension], ext_id: tls.Extension
+) -> Optional[Extension]:
+    """Helper function to search for an extension
+
+    Arguments:
+        extensions: the list to search for the extension
+        ext_id: the extension to to look for
+
+    Returns:
+        The extension if present, or None otherwise.
+    """
+
+    if extensions is not None:
+        for extension in extensions:
+            if extension.extension_id == ext_id:
+                return extension
+
+    return None
+
+
+def deserialize_extensions(
+    extensions: List[Extension], fragment: bytes, offset: int
+) -> int:
+    """Helper function to deserialize extensions
+
+    Arguments:
+        extensions: the list where to store the deserialized extensions
+        fragment: the pdu buffer
+        offset: the offset within the pdu buffer to the start of the extensions
+
+    Returns:
+        the offset on the byte following the extensions
+    """
+
+    if offset < len(fragment):
+        # extensions present
+        ext_len, offset = pdu.unpack_uint16(fragment, offset)
+        ext_end = offset + ext_len
+        while offset < ext_end:
+            extension, offset = Extension.deserialize(fragment, offset)
+            extensions.append(extension)
+
+    return offset

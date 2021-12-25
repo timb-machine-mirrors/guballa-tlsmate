@@ -3,28 +3,19 @@
 """
 # import basic stuff
 import abc
-from typing import NamedTuple
 import os
-from typing import Optional, Any, Dict, Type, Union, TYPE_CHECKING
+from typing import Optional, Any, Type, Union, TypeVar
 
 # import own stuff
-import tlsmate.cert as crt
 import tlsmate.dh_numbers as dh_numbers
 import tlsmate.exception as ex
-import tlsmate.kdf as kdf
-import tlsmate.msg as msg
 import tlsmate.pdu as pdu
 import tlsmate.recorder as rec
 import tlsmate.tls as tls
 
-if TYPE_CHECKING:
-    from tlsmate.connection import TlsConnectionMsgs, TlsConnection
-
-
 # import other stuff
 from cryptography.hazmat.primitives.asymmetric import ec, x25519, x448, dh
 from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
     PublicFormat,
@@ -33,98 +24,8 @@ from cryptography.hazmat.primitives.serialization import (
     load_der_private_key,
 )
 
-
-def verify_signed_params(
-    prefix: bytes,
-    params: Any,
-    cert: crt.Certificate,
-    default_scheme: tls.SignatureScheme,
-    version: tls.Version,
-) -> None:
-    """Verify the signed parameters from a ServerKeyExchange message.
-
-    Arguments:
-        prefix: the bytes to prepend to the data
-        params: the parameter block from the ServerKeyExchange message
-        cert: the certificate used to validate the data
-        default_scheme: the default signature scheme to use (if not present in
-            the message)
-        version: the TLS version. For TLS1.1 and below the signature is
-            constructed differently (using SHA1 + MD digests)
-    Raises:
-        cryptography.exceptions.InvalidSignature: If the signature does not
-            validate.
-    """
-
-    data = prefix + params.signed_params
-
-    if (
-        default_scheme is tls.SignatureScheme.RSA_PKCS1_SHA1
-        and version is not tls.Version.TLS12
-    ):
-        # Digest is a combination of MD5 and SHA1
-        digest = kdf.Kdf()
-        digest.start_msg_digest()
-        digest.set_msg_digest_algo(None)
-        digest.update_msg_digest(data)
-        hashed1 = digest.current_msg_digest(suspend=True)
-        key = cert.parsed.public_key()
-        hashed2 = key.recover_data_from_signature(
-            params.signature, padding.PKCS1v15(), None
-        )
-        if hashed1 != hashed2:
-            raise InvalidSignature
-
-    else:
-        sig_scheme = params.sig_scheme or default_scheme
-        cert.validate_signature(sig_scheme, data, params.signature)
-
-
-def verify_certificate_verify(
-    cert_ver: msg.CertificateVerify, msgs: "TlsConnectionMsgs", msg_digest: bytes
-) -> None:
-    """Validates the CertificateVerify message.
-
-    Arguments:
-        cert_ver: the CertificateVerify message to verify
-        msgs: the object storing received/sent messages
-        msg_digest: the message digest used to construct the data to validate
-
-    Raises:
-        cryptography.exceptions.InvalidSignature: If the signature does not
-            validate.
-    """
-
-    data = (b" " * 64) + b"TLS 1.3, server CertificateVerify" + b"\0" + msg_digest
-    cert = msgs.server_certificate.chain.certificates[0]  # type: ignore
-    cert.validate_signature(cert_ver.signature_scheme, data, cert_ver.signature)
-
-
-def instantiate_named_group(
-    group_name: tls.SupportedGroups, conn: "TlsConnection", recorder: rec.Recorder
-) -> "KeyExchange":
-    """Create a KeyExchange object according to the given group name.
-
-    Arguments:
-        group_name: the group name
-        conn: a connection object
-        recorder: the recorder object
-
-    Returns:
-        the created object
-    """
-
-    group = _supported_groups.get(group_name)
-    if group is None:
-        raise ex.CurveNotSupportedError(
-            f"the group {group_name} is not supported", group_name
-        )
-
-    kwargs: Dict[str, Any] = {"group_name": group_name}
-    if group.algo is not None:
-        kwargs["algo"] = group.algo
-
-    return group.cls(conn, recorder, **kwargs)
+TlsConnection = Any
+TlsConnectionMsgs = TypeVar("TlsConnectionMsgs")
 
 
 class KeyExchange(metaclass=abc.ABCMeta):
@@ -132,7 +33,7 @@ class KeyExchange(metaclass=abc.ABCMeta):
     """
 
     def __init__(
-        self, conn: "TlsConnection", recorder: rec.Recorder, **kwargs: Any
+        self, conn: "TlsConnection", recorder: "rec.Recorder", **kwargs: Any
     ) -> None:
         self._group_name: Optional[tls.SupportedGroups] = kwargs.get("group_name")
         self._conn = conn
@@ -202,6 +103,7 @@ class RsaKeyExchange(KeyExchange):
 
         if self._pms is None:
             self._create_pms()
+            assert self._pms
 
         assert self._conn.msg.server_certificate
         cert = self._conn.msg.server_certificate.chain.certificates[0]
@@ -403,7 +305,7 @@ class EcdhKeyExchangeCertificate(object):
     """Implement the key exchange for ECDHE.
     """
 
-    def __init__(self, conn: "TlsConnection", recorder: rec.Recorder) -> None:
+    def __init__(self, conn: "TlsConnection", recorder: "rec.Recorder") -> None:
         assert conn.msg.server_certificate
         cert = conn.msg.server_certificate.chain.certificates[0]
         rem_pub_key = cert.parsed.public_key()
@@ -531,47 +433,3 @@ class XKeyExchange(KeyExchange):
         """
 
         return self.get_transferable_key()
-
-
-class _Group(NamedTuple):
-    """Structure for a group
-    """
-
-    cls: type
-    algo: Optional[type]
-
-
-_supported_groups = {
-    tls.SupportedGroups.SECT163K1: _Group(cls=EcdhKeyExchange, algo=ec.SECT163K1),
-    tls.SupportedGroups.SECT163R2: _Group(cls=EcdhKeyExchange, algo=ec.SECT163R2),
-    tls.SupportedGroups.SECT233K1: _Group(cls=EcdhKeyExchange, algo=ec.SECT233K1),
-    tls.SupportedGroups.SECT233R1: _Group(cls=EcdhKeyExchange, algo=ec.SECT233R1),
-    tls.SupportedGroups.SECT283K1: _Group(cls=EcdhKeyExchange, algo=ec.SECT283K1),
-    tls.SupportedGroups.SECT283R1: _Group(cls=EcdhKeyExchange, algo=ec.SECT283R1),
-    tls.SupportedGroups.SECT409K1: _Group(cls=EcdhKeyExchange, algo=ec.SECT409K1),
-    tls.SupportedGroups.SECT409R1: _Group(cls=EcdhKeyExchange, algo=ec.SECT409R1),
-    tls.SupportedGroups.SECT571K1: _Group(cls=EcdhKeyExchange, algo=ec.SECT571K1),
-    tls.SupportedGroups.SECT571R1: _Group(cls=EcdhKeyExchange, algo=ec.SECT571R1),
-    tls.SupportedGroups.SECP192R1: _Group(cls=EcdhKeyExchange, algo=ec.SECP192R1),
-    tls.SupportedGroups.SECP224R1: _Group(cls=EcdhKeyExchange, algo=ec.SECP224R1),
-    tls.SupportedGroups.SECP256K1: _Group(cls=EcdhKeyExchange, algo=ec.SECP256K1),
-    tls.SupportedGroups.SECP256R1: _Group(cls=EcdhKeyExchange, algo=ec.SECP256R1),
-    tls.SupportedGroups.SECP384R1: _Group(cls=EcdhKeyExchange, algo=ec.SECP384R1),
-    tls.SupportedGroups.SECP521R1: _Group(cls=EcdhKeyExchange, algo=ec.SECP521R1),
-    tls.SupportedGroups.BRAINPOOLP256R1: _Group(
-        cls=EcdhKeyExchange, algo=ec.BrainpoolP256R1
-    ),
-    tls.SupportedGroups.BRAINPOOLP384R1: _Group(
-        cls=EcdhKeyExchange, algo=ec.BrainpoolP384R1
-    ),
-    tls.SupportedGroups.BRAINPOOLP512R1: _Group(
-        cls=EcdhKeyExchange, algo=ec.BrainpoolP512R1
-    ),
-    tls.SupportedGroups.X25519: _Group(cls=XKeyExchange, algo=None),
-    tls.SupportedGroups.X448: _Group(cls=XKeyExchange, algo=None),
-    tls.SupportedGroups.FFDHE2048: _Group(cls=DhKeyExchange, algo=None),
-    tls.SupportedGroups.FFDHE3072: _Group(cls=DhKeyExchange, algo=None),
-    tls.SupportedGroups.FFDHE4096: _Group(cls=DhKeyExchange, algo=None),
-    tls.SupportedGroups.FFDHE6144: _Group(cls=DhKeyExchange, algo=None),
-    tls.SupportedGroups.FFDHE8192: _Group(cls=DhKeyExchange, algo=None),
-}

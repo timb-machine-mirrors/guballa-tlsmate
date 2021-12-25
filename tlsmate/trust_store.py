@@ -3,14 +3,12 @@
 """
 # import basic stuff
 import logging
-from typing import List, Any, Optional, TYPE_CHECKING
+from typing import List, Any, Optional
 
 # import own stuff
 import tlsmate.cert as crt
 import tlsmate.cert_utils as cert_utils
-
-if TYPE_CHECKING:
-    from tlsmate.tlsmate import TlsMate
+import tlsmate.tlsmate as tm
 
 # import other stuff
 import pem
@@ -27,7 +25,7 @@ class TrustStore(object):
             PEM-format.
     """
 
-    def __init__(self, tlsmate: "TlsMate") -> None:
+    def __init__(self, tlsmate: "tm.TlsMate") -> None:
         self._recorder = tlsmate.recorder
         self._ca_files: Optional[List[str]] = None
         self._cert_cache: List[crt.Certificate] = []

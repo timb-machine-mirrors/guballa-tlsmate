@@ -2,11 +2,10 @@
 """Module containing exception definitions
 """
 # import basic stuff
-from typing import Optional, Union, TYPE_CHECKING
+from typing import Optional, Union
 
 # import own stuff
-if TYPE_CHECKING:
-    from tlsmate import tls
+import tlsmate.tls as tls
 
 # import other stuff
 

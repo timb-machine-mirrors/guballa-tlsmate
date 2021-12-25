@@ -3,14 +3,12 @@
 """
 # import basic stuff
 import pem
-from typing import Any, List, Tuple, Set, Optional, TYPE_CHECKING
+from typing import Any, List, Tuple, Set, Optional
 
 # import own stuff
 import tlsmate.cert_chain as cert_chain
 import tlsmate.tls as tls
-
-if TYPE_CHECKING:
-    from tlsmate.tlsmate import TlsMate
+import tlsmate.tlsmate as tm
 
 # import other stuff
 from cryptography.hazmat.primitives import serialization
@@ -30,12 +28,12 @@ class ClientAuth(object):
         tlsmate: The tlsmate application object.
     """
 
-    def __init__(self, tlsmate: "TlsMate") -> None:
+    def __init__(self, tlsmate: "tm.TlsMate") -> None:
         self._used_idx: Set[int] = set()
         self._auth: List[Tuple[PrivateKey, cert_chain.CertChain]] = []
         self._recorder = tlsmate.recorder
 
-    def add_auth(self, key: PrivateKey, chain: cert_chain.CertChain) -> None:
+    def add_auth(self, key: PrivateKey, chain: "cert_chain.CertChain") -> None:
         """Add a client auth set to this object.
 
         Arguments:
@@ -137,7 +135,7 @@ class ClientAuth(object):
         chn.deserialize(chain)
         self.add_auth(priv_key, chn)
 
-    def get_chain(self, idx: int) -> cert_chain.CertChain:
+    def get_chain(self, idx: int) -> "cert_chain.CertChain":
         """For the given reference return the corresponding certificate chain.
 
         Arguments:

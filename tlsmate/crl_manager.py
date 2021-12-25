@@ -4,16 +4,14 @@
 
 # import basic stuff
 import logging
-from typing import Optional, Dict, List, TYPE_CHECKING
+from typing import Optional, Dict, List
 import datetime
 
 # import own stuff
 import tlsmate.cert as crt
 import tlsmate.cert_utils as cert_utils
 import tlsmate.tls as tls
-
-if TYPE_CHECKING:
-    from tlsmate.tlsmate import TlsMate
+import tlsmate.tlsmate as tm
 
 # import other stuff
 import requests
@@ -24,7 +22,7 @@ class CrlManager(object):
     """Handles all CRL related operations and acts as a cache as well
     """
 
-    def __init__(self, tlsmate: "TlsMate") -> None:
+    def __init__(self, tlsmate: "tm.TlsMate") -> None:
         self._crls: Dict[str, Optional[x509.CertificateRevocationList]] = {}
         self._recorder = tlsmate.recorder
 
