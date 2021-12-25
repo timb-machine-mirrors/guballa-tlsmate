@@ -8,7 +8,7 @@ from typing import List, Any, Optional
 # import own stuff
 import tlsmate.cert as crt
 import tlsmate.cert_utils as cert_utils
-import tlsmate.tlsmate as tm
+import tlsmate.recorder as rec
 
 # import other stuff
 import pem
@@ -25,8 +25,8 @@ class TrustStore(object):
             PEM-format.
     """
 
-    def __init__(self, tlsmate: "tm.TlsMate") -> None:
-        self._recorder = tlsmate.recorder
+    def __init__(self, recorder: rec.Recorder) -> None:
+        self._recorder = recorder
         self._ca_files: Optional[List[str]] = None
         self._cert_cache: List[crt.Certificate] = []
         self._fingerprint_cache: List[bytes] = []

@@ -66,7 +66,7 @@ class TlsMate(object):
         self.config = config
         self.server_profile = server_profile.ServerProfile()
         self.recorder = rec.Recorder(config=config)
-        self.trust_store = trust_store.TrustStore(tlsmate=self)
+        self.trust_store = trust_store.TrustStore(recorder=self.recorder)
         self.client_auth = client_auth.ClientAuth(tlsmate=self)
         self.crl_manager = crl_manager.CrlManager(tlsmate=self)
         self.cert_chain_cache = cert_chain.CertChainCache()
