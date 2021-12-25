@@ -9,7 +9,7 @@ import io
 import traceback as tb
 import time
 import copy
-from typing import Optional, Any, Type, Dict, Callable, Tuple, Union, cast, NamedTuple
+from typing import Optional, Any, Type, Dict, Callable, Tuple, Union, cast
 
 # import own stuff
 import tlsmate.cert as crt
@@ -461,30 +461,6 @@ class TlsConnection(object):
         else:
             return True
 
-    def _instantiate_named_group(
-        self, group_name: tls.SupportedGroups
-    ) -> "kex.KeyExchange":
-        """Create a KeyExchange object according to the given group name.
-
-        Arguments:
-            group_name: the group name
-
-        Returns:
-            the created object
-        """
-
-        group = _supported_groups.get(group_name)
-        if group is None:
-            raise ex.CurveNotSupportedError(
-                f"the group {group_name} is not supported", group_name
-            )
-
-        kwargs: Dict[str, Any] = {"group_name": group_name}
-        if group.algo is not None:
-            kwargs["algo"] = group.algo
-
-        return group.cls(self, self.recorder, **kwargs)
-
     def get_key_share(self, group: tls.SupportedGroups) -> bytes:
         """Provide the key share for a given group.
 
@@ -495,7 +471,7 @@ class TlsConnection(object):
             the created key exchange object
         """
 
-        key_share = self._instantiate_named_group(group)
+        key_share = kex.instantiate_named_group(self.recorder, group)
         self._key_shares[group] = key_share
         return key_share.get_key_share()
 
@@ -776,11 +752,17 @@ class TlsConnection(object):
     def _generate_cke(self, cls):
         key_ex_type = self.cs_details.key_algo_struct.key_ex_type
         if self._key_exchange is None:
+            cert = self.msg.server_certificate.chain.certificates[0]
+            pub_key = cert.parsed.public_key()
             if key_ex_type is tls.KeyExchangeType.RSA:
-                self._key_exchange = kex.RsaKeyExchange(self, self.recorder)
+                self._key_exchange = kex.RsaKeyExchange(self.recorder)
+                self._key_exchange.set_params(
+                    version=self.version, rem_public_key=pub_key,
+                )
 
             elif key_ex_type is tls.KeyExchangeType.ECDH:
-                self._key_exchange = kex.EcdhKeyExchangeCertificate(self, self.recorder)
+                self._key_exchange = kex.EcdhKeyExchangeCertificate(self.recorder)
+                self._key_exchange.set_params(rem_public_key=pub_key)
 
         self.premaster_secret = self._key_exchange.get_shared_secret()
         self.recorder.trace(pre_master_secret=self.premaster_secret)
@@ -1248,7 +1230,9 @@ class TlsConnection(object):
 
             if ske.ec.named_curve is not None:
                 logging.debug(f"named curve: {ske.ec.named_curve}")
-                self._key_exchange = self._instantiate_named_group(ske.ec.named_curve)
+                self._key_exchange = kex.instantiate_named_group(
+                    self.recorder, ske.ec.named_curve
+                )
                 self._key_exchange.set_remote_key(ske.ec.public)
 
         elif ske.dh is not None:
@@ -1257,7 +1241,7 @@ class TlsConnection(object):
                 self._handle_signed_params(dh, "DH")
 
             logging.debug(f"DH group size: {len(dh.p_val) * 8}")
-            self._key_exchange = kex.DhKeyExchange(self, self.recorder)
+            self._key_exchange = kex.DhKeyExchange(self.recorder)
             self._key_exchange.set_remote_key(
                 dh.public_key, g_val=dh.g_val, p_val=dh.p_val
             )
@@ -1982,47 +1966,3 @@ class TlsConnection(object):
                 self.send(msg.Finished)
                 self.wait(msg.ChangeCipherSpec)
                 self.wait(msg.Finished)
-
-
-class _Group(NamedTuple):
-    """Structure for a group
-    """
-
-    cls: type
-    algo: Optional[type]
-
-
-_supported_groups = {
-    tls.SupportedGroups.SECT163K1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT163K1),
-    tls.SupportedGroups.SECT163R2: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT163R2),
-    tls.SupportedGroups.SECT233K1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT233K1),
-    tls.SupportedGroups.SECT233R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT233R1),
-    tls.SupportedGroups.SECT283K1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT283K1),
-    tls.SupportedGroups.SECT283R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT283R1),
-    tls.SupportedGroups.SECT409K1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT409K1),
-    tls.SupportedGroups.SECT409R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT409R1),
-    tls.SupportedGroups.SECT571K1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT571K1),
-    tls.SupportedGroups.SECT571R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECT571R1),
-    tls.SupportedGroups.SECP192R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECP192R1),
-    tls.SupportedGroups.SECP224R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECP224R1),
-    tls.SupportedGroups.SECP256K1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECP256K1),
-    tls.SupportedGroups.SECP256R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECP256R1),
-    tls.SupportedGroups.SECP384R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECP384R1),
-    tls.SupportedGroups.SECP521R1: _Group(cls=kex.EcdhKeyExchange, algo=ec.SECP521R1),
-    tls.SupportedGroups.BRAINPOOLP256R1: _Group(
-        cls=kex.EcdhKeyExchange, algo=ec.BrainpoolP256R1
-    ),
-    tls.SupportedGroups.BRAINPOOLP384R1: _Group(
-        cls=kex.EcdhKeyExchange, algo=ec.BrainpoolP384R1
-    ),
-    tls.SupportedGroups.BRAINPOOLP512R1: _Group(
-        cls=kex.EcdhKeyExchange, algo=ec.BrainpoolP512R1
-    ),
-    tls.SupportedGroups.X25519: _Group(cls=kex.XKeyExchange, algo=None),
-    tls.SupportedGroups.X448: _Group(cls=kex.XKeyExchange, algo=None),
-    tls.SupportedGroups.FFDHE2048: _Group(cls=kex.DhKeyExchange, algo=None),
-    tls.SupportedGroups.FFDHE3072: _Group(cls=kex.DhKeyExchange, algo=None),
-    tls.SupportedGroups.FFDHE4096: _Group(cls=kex.DhKeyExchange, algo=None),
-    tls.SupportedGroups.FFDHE6144: _Group(cls=kex.DhKeyExchange, algo=None),
-    tls.SupportedGroups.FFDHE8192: _Group(cls=kex.DhKeyExchange, algo=None),
-}
