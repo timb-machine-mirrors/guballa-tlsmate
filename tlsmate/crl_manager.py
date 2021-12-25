@@ -9,9 +9,9 @@ import datetime
 
 # import own stuff
 import tlsmate.cert as crt
+import tlsmate.recorder as rec
 import tlsmate.cert_utils as cert_utils
 import tlsmate.tls as tls
-import tlsmate.tlsmate as tm
 
 # import other stuff
 import requests
@@ -22,9 +22,9 @@ class CrlManager(object):
     """Handles all CRL related operations and acts as a cache as well
     """
 
-    def __init__(self, tlsmate: "tm.TlsMate") -> None:
+    def __init__(self, recorder: rec.Recorder) -> None:
         self._crls: Dict[str, Optional[x509.CertificateRevocationList]] = {}
-        self._recorder = tlsmate.recorder
+        self._recorder = recorder
 
     def add_crl(
         self, url: str, der_crl: Optional[bytes] = None, pem_crl: Optional[bytes] = None
