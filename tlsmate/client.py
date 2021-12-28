@@ -56,11 +56,11 @@ class Client(object):
 
     @property
     def session_state_ticket(self) -> Optional[structs.SessionStateTicket]:
-        return self._target.session_state_ticket
+        return self._session.session_state_ticket
 
     @property
     def server_issues(self) -> List[structs.Malfunction]:
-        return self._target.server_issues
+        return self._session.server_issues
 
     def __init__(
         self,
@@ -86,7 +86,9 @@ class Client(object):
         self.profile: client_state.ClientProfile = client_state.create_profile(
             tls.Profile.MODERN
         )
-        self._target = client_state.TargetState(self._host, self._port, self._sni)
+        self._session = client_state.SessionState(
+            self._host, self._port, self._sni, self._recorder
+        )
 
     def init_profile(
         self, profile_values: Optional[structs.ProfileValues] = None
@@ -175,9 +177,11 @@ class Client(object):
         if target_host != self._host or target_sni != self._sni:
             self._host = target_host
             self._sni = target_sni
-            self._target = client_state.TargetState(target_host, self._port, self._sni)
+            self._session = client_state.SessionState(
+                target_host, self._port, self._sni, self._recorder,
+            )
 
-        self._target.port = self._port
+        self._session.port = self._port
 
         interval = self._config.get("interval")
         if interval:
@@ -185,7 +189,7 @@ class Client(object):
 
         return conn.TlsConnection(
             profile=self.profile,
-            target=self._target,
+            session=self._session,
             config=self._config,
             recorder=self._recorder,
             client_auth=self._client_auth,
@@ -206,7 +210,7 @@ class Client(object):
         return self._sni
 
     def client_hello(self) -> msg.ClientHello:
-        """Constructs a client hello dependent on the client profile and the target.
+        """Constructs a client hello dependent on the client profile and the session.
 
         This method is deprecated and will likely be removed with the next
         major release. It is kept here for backward compatibility reasons.
@@ -216,6 +220,6 @@ class Client(object):
         """
 
         # TODO: remove method with the next major release
-        return client_state.client_hello(
-            self.profile, self._target, self._recorder, self._client_auth
+        return msg.client_hello(
+            self.profile, self._session, self._recorder, self._client_auth
         )

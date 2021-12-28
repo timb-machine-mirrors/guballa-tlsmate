@@ -3,16 +3,13 @@
 """
 # import basic stuff
 from dataclasses import dataclass, field
-from typing import List, Optional, Union, Mapping, Callable
+from typing import List, Optional, Union, Mapping, Callable, Dict
 
 # import own stuff
-import tlsmate.client_auth as client_auth
-import tlsmate.ext as ext
-import tlsmate.msg as msg
+import tlsmate.key_exchange as kex
 import tlsmate.recorder as rec
 import tlsmate.structs as structs
 import tlsmate.tls as tls
-import tlsmate.utils as utils
 
 
 @dataclass
@@ -459,17 +456,25 @@ def init_profile(
     return profile
 
 
-class TargetState(object):
-    """Represents the data associated with the target
+class SessionState(object):
+    """Represents the data associated with the targe.
+
+    The lifetime of this object exceeds the lifetime of a connection.
     """
 
-    def __init__(self, host: str, port: int, sni: Optional[str]) -> None:
-        self.session_state_id: Optional[structs.SessionStateId] = None
-        self.session_state_ticket: Optional[structs.SessionStateTicket] = None
-        self.psks: List[structs.Psk] = []
+    def __init__(
+        self, host: str, port: int, sni: Optional[str], recorder: rec.Recorder
+    ) -> None:
+        self.recorder = recorder
         self.host: str = host
         self.port: int = port
         self.sni: Optional[str] = sni
+        self.session_state_id: Optional[structs.SessionStateId] = None
+        self.session_state_ticket: Optional[structs.SessionStateTicket] = None
+        self.psks: List[structs.Psk] = []
+        self.key_shares: Dict[tls.SupportedGroups, kex.KeyExchange] = {}
+        self.version: Optional[tls.Version] = None
+        self.cs_details: Optional[structs.CipherSuiteDetails] = None
         self.server_issues: List[structs.Malfunction] = []
 
     def save_session_state_id(self, session_state: structs.SessionStateId) -> None:
@@ -543,132 +548,19 @@ class TargetState(object):
         if malfunction not in self.server_issues:
             self.server_issues.append(malfunction)
 
+    def create_key_share(self, group: tls.SupportedGroups) -> bytes:
+        """Provide the key share for a given group.
 
-def client_hello(
-    profile: ClientProfile,
-    target: TargetState,
-    recorder: rec.Recorder,
-    client_auth: client_auth.ClientAuth,
-) -> msg.ClientHello:
+        Arguments:
+            group: the group to create a key share for
 
-    """Populate a ClientHello message according to the client profile and target state.
+        Returns:
+            the key to exchange with the remote side
+        """
 
-    Returns:
-        the ClientHello object
-    """
-    ch = msg.ClientHello()
-    max_version = max(profile.versions)
-    if max_version is tls.Version.TLS13:
-        ch.version = tls.Version.TLS12
-
-    else:
-        ch.version = max_version
-
-    ch.random = None  # will be provided autonomously
-
-    if profile.support_session_ticket and target.session_state_ticket is not None:
-        ch.session_id = bytes.fromhex("dead beef")
-
-    elif profile.support_session_id and target.session_state_id is not None:
-        ch.session_id = target.session_state_id.session_id
-
-    else:
-        ch.session_id = b""
-
-    ch.cipher_suites = profile.cipher_suites[:]
-
-    ch.compression_methods = profile.compression_methods
-    if ch.version == tls.Version.SSL30:
-        ch.extensions = None  # type: ignore
-
-    else:
-        if profile.support_sni:
-            ch.extensions.append(ext.ExtServerNameIndication(host_name=target.sni))
-
-        if profile.support_extended_master_secret:
-            ch.extensions.append(ext.ExtExtendedMasterSecret())
-
-        if profile.ec_point_formats is not None:
-            ch.extensions.append(
-                ext.ExtEcPointFormats(ec_point_formats=profile.ec_point_formats)
-            )
-
-        if profile.supported_groups is not None:
-            if max_version is tls.Version.TLS13 or bool(
-                utils.filter_cipher_suites(
-                    ch.cipher_suites, key_exch=[tls.KeyExchangeType.ECDH]
-                )
-            ):
-                ch.extensions.append(
-                    ext.ExtSupportedGroups(supported_groups=profile.supported_groups)
-                )
-
-        if profile.support_status_request_v2 is not tls.StatusType.NONE:
-            ch.extensions.append(
-                ext.ExtStatusRequestV2(status_type=profile.support_status_request_v2)
-            )
-
-        if profile.support_status_request:
-            ch.extensions.append(ext.ExtStatusRequest())
-
-        # RFC5246, 7.4.1.4.1.: Clients prior to TLS12 MUST NOT send this extension
-        if (
-            profile.signature_algorithms is not None
-            and max_version >= tls.Version.TLS12
-        ):
-            ch.extensions.append(
-                ext.ExtSignatureAlgorithms(
-                    signature_algorithms=profile.signature_algorithms
-                )
-            )
-
-        if profile.support_encrypt_then_mac:
-            ch.extensions.append(ext.ExtEncryptThenMac())
-
-        if profile.support_session_ticket:
-            kwargs = {}
-            if target.session_state_ticket is not None:
-                kwargs["ticket"] = target.session_state_ticket.ticket
-
-            ch.extensions.append(ext.ExtSessionTicket(**kwargs))
-
-        if profile.heartbeat_mode:
-            ch.extensions.append(
-                ext.ExtHeartbeat(heartbeat_mode=profile.heartbeat_mode)
-            )
-
-        if tls.Version.TLS13 in profile.versions:
-            if recorder.inject(client_auth=client_auth.supported()):
-                ch.extensions.append(ext.ExtPostHandshakeAuth())
-
-            ch.extensions.append(
-                ext.ExtSupportedVersions(
-                    versions=sorted(profile.versions, reverse=True)
-                )
-            )
-            # TLS13 key shares: enforce the same sequence as in supported groups
-            if profile.key_shares and profile.supported_groups:
-                groups = [
-                    group
-                    for group in profile.supported_groups
-                    if group in profile.key_shares
-                ]
-
-            else:
-                groups = []
-
-            ch.extensions.append(ext.ExtKeyShare(groups=groups))
-
-            if profile.early_data is not None:
-                ch.extensions.append(ext.ExtEarlyData())
-
-            if profile.support_psk and target.psks:
-                ch.extensions.append(
-                    ext.ExtPskKeyExchangeMode(modes=profile.psk_key_exchange_modes)
-                )
-                ch.extensions.append(ext.ExtPreSharedKey(psks=target.psks[:1]))
-
-    return ch
+        key_share = kex.instantiate_named_group(self.recorder, group)
+        self.key_shares[group] = key_share
+        return key_share.get_key_share()
 
 
 class ClientState(object):

@@ -334,7 +334,7 @@ class TlsConnection(object):
     def __init__(
         self,
         profile: client_state.ClientProfile,
-        target: client_state.TargetState,
+        session: client_state.SessionState,
         config: conf.Configuration,
         recorder: rec.Recorder,
         client_auth: client_auth.ClientAuth,
@@ -343,9 +343,9 @@ class TlsConnection(object):
 
         self._client_auth = client_auth
         self._client_state = client_state
-        self._target = target
+        self._session = session
         self._profile = profile
-        self._server_l4 = resolver.determine_l4_addr(target.host, target.port)
+        self._server_l4 = resolver.determine_l4_addr(session.host, session.port)
         self.msg = TlsConnectionMsgs()
         self._record_layer = rl.RecordLayer(config=config, recorder=recorder)
         self._defragmenter = TlsDefragmenter(self._record_layer)
@@ -432,7 +432,7 @@ class TlsConnection(object):
 
         logging.debug("exiting context manager...")
         if exc_type is tls.ServerMalfunction:
-            self._target.report_server_issue(
+            self._session.report_server_issue(
                 exc_value.issue, exc_value.message, exc_value.extension
             )
             logging.warning(f"ServerMalfunction exception: {exc_value.args[0]}")
@@ -589,8 +589,8 @@ class TlsConnection(object):
         if self._is_client_hello_retry():
             return self._generate_retry_client_hello()
 
-        message = client_state.client_hello(
-            self._profile, self._target, self.recorder, self._client_auth
+        message = msg.client_hello(
+            self._profile, self._session, self.recorder, self._client_auth
         )
         if self._secure_reneg_request:
             if self._initial_handshake is None:
@@ -727,6 +727,7 @@ class TlsConnection(object):
             cs_details = utils.get_cipher_suite_details(
                 self._ext_psk.psks[0].cipher_suite
             )
+            self._session.cs_details = cs_details
 
             enc = self.early_data.kdf.hkdf_expand_label(
                 early_tr_secret, "key", b"", cs_details.cipher_struct.key_len
@@ -1004,7 +1005,7 @@ class TlsConnection(object):
             sni = sni_ext.host_name
 
         else:
-            sni = self._target.sni
+            sni = self._session.sni
             if sni is None:
                 raise ValueError("No SNI defined")
 
@@ -1047,7 +1048,7 @@ class TlsConnection(object):
             logging.info(f"{utils.Log.time()}: ==> {message.msg_type}")
             self._pre_serialization_hook(message)
             self._msg_logging(message)
-            msg_data = message.serialize(self)  # type: ignore
+            msg_data = message.serialize(self._session)
             msg_data = self._post_serialization_hook(message, msg_data)
             self.msg.store_msg(message, received=False)
             if message.content_type == tls.ContentType.HANDSHAKE:
@@ -1089,7 +1090,7 @@ class TlsConnection(object):
 
         else:
             share_entry = key_share_ext.key_shares[0]
-            self._key_exchange = self._key_shares[share_entry.group]
+            self._key_exchange = self._session.key_shares[share_entry.group]
             self._key_exchange.set_remote_key(
                 share_entry.key_exchange, group=share_entry.group
             )
@@ -1104,10 +1105,12 @@ class TlsConnection(object):
                 self.abbreviated_hs = True
                 # TODO: check version and ciphersuite
                 if self._ticket_sent:
-                    self.master_secret = self._target.session_state_ticket.master_secret
+                    self.master_secret = (
+                        self._session.session_state_ticket.master_secret
+                    )
 
                 else:
-                    self.master_secret = self._target.session_state_id.master_secret
+                    self.master_secret = self._session.session_state_id.master_secret
 
                 logging.debug(f"master_secret: {pdu.dump(self.master_secret)}")
                 kl.KeyLogger.master_secret(self.client_random, self.master_secret)
@@ -1156,6 +1159,7 @@ class TlsConnection(object):
         self.server_random = sh.random
         logging.debug(f"server random: {pdu.dump(sh.random)}")
         self.version = sh.get_version()
+        self._session.version = self.version
         logging.info(f"version: {self.version}")
         logging.info(f"cipher suite: 0x{sh.cipher_suite.value:04x} {sh.cipher_suite}")
         if not self.msg.hello_retry_request:
@@ -1226,7 +1230,7 @@ class TlsConnection(object):
                     )
 
                 else:
-                    self._target.report_server_issue(issue)
+                    self._session.report_server_issue(issue)
 
     def _on_server_key_exchange_received(self, ske, msg_bytes):
         if not (ske.ec or ske.dh):
@@ -1350,7 +1354,7 @@ class TlsConnection(object):
             )
             logging.debug(f"PSK: {pdu.dump(psk)}")
             ext.log_extensions(nst.extensions)
-            self._target.save_psk(
+            self._session.save_psk(
                 structs.Psk(
                     psk=psk,
                     lifetime=nst.lifetime,
@@ -1364,7 +1368,7 @@ class TlsConnection(object):
             )
 
         else:
-            self._target.save_session_state_ticket(
+            self._session.save_session_state_ticket(
                 structs.SessionStateTicket(
                     ticket=nst.ticket,
                     lifetime=nst.lifetime,
@@ -1495,7 +1499,7 @@ class TlsConnection(object):
             return None, None
 
         if mb.content_type is tls.ContentType.HANDSHAKE:
-            message = msg.HandshakeMessage.deserialize(mb.msg, self)
+            message = msg.HandshakeMessage.deserialize(mb.msg, self._session)
             if message.msg_type is tls.HandshakeType.FINISHED:
                 self._pre_finished_digest = self._kdf.current_msg_digest(
                     suspend=self._finished_treated
@@ -1509,19 +1513,19 @@ class TlsConnection(object):
 
         elif mb.content_type is tls.ContentType.ALERT:
             self.alert_received = True
-            message = msg.Alert.deserialize(mb.msg, self)
+            message = msg.Alert.deserialize(mb.msg, self._session)
 
         elif mb.content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
-            message = msg.ChangeCipherSpecMessage.deserialize(mb.msg, self)
+            message = msg.ChangeCipherSpecMessage.deserialize(mb.msg, self._session)
 
         elif mb.content_type is tls.ContentType.APPLICATION_DATA:
-            message = msg.AppDataMessage.deserialize(mb.msg, self)
+            message = msg.AppDataMessage.deserialize(mb.msg, self._session)
 
         elif mb.content_type is tls.ContentType.HEARTBEAT:
-            message = msg.HeartbeatMessage.deserialize(mb.msg, self)
+            message = msg.HeartbeatMessage.deserialize(mb.msg, self._session)
 
         elif mb.content_type is tls.ContentType.SSL2:
-            message = msg.SSL2Message.deserialize(mb.msg, self)
+            message = msg.SSL2Message.deserialize(mb.msg, self._session)
 
         else:
             raise ValueError("Content type unknown")
@@ -1666,6 +1670,7 @@ class TlsConnection(object):
     def _update_cipher_suite(self, cipher_suite):
         self.cipher_suite = cipher_suite
         self.cs_details = utils.get_cipher_suite_details(cipher_suite)
+        self._session.cs_details = self.cs_details
 
         if not self.cs_details.full_hs:
             logging.debug(
@@ -1706,7 +1711,7 @@ class TlsConnection(object):
         logging.debug(f"master_secret: {pdu.dump(self.master_secret)}")
         self.recorder.trace(master_secret=self.master_secret)
         if self._new_session_id is not None:
-            self._target.save_session_state_id(
+            self._session.save_session_state_id(
                 structs.SessionStateId(
                     session_id=self._new_session_id,
                     cipher_suite=self.cipher_suite,
