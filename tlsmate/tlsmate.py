@@ -109,4 +109,6 @@ class TlsMate(object):
                 # TODO: resolve type issue
                 self.client_auth.deserialize_key_chain(key_chain)  # type: ignore
 
-        self.client = client.Client(tlsmate=self)
+        self.client = client.Client(
+            config=config, recorder=self.recorder, client_auth=self.client_auth
+        )

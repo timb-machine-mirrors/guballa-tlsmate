@@ -10,11 +10,11 @@ import sys
 from typing import Tuple, Optional
 
 # import own stuff
+import tlsmate.config as conf
 import tlsmate.recorder as rec
 import tlsmate.resolver as resolver
 import tlsmate.structs as structs
 import tlsmate.tls as tls
-import tlsmate.tlsmate as tm
 import tlsmate.utils as utils
 
 # import other stuff
@@ -27,10 +27,10 @@ class Socket(object):
         tlsmate: the application object
     """
 
-    def __init__(self, tlsmate: "tm.TlsMate") -> None:
+    def __init__(self, config: conf.Configuration, recorder: rec.Recorder) -> None:
         self._socket: Optional[socket.socket] = None
-        self._config = tlsmate.config
-        self._recorder = tlsmate.recorder
+        self._config = config
+        self._recorder = recorder
         self._fragment_max_size = 16384
 
     def open_socket(self, l4_addr: structs.TransportEndpoint) -> None:

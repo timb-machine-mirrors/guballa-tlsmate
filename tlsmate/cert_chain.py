@@ -21,49 +21,6 @@ from cryptography.x509.oid import AuthorityInformationAccessOID
 from cryptography.exceptions import InvalidSignature
 
 
-class CertChainCache(object):
-    """Caches the validation state for a given certificate chain
-    """
-
-    _CACHE_SIZE = 100
-
-    def __init__(self):
-        self._cache = {}
-
-    def get_cached_validation_state(self, cert_chain: "CertChain") -> bool:
-        """Returns the validation state of a certificate chain from the cache.
-
-        If not present in the cache, the certificate chain is added with the status
-        False.
-
-        Arguments:
-            cert_chain: the certificate chain object
-
-        Returns:
-            the validation status of the certificate chain from the cache or
-            None if the certificate chain is not found.
-        """
-
-        val = self._cache.get(cert_chain.digest)
-        if val is None:
-            # Here keep cache at a reasonable size
-            if len(self._cache) >= self._CACHE_SIZE:
-                del self._cache[next(iter(self._cache))]
-
-            self._cache[cert_chain.digest] = False
-
-        return val
-
-    def update_cached_validation_state(self, cert_chain: "CertChain") -> None:
-        """Updates a certificate chain entry in the cache.
-
-        Arguments:
-            cert_chain: the certificate chain object
-        """
-
-        self._cache[cert_chain.digest] = cert_chain.successful_validation
-
-
 class CertChain(object):
     """Class representing a certificate chain.
 
@@ -512,3 +469,46 @@ class CertChain(object):
         """
         for cert in chain:
             self.append_bin_cert(bytes.fromhex(cert))
+
+
+class CertChainCache(object):
+    """Caches the validation state for a given certificate chain
+    """
+
+    _CACHE_SIZE = 100
+
+    def __init__(self):
+        self._cache = {}
+
+    def get_cached_validation_state(self, cert_chain: CertChain) -> bool:
+        """Returns the validation state of a certificate chain from the cache.
+
+        If not present in the cache, the certificate chain is added with the status
+        False.
+
+        Arguments:
+            cert_chain: the certificate chain object
+
+        Returns:
+            the validation status of the certificate chain from the cache or
+            None if the certificate chain is not found.
+        """
+
+        val = self._cache.get(cert_chain.digest)
+        if val is None:
+            # Here keep cache at a reasonable size
+            if len(self._cache) >= self._CACHE_SIZE:
+                del self._cache[next(iter(self._cache))]
+
+            self._cache[cert_chain.digest] = False
+
+        return val
+
+    def update_cached_validation_state(self, cert_chain: "CertChain") -> None:
+        """Updates a certificate chain entry in the cache.
+
+        Arguments:
+            cert_chain: the certificate chain object
+        """
+
+        self._cache[cert_chain.digest] = cert_chain.successful_validation

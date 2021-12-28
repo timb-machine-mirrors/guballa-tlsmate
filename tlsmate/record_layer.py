@@ -6,12 +6,13 @@ import logging
 from typing import Any, Optional
 
 # import own stuff
+import tlsmate.config as conf
 import tlsmate.pdu as pdu
 import tlsmate.record_layer_state as record_layer_state
+import tlsmate.recorder as rec
 import tlsmate.socket as socket
 import tlsmate.structs as structs
 import tlsmate.tls as tls
-import tlsmate.tlsmate as tm
 
 # import other stuff
 
@@ -20,17 +21,14 @@ class RecordLayer(object):
     """Class implementing the record layer.
     """
 
-    def __init__(self, tlsmate: "tm.TlsMate", l4_addr) -> None:
-        self._l4_addr = l4_addr  # TODO: check, if this is actually used.
-        self._tlsmate = tlsmate
+    def __init__(self, config: conf.Configuration, recorder: rec.Recorder) -> None:
         self._send_buffer = bytearray()
         self._receive_buffer = bytearray()
         self._fragment_max_size = 4 * 4096
         self._write_state: Optional[record_layer_state.RecordLayerState] = None
         self._read_state: Optional[record_layer_state.RecordLayerState] = None
-        self._socket = socket.Socket(tlsmate)
+        self._socket = socket.Socket(config=config, recorder=recorder)
         self._flush_each_fragment = False
-        self._recorder = tlsmate.recorder
         self._ssl2 = False
 
     def _send_fragment(self, rl_msg: structs.RecordLayerMsg, **kwargs: Any) -> None:

@@ -28,7 +28,7 @@ class KeyExchange(metaclass=abc.ABCMeta):
     """The abstract class to derive different key exchange classes from
     """
 
-    def __init__(self, recorder: "rec.Recorder", **kwargs: Any) -> None:
+    def __init__(self, recorder: rec.Recorder, **kwargs: Any) -> None:
         self._recorder = recorder
 
     @abc.abstractmethod
@@ -475,7 +475,7 @@ class XKeyExchange(KeyExchange):
 
 
 def instantiate_named_group(
-    recorder: "rec.Recorder", group_name: tls.SupportedGroups
+    recorder: rec.Recorder, group_name: tls.SupportedGroups
 ) -> KeyExchange:
     """Create a KeyExchange object according to the given group name.
 
