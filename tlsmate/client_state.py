@@ -561,11 +561,3 @@ class SessionState(object):
         key_share = kex.instantiate_named_group(self.recorder, group)
         self.key_shares[group] = key_share
         return key_share.get_key_share()
-
-
-class ClientState(object):
-    """Represents the state of the client.
-    """
-
-    def __init__(self, alert_on_invalid_cert: bool) -> None:
-        self.alert_on_invalid_cert = alert_on_invalid_cert

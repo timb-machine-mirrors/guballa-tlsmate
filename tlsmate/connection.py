@@ -338,11 +338,9 @@ class TlsConnection(object):
         config: conf.Configuration,
         recorder: rec.Recorder,
         client_auth: client_auth.ClientAuth,
-        client_state: client_state.ClientState,
     ) -> None:
 
         self._client_auth = client_auth
-        self._client_state = client_state
         self._session = session
         self._profile = profile
         self._server_l4 = resolver.determine_l4_addr(session.host, session.port)
@@ -384,6 +382,7 @@ class TlsConnection(object):
         self._encrypt_then_mac = False
         self._key_shares: Dict[tls.SupportedGroups, kex.KeyExchange] = {}
         self.res_ms = None
+        self._alert_on_invalid_cert = config.get("alert_on_invalid_cert")
 
         # key exchange
         self.client_random = None
@@ -1009,7 +1008,7 @@ class TlsConnection(object):
             if sni is None:
                 raise ValueError("No SNI defined")
 
-        cert_chain.validate(timestamp, sni, self._client_state.alert_on_invalid_cert)
+        cert_chain.validate(timestamp, sni, self._alert_on_invalid_cert)
 
     def send(
         self,
@@ -1224,7 +1223,7 @@ class TlsConnection(object):
                 cert.issues.append(error)
                 logging.debug(error)
                 issue = tls.ServerIssue.KEX_INVALID_SIGNATURE
-                if self._client_state.alert_on_invalid_cert:
+                if self._alert_on_invalid_cert:
                     raise tls.ServerMalfunction(
                         issue, message=tls.HandshakeType.SERVER_KEY_EXCHANGE
                     )
@@ -1344,7 +1343,7 @@ class TlsConnection(object):
         cert_chain = self.msg.server_certificate.chain
         self._validate_cert_chain(cert_chain)
         self.stapling_status = cert_chain.verify_ocsp_stapling(
-            message.responses, self._client_state.alert_on_invalid_cert
+            message.responses, self._alert_on_invalid_cert
         )
 
     def _on_new_session_ticket_received(self, nst, msg_bytes):
@@ -1400,8 +1399,7 @@ class TlsConnection(object):
             )
             if ext_status_req:
                 self.stapling_status = cert.chain.verify_ocsp_stapling(
-                    [ext_status_req.ocsp_response],
-                    self._client_state.alert_on_invalid_cert,
+                    [ext_status_req.ocsp_response], self._alert_on_invalid_cert,
                 )
 
     def _on_certificate_request_received(self, cert_r, msg_bytes):

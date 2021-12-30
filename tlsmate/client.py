@@ -34,25 +34,23 @@ class Client(object):
     message class and not a message instance is provided in the test case.
     """
 
-    #    """
-    #    Attributes:
-    #        alert_on_invalid_cert: Controls the behavior in case a certificate or
-    #            the complete certificate chain cannot successfully be validated. If
-    #            True, the connection will be closed with a fatal alert. If False,
-    #            the connection continues. The latter is useful for scanning a
-    #            server, as the handshake would be aborted prematurely otherwise.
-    #    """
-
     # The following properties are deprecated and will likely be removed with the next
     # major release. They are kept here for backward compatibility reasons.
     # TODO: remove properties with the next major release.
     @property
     def alert_on_invalid_cert(self) -> bool:
-        return self._state.alert_on_invalid_cert
+        """Controls the behavior in case a certificate or
+        the complete certificate chain cannot successfully be validated. If
+        True, the connection will be closed with a fatal alert. If False, the
+        connection continues. The latter is useful for scanning a server, as
+        the handshake would be aborted prematurely otherwise.
+        """
+        return self._alert_on_invalid_cert
 
     @alert_on_invalid_cert.setter
     def alert_on_invalid_cert(self, val: bool) -> None:
-        self._state.alert_on_invalid_cert = val
+        self._alert_on_invalid_cert = val
+        self._config.set("alert_on_invalid_cert", val)
 
     @property
     def session_state_ticket(self) -> Optional[structs.SessionStateTicket]:
@@ -76,7 +74,6 @@ class Client(object):
         self._config = config
         self._recorder = recorder
         self._client_auth = client_auth
-        self._state = client_state.ClientState(alert_on_invalid_cert=True)
 
         self.session_state_id: Optional[structs.SessionStateId] = None
         self.psks: List[structs.Psk] = []
@@ -89,6 +86,7 @@ class Client(object):
         self._session = client_state.SessionState(
             self._host, self._port, self._sni, self._recorder
         )
+        self.alert_on_invalid_cert = True
 
     def init_profile(
         self, profile_values: Optional[structs.ProfileValues] = None
@@ -193,7 +191,6 @@ class Client(object):
             config=self._config,
             recorder=self._recorder,
             client_auth=self._client_auth,
-            client_state=self._state,
         )
 
     def get_sni(self) -> str:
