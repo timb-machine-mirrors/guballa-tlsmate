@@ -5,16 +5,16 @@
 import logging
 
 # import own stuff
-from tlsmate import msg
-from tlsmate import tls
-from tlsmate.plugin import Worker
-from tlsmate import utils
-from tlsmate.server_profile import SPVersion, SPCiphers
+import tlsmate.msg as msg
+import tlsmate.plugin as plg
+import tlsmate.server_profile as server_profile
+import tlsmate.tls as tls
+import tlsmate.utils as utils
 
 # import other stuff
 
 
-class ScanCipherSuites(Worker):
+class ScanCipherSuites(plg.Worker):
     """Scans for the supported versions, cipher suites and certificate chains.
 
     The results are stored in the server profile.
@@ -239,7 +239,7 @@ class ScanCipherSuites(Worker):
                     # are ordered according to the binary representation
                     supported_cs.insert(0, supported_cs.pop())
 
-            ciphers = SPCiphers(
+            ciphers = server_profile.SPCiphers(
                 server_preference=server_prio, cipher_suites=supported_cs
             )
             if version is tls.Version.TLS12:
@@ -311,7 +311,7 @@ class ScanCipherSuites(Worker):
 
         self.server_profile.allocate_versions()
         for version in tls.Version.all():
-            vers_prof = SPVersion(version=version)
+            vers_prof = server_profile.SPVersion(version=version)
             if self.config.get(self.config_mapping[version]):
                 self._enum_version(version, vers_prof)
 

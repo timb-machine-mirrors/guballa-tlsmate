@@ -5,8 +5,8 @@
 from typing import NamedTuple, Any, Optional, Type
 
 # import own stuff
-from tlsmate import tls
-from tlsmate.kdf import Kdf
+import tlsmate.kdf as kdf
+import tlsmate.tls as tls
 
 # import other stuff
 from cryptography.hazmat.primitives import hashes
@@ -38,7 +38,7 @@ class EarlyData(NamedTuple):
     """Set of items required to determine the early data traffic keys
     """
 
-    kdf: Kdf
+    kdf: kdf.Kdf
     early_secret: bytes
     mac_len: int
     binders_bytes: Optional[bytes] = None

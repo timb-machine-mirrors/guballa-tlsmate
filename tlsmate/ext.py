@@ -5,16 +5,14 @@
 # import basic stuff
 import abc
 import time
-from typing import Tuple, Any, Optional, List, Union, Dict, TYPE_CHECKING
+import logging
+from typing import Tuple, Any, Optional, List, Union
 
 # import own stuff
-from tlsmate.exception import ServerMalfunction
-from tlsmate import tls
-from tlsmate import structs
-from tlsmate import pdu
-
-if TYPE_CHECKING:
-    from tlsmate.connection import TlsConnection
+import tlsmate.client_state as client_state
+import tlsmate.tls as tls
+import tlsmate.structs as structs
+import tlsmate.pdu as pdu
 
 # import other stuff
 
@@ -28,29 +26,31 @@ class Extension(metaclass=abc.ABCMeta):
     """
 
     @abc.abstractmethod
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session: client_state.SessionState) -> bytes:
         """Serializes the content of an extension, i.e. excluding the header.
 
         Arguments:
-            conn (:obj:`tlsmate.connection.TlsConnection`): the connection object
-                that will be used to send this extensions.
+            session: the session object that will be used to send this
+                extensions.
 
         Returns:
             bytes: The serialized extensions body.
         """
+
         pass
 
-    def serialize(self, conn: "TlsConnection") -> bytes:
+    def serialize(self, session: client_state.SessionState) -> bytes:
         """Serializes an extensions, including the extensions header.
 
         Arguments:
-            conn: The connection object, needed for some odd cases, e.g. when
-                serializing a key share extensions.
+            session: the session object that will be used to send this
+                extensions.
 
         Returns:
             The serialized extension.
         """
-        ext_body = self._serialize_ext_body(conn)
+
+        ext_body = self._serialize_ext_body(session)
         if self.extension_id is tls.Extension.UNKNOW_EXTENSION:
             ext_id = self.id  # type: ignore
 
@@ -109,7 +109,7 @@ class ExtUnknownExtension(Extension):
         self.id: Optional[int] = kwargs.get("id")
         self.bytes: Optional[bytes] = kwargs.get("bytes")
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         return self.bytes
 
     def _deserialize_ext_body(self, fragment):
@@ -131,7 +131,7 @@ class ExtServerNameIndication(Extension):
     def __init__(self, host_name: Optional[str] = None) -> None:
         self.host_name = host_name
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         # we only support exacly one list element: host_name
         ext = bytearray(pdu.pack_uint8(0))  # host_name
         ext.extend(pdu.pack_uint16(len(self.host_name)))
@@ -146,7 +146,7 @@ class ExtServerNameIndication(Extension):
 
         list_length, offset = pdu.unpack_uint16(fragment, 0)
         if offset + list_length != len(fragment):
-            raise ServerMalfunction(
+            raise tls.ServerMalfunction(
                 tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
@@ -158,7 +158,7 @@ class ExtServerNameIndication(Extension):
                 self.host_name = name.decode()
 
         if self.host_name is None:
-            raise ServerMalfunction(
+            raise tls.ServerMalfunction(
                 tls.ServerIssue.SNI_NO_HOSTNAME, extension=self.extension_id
             )
 
@@ -171,12 +171,12 @@ class ExtExtendedMasterSecret(Extension):
     """:obj:`tlsmate.tls.Extension.EXTENDED_MASTER_SECRET`
     """
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         return b""
 
     def _deserialize_ext_body(self, ext_body):
         if ext_body:
-            raise ServerMalfunction(
+            raise tls.ServerMalfunction(
                 tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
@@ -189,12 +189,12 @@ class ExtEncryptThenMac(Extension):
     """:obj:`tlsmate.tls.Extension.ENCRYPT_THEN_MAC`
     """
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         return b""
 
     def _deserialize_ext_body(self, ext_body):
         if ext_body:
-            raise ServerMalfunction(
+            raise tls.ServerMalfunction(
                 tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
@@ -213,7 +213,7 @@ class ExtRenegotiationInfo(Extension):
     def __init__(self, renegotiated_connection: bytes = b"\0") -> None:
         self.renegotiated_connection = renegotiated_connection
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         ext_body = (
             pdu.pack_uint8(len(self.renegotiated_connection))
             + self.renegotiated_connection
@@ -245,7 +245,7 @@ class ExtEcPointFormats(Extension):
             ec_point_formats if ec_point_formats else [tls.EcPointFormat.UNCOMPRESSED]
         )
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         format_list = bytearray()
         for point_format in self.ec_point_formats:
             if type(point_format) == int:
@@ -263,7 +263,7 @@ class ExtEcPointFormats(Extension):
         self.ec_point_formats = []
         length, offset = pdu.unpack_uint8(ext_body, 0)
         if offset + length != len(ext_body):
-            raise ServerMalfunction(
+            raise tls.ServerMalfunction(
                 tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
@@ -288,7 +288,7 @@ class ExtSupportedGroups(Extension):
     ) -> None:
         self.supported_groups = supported_groups if supported_groups else []
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         group_list = bytearray()
         for group in self.supported_groups:
             group_list.extend(pdu.pack_uint16(getattr(group, "value", group)))
@@ -329,7 +329,7 @@ class ExtSignatureAlgorithms(Extension):
     ) -> None:
         self.signature_algorithms = signature_algorithms if signature_algorithms else []
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         algo_list = bytearray()
         for algo in self.signature_algorithms:
             if type(algo) is tuple:
@@ -369,7 +369,7 @@ class ExtHeartbeat(Extension):
     def __init__(self, heartbeat_mode: Optional[tls.HeartbeatMode] = None) -> None:
         self.heartbeat_mode = heartbeat_mode
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         if type(self.heartbeat_mode) is int:
             val = self.heartbeat_mode
         else:
@@ -396,7 +396,7 @@ class ExtCertificateAuthorities(Extension):
     def __init__(self, authorities: Optional[List[bytes]] = None) -> None:
         self.authorities = authorities if authorities else []
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         raise NotImplementedError(f"serialization of extension {self} not implemented")
 
     def _deserialize_ext_body(self, ext_body):
@@ -422,7 +422,7 @@ class ExtSessionTicket(Extension):
     def __init__(self, ticket: Optional[bytes] = None) -> None:
         self.ticket = ticket
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         ext_body = bytearray()
         if self.ticket is not None:
             ext_body.extend(self.ticket)
@@ -464,7 +464,7 @@ class ExtStatusRequest(Extension):
         self.extensions = extensions
         self.ocsp_response = None
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         ext_body = bytearray()
         ext_body.extend(
             pdu.pack_uint8(getattr(self.status_type, "value", self.status_type))
@@ -529,7 +529,7 @@ class ExtStatusRequestV2(Extension):
 
         self._requests.append((status_type, responder_ids, extensions))
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
 
         ext_body = bytearray()
         for status_type, responder_ids, extensions in self._requests:
@@ -579,7 +579,7 @@ class ExtSupportedVersions(Extension):
     ) -> None:
         self.versions = versions
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         versions = bytearray()
         for version in self.versions:
             versions.extend(pdu.pack_uint16(getattr(version, "value", version)))
@@ -612,7 +612,7 @@ class ExtCookie(Extension):
     def __init__(self, cookie: bytes = b"") -> None:
         self.cookie = cookie
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         ext_body = bytearray()
         ext_body.extend(pdu.pack_uint16(len(self.cookie)))
         ext_body.extend(self.cookie)
@@ -663,11 +663,11 @@ class ExtKeyShare(Extension):
 
         self.key_shares = key_shares
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         key_shares = bytearray()
         for ks in self.key_shares:
             key_shares.extend(pdu.pack_uint16(ks.group.value))
-            share = conn.get_key_share(ks.group)
+            share = session.create_key_share(ks.group)
             key_shares.extend(pdu.pack_uint16(len(share)))
             key_shares.extend(share)
 
@@ -711,13 +711,13 @@ class ExtPreSharedKey(Extension):
         self.psks = psks
         self._bytes_after_ids = 0
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         identities = bytearray()
         binders = bytearray()
         for psk in self.psks:
             identities.extend(pdu.pack_uint16(len(psk.ticket)))
             identities.extend(psk.ticket)
-            timestamp = conn.recorder.inject(timestamp=time.time())
+            timestamp = session.recorder.inject(timestamp=time.time())
             ticket_age = int((timestamp - psk.timestamp) * 1000 + psk.age_add) % (
                 2 ** 32
             )
@@ -753,7 +753,7 @@ class ExtPskKeyExchangeMode(Extension):
     def __init__(self, modes: Optional[List[tls.PskKeyExchangeMode]] = None) -> None:
         self.modes = modes
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         ext_body = bytearray(pdu.pack_uint8(len(self.modes)))
         for mode in self.modes:
             ext_body.extend(pdu.pack_uint8(getattr(mode, "value", mode)))
@@ -778,7 +778,7 @@ class ExtEarlyData(Extension):
     def __init__(self, max_early_data_size: Optional[int] = None) -> None:
         self.max_early_data_size = max_early_data_size
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         if self.max_early_data_size is None:
             return b""
 
@@ -798,12 +798,12 @@ class ExtPostHandshakeAuth(Extension):
     """:obj:`tlsmate.tls.Extension.POST_HANDSHAKE_AUTH`
     """
 
-    def _serialize_ext_body(self, conn):
+    def _serialize_ext_body(self, session):
         return b""
 
     def _deserialize_ext_body(self, ext_body):
         if ext_body:
-            raise ServerMalfunction(
+            raise tls.ServerMalfunction(
                 tls.ServerIssue.EXTENTION_LENGHT_ERROR, extension=self.extension_id
             )
 
@@ -863,3 +863,61 @@ deserialization_map = {
     # tls.Extension.EXTERNAL_SESSION_ID = 56
     tls.Extension.RENEGOTIATION_INFO: ExtRenegotiationInfo,
 }
+
+
+def log_extensions(extensions: List[Extension]) -> None:
+    """Log extensions
+
+    Arguments:
+        extensions: the list of extensions to iterate over
+    """
+
+    for extension in extensions:
+        ext_id = extension.extension_id
+        logging.debug(f"extension {ext_id.value} {ext_id}")
+
+
+def get_extension(
+    extensions: List[Extension], ext_id: tls.Extension
+) -> Optional[Extension]:
+    """Helper function to search for an extension
+
+    Arguments:
+        extensions: the list to search for the extension
+        ext_id: the extension to to look for
+
+    Returns:
+        The extension if present, or None otherwise.
+    """
+
+    if extensions is not None:
+        for extension in extensions:
+            if extension.extension_id == ext_id:
+                return extension
+
+    return None
+
+
+def deserialize_extensions(
+    extensions: List[Extension], fragment: bytes, offset: int
+) -> int:
+    """Helper function to deserialize extensions
+
+    Arguments:
+        extensions: the list where to store the deserialized extensions
+        fragment: the pdu buffer
+        offset: the offset within the pdu buffer to the start of the extensions
+
+    Returns:
+        the offset on the byte following the extensions
+    """
+
+    if offset < len(fragment):
+        # extensions present
+        ext_len, offset = pdu.unpack_uint16(fragment, offset)
+        ext_end = offset + ext_len
+        while offset < ext_end:
+            extension, offset = Extension.deserialize(fragment, offset)
+            extensions.append(extension)
+
+    return offset

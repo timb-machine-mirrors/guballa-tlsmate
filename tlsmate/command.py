@@ -8,11 +8,10 @@ import sys
 import argparse
 
 # import own stuff
-from tlsmate.config import Configuration
-from tlsmate.tlsmate import TlsMate
-from tlsmate.plugin import BaseCommand
-from tlsmate import utils
-from tlsmate.plugin import WorkManager
+import tlsmate.config as conf
+import tlsmate.plugin as plg
+import tlsmate.tlsmate as tm
+import tlsmate.utils as utils
 
 # import other stuff
 
@@ -24,7 +23,7 @@ def build_parser() -> argparse.ArgumentParser:
         the parser object as created with argparse
     """
 
-    return BaseCommand.create_parser()
+    return plg.BaseCommand.create_parser()
 
 
 def main() -> None:
@@ -39,13 +38,13 @@ def main() -> None:
     # logging should be setup as early as possible
     utils.set_logging_level(args.logging)
 
-    config = Configuration()
-    BaseCommand.register_config(config)
+    config = conf.Configuration()
+    plg.BaseCommand.register_config(config)
     config.init_from_external(args.config_file)
     config.set("logging", args.logging)
-    work_manager = WorkManager()
-    BaseCommand.args_parsed(args, parser, None, config)
-    tlsmate = TlsMate(config=config)
+    work_manager = plg.WorkManager()
+    plg.BaseCommand.args_parsed(args, parser, None, config)
+    tlsmate = tm.TlsMate(config=config)
     work_manager.run(tlsmate)
 
 

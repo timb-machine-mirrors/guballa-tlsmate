@@ -8,7 +8,7 @@ import unicodedata
 from typing import List
 
 # import own stuff
-from tlsmate import tls
+import tlsmate.tls as tls
 
 # import other stuff
 from cryptography.x509.oid import SignatureAlgorithmOID as sigalg_oid

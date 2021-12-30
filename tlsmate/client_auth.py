@@ -3,14 +3,12 @@
 """
 # import basic stuff
 import pem
-from typing import Any, List, Tuple, Set, Optional, TYPE_CHECKING
+from typing import Any, List, Tuple, Set, Optional
 
 # import own stuff
-from tlsmate import tls
-from tlsmate.cert_chain import CertChain
-
-if TYPE_CHECKING:
-    from tlsmate.tlsmate import TlsMate
+import tlsmate.cert_chain as cert_chain
+import tlsmate.recorder as rec
+import tlsmate.tls as tls
 
 # import other stuff
 from cryptography.hazmat.primitives import serialization
@@ -30,12 +28,12 @@ class ClientAuth(object):
         tlsmate: The tlsmate application object.
     """
 
-    def __init__(self, tlsmate: "TlsMate") -> None:
+    def __init__(self, recorder: rec.Recorder) -> None:
         self._used_idx: Set[int] = set()
-        self._auth: List[Tuple[PrivateKey, CertChain]] = []
-        self._recorder = tlsmate.recorder
+        self._auth: List[Tuple[PrivateKey, cert_chain.CertChain]] = []
+        self._recorder = recorder
 
-    def add_auth(self, key: PrivateKey, chain: CertChain) -> None:
+    def add_auth(self, key: PrivateKey, chain: cert_chain.CertChain) -> None:
         """Add a client auth set to this object.
 
         Arguments:
@@ -58,7 +56,7 @@ class ClientAuth(object):
         with open(key_file, "rb") as fd:
             key = serialization.load_pem_private_key(fd.read(), password=None)
 
-        chain = CertChain()
+        chain = cert_chain.CertChain()
         pem_list = pem.parse_file(chain_file)
         for pem_item in pem_list:
             chain.append_pem_cert(pem_item.as_bytes())
@@ -133,11 +131,11 @@ class ClientAuth(object):
 
         key, chain = key_chain
         priv_key = serialization.load_der_private_key(bytes.fromhex(key), None)
-        chn = CertChain()
+        chn = cert_chain.CertChain()
         chn.deserialize(chain)
         self.add_auth(priv_key, chn)
 
-    def get_chain(self, idx: int) -> CertChain:
+    def get_chain(self, idx: int) -> "cert_chain.CertChain":
         """For the given reference return the corresponding certificate chain.
 
         Arguments:

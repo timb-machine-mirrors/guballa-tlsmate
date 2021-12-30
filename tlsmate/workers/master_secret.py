@@ -4,13 +4,13 @@
 # import basic stuff
 
 # import own stuff
-from tlsmate import tls
-from tlsmate.plugin import Worker
+import tlsmate.plugin as plg
+import tlsmate.tls as tls
 
 # import other stuff
 
 
-class ScanExtendedMasterSecret(Worker):
+class ScanExtendedMasterSecret(plg.Worker):
     name = "master_secret"
     descr = "scan for extension extended_master_secret support"
     prio = 30

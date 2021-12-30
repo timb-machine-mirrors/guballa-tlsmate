@@ -3,15 +3,15 @@
 """
 # import basic stuff
 import logging
-from typing import Optional, List
+from typing import Optional, List, Any
 import datetime
 import builtins
 
 # import own stuff
-from tlsmate import tls
-from tlsmate import ext
-from tlsmate import cert_utils
-from tlsmate.exception import UntrustedCertificate
+import tlsmate.cert_utils as cert_utils
+import tlsmate.ext as ext
+import tlsmate.kdf as kdf
+import tlsmate.tls as tls
 
 # import other stuff
 from cryptography import x509
@@ -24,6 +24,7 @@ from cryptography.hazmat.primitives.asymmetric import (
     ed25519,
     ed448,
 )
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.serialization import Encoding
 from cryptography.hazmat.primitives.asymmetric import padding
 
@@ -323,7 +324,7 @@ class Certificate(object):
         """
         cns = name.get_attributes_for_oid(NameOID.COMMON_NAME)
         if not cns:
-            raise UntrustedCertificate(f'no common name for "{self}"')
+            raise tls.UntrustedCertificate(f'no common name for "{self}"')
         return cns[0].value
 
     @property
@@ -516,3 +517,49 @@ class Certificate(object):
             cert.parsed.tbs_certificate_bytes,
             cert.parsed.signature,
         )
+
+
+def verify_signed_params(
+    prefix: bytes,
+    params: Any,
+    cert: Certificate,
+    default_scheme: tls.SignatureScheme,
+    version: tls.Version,
+) -> None:
+    """Verify the signed parameters from a ServerKeyExchange message.
+
+    Arguments:
+        prefix: the bytes to prepend to the data
+        params: the parameter block from the ServerKeyExchange message
+        cert: the certificate used to validate the data
+        default_scheme: the default signature scheme to use (if not present in
+            the message)
+        version: the TLS version. For TLS1.1 and below the signature is
+            constructed differently (using SHA1 + MD digests)
+    Raises:
+        cryptography.exceptions.InvalidSignature: If the signature does not
+            validate.
+    """
+
+    data = prefix + params.signed_params
+
+    if (
+        default_scheme is tls.SignatureScheme.RSA_PKCS1_SHA1
+        and version is not tls.Version.TLS12
+    ):
+        # Digest is a combination of MD5 and SHA1
+        digest = kdf.Kdf()
+        digest.start_msg_digest()
+        digest.set_msg_digest_algo(None)
+        digest.update_msg_digest(data)
+        hashed1 = digest.current_msg_digest(suspend=True)
+        key = cert.parsed.public_key()
+        hashed2 = key.recover_data_from_signature(
+            params.signature, padding.PKCS1v15(), None
+        )
+        if hashed1 != hashed2:
+            raise InvalidSignature
+
+    else:
+        sig_scheme = params.sig_scheme or default_scheme
+        cert.validate_signature(sig_scheme, data, params.signature)

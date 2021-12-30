@@ -12,25 +12,23 @@ import copy
 from typing import Optional, Any, Type, Dict, Callable, Tuple, Union, cast
 
 # import own stuff
-from tlsmate.exception import (
-    ScanError,
-    ServerMalfunction,
-    TlsConnectionClosedError,
-    TlsMsgTimeoutError,
-)
-from tlsmate.msg import get_extension, TlsMessage, Timeout
-from tlsmate import msg
-from tlsmate import tls
-from tlsmate import pdu
-from tlsmate import utils
-from tlsmate import structs
-from tlsmate import key_exchange as kex
-from tlsmate import ext
-from tlsmate import resolver
-from tlsmate import mappings
-from tlsmate.kdf import Kdf
-from tlsmate.record_layer import RecordLayer
-from tlsmate.key_logging import KeyLogger
+import tlsmate.cert as crt
+import tlsmate.client_auth as client_auth
+import tlsmate.client_state as client_state
+import tlsmate.config as conf
+import tlsmate.ext as ext
+import tlsmate.kdf as key_derivation
+import tlsmate.key_exchange as kex
+import tlsmate.key_logging as kl
+import tlsmate.mappings as mappings
+import tlsmate.msg as msg
+import tlsmate.pdu as pdu
+import tlsmate.record_layer as rl
+import tlsmate.recorder as rec
+import tlsmate.resolver as resolver
+import tlsmate.structs as structs
+import tlsmate.tls as tls
+import tlsmate.utils as utils
 
 # import other stuff
 from cryptography.hazmat.primitives.asymmetric import padding, ec
@@ -42,7 +40,7 @@ class TlsDefragmenter(object):
     """Class to collect as many bytes from the record layer as necessary for a message.
     """
 
-    def __init__(self, record_layer: RecordLayer) -> None:
+    def __init__(self, record_layer: rl.RecordLayer) -> None:
         self._record_bytes = bytearray()
         self._msg = bytearray()
         self._content_type = None
@@ -54,7 +52,7 @@ class TlsDefragmenter(object):
         while len(self._record_bytes) < nbr:
             timeout = self._ultimo - time.time()
             if timeout <= 0:
-                raise TlsMsgTimeoutError
+                raise tls.TlsMsgTimeoutError
 
             rl_msg = self._record_layer.wait_rl_msg(timeout, **kwargs)
             self._content_type = rl_msg.content_type
@@ -225,22 +223,22 @@ class TlsConnectionMsgs(object):
         self.client_heartbeat_response = None
         self.server_heartbeat_response = None
 
-    def store_msg(self, msg: TlsMessage, received: bool = True) -> None:
+    def store_msg(self, message: "msg.TlsMessage", received: bool = True) -> None:
         """Stores a received/sent message
 
         Arguments:
-            msg: the message to store
+            message: the message to store
             received: an indication if the message was received or sent.
                 Defaults to True
         """
 
-        attr = self._map_msg2attr.get(msg.msg_type, None)
+        attr = self._map_msg2attr.get(message.msg_type, None)
         if attr is not None:
             if attr.startswith("_"):
                 prefix = "server" if received else "client"
                 attr = prefix + attr
 
-            setattr(self, attr, msg)
+            setattr(self, attr, message)
 
 
 class TlsConnection(object):
@@ -334,28 +332,30 @@ class TlsConnection(object):
     """
 
     def __init__(
-        self, tlsmate: Any, host: Optional[str] = None, port: Optional[int] = None
+        self,
+        profile: client_state.ClientProfile,
+        session: client_state.SessionState,
+        config: conf.Configuration,
+        recorder: rec.Recorder,
+        client_auth: client_auth.ClientAuth,
     ) -> None:
-        self._tlsmate = tlsmate
-        if host is None:
-            host = tlsmate.config.get("host")
 
-        if port is None:
-            port = tlsmate.config.get("port")
-
-        self._server_l4 = resolver.determine_l4_addr(host, port)
+        self._client_auth = client_auth
+        self._session = session
+        self._profile = profile
+        self._server_l4 = resolver.determine_l4_addr(session.host, session.port)
         self.msg = TlsConnectionMsgs()
-        self._record_layer = RecordLayer(tlsmate, self._server_l4)
+        self._record_layer = rl.RecordLayer(config=config, recorder=recorder)
         self._defragmenter = TlsDefragmenter(self._record_layer)
-        self._awaited_msg: Union[Type[TlsMessage], Timeout, Any] = None
+        self._awaited_msg: Union[Type[msg.TlsMessage], msg.Timeout, Any] = None
         self._queued_msg = None
         self._queued_bytes = None
         self._record_layer_version = tls.Version.TLS10
         self._msg_hash = None
         self._msg_hash_queue = None
         self._msg_hash_active = False
-        self.recorder = tlsmate.recorder
-        self._kdf = Kdf()
+        self.recorder = recorder
+        self._kdf = key_derivation.Kdf()
         self._new_session_id = None
         self._finished_treated = False
         self._ticket_sent = False
@@ -382,6 +382,7 @@ class TlsConnection(object):
         self._encrypt_then_mac = False
         self._key_shares: Dict[tls.SupportedGroups, kex.KeyExchange] = {}
         self.res_ms = None
+        self._alert_on_invalid_cert = config.get("alert_on_invalid_cert")
 
         # key exchange
         self.client_random = None
@@ -397,7 +398,6 @@ class TlsConnection(object):
         self._server_write_keys = None
         self._initial_handshake = None
 
-        self.client = tlsmate.client
         self._secure_reneg_cl_data = None
         self._secure_reneg_sv_data = None
         self._secure_reneg_request = False
@@ -406,11 +406,11 @@ class TlsConnection(object):
         self._secure_reneg_scsv = False
         self.stapling_status = None
 
-        if self.client.profile.support_secure_renegotiation:
+        if self._profile.support_secure_renegotiation:
             self._secure_reneg_request = True
             self._secure_reneg_ext = True
 
-        if self.client.profile.support_scsv_renegotiation:
+        if self._profile.support_scsv_renegotiation:
             self._secure_reneg_request = True
             self._secure_reneg_scsv = True
 
@@ -430,8 +430,8 @@ class TlsConnection(object):
         """
 
         logging.debug("exiting context manager...")
-        if exc_type is ServerMalfunction:
-            self.client.report_server_issue(
+        if exc_type is tls.ServerMalfunction:
+            self._session.report_server_issue(
                 exc_value.issue, exc_value.message, exc_value.extension
             )
             logging.warning(f"ServerMalfunction exception: {exc_value.args[0]}")
@@ -443,10 +443,10 @@ class TlsConnection(object):
             )
             self._send_alert(tls.AlertLevel.FATAL, descr)
 
-        elif exc_type in (TlsConnectionClosedError, BrokenPipeError):
+        elif exc_type in (tls.TlsConnectionClosedError, BrokenPipeError):
             logging.warning("connected closed, probably by peer")
 
-        elif exc_type is TlsMsgTimeoutError:
+        elif exc_type is tls.TlsMsgTimeoutError:
             logging.warning(f"timeout occurred while waiting for {self._awaited_msg}")
             self._send_alert(tls.AlertLevel.WARNING, tls.AlertDescription.CLOSE_NOTIFY)
 
@@ -476,7 +476,7 @@ class TlsConnection(object):
             the created key exchange object
         """
 
-        key_share = kex.instantiate_named_group(group, self, self.recorder)
+        key_share = kex.instantiate_named_group(self.recorder, group)
         self._key_shares[group] = key_share
         return key_share.get_key_share()
 
@@ -588,59 +588,61 @@ class TlsConnection(object):
         if self._is_client_hello_retry():
             return self._generate_retry_client_hello()
 
-        msg = self.client.client_hello()
+        message = msg.client_hello(
+            self._profile, self._session, self.recorder, self._client_auth
+        )
         if self._secure_reneg_request:
             if self._initial_handshake is None:
                 if self._secure_reneg_scsv:
-                    msg.cipher_suites.append(
+                    message.cipher_suites.append(
                         tls.CipherSuite.TLS_EMPTY_RENEGOTIATION_INFO_SCSV
                     )
 
                 if self._secure_reneg_ext:
                     # Put it in the beginning, just to be sure preshared_keys stays the
                     # last extension (if present at all)
-                    msg.extensions.insert(
+                    message.extensions.insert(
                         0, ext.ExtRenegotiationInfo(renegotiated_connection=b"")
                     )
 
             elif self._secure_reneg_flag:
                 if self._secure_reneg_cl_data is not None:
-                    msg.extensions.insert(
+                    message.extensions.insert(
                         0,
                         ext.ExtRenegotiationInfo(
                             renegotiated_connection=self._secure_reneg_cl_data
                         ),
                     )
 
-        return msg
+        return message
 
-    def _pre_serialization_ch(self, msg):
+    def _pre_serialization_ch(self, ch):
         self._init_handshake()
-        logging.info(f"version: {msg.get_version()}")
-        self.client_version_sent = msg.version
+        logging.info(f"version: {ch.get_version()}")
+        self.client_version_sent = ch.version
         if self.recorder.is_injecting():
-            msg.random = self.recorder.inject(client_random=None)
+            ch.random = self.recorder.inject(client_random=None)
 
         else:
-            if msg.random is None:
-                msg.random = utils.get_random_value()
+            if ch.random is None:
+                ch.random = utils.get_random_value()
 
-            self.recorder.trace(client_random=msg.random)
+            self.recorder.trace(client_random=ch.random)
 
-        self.client_random = msg.random
-        logging.debug(f"client_random: {pdu.dump(msg.random)}")
-        if len(msg.session_id):
-            self._session_id_sent = msg.session_id
-            logging.debug(f"session_id: {pdu.dump(msg.session_id)}")
+        self.client_random = ch.random
+        logging.debug(f"client_random: {pdu.dump(ch.random)}")
+        if len(ch.session_id):
+            self._session_id_sent = ch.session_id
+            logging.debug(f"session_id: {pdu.dump(ch.session_id)}")
 
-        for cs in msg.cipher_suites:
+        for cs in ch.cipher_suites:
             logging.debug(f"cipher suite: 0x{getattr(cs, 'value', cs):04x} {cs}")
 
-        for comp in msg.compression_methods:
+        for comp in ch.compression_methods:
             logging.debug(f"compression method: 0x{comp.value:01x} {comp}")
 
-        if msg.extensions is not None:
-            for extension in msg.extensions:
+        if ch.extensions is not None:
+            for extension in ch.extensions:
                 ext = extension.extension_id
                 logging.debug(f"extension {ext.value} {ext}")
                 if ext is tls.Extension.SESSION_TICKET:
@@ -661,20 +663,18 @@ class TlsConnection(object):
         if not self._is_client_hello_retry():
             self._kdf.start_msg_digest()
 
-    def _post_serialization_ch(self, msg, msg_data):
+    def _post_serialization_ch(self, ch, msg_data):
         if self._ext_psk is not None:
             # Update the binders for the pre_shared_key extension
             binders_offset = (
-                len(msg_data)
-                - msg._bytes_after_psk_ext
-                - self._ext_psk._bytes_after_ids
+                len(msg_data) - ch._bytes_after_psk_ext - self._ext_psk._bytes_after_ids
             )
             msg_without_binders = msg_data[:binders_offset]
             offset = binders_offset + 3  # skip length of list + length of 1st binder
             self.recorder.trace(msg_without_binders=msg_without_binders)
 
             for idx, psk in enumerate(self._ext_psk.psks):
-                kdf = Kdf()
+                kdf = key_derivation.Kdf()
                 kdf.start_msg_digest()
                 kdf.set_msg_digest_algo(psk.hmac.hmac_algo)
                 kdf.update_msg_digest(msg_without_binders)
@@ -721,11 +721,12 @@ class TlsConnection(object):
                 hash_val,
                 self.early_data.mac_len,
             )
-            KeyLogger.client_early_tr_secret(self.client_random, early_tr_secret)
+            kl.KeyLogger.client_early_tr_secret(self.client_random, early_tr_secret)
             logging.debug(f"early traffic secret: {pdu.dump(early_tr_secret)}")
             cs_details = utils.get_cipher_suite_details(
                 self._ext_psk.psks[0].cipher_suite
             )
+            self._session.cs_details = cs_details
 
             enc = self.early_data.kdf.hkdf_expand_label(
                 early_tr_secret, "key", b"", cs_details.cipher_struct.key_len
@@ -759,27 +760,33 @@ class TlsConnection(object):
     def _generate_cke(self, cls):
         key_ex_type = self.cs_details.key_algo_struct.key_ex_type
         if self._key_exchange is None:
+            cert = self.msg.server_certificate.chain.certificates[0]
+            pub_key = cert.parsed.public_key()
             if key_ex_type is tls.KeyExchangeType.RSA:
-                self._key_exchange = kex.RsaKeyExchange(self, self.recorder)
+                self._key_exchange = kex.RsaKeyExchange(self.recorder)
+                self._key_exchange.set_params(
+                    version=self.version, rem_public_key=pub_key,
+                )
 
             elif key_ex_type is tls.KeyExchangeType.ECDH:
-                self._key_exchange = kex.EcdhKeyExchangeCertificate(self, self.recorder)
+                self._key_exchange = kex.EcdhKeyExchangeCertificate(self.recorder)
+                self._key_exchange.set_params(rem_public_key=pub_key)
 
         self.premaster_secret = self._key_exchange.get_shared_secret()
         self.recorder.trace(pre_master_secret=self.premaster_secret)
         logging.debug(f"premaster_secret: {pdu.dump(self.premaster_secret)}")
-        msg = cls()
+        cke = cls()
         transferable_key = self._key_exchange.get_transferable_key()
         if key_ex_type is tls.KeyExchangeType.RSA:
-            msg.rsa_encrypted_pms = transferable_key
+            cke.rsa_encrypted_pms = transferable_key
 
         elif key_ex_type is tls.KeyExchangeType.ECDH:
-            msg.ecdh_public = transferable_key
+            cke.ecdh_public = transferable_key
 
         elif key_ex_type is tls.KeyExchangeType.DH:
-            msg.dh_public = transferable_key
+            cke.dh_public = transferable_key
 
-        return msg
+        return cke
 
     def _post_sending_cke(self):
         if not self.cs_details.full_hs:
@@ -793,20 +800,20 @@ class TlsConnection(object):
     # ###########################
 
     def _generate_cert(self, cls):
-        msg = cls()
+        cert = cls()
         if self.version is tls.Version.TLS13:
-            msg.request_context = (
+            cert.request_context = (
                 self.msg.certificate_request.certificate_request_context
             )
 
         else:
-            msg.request_context = None
+            cert.request_context = None
 
-        msg.chain = None
+        cert.chain = None
         if self._clientauth_key_idx is not None:
-            msg.chain = self._tlsmate.client_auth.get_chain(self._clientauth_key_idx)
+            cert.chain = self._client_auth.get_chain(self._clientauth_key_idx)
 
-        return msg
+        return cert
 
     # #################################
     # sending CertificateVerify methods
@@ -816,9 +823,9 @@ class TlsConnection(object):
         if self._clientauth_key_idx is None:
             return None
 
-        msg = cls()
+        cert_v = cls()
         logging.debug(f"using {self._clientauth_sig_algo} for client authentication")
-        msg.signature_scheme = self._clientauth_sig_algo
+        cert_v.signature_scheme = self._clientauth_sig_algo
         if self.version is tls.Version.TLS13:
             data = (
                 " " * 64 + "TLS 1.3, client CertificateVerify" + "\0"
@@ -830,15 +837,15 @@ class TlsConnection(object):
             signature = self.recorder.inject(signature=None)
         else:
             signature = self._sign_with_client_key(
-                self._tlsmate.client_auth.get_key(self._clientauth_key_idx),
+                self._client_auth.get_key(self._clientauth_key_idx),
                 self._clientauth_sig_algo,
                 data,
             )
             self.recorder.trace(signature=signature)
 
-        msg.signature = signature
+        cert_v.signature = signature
 
-        return msg
+        return cert_v
 
     # ##############################
     # sending EndOfEarlyData methods
@@ -890,14 +897,14 @@ class TlsConnection(object):
         self.recorder.trace(msg_digest_finished_sent=hash_val)
         self.recorder.trace(verify_data_finished_sent=val)
         logging.debug(f"Finished.verify_data(out): {pdu.dump(val)}")
-        msg = cls()
-        msg.verify_data = val
+        finished = cls()
+        finished.verify_data = val
         if self._finished_treated:
             self.handshake_completed = True
             logging.debug("Handshake finished, secure connection established")
 
         self._finished_treated = True
-        return msg
+        return finished
 
     def _post_sending_finished(self):
         if self.version is not tls.Version.TLS13:
@@ -910,7 +917,7 @@ class TlsConnection(object):
             self.server_finished_digest,
             self.cs_details.mac_struct.key_len,
         )
-        KeyLogger.client_tr_secret_0(self.client_random, self.c_app_tr_secret)
+        kl.KeyLogger.client_tr_secret_0(self.client_random, self.c_app_tr_secret)
         logging.debug(f"c_app_tr_secret: {pdu.dump(self.c_app_tr_secret)}")
         c_enc = self._kdf.hkdf_expand_label(
             self.c_app_tr_secret, "key", b"", ciph.key_len
@@ -973,20 +980,20 @@ class TlsConnection(object):
 
         return msg_cls()
 
-    def _pre_serialization_hook(self, msg):
-        method = self._pre_serialization_method.get(msg.msg_type)
+    def _pre_serialization_hook(self, message):
+        method = self._pre_serialization_method.get(message.msg_type)
         if method is not None:
-            method(self, msg)
+            method(self, message)
 
-    def _post_serialization_hook(self, msg, msg_data):
-        method = self._post_serialization_method.get(msg.msg_type)
+    def _post_serialization_hook(self, message, msg_data):
+        method = self._post_serialization_method.get(message.msg_type)
         if method is not None:
-            method(self, msg, msg_data)
+            method(self, message, msg_data)
 
         return bytes(msg_data)
 
-    def _post_sending_hook(self, msg):
-        method = self._post_sending_method.get(msg.msg_type)
+    def _post_sending_hook(self, message):
+        method = self._post_sending_method.get(message.msg_type)
         if method is not None:
             method(self)
 
@@ -997,16 +1004,16 @@ class TlsConnection(object):
             sni = sni_ext.host_name
 
         else:
-            sni = self.client.get_sni()
+            sni = self._session.sni
             if sni is None:
                 raise ValueError("No SNI defined")
 
-        cert_chain.validate(timestamp, sni, self.client.alert_on_invalid_cert)
+        cert_chain.validate(timestamp, sni, self._alert_on_invalid_cert)
 
     def send(
         self,
-        *messages: Union[Type[TlsMessage], TlsMessage],
-        pre_serialization: Optional[Callable[[TlsMessage], None]] = None,
+        *messages: Union[Type["msg.TlsMessage"], "msg.TlsMessage"],
+        pre_serialization: Optional[Callable[["msg.TlsMessage"], None]] = None,
         **kwargs: Any,
     ) -> None:
         """Interface to send messages.
@@ -1033,14 +1040,14 @@ class TlsConnection(object):
                 message = self._generate_outgoing_msg(message)
                 if message is None:
                     continue
-            message = cast(TlsMessage, message)
+            message = cast(msg.TlsMessage, message)
             if pre_serialization is not None:
                 pre_serialization(message)
 
             logging.info(f"{utils.Log.time()}: ==> {message.msg_type}")
             self._pre_serialization_hook(message)
             self._msg_logging(message)
-            msg_data = message.serialize(self)  # type: ignore
+            msg_data = message.serialize(self._session)
             msg_data = self._post_serialization_hook(message, msg_data)
             self.msg.store_msg(message, received=False)
             if message.content_type == tls.ContentType.HANDSHAKE:
@@ -1060,29 +1067,29 @@ class TlsConnection(object):
             self._post_sending_hook(message)
         self._record_layer.flush()
 
-    def _on_server_hello_tls13(self, msg):
+    def _on_server_hello_tls13(self, sh):
         psk = None
-        psk_ext = msg.get_extension(tls.Extension.PRE_SHARED_KEY)
+        psk_ext = sh.get_extension(tls.Extension.PRE_SHARED_KEY)
         if psk_ext is not None:
             psk_idx = psk_ext.selected_id
             ch_psks = self.msg.client_hello.get_extension(tls.Extension.PRE_SHARED_KEY)
             if ch_psks is not None:
                 if psk_idx >= len(ch_psks.psks):
-                    raise ServerMalfunction(tls.ServerIssue.PSK_OUT_OF_RANGE)
+                    raise tls.ServerMalfunction(tls.ServerIssue.PSK_OUT_OF_RANGE)
 
                 psk = ch_psks.psks[psk_idx].psk
                 self.abbreviated_hs = True
 
-        key_share_ext = msg.get_extension(tls.Extension.KEY_SHARE)
+        key_share_ext = sh.get_extension(tls.Extension.KEY_SHARE)
         if key_share_ext is None:
             if not self.abbreviated_hs:
-                raise ServerMalfunction(tls.ServerIssue.KEY_SHARE_NOT_PRESENT)
+                raise tls.ServerMalfunction(tls.ServerIssue.KEY_SHARE_NOT_PRESENT)
 
             shared_secret = None
 
         else:
             share_entry = key_share_ext.key_shares[0]
-            self._key_exchange = self._key_shares[share_entry.group]
+            self._key_exchange = self._session.key_shares[share_entry.group]
             self._key_exchange.set_remote_key(
                 share_entry.key_exchange, group=share_entry.group
             )
@@ -1091,33 +1098,35 @@ class TlsConnection(object):
 
         self._tls13_key_schedule(psk, shared_secret)
 
-    def _on_server_hello_tls12(self, msg):
-        if len(msg.session_id):
-            if msg.session_id == self._session_id_sent:
+    def _on_server_hello_tls12(self, sh):
+        if len(sh.session_id):
+            if sh.session_id == self._session_id_sent:
                 self.abbreviated_hs = True
                 # TODO: check version and ciphersuite
                 if self._ticket_sent:
-                    self.master_secret = self.client.session_state_ticket.master_secret
+                    self.master_secret = (
+                        self._session.session_state_ticket.master_secret
+                    )
 
                 else:
-                    self.master_secret = self.client.session_state_id.master_secret
+                    self.master_secret = self._session.session_state_id.master_secret
 
                 logging.debug(f"master_secret: {pdu.dump(self.master_secret)}")
-                KeyLogger.master_secret(self.client_random, self.master_secret)
+                kl.KeyLogger.master_secret(self.client_random, self.master_secret)
                 self._key_derivation()
 
             else:
-                self._new_session_id = msg.session_id
+                self._new_session_id = sh.session_id
 
         self._encrypt_then_mac = (
-            msg.get_extension(tls.Extension.ENCRYPT_THEN_MAC) is not None
+            sh.get_extension(tls.Extension.ENCRYPT_THEN_MAC) is not None
         )
         self.extended_ms = (
-            msg.get_extension(tls.Extension.EXTENDED_MASTER_SECRET) is not None
+            sh.get_extension(tls.Extension.EXTENDED_MASTER_SECRET) is not None
         )
         if self._secure_reneg_request:
             data = None
-            reneg = msg.get_extension(tls.Extension.RENEGOTIATION_INFO)
+            reneg = sh.get_extension(tls.Extension.RENEGOTIATION_INFO)
             if reneg is not None:
                 data = reneg.renegotiated_connection
 
@@ -1128,59 +1137,60 @@ class TlsConnection(object):
                     logging.debug("renegotiation extension successfully verified")
 
                 elif data is not None:
-                    raise ServerMalfunction(tls.ServerIssue.SECURE_RENEG_FAILED)
+                    raise tls.ServerMalfunction(tls.ServerIssue.SECURE_RENEG_FAILED)
 
             elif self._secure_reneg_flag:
                 self._secure_reneg_flag = False
                 if self._secure_reneg_cl_data and self._secure_reneg_sv_data:
                     if data != self._secure_reneg_cl_data + self._secure_reneg_sv_data:
-                        raise ServerMalfunction(tls.ServerIssue.SECURE_RENEG_FAILED)
+                        raise tls.ServerMalfunction(tls.ServerIssue.SECURE_RENEG_FAILED)
 
                     self._secure_reneg_flag = True
                     logging.debug("renegotiation extension successfully verified")
 
                 else:
-                    raise ServerMalfunction(tls.ServerIssue.SECURE_RENEG_FAILED)
+                    raise tls.ServerMalfunction(tls.ServerIssue.SECURE_RENEG_FAILED)
 
             self._secure_reneg_cl_data = None
             self._secure_reneg_sv_data = None
 
-    def _on_server_hello_received(self, msg, msg_bytes):
-        self.server_random = msg.random
-        logging.debug(f"server random: {pdu.dump(msg.random)}")
-        self.version = msg.get_version()
+    def _on_server_hello_received(self, sh, msg_bytes):
+        self.server_random = sh.random
+        logging.debug(f"server random: {pdu.dump(sh.random)}")
+        self.version = sh.get_version()
+        self._session.version = self.version
         logging.info(f"version: {self.version}")
-        logging.info(f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite}")
+        logging.info(f"cipher suite: 0x{sh.cipher_suite.value:04x} {sh.cipher_suite}")
         if not self.msg.hello_retry_request:
-            self._update_cipher_suite(msg.cipher_suite)
+            self._update_cipher_suite(sh.cipher_suite)
 
         self._record_layer_version = min(self.version, tls.Version.TLS12)
-        utils.log_extensions(msg.extensions)
-        heartbeat_ext = msg.get_extension(tls.Extension.HEARTBEAT)
+        ext.log_extensions(sh.extensions)
+        heartbeat_ext = sh.get_extension(tls.Extension.HEARTBEAT)
         if heartbeat_ext:
             self.heartbeat_allowed_to_send = (
                 heartbeat_ext.heartbeat_mode is tls.HeartbeatMode.PEER_ALLOWED_TO_SEND
             )
         if self.version is tls.Version.TLS13:
-            self._on_server_hello_tls13(msg)
+            self._on_server_hello_tls13(sh)
 
         else:
-            self._on_server_hello_tls12(msg)
+            self._on_server_hello_tls12(sh)
 
-    def _on_hello_retry_request(self, msg, msg_bytes):
-        self.server_random = msg.random
-        logging.debug(f"hello_retry_request random: {pdu.dump(msg.random)}")
-        self.version = msg.get_version()
+    def _on_hello_retry_request(self, hrr, msg_bytes):
+        self.server_random = hrr.random
+        logging.debug(f"hello_retry_request random: {pdu.dump(hrr.random)}")
+        self.version = hrr.get_version()
         logging.info(f"version: {self.version}")
-        logging.info(f"cipher suite: 0x{msg.cipher_suite.value:04x} {msg.cipher_suite}")
-        self._update_cipher_suite(msg.cipher_suite)
+        logging.info(f"cipher suite: 0x{hrr.cipher_suite.value:04x} {hrr.cipher_suite}")
+        self._update_cipher_suite(hrr.cipher_suite)
         self._record_layer_version = min(self.version, tls.Version.TLS12)
-        utils.log_extensions(msg.extensions)
-        ch_digest = Kdf()
+        ext.log_extensions(hrr.extensions)
+        ch_digest = key_derivation.Kdf()
         ch_digest.start_msg_digest()
         ch_digest.set_msg_digest_algo(self.cs_details.mac_struct.hmac_algo)
         ch_digest.update_msg_digest(self._serialized_ch)
-        self._kdf = Kdf()
+        self._kdf = key_derivation.Kdf()
         self._kdf.start_msg_digest()
         self._kdf.set_msg_digest_algo(self.cs_details.mac_struct.hmac_algo)
         transcript = (
@@ -1196,7 +1206,7 @@ class TlsConnection(object):
             randoms = self.msg.client_hello.random + self.msg.server_hello.random
             cert = self.msg.server_certificate.chain.certificates[0]
             try:
-                kex.verify_signed_params(
+                crt.verify_signed_params(
                     randoms,
                     params,
                     cert,
@@ -1213,47 +1223,47 @@ class TlsConnection(object):
                 cert.issues.append(error)
                 logging.debug(error)
                 issue = tls.ServerIssue.KEX_INVALID_SIGNATURE
-                if self.client.alert_on_invalid_cert:
-                    raise ServerMalfunction(
+                if self._alert_on_invalid_cert:
+                    raise tls.ServerMalfunction(
                         issue, message=tls.HandshakeType.SERVER_KEY_EXCHANGE
                     )
 
                 else:
-                    self.client.report_server_issue(issue)
+                    self._session.report_server_issue(issue)
 
-    def _on_server_key_exchange_received(self, msg, msg_bytes):
-        if not (msg.ec or msg.dh):
+    def _on_server_key_exchange_received(self, ske, msg_bytes):
+        if not (ske.ec or ske.dh):
             return
 
-        if msg.ec is not None:
-            if msg.ec.signed_params is not None:
-                self._handle_signed_params(msg.ec, "EC")
+        if ske.ec is not None:
+            if ske.ec.signed_params is not None:
+                self._handle_signed_params(ske.ec, "EC")
 
-            if msg.ec.named_curve is not None:
-                logging.debug(f"named curve: {msg.ec.named_curve}")
+            if ske.ec.named_curve is not None:
+                logging.debug(f"named curve: {ske.ec.named_curve}")
                 self._key_exchange = kex.instantiate_named_group(
-                    msg.ec.named_curve, self, self.recorder
+                    self.recorder, ske.ec.named_curve
                 )
-                self._key_exchange.set_remote_key(msg.ec.public)
+                self._key_exchange.set_remote_key(ske.ec.public)
 
-        elif msg.dh is not None:
-            dh = msg.dh
+        elif ske.dh is not None:
+            dh = ske.dh
             if dh.signed_params is not None:
                 self._handle_signed_params(dh, "DH")
 
             logging.debug(f"DH group size: {len(dh.p_val) * 8}")
-            self._key_exchange = kex.DhKeyExchange(self, self.recorder)
+            self._key_exchange = kex.DhKeyExchange(self.recorder)
             self._key_exchange.set_remote_key(
                 dh.public_key, g_val=dh.g_val, p_val=dh.p_val
             )
 
-    def _on_change_cipher_spec_received(self, msg, msg_bytes):
+    def _on_change_cipher_spec_received(self, ccs, msg_bytes):
         if self.version is not tls.Version.TLS13:
             self._update_read_state()
 
-    def _on_finished_received(self, msg, msg_bytes):
+    def _on_finished_received(self, finished, msg_bytes):
         ciph = self.cs_details.cipher_struct
-        logging.debug(f"Finished.verify_data(in): {pdu.dump(msg.verify_data)}")
+        logging.debug(f"Finished.verify_data(in): {pdu.dump(finished.verify_data)}")
 
         if self.version is tls.Version.TLS13:
 
@@ -1268,8 +1278,8 @@ class TlsConnection(object):
                 self._pre_finished_digest, finished_key
             )
             logging.debug(f"calc. verify_data: {pdu.dump(calc_verify_data)}")
-            if calc_verify_data != msg.verify_data:
-                raise ServerMalfunction(tls.ServerIssue.VERIFY_DATA_INVALID)
+            if calc_verify_data != finished.verify_data:
+                raise tls.ServerMalfunction(tls.ServerIssue.VERIFY_DATA_INVALID)
 
             self.server_finished_digest = self._kdf.current_msg_digest()
             s_app_tr_secret = self._kdf.hkdf_expand_label(
@@ -1278,7 +1288,7 @@ class TlsConnection(object):
                 self.server_finished_digest,
                 self.cs_details.mac_struct.key_len,
             )
-            KeyLogger.server_tr_secret_0(self.client_random, s_app_tr_secret)
+            kl.KeyLogger.server_tr_secret_0(self.client_random, s_app_tr_secret)
             logging.debug(f"s_app_tr_secret: {pdu.dump(s_app_tr_secret)}")
             s_enc = self._kdf.hkdf_expand_label(
                 s_app_tr_secret, "key", b"", ciph.key_len
@@ -1316,10 +1326,10 @@ class TlsConnection(object):
 
             self._secure_reneg_sv_data = val
             self.recorder.trace(msg_digest_finished_rec=self._pre_finished_digest)
-            self.recorder.trace(verify_data_finished_rec=msg.verify_data)
+            self.recorder.trace(verify_data_finished_rec=finished.verify_data)
             self.recorder.trace(verify_data_finished_calc=val)
-            if msg.verify_data != val:
-                raise ServerMalfunction(tls.ServerIssue.VERIFY_DATA_INVALID)
+            if finished.verify_data != val:
+                raise tls.ServerMalfunction(tls.ServerIssue.VERIFY_DATA_INVALID)
 
         logging.debug("Received Finished successfully verified")
         if self._finished_treated:
@@ -1329,26 +1339,26 @@ class TlsConnection(object):
         self._finished_treated = True
         return self
 
-    def _on_certificate_status_received(self, msg, msg_bytes):
+    def _on_certificate_status_received(self, message, msg_bytes):
         cert_chain = self.msg.server_certificate.chain
         self._validate_cert_chain(cert_chain)
         self.stapling_status = cert_chain.verify_ocsp_stapling(
-            msg.responses, self.client.alert_on_invalid_cert
+            message.responses, self._alert_on_invalid_cert
         )
 
-    def _on_new_session_ticket_received(self, msg, msg_bytes):
+    def _on_new_session_ticket_received(self, nst, msg_bytes):
         if self.version is tls.Version.TLS13:
             psk = self._kdf.hkdf_expand_label(
-                self.res_ms, "resumption", msg.nonce, self.cs_details.mac_struct.mac_len
+                self.res_ms, "resumption", nst.nonce, self.cs_details.mac_struct.mac_len
             )
             logging.debug(f"PSK: {pdu.dump(psk)}")
-            utils.log_extensions(msg.extensions)
-            self.client.save_psk(
+            ext.log_extensions(nst.extensions)
+            self._session.save_psk(
                 structs.Psk(
                     psk=psk,
-                    lifetime=msg.lifetime,
-                    age_add=msg.age_add,
-                    ticket=msg.ticket,
+                    lifetime=nst.lifetime,
+                    age_add=nst.age_add,
+                    ticket=nst.ticket,
                     timestamp=self.recorder.inject(timestamp=time.time()),
                     cipher_suite=self.cipher_suite,
                     version=self.version,
@@ -1357,18 +1367,18 @@ class TlsConnection(object):
             )
 
         else:
-            self.client.save_session_state_ticket(
+            self._session.save_session_state_ticket(
                 structs.SessionStateTicket(
-                    ticket=msg.ticket,
-                    lifetime=msg.lifetime,
+                    ticket=nst.ticket,
+                    lifetime=nst.lifetime,
                     cipher_suite=self.cipher_suite,
                     version=self.version,
                     master_secret=self.master_secret,
                 )
             )
 
-    def _on_encrypted_extensions_received(self, msg, msg_bytes):
-        for extension in msg.extensions:
+    def _on_encrypted_extensions_received(self, message, msg_bytes):
+        for extension in message.extensions:
             logging.debug(f"extension {extension.extension_id}")
             if extension.extension_id is tls.Extension.SUPPORTED_GROUPS:
                 for group in extension.supported_groups:
@@ -1380,32 +1390,32 @@ class TlsConnection(object):
         if not self.early_data_accepted:
             self._record_layer.update_state(self.hs_write_state)
 
-    def _on_certificate_received(self, msg, msg_bytes):
-        self._validate_cert_chain(msg.chain)
+    def _on_certificate_received(self, cert, msg_bytes):
+        self._validate_cert_chain(cert.chain)
         if self.version is tls.Version.TLS13:
             self.certificate_digest = self._kdf.current_msg_digest()
-            ext_status_req = get_extension(
-                msg.chain.certificates[0].tls_extensions, tls.Extension.STATUS_REQUEST
+            ext_status_req = ext.get_extension(
+                cert.chain.certificates[0].tls_extensions, tls.Extension.STATUS_REQUEST
             )
             if ext_status_req:
-                self.stapling_status = msg.chain.verify_ocsp_stapling(
-                    [ext_status_req.ocsp_response], self.client.alert_on_invalid_cert
+                self.stapling_status = cert.chain.verify_ocsp_stapling(
+                    [ext_status_req.ocsp_response], self._alert_on_invalid_cert,
                 )
 
-    def _on_certificate_request_received(self, msg, msg_bytes):
+    def _on_certificate_request_received(self, cert_r, msg_bytes):
         if self.version is tls.Version.TLS13:
-            sig_algo_ext = msg.get_extension(tls.Extension.SIGNATURE_ALGORITHMS)
+            sig_algo_ext = cert_r.get_extension(tls.Extension.SIGNATURE_ALGORITHMS)
             if sig_algo_ext is None:
-                raise ServerMalfunction(tls.ServerIssue.CERT_REQ_NO_SIG_ALGO)
+                raise tls.ServerMalfunction(tls.ServerIssue.CERT_REQ_NO_SIG_ALGO)
 
             algos = sig_algo_ext.signature_algorithms
 
         else:
-            algos = msg.supported_signature_algorithms
+            algos = cert_r.supported_signature_algorithms
 
         idx = None
         for algo in algos:
-            idx = self._tlsmate.client_auth.find_algo(algo, self.version)
+            idx = self._client_auth.find_algo(algo, self.version)
             if idx is not None:
                 self._clientauth_key_idx = idx
                 self._clientauth_sig_algo = algo
@@ -1414,9 +1424,16 @@ class TlsConnection(object):
         if idx is None:
             logging.info("No suitable certificate found for client authentication")
 
-    def _on_certificate_verify_received(self, msg, msg_bytes):
+    def _on_certificate_verify_received(self, cert_v, msg_bytes):
         if self.version is tls.Version.TLS13:
-            kex.verify_certificate_verify(msg, self.msg, self.certificate_digest)
+            data = (
+                (b" " * 64)
+                + b"TLS 1.3, server CertificateVerify"
+                + b"\0"
+                + self.certificate_digest
+            )
+            cert = self.msg.server_certificate.chain.certificates[0]
+            cert.validate_signature(cert_v.signature_scheme, data, cert_v.signature)
 
     _on_msg_received_map = {
         tls.HandshakeType.SERVER_HELLO: _on_server_hello_received,
@@ -1432,15 +1449,15 @@ class TlsConnection(object):
         tls.HandshakeType.HELLO_RETRY_REQUEST: _on_hello_retry_request,
     }
 
-    def _on_msg_received(self, msg, msg_bytes):
+    def _on_msg_received(self, message, msg_bytes):
         """Called whenever a message is received before it is passed to the test case
         """
-        method = self._on_msg_received_map.get(msg.msg_type)
+        method = self._on_msg_received_map.get(message.msg_type)
         if method is not None:
-            method(self, msg, msg_bytes)
+            method(self, message, msg_bytes)
 
     def _auto_heartbeat_request(self, message: msg.HeartbeatRequest) -> None:
-        if self.client.profile.heartbeat_mode is tls.HeartbeatMode.PEER_ALLOWED_TO_SEND:
+        if self._profile.heartbeat_mode is tls.HeartbeatMode.PEER_ALLOWED_TO_SEND:
             response = msg.HeartbeatResponse()
             response.payload_length = message.payload_length
             response.payload = message.payload
@@ -1456,23 +1473,23 @@ class TlsConnection(object):
     sending a response.
     """
 
-    def _auto_responder(self, msg):
+    def _auto_responder(self, message):
         """Automatically process messages which are not passed back to the test case.
         """
-        method = self._auto_responder_map.get(msg.msg_type)
+        method = self._auto_responder_map.get(message.msg_type)
         if method is not None:
-            method(self, msg)
+            method(self, message)
 
-    def _msg_logging_alert(self, msg):
-        logging.info(f"alert level: {msg.level}")
-        logging.info(f"alert description: {msg.description}")
+    def _msg_logging_alert(self, message):
+        logging.info(f"alert level: {message.level}")
+        logging.info(f"alert description: {message.description}")
 
     _msg_logging_map = {tls.ContentType.ALERT: _msg_logging_alert}
 
-    def _msg_logging(self, msg):
-        method = self._msg_logging_map.get(msg.msg_type)
+    def _msg_logging(self, message):
+        method = self._msg_logging_map.get(message.msg_type)
         if method is not None:
-            method(self, msg)
+            method(self, message)
 
     def _wait_message(self, timeout=5000, **kwargs):
         mb = self._defragmenter.get_message(timeout, **kwargs)
@@ -1480,7 +1497,7 @@ class TlsConnection(object):
             return None, None
 
         if mb.content_type is tls.ContentType.HANDSHAKE:
-            message = msg.HandshakeMessage.deserialize(mb.msg, self)
+            message = msg.HandshakeMessage.deserialize(mb.msg, self._session)
             if message.msg_type is tls.HandshakeType.FINISHED:
                 self._pre_finished_digest = self._kdf.current_msg_digest(
                     suspend=self._finished_treated
@@ -1494,19 +1511,19 @@ class TlsConnection(object):
 
         elif mb.content_type is tls.ContentType.ALERT:
             self.alert_received = True
-            message = msg.Alert.deserialize(mb.msg, self)
+            message = msg.Alert.deserialize(mb.msg, self._session)
 
         elif mb.content_type is tls.ContentType.CHANGE_CIPHER_SPEC:
-            message = msg.ChangeCipherSpecMessage.deserialize(mb.msg, self)
+            message = msg.ChangeCipherSpecMessage.deserialize(mb.msg, self._session)
 
         elif mb.content_type is tls.ContentType.APPLICATION_DATA:
-            message = msg.AppDataMessage.deserialize(mb.msg, self)
+            message = msg.AppDataMessage.deserialize(mb.msg, self._session)
 
         elif mb.content_type is tls.ContentType.HEARTBEAT:
-            message = msg.HeartbeatMessage.deserialize(mb.msg, self)
+            message = msg.HeartbeatMessage.deserialize(mb.msg, self._session)
 
         elif mb.content_type is tls.ContentType.SSL2:
-            message = msg.SSL2Message.deserialize(mb.msg, self)
+            message = msg.SSL2Message.deserialize(mb.msg, self._session)
 
         else:
             raise ValueError("Content type unknown")
@@ -1518,13 +1535,15 @@ class TlsConnection(object):
 
     def wait_msg_bytes(
         self,
-        msg_class: Union[Type[TlsMessage], Timeout],
+        msg_class: Union[Type["msg.TlsMessage"], "msg.Timeout"],
         optional: bool = False,
         max_nbr: int = 1,
         timeout: int = 5000,
         fail_on_timeout: bool = True,
         **kwargs: Any,
-    ) -> Tuple[Union[Type[TlsMessage], Timeout, Any, None], Optional[bytes]]:
+    ) -> Tuple[
+        Union[Type["msg.TlsMessage"], "msg.Timeout", Any, None], Optional[bytes]
+    ]:
         """Interface to wait for a message from the peer.
 
         Arguments:
@@ -1563,7 +1582,7 @@ class TlsConnection(object):
                         ultimo - time.time(), **kwargs
                     )
 
-                except TlsMsgTimeoutError as exc:
+                except tls.TlsMsgTimeoutError as exc:
                     if msg_class is msg.Timeout:
                         return msg.Timeout(), None
 
@@ -1598,7 +1617,7 @@ class TlsConnection(object):
 
                 else:
                     logging.warning("unexpected message received")
-                    raise ScanError(
+                    raise tls.ScanError(
                         (
                             f"Unexpected message received: {message.msg_type}, "
                             f"expected: {msg_class.msg_type}"
@@ -1606,8 +1625,10 @@ class TlsConnection(object):
                     )
 
     def wait(
-        self, msg_class: Union[Type[TlsMessage], Timeout, Any], **kwargs: Any
-    ) -> Union[Type[TlsMessage], Timeout, None]:
+        self,
+        msg_class: Union[Type["msg.TlsMessage"], "msg.Timeout", Any],
+        **kwargs: Any,
+    ) -> Union[Type["msg.TlsMessage"], "msg.Timeout", None]:
         """Interface to wait for a message from the peer.
 
         Arguments:
@@ -1647,6 +1668,7 @@ class TlsConnection(object):
     def _update_cipher_suite(self, cipher_suite):
         self.cipher_suite = cipher_suite
         self.cs_details = utils.get_cipher_suite_details(cipher_suite)
+        self._session.cs_details = self.cs_details
 
         if not self.cs_details.full_hs:
             logging.debug(
@@ -1683,11 +1705,11 @@ class TlsConnection(object):
                 48,
             )
 
-        KeyLogger.master_secret(self.client_random, self.master_secret)
+        kl.KeyLogger.master_secret(self.client_random, self.master_secret)
         logging.debug(f"master_secret: {pdu.dump(self.master_secret)}")
         self.recorder.trace(master_secret=self.master_secret)
         if self._new_session_id is not None:
-            self.client.save_session_state_id(
+            self._session.save_session_state_id(
                 structs.SessionStateId(
                     session_id=self._new_session_id,
                     cipher_suite=self.cipher_suite,
@@ -1716,13 +1738,13 @@ class TlsConnection(object):
         c_hs_tr_secret = self._kdf.hkdf_expand_label(
             handshake_secret, "c hs traffic", hello_digest, mac.key_len
         )
-        KeyLogger.client_hs_tr_secret(self.client_random, c_hs_tr_secret)
+        kl.KeyLogger.client_hs_tr_secret(self.client_random, c_hs_tr_secret)
         c_enc = self._kdf.hkdf_expand_label(c_hs_tr_secret, "key", b"", ciph.key_len)
         c_iv = self._kdf.hkdf_expand_label(c_hs_tr_secret, "iv", b"", ciph.iv_len)
         s_hs_tr_secret = self._kdf.hkdf_expand_label(
             handshake_secret, "s hs traffic", hello_digest, mac.key_len
         )
-        KeyLogger.server_hs_tr_secret(self.client_random, s_hs_tr_secret)
+        kl.KeyLogger.server_hs_tr_secret(self.client_random, s_hs_tr_secret)
         s_enc = self._kdf.hkdf_expand_label(s_hs_tr_secret, "key", b"", ciph.key_len)
         s_iv = self._kdf.hkdf_expand_label(s_hs_tr_secret, "iv", b"", ciph.iv_len)
         logging.debug(f"client hs traffic secret: {pdu.dump(c_hs_tr_secret)}")
@@ -1839,7 +1861,7 @@ class TlsConnection(object):
         self.wait(msg.Timeout, timeout=timeout)
 
     def handshake(
-        self, ch_pre_serialization: Optional[Callable[[TlsMessage], None]] = None
+        self, ch_pre_serialization: Optional[Callable[["msg.TlsMessage"], None]] = None
     ) -> None:
         """Convenient method to execute a complete handshake.
 
@@ -1875,10 +1897,10 @@ class TlsConnection(object):
                 expected.
         """
         self.send(msg.ClientHello, pre_serialization=ch_pre_serialization)
-        if self.client.profile.early_data is not None:
-            self.send(msg.AppData(self.client.profile.early_data))
+        if self._profile.early_data is not None:
+            self.send(msg.AppData(self._profile.early_data))
 
-        rec_msg = cast(TlsMessage, self.wait(msg.Any))
+        rec_msg = cast(msg.TlsMessage, self.wait(msg.Any))
         if isinstance(rec_msg, msg.HelloRetryRequest):
             self.send(msg.ClientHello, pre_serialization=ch_pre_serialization)
             self.wait(msg.ChangeCipherSpec, optional=True)
@@ -1886,7 +1908,7 @@ class TlsConnection(object):
 
         elif not isinstance(rec_msg, msg.ServerHello):
             logging.warning("unexpected message received")
-            raise ScanError(
+            raise tls.ScanError(
                 (
                     f"Unexpected message received: {rec_msg.msg_type}, "
                     f"expected: {tls.HandshakeType.SERVER_HELLO}"

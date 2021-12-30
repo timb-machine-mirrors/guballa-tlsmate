@@ -40,13 +40,13 @@ import logging
 from typing import List, Tuple, Type, Any, Dict, Optional
 
 # import own stuff
-from tlsmate import tls
-from tlsmate import utils
-from tlsmate import pdu
-from tlsmate import mappings
-from tlsmate import structs
-from tlsmate.cert import Certificate
-from tlsmate.cert_chain import CertChain
+import tlsmate.cert as crt
+import tlsmate.cert_chain as cert_chain
+import tlsmate.mappings as mappings
+import tlsmate.pdu as pdu
+import tlsmate.structs as structs
+import tlsmate.tls as tls
+import tlsmate.utils as utils
 
 # import other stuff
 import yaml
@@ -1258,7 +1258,7 @@ class SPCertificate(SPObject):
     """Data class for a certificate.
     """
 
-    def __init__(self, cert: Optional[Certificate] = None, **kwargs: Any) -> None:
+    def __init__(self, cert: Optional[crt.Certificate] = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         if not cert:
             return
@@ -1329,7 +1329,9 @@ class SPCertChain(SPObject):
     """Data class for a certificate chain.
     """
 
-    def __init__(self, chain: Optional[CertChain] = None, **kwargs: Any) -> None:
+    def __init__(
+        self, chain: Optional["cert_chain.CertChain"] = None, **kwargs: Any
+    ) -> None:
         super().__init__(**kwargs)
         if not chain:
             return
@@ -1695,7 +1697,7 @@ class ServerProfile(SPObject):
         if not hasattr(self, "vulnerabilities"):
             self.vulnerabilities = SPVulnerabilities()
 
-    def append_unique_cert_chain(self, chain: CertChain) -> None:
+    def append_unique_cert_chain(self, chain: "cert_chain.CertChain") -> None:
         """Append a certificate chain to the profile, if not yet present.
 
         Arguments:

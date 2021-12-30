@@ -13,10 +13,10 @@ import pathlib
 from typing import Optional
 
 # import own stuff
-from tlsmate.tlsmate import TlsMate, TLSMATE_DIR
-from tlsmate import utils
-from tlsmate.config import Configuration
-from tlsmate.structs import ConfigItem
+import tlsmate.config as conf
+import tlsmate.structs as structs
+import tlsmate.tlsmate as tm
+import tlsmate.utils as utils
 
 # import other stuff
 
@@ -63,19 +63,19 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
     server_cmd: Optional[str] = None
 
     @abc.abstractmethod
-    def run(self, tlsmate: TlsMate, is_replaying: bool) -> None:
+    def run(self, tlsmate: tm.TlsMate, is_replaying: bool) -> None:
         pass
 
     def _start_server(self):
 
-        ca_cmd = TLSMATE_DIR / "utils/start_ca_servers"
+        ca_cmd = tm.TLSMATE_DIR / "utils/start_ca_servers"
         logging.debug(f'starting CA servers with command "{ca_cmd}"')
-        exit_code = os.system(TLSMATE_DIR / "utils/start_ca_servers")
+        exit_code = os.system(tm.TLSMATE_DIR / "utils/start_ca_servers")
         if exit_code != 0:
             raise ValueError(f"Could not start CA servers, exit code: {exit_code}")
 
         cmd = (
-            str(TLSMATE_DIR)
+            str(tm.TLSMATE_DIR)
             + "/"
             + self.server_cmd.format(
                 library=self.library.name, server_port=self.config.get("port"),
@@ -141,13 +141,13 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             ini_file = None
 
         else:
-            ini_file = TLSMATE_DIR / "tests/tlsmate.ini"
+            ini_file = tm.TLSMATE_DIR / "tests/tlsmate.ini"
             if not ini_file.is_file():
                 ini_file = None
 
-        self.config = Configuration()
-        self.config.register(ConfigItem("pytest_recorder_file", type=str))
-        self.config.register(ConfigItem("pytest_recorder_replaying", type=str))
+        self.config = conf.Configuration()
+        self.config.register(structs.ConfigItem("pytest_recorder_file", type=str))
+        self.config.register(structs.ConfigItem("pytest_recorder_replaying", type=str))
 
         if not is_replaying:
             self.config.init_from_external(ini_file)  # type: ignore
@@ -158,7 +158,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         self.config.set("pytest_recorder_replaying", is_replaying)
         utils.set_logging_level(self.config.get("logging"))
 
-        self.tlsmate = TlsMate(self.config)
+        self.tlsmate = tm.TlsMate(self.config)
         self.recorder = self.tlsmate.recorder
 
         if not is_replaying:

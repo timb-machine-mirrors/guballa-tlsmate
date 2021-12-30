@@ -5,11 +5,11 @@
 import abc
 
 # import own stuff
-from tlsmate import msg
-from tlsmate import tls
-from tlsmate.plugin import Worker
-from tlsmate import utils
-from tlsmate.server_profile import SPSignatureAlgorithms
+import tlsmate.msg as msg
+import tlsmate.plugin as plg
+import tlsmate.server_profile as server_profile
+import tlsmate.tls as tls
+import tlsmate.utils as utils
 
 # import other stuff
 
@@ -57,7 +57,7 @@ class _BackendTls13(_Backend):
         return sig_alg, cert_chain
 
 
-class ScanSigAlgs(Worker):
+class ScanSigAlgs(plg.Worker):
     name = "sigalgo"
     descr = "scan for supported signature algorithms"
     prio = 20
@@ -102,7 +102,7 @@ class ScanSigAlgs(Worker):
             return
 
         if not hasattr(prof_version, "signature_algorithms"):
-            prof_version.signature_algorithms = SPSignatureAlgorithms()
+            prof_version.signature_algorithms = server_profile.SPSignatureAlgorithms()
 
         values = self.server_profile.get_profile_values([tls.Version.TLS12])
         self.client.init_profile(profile_values=values)
@@ -172,7 +172,7 @@ class ScanSigAlgs(Worker):
             return
 
         if not hasattr(prof_version, "signature_algorithms"):
-            prof_version.signature_algorithms = SPSignatureAlgorithms()
+            prof_version.signature_algorithms = server_profile.SPSignatureAlgorithms()
 
         values = self.server_profile.get_profile_values([tls.Version.TLS12])
         self.client.init_profile(profile_values=values)

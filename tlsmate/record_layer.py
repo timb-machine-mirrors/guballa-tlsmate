@@ -3,17 +3,16 @@
 """
 # import basic stuff
 import logging
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Optional
 
 # import own stuff
-from tlsmate import tls
-from tlsmate import structs
-from tlsmate import pdu
-from tlsmate.record_layer_state import RecordLayerState
-from tlsmate.socket import Socket
-
-if TYPE_CHECKING:
-    from tlsmate.tlsmate import TlsMate
+import tlsmate.config as conf
+import tlsmate.pdu as pdu
+import tlsmate.record_layer_state as record_layer_state
+import tlsmate.recorder as rec
+import tlsmate.socket as socket
+import tlsmate.structs as structs
+import tlsmate.tls as tls
 
 # import other stuff
 
@@ -22,17 +21,14 @@ class RecordLayer(object):
     """Class implementing the record layer.
     """
 
-    def __init__(self, tlsmate: "TlsMate", l4_addr) -> None:
-        self._l4_addr = l4_addr  # TODO: check, if this is actually used.
-        self._tlsmate = tlsmate
+    def __init__(self, config: conf.Configuration, recorder: rec.Recorder) -> None:
         self._send_buffer = bytearray()
         self._receive_buffer = bytearray()
         self._fragment_max_size = 4 * 4096
-        self._write_state = None
-        self._read_state = None
-        self._socket = Socket(tlsmate)
+        self._write_state: Optional[record_layer_state.RecordLayerState] = None
+        self._read_state: Optional[record_layer_state.RecordLayerState] = None
+        self._socket = socket.Socket(config=config, recorder=recorder)
         self._flush_each_fragment = False
-        self._recorder = tlsmate.recorder
         self._ssl2 = False
 
     def _send_fragment(self, rl_msg: structs.RecordLayerMsg, **kwargs: Any) -> None:
@@ -217,7 +213,7 @@ class RecordLayer(object):
                 keying material for the symmetric ciphers and other relevant elements.
         """
 
-        state = RecordLayerState(new_state)
+        state = record_layer_state.RecordLayerState(new_state)
         if new_state.is_write_state:
             self._write_state = state
             state_type = "WRITE"

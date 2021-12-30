@@ -6,13 +6,11 @@ import logging
 import abc
 
 # import own stuff
-from tlsmate import msg
-from tlsmate import tls
-from tlsmate.plugin import Worker
-from tlsmate.exception import ScanError
-from tlsmate.server_profile import SPSupportedGroups
-from tlsmate import utils
-from tlsmate.exception import CurveNotSupportedError
+import tlsmate.msg as msg
+import tlsmate.plugin as plg
+import tlsmate.server_profile as server_profile
+import tlsmate.tls as tls
+import tlsmate.utils as utils
 
 # import other stuff
 
@@ -23,7 +21,7 @@ class _Scan(metaclass=abc.ABCMeta):
         self._client = testsuite.client
         self._version_prof = vers_prof
         if not hasattr(vers_prof, "supported_groups"):
-            vers_prof.supported_groups = SPSupportedGroups()
+            vers_prof.supported_groups = server_profile.SPSupportedGroups()
         self._profile_groups = vers_prof.supported_groups
 
     @abc.abstractmethod
@@ -55,7 +53,9 @@ class _Scan(metaclass=abc.ABCMeta):
                 sub_set.remove(server_group)
 
         if not supported_groups:
-            raise ScanError("ECDHE cipher suites negotiated, but no groups supported")
+            raise tls.ScanError(
+                "ECDHE cipher suites negotiated, but no groups supported"
+            )
 
         self._profile_groups.extension_supported = tls.ScanState.TRUE
         self._profile_groups.groups = supported_groups
@@ -134,7 +134,7 @@ class _TLS12_Scan(_Scan):
             conn.wait(msg.Certificate, optional=True)
             try:
                 msg_ske = conn.wait(msg.ServerKeyExchange)
-            except CurveNotSupportedError as exc:
+            except tls.CurveNotSupportedError as exc:
                 return exc.curve
             if msg_ske is None or msg_ske.ec is None:
                 return None
@@ -179,9 +179,9 @@ class _TLS13_Scan(_Scan):
             key_share_ext = conn.msg.server_hello.get_extension(tls.Extension.KEY_SHARE)
             key_share = key_share_ext.key_shares[0]
             if key_share.group not in offered_groups:
-                raise ScanError("selected group was not offered")
+                raise tls.ScanError("selected group was not offered")
         except AttributeError as exc:
-            raise ScanError("cannot get selected group from server_hello") from exc
+            raise tls.ScanError("cannot get selected group from server_hello") from exc
 
         return key_share
 
@@ -217,14 +217,14 @@ class _TLS13_Scan(_Scan):
 
                 if self._profile_groups.server_preference is not tls.ScanState.TRUE:
                     if set(advertised_groups) != set(groups):
-                        raise ScanError(
+                        raise tls.ScanError(
                             "server's advertised groups differ from accepted groups"
                         )
         if status is not None:
             self._profile_groups.groups_advertised = status
 
 
-class ScanSupportedGroups(Worker):
+class ScanSupportedGroups(plg.Worker):
     name = "groups"
     descr = "scan for supported groups"
     prio = 20

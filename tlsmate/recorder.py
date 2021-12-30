@@ -5,14 +5,13 @@
 import enum
 import datetime
 import time
-from typing import List, Any, Dict, Tuple, Optional, TYPE_CHECKING
+from typing import List, Any, Dict, Tuple, Optional
 
 # import own stuff
-from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
-from tlsmate import utils
+import tlsmate.config as conf
+import tlsmate.tls as tls
+import tlsmate.utils as utils
 
-if TYPE_CHECKING:
-    from tlsmate.tlsmate import TlsMate
 
 # import other stuff
 import requests
@@ -104,11 +103,11 @@ class Recorder(object):
         "response": "response",
     }
 
-    def __init__(self, tlsmate: "TlsMate" = None) -> None:
+    def __init__(self, config: Optional[conf.Configuration] = None) -> None:
         self.reset()
         self._delay = True
-        if tlsmate:
-            self._delay = tlsmate.config.get("recorder_delay")
+        if config:
+            self._delay = config.get("recorder_delay")
 
     def reset(self) -> None:
         """Reset the recorder to an initial state.
@@ -294,10 +293,10 @@ class Recorder(object):
                 time.sleep(timeout)
 
             if event_type is SocketEvent.CLOSURE:
-                raise TlsConnectionClosedError
+                raise tls.TlsConnectionClosedError
 
             elif event_type is SocketEvent.TIMEOUT:
-                raise TlsMsgTimeoutError
+                raise tls.TlsMsgTimeoutError
 
             return data
 

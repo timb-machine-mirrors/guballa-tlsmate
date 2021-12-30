@@ -4,14 +4,14 @@
 # import basic stuff
 
 # import own stuff
-from tlsmate import msg
-from tlsmate import tls
-from tlsmate.plugin import Worker
+import tlsmate.msg as msg
+import tlsmate.plugin as plg
+import tlsmate.tls as tls
 
 # import other stuff
 
 
-class ScanCompression(Worker):
+class ScanCompression(plg.Worker):
     name = "compression"
     descr = "scan for compression support"
     prio = 30

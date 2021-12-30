@@ -9,7 +9,7 @@ import logging
 from typing import Optional
 
 # import own stuff
-from tlsmate import pdu
+import tlsmate.pdu as pdu
 
 # import other stuff
 from cryptography.hazmat.primitives import hashes, hmac

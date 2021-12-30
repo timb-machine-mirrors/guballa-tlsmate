@@ -7,18 +7,15 @@ import select
 import logging
 import time
 import sys
-from typing import Tuple, Optional, TYPE_CHECKING
+from typing import Tuple, Optional
 
 # import own stuff
-from tlsmate import utils
-from tlsmate import tls
-from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
-from tlsmate import recorder
-from tlsmate import resolver
-from tlsmate import structs
-
-if TYPE_CHECKING:
-    from tlsmate.tlsmate import TlsMate
+import tlsmate.config as conf
+import tlsmate.recorder as rec
+import tlsmate.resolver as resolver
+import tlsmate.structs as structs
+import tlsmate.tls as tls
+import tlsmate.utils as utils
 
 # import other stuff
 
@@ -30,10 +27,10 @@ class Socket(object):
         tlsmate: the application object
     """
 
-    def __init__(self, tlsmate: "TlsMate") -> None:
+    def __init__(self, config: conf.Configuration, recorder: rec.Recorder) -> None:
         self._socket: Optional[socket.socket] = None
-        self._config = tlsmate.config
-        self._recorder = tlsmate.recorder
+        self._config = config
+        self._recorder = recorder
         self._fragment_max_size = 16384
 
     def open_socket(self, l4_addr: structs.TransportEndpoint) -> None:
@@ -127,22 +124,20 @@ class Socket(object):
             rfds, wfds, efds = select.select([self._socket], [], [], timeout)
             timeout = time.time() - start
             if not rfds:
-                self._recorder.trace_socket_recv(timeout, recorder.SocketEvent.TIMEOUT)
-                raise TlsMsgTimeoutError
+                self._recorder.trace_socket_recv(timeout, rec.SocketEvent.TIMEOUT)
+                raise tls.TlsMsgTimeoutError
 
             try:
                 data = self._socket.recv(self._fragment_max_size)
 
             except ConnectionResetError as exc:
-                self._recorder.trace_socket_recv(timeout, recorder.SocketEvent.CLOSURE)
+                self._recorder.trace_socket_recv(timeout, rec.SocketEvent.CLOSURE)
                 self.close_socket()
-                raise TlsConnectionClosedError(exc)
+                raise tls.TlsConnectionClosedError(exc)
 
-            self._recorder.trace_socket_recv(
-                timeout, recorder.SocketEvent.DATA, data=data
-            )
+            self._recorder.trace_socket_recv(timeout, rec.SocketEvent.DATA, data=data)
         if data == b"":
             self.close_socket()
-            raise TlsConnectionClosedError()
+            raise tls.TlsConnectionClosedError()
 
         return data

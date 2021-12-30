@@ -2,12 +2,12 @@
 """Implements a class to be used for unit testing.
 """
 import pathlib
-from tests.cipher_suite_tester import CipherSuiteTester
-from tlsmate import tls
-from tlsmate.tlssuite import TlsLibrary
+import tests.cipher_suite_tester as tester
+import tlsmate.tls as tls
+import tlsmate.tlssuite as tlssuite
 
 
-class TestCase(CipherSuiteTester):
+class TestCase(tester.CipherSuiteTester):
     """Class used for tests with pytest.
 
     For more information refer to the documentation of the CipherSuiteTester class.
@@ -20,7 +20,7 @@ class TestCase(CipherSuiteTester):
         "utils/start_openssl --version {library} --port {server_port} "
         "--cert1 server-rsa -- -www -cipher ALL"
     )
-    library = TlsLibrary.openssl1_0_2
+    library = tlssuite.TlsLibrary.openssl1_0_2
 
     # Uncomment the line below if you do not want to use the default version and
     # adapt it to your needs.

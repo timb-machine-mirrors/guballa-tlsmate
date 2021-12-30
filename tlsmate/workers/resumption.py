@@ -4,14 +4,14 @@
 # import basic stuff
 
 # import own stuff
-from tlsmate import tls
-from tlsmate.plugin import Worker
-from tlsmate import msg
+import tlsmate.msg as msg
+import tlsmate.plugin as plg
+import tlsmate.tls as tls
 
 # import other stuff
 
 
-class ScanResumption(Worker):
+class ScanResumption(plg.Worker):
     name = "resumption"
     descr = "scan for resumption support (session_id and ticket)"
     prio = 30
@@ -61,7 +61,7 @@ class ScanResumption(Worker):
         prof_features.session_id = session_id_support
         if session_ticket_support is tls.ScanState.TRUE:
             prof_features.session_ticket_lifetime = (
-                self.client.session_state_ticket.lifetime
+                self.client.session.session_state_ticket.lifetime
             )
 
     def _run_tls13(self):

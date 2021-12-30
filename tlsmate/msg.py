@@ -4,65 +4,19 @@
 # import basic stuff
 import abc
 import os
-from typing import Union, List, Optional, Any as AnyType, TYPE_CHECKING
+from typing import Union, List, Optional, Mapping, Type, Any as AnyType
 
 # import own stuff
-from tlsmate import tls
-from tlsmate import ext
-from tlsmate.exception import ServerMalfunction
-from tlsmate.cert_chain import CertChain
-from tlsmate import pdu
-
-if TYPE_CHECKING:
-    from tlsmate.connection import TlsConnection
+import tlsmate.cert_chain as cert_chain
+import tlsmate.client_auth as client_auth
+import tlsmate.client_state as client_state
+import tlsmate.ext as ext
+import tlsmate.pdu as pdu
+import tlsmate.recorder as rec
+import tlsmate.tls as tls
+import tlsmate.utils as utils
 
 # import other stuff
-
-
-def get_extension(
-    extensions: List[ext.Extension], ext_id: tls.Extension
-) -> Optional[ext.Extension]:
-    """Helper function to search for an extension
-
-    Arguments:
-        extensions: the list to search for the extension
-        ext_id: the extension to to look for
-
-    Returns:
-        The extension if present, or None otherwise.
-    """
-
-    if extensions is not None:
-        for extension in extensions:
-            if extension.extension_id == ext_id:
-                return extension
-
-    return None
-
-
-def _deserialize_extensions(
-    extensions: List[ext.Extension], fragment: bytes, offset: int
-) -> int:
-    """Helper function to deserialize extensions
-
-    Arguments:
-        extensions: the list where to store the deserialized extensions
-        fragment: the pdu buffer
-        offset: the offset within the pdu buffer to the start of the extensions
-
-    Returns:
-        the offset on the byte following the extensions
-    """
-
-    if offset < len(fragment):
-        # extensions present
-        ext_len, offset = pdu.unpack_uint16(fragment, offset)
-        ext_end = offset + ext_len
-        while offset < ext_end:
-            extension, offset = ext.Extension.deserialize(fragment, offset)
-            extensions.append(extension)
-
-    return offset
 
 
 def _get_version(msg):
@@ -101,31 +55,32 @@ class TlsMessage(metaclass=abc.ABCMeta):
     """
 
     @abc.abstractmethod
-    def deserialize(cls, fragment, conn):
+    def deserialize(
+        cls, fragment: bytes, session: client_state.SessionState
+    ) -> "TlsMessage":
         """Method to deserialize the message received from the network
 
         Arguments:
-            fragment (bytearray): The byte array representation of the message in
-                network order (big endian).
-            conn (:obj:`tlsmate.connection.TlsConnection`): The connection object,
-                needed for some odd cases, e.g. when deserializing a ServerKeyExchange
-                message, as the layout purely depends on the key exchange method.
+            fragment: The byte array representation of the message in network
+                order (big endian).
+            session: The session object, needed for some odd cases, e.g. when
+                deserializing a ServerKeyExchange message, as the layout purely
+                depends on the key exchange method.
 
         Returns:
-            :obj:`TlsMessage`:
-                The deserialized message represented in a python object.
+            The deserialized message represented in a python object.
         """
 
         pass
 
     @abc.abstractmethod
-    def serialize(self, conn):
+    def serialize(self, session: client_state.SessionState) -> bytes:
         """A method to serialize this object.
 
         Arguments:
-            conn (:obj:`tlsmate.connection.TlsConnection`): The connection object,
-                needed for some odd cases, e.g. when serializing a ServerKeyExchange
-                message, as the layout purely depends on the key exchange method.
+            session: The session object, needed for some odd cases, e.g. when
+                serializing a ServerKeyExchange message, as the layout purely
+                depends on the key exchange method.
 
         Returns:
             bytearray: The bytes of the message in network order (big endian).
@@ -159,13 +114,16 @@ class HandshakeMessage(TlsMessage):
     """
 
     @classmethod
-    def deserialize(cls, fragment: bytes, conn: "TlsConnection") -> "HandshakeMessage":
+    def deserialize(
+        cls, fragment: bytes, session: client_state.SessionState
+    ) -> "HandshakeMessage":
         """Method to deserialize a handshake message.
 
         Arguments:
             fragment: The bytes which contain the serialized handshake message.
-            conn: the connection object, used to retrieve additional
-                information required to deserialize the handshake message.
+            session: The session object, needed for some odd cases, e.g. when
+                deserializing a ServerKeyExchange message, as the layout purely
+                depends on the key exchange method.
 
         Returns:
             the deserialized message object
@@ -174,35 +132,36 @@ class HandshakeMessage(TlsMessage):
         msg_type = tls.HandshakeType.val2enum(msg_tp, alert_on_failure=True)
         length, offset = pdu.unpack_uint24(fragment, offset)
         if length + offset != len(fragment):
-            raise ServerMalfunction(
+            raise tls.ServerMalfunction(
                 tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=msg_type
             )
 
         cls_name = _hs_deserialization_map[msg_type]
-        msg = cls_name()._deserialize_msg_body(fragment, offset, conn)  # type: ignore
+        msg = cls_name()._deserialize_msg_body(fragment, offset, session)
         return msg
 
     @abc.abstractmethod
-    def _deserialize_msg_body(self, msg_body, offset, conn):
+    def _deserialize_msg_body(
+        self, msg_body: bytes, offset: int, session: client_state.SessionState
+    ) -> "HandshakeMessage":
         """Method to deserialize a handshake message.
 
         Arguments:
-            msg_body (bytearray): The bytes which contain the serialized handshake
-                message.
-            offset (int): The offset within the bytes where the handshake message
+            msg_body: The bytes which contain the serialized handshake message.
+            offset: The offset within the bytes where the handshake message
                 starts.
-            conn (:obj:`tlsmate.connection.TlsConnection`): the connection object,
-                used to retrieve additional information required to deserialize
-                the handshake message.
+            session: The session object, needed for some odd cases, e.g. when
+                deserializing a ServerKeyExchange message, as the layout purely
+                depends on the key exchange method.
 
         Returns:
-            :obj:`HandshakeMessage`: the deserialized message object, i.e. self.
+            the deserialized message object, i.e. self.
         """
 
         pass
 
     @abc.abstractmethod
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session: client_state.SessionState) -> bytes:
         """Serializes the message body.
 
         I.e., the message body only is serialized, without the common handshake header.
@@ -210,17 +169,18 @@ class HandshakeMessage(TlsMessage):
 
         pass
 
-    def serialize(self, conn: "TlsConnection") -> bytes:
+    def serialize(self, session: client_state.SessionState) -> bytes:
         """Serializes a handshake message object into a byte stream.
 
         Arguments:
-            conn: the connection object, used to retrieve additional
-                information required to deserialize the handshake message.
+            session: The session object, needed for some odd cases, e.g. when
+                serializing a ServerKeyExchange message, as the layout purely
+                depends on the key exchange method.
 
         Returns: the serialized message
         """
 
-        msg_body = self._serialize_msg_body(conn)
+        msg_body = self._serialize_msg_body(session)
 
         return bytearray(
             pdu.pack_uint8(self.msg_type.value)
@@ -238,12 +198,12 @@ class HelloRequest(HandshakeMessage):
     def __init__(self) -> None:
         pass
 
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         return b""
 
-    def _deserialize_msg_body(self, fragment, offset, conn):
+    def _deserialize_msg_body(self, fragment, offset, session):
         if offset != len(fragment):
-            raise ServerMalfunction(
+            raise tls.ServerMalfunction(
                 tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=self.msg_type
             )
 
@@ -279,7 +239,7 @@ class ClientHello(HandshakeMessage):
         self.extensions: List[ext.Extension] = []
         self._bytes_after_psk_ext = 0
 
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         msg = bytearray()
 
         # version
@@ -314,7 +274,7 @@ class ClientHello(HandshakeMessage):
             psk_end_offset = 0
             ext_bytes = bytearray()
             for extension in self.extensions:
-                ext_bytes.extend(extension.serialize(conn))
+                ext_bytes.extend(extension.serialize(session))
                 if extension.extension_id is tls.Extension.PRE_SHARED_KEY:
                     psk_end_offset = len(ext_bytes)
 
@@ -324,7 +284,7 @@ class ClientHello(HandshakeMessage):
 
         return msg
 
-    def _deserialize_msg_body(self, msg_body, length, conn):
+    def _deserialize_msg_body(self, msg_body, length, session):
         return self
 
     def get_extension(self, ext_id: tls.Extension) -> Optional[ext.Extension]:
@@ -337,7 +297,7 @@ class ClientHello(HandshakeMessage):
             The extension object or None if not present.
         """
 
-        return get_extension(self.extensions, ext_id)
+        return ext.get_extension(self.extensions, ext_id)
 
     def get_version(self) -> tls.Version:
         """Get the highest TLS version from the message.
@@ -408,11 +368,11 @@ class HelloRetryRequest(HandshakeMessage):
             self.compression_method = None
             self.extensions = []
 
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         # TODO if we want to implement the server side as well
         pass
 
-    def _deserialize_msg_body(self, fragment, offset, conn):
+    def _deserialize_msg_body(self, fragment, offset, session):
         return self
 
     def get_extension(self, ext_id: tls.Extension) -> Optional[ext.Extension]:
@@ -425,7 +385,7 @@ class HelloRetryRequest(HandshakeMessage):
             The extension or None if not present.
         """
 
-        return get_extension(self.extensions, ext_id)
+        return ext.get_extension(self.extensions, ext_id)
 
     def get_version(self) -> tls.Version:
         """Get the negotiated TLS version from the message.
@@ -472,11 +432,11 @@ class ServerHello(HandshakeMessage):
         self.compression_method = None
         self.extensions: List[ext.Extension] = []
 
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         # TODO if we want to implement the server side as well
         pass
 
-    def _deserialize_msg_body(self, fragment, offset, conn):
+    def _deserialize_msg_body(self, fragment, offset, session):
         version, offset = pdu.unpack_uint16(fragment, offset)
         self.version = tls.Version.val2enum(version, alert_on_failure=True)
         self.random, offset = pdu.unpack_bytes(fragment, offset, 32)
@@ -494,7 +454,7 @@ class ServerHello(HandshakeMessage):
             compression_method, alert_on_failure=True
         )
         self.extensions = []
-        _deserialize_extensions(self.extensions, fragment, offset)
+        ext.deserialize_extensions(self.extensions, fragment, offset)
 
         if self.random == self.HELLO_RETRY_REQ_RAND:
             return HelloRetryRequest(server_hello=self)
@@ -511,7 +471,7 @@ class ServerHello(HandshakeMessage):
             The extension or None if not present.
         """
 
-        return get_extension(self.extensions, ext_id)
+        return ext.get_extension(self.extensions, ext_id)
 
     def get_version(self) -> tls.Version:
         """Get the negotiated TLS version from the message.
@@ -547,10 +507,10 @@ class Certificate(HandshakeMessage):
 
     def __init__(self) -> None:
         self.request_context = None
-        self.chain = CertChain()
+        self.chain = cert_chain.CertChain()
         self.extensions: List[ext.Extension] = []
 
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         msg = bytearray()
         if self.request_context is not None:
             msg.extend(pdu.pack_uint8(len(self.request_context)))
@@ -561,7 +521,7 @@ class Certificate(HandshakeMessage):
             for certificate in self.chain.certificates:
                 cert_list.extend(pdu.pack_uint24(len(certificate.bytes)))
                 cert_list.extend(certificate.bytes)
-                if conn.version is tls.Version.TLS13:
+                if session.version is tls.Version.TLS13:
                     # no extensions supported right now, set length to 0.
                     cert_list.extend(pdu.pack_uint16(0))
 
@@ -569,9 +529,9 @@ class Certificate(HandshakeMessage):
         msg.extend(cert_list)
         return msg
 
-    def _deserialize_msg_body(self, fragment, offset, conn):
+    def _deserialize_msg_body(self, fragment, offset, session):
 
-        if conn.version is tls.Version.TLS13:
+        if session.version is tls.Version.TLS13:
             length, offset = pdu.unpack_uint8(fragment, offset)
             if length:
                 self.request_context, offset = pdu.unpack_bytes(
@@ -583,8 +543,8 @@ class Certificate(HandshakeMessage):
             cert_len, offset = pdu.unpack_uint24(fragment, offset)
             certificate, offset = pdu.unpack_bytes(fragment, offset, cert_len)
             self.chain.append_bin_cert(certificate)
-            if conn.version is tls.Version.TLS13:
-                offset = _deserialize_extensions(
+            if session.version is tls.Version.TLS13:
+                offset = ext.deserialize_extensions(
                     self.chain.certificates[-1].tls_extensions, fragment, offset
                 )
 
@@ -606,14 +566,14 @@ class CertificateVerify(HandshakeMessage):
         self.signature_scheme = None
         self.signature = None
 
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         msg = bytearray()
         msg.extend(pdu.pack_uint16(self.signature_scheme.value))
         msg.extend(pdu.pack_uint16(len(self.signature)))
         msg.extend(self.signature)
         return msg
 
-    def _deserialize_msg_body(self, fragment, offset, conn):
+    def _deserialize_msg_body(self, fragment, offset, session):
         scheme, offset = pdu.unpack_uint16(fragment, offset)
         self.signature_scheme = tls.SignatureScheme(scheme)
         length, offset = pdu.unpack_uint16(fragment, offset)
@@ -645,13 +605,13 @@ class KeyExchangeEC(object):
         self.signature = None
         self.signed_params = None
 
-    def _deserialize_ECParameters(self, fragment, offset, conn):
+    def _deserialize_ECParameters(self, fragment, offset, session):
         """Deserializes the EC-parameters.
 
         Arguments:
             fragment (bytes): A PDU buffer as received from the network.
             offset (int): The offset within the fragment where the DH-params start.
-            conn (:obj:`tlsmate.connection.TlsConnection`): The connection object.
+            session (:obj:`tlsmate.client_state.SessionState`): The connection object.
         Returns:
             int: The new offset after unpacking the EC-parameters.
         """
@@ -665,43 +625,43 @@ class KeyExchangeEC(object):
         # TODO: add other curve types
         return offset
 
-    def _deserialize_ServerECDHParams(self, fragment, offset, conn):
+    def _deserialize_ServerECDHParams(self, fragment, offset, session):
         """Deserializes the ECDH-parameters.
 
         Arguments:
             fragment (bytes): A PDU buffer as received from the network.
             offset (int): The offset within the fragment where the DH-params start.
-            conn (:obj:`tlsmate.connection.TlsConnection`): The connection object.
+            session (:obj:`tlsmate.connection.TlsConnection`): The connection object.
         Returns:
             int: The new offset after unpacking the EC-parameters.
         """
 
         # ECParameters    curve_params;
-        offset = self._deserialize_ECParameters(fragment, offset, conn)
+        offset = self._deserialize_ECParameters(fragment, offset, session)
         # ECPoint         public;
         point_len, offset = pdu.unpack_uint8(fragment, offset)
         self.public, offset = pdu.unpack_bytes(fragment, offset, point_len)
 
         return offset
 
-    def _deserialize_msg_body(self, fragment, offset, conn):
+    def _deserialize_msg_body(self, fragment, offset, session):
         """Deserializes the EC-parameters.
 
         Arguments:
             fragment (bytes): A PDU buffer as received from the network.
             offset (int): The offset within the fragment where the DH-params start.
-            conn (:obj:`tlsmate.connection.TlsConnection`): The connection object.
+            session (:obj:`tlsmate.connection.TlsConnection`): The connection object.
         Returns:
             :obj:`KeyExchangeEC`: The object representing the EC parameters, i.e. self.
         """
 
         signed_params_start = offset
         # ServerECDHParams    params;
-        offset = self._deserialize_ServerECDHParams(fragment, offset, conn)
+        offset = self._deserialize_ServerECDHParams(fragment, offset, session)
         self.signed_params = fragment[signed_params_start:offset]
         # Signature           signed_params;
-        if conn.cs_details.key_algo is not tls.KeyExchangeAlgorithm.ECDH_ANON:
-            if conn.version is tls.Version.TLS12:
+        if session.cs_details.key_algo is not tls.KeyExchangeAlgorithm.ECDH_ANON:
+            if session.version is tls.Version.TLS12:
                 sig_scheme, offset = pdu.unpack_uint16(fragment, offset)
                 self.sig_scheme = tls.SignatureScheme.val2enum(sig_scheme)
 
@@ -733,7 +693,7 @@ class KeyExchangeDH(object):
         self.signature = None
         self.signed_params = None
 
-    def _deserialize_msg_body(self, fragment, offset, conn, signature_present=True):
+    def _deserialize_msg_body(self, fragment, offset, session, signature_present=True):
         signed_params_start = offset
         p_length, offset = pdu.unpack_uint16(fragment, offset)
         self.p_val, offset = pdu.unpack_bytes(fragment, offset, p_length)
@@ -744,7 +704,7 @@ class KeyExchangeDH(object):
         self.public_key, offset = pdu.unpack_bytes(fragment, offset, pub_key_len)
         if signature_present:
             self.signed_params = fragment[signed_params_start:offset]
-            if conn.version is tls.Version.TLS12:
+            if session.version is tls.Version.TLS12:
                 sig_scheme, offset = pdu.unpack_uint16(fragment, offset)
                 self.sig_scheme = tls.SignatureScheme.val2enum(sig_scheme)
 
@@ -773,31 +733,31 @@ class ServerKeyExchange(HandshakeMessage):
         self.ec = None
         self.dh = None
 
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         # TODO if we want to implement the server side as well
         pass
 
-    def _deserialize_msg_body(self, fragment, offset, conn):
+    def _deserialize_msg_body(self, fragment, offset, session):
         self.ec = None
         self.dh = None
-        if conn.cs_details.key_algo_struct.key_ex_type is tls.KeyExchangeType.ECDH:
+        if session.cs_details.key_algo_struct.key_ex_type is tls.KeyExchangeType.ECDH:
             # RFC 4492
-            self.ec = KeyExchangeEC()._deserialize_msg_body(fragment, offset, conn)
+            self.ec = KeyExchangeEC()._deserialize_msg_body(fragment, offset, session)
 
-        elif conn.cs_details.key_algo_struct.key_ex_type is tls.KeyExchangeType.DH:
+        elif session.cs_details.key_algo_struct.key_ex_type is tls.KeyExchangeType.DH:
             # RFC5246
             self.dh = KeyExchangeDH()._deserialize_msg_body(
                 fragment,
                 offset,
-                conn,
+                session,
                 signature_present=(
-                    conn.cs_details.key_algo_struct.key_auth
+                    session.cs_details.key_algo_struct.key_auth
                     is not tls.KeyAuthentication.NONE
                 ),
             )
 
         else:
-            raise ServerMalfunction(tls.ServerIssue.INCOMPATIBLE_KEY_EXCHANGE)
+            raise tls.ServerMalfunction(tls.ServerIssue.INCOMPATIBLE_KEY_EXCHANGE)
 
         return self
 
@@ -811,13 +771,13 @@ class ServerHelloDone(HandshakeMessage):
     def __init__(self) -> None:
         pass
 
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         # TODO if we want to implement the server side as well
         pass
 
-    def _deserialize_msg_body(self, fragment, offset, conn):
+    def _deserialize_msg_body(self, fragment, offset, session):
         if offset != len(fragment):
-            raise ServerMalfunction(
+            raise tls.ServerMalfunction(
                 tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=self.msg_type
             )
 
@@ -845,10 +805,10 @@ class ClientKeyExchange(HandshakeMessage):
         self.dh_public = None
         self.ecdh_public = None
 
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         msg = bytearray()
         if self.rsa_encrypted_pms is not None:
-            if conn.version is not tls.Version.SSL30:
+            if session.version is not tls.Version.SSL30:
                 msg.extend(pdu.pack_uint16(len(self.rsa_encrypted_pms)))
 
             msg.extend(self.rsa_encrypted_pms)
@@ -863,7 +823,7 @@ class ClientKeyExchange(HandshakeMessage):
 
         return msg
 
-    def _deserialize_msg_body(self, fragment, offset, conn):
+    def _deserialize_msg_body(self, fragment, offset, session):
         pass
 
 
@@ -879,10 +839,10 @@ class Finished(HandshakeMessage):
     def __init__(self) -> None:
         self.verify_data = None
 
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         return bytes(self.verify_data)
 
-    def _deserialize_msg_body(self, fragment, offset, conn):
+    def _deserialize_msg_body(self, fragment, offset, session):
         self.verify_data = fragment[offset:]
         return self
 
@@ -896,12 +856,12 @@ class EndOfEarlyData(HandshakeMessage):
     def __init__(self) -> None:
         pass
 
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         return b""
 
-    def _deserialize_msg_body(self, fragment, offset, conn):
+    def _deserialize_msg_body(self, fragment, offset, session):
         if offset != len(fragment):
-            raise ServerMalfunction(
+            raise tls.ServerMalfunction(
                 tls.ServerIssue.MESSAGE_LENGTH_ERROR, message=self.msg_type
             )
 
@@ -929,19 +889,19 @@ class NewSessionTicket(HandshakeMessage):
         self.ticket = None
         self.extensions: List[ext.Extension] = []
 
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         # TODO for server side implementation
         return bytearray()
 
-    def _deserialize_msg_body(self, fragment, offset, conn):
-        if conn.version is tls.Version.TLS13:
+    def _deserialize_msg_body(self, fragment, offset, session):
+        if session.version is tls.Version.TLS13:
             self.lifetime, offset = pdu.unpack_uint32(fragment, offset)
             self.age_add, offset = pdu.unpack_uint32(fragment, offset)
             length, offset = pdu.unpack_uint8(fragment, offset)
             self.nonce, offset = pdu.unpack_bytes(fragment, offset, length)
             length, offset = pdu.unpack_uint16(fragment, offset)
             self.ticket, offset = pdu.unpack_bytes(fragment, offset, length)
-            _deserialize_extensions(self.extensions, fragment, offset)
+            ext.deserialize_extensions(self.extensions, fragment, offset)
             return self
 
         else:
@@ -959,7 +919,7 @@ class NewSessionTicket(HandshakeMessage):
         Returns:
             The extension or None if not present.
         """
-        return get_extension(self.extensions, ext_id)
+        return ext.get_extension(self.extensions, ext_id)
 
 
 NewSessionTicket.get_extension.__doc__ = ClientHello.get_extension.__doc__
@@ -986,18 +946,18 @@ class CertificateRequest(HandshakeMessage):
     def __init__(self) -> None:
         pass
 
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         # TODO for server side implementation
         return bytearray()
 
-    def _deserialize_msg_body(self, fragment, offset, conn):
-        if conn.version is tls.Version.TLS13:
+    def _deserialize_msg_body(self, fragment, offset, session):
+        if session.version is tls.Version.TLS13:
             self.certificate_request_context = None
             self.extensions = []
             length, offset = pdu.unpack_uint8(fragment, offset)
             context, offset = pdu.unpack_bytes(fragment, offset, length)
             self.certificate_request_context = context
-            _deserialize_extensions(self.extensions, fragment, offset)
+            ext.deserialize_extensions(self.extensions, fragment, offset)
 
         else:
             self.certificate_types = []
@@ -1043,7 +1003,7 @@ class CertificateRequest(HandshakeMessage):
         if not hasattr(self, "extensions"):
             return None
 
-        return get_extension(self.extensions, ext_id)
+        return ext.get_extension(self.extensions, ext_id)
 
 
 CertificateRequest.get_extension.__doc__ = ClientHello.get_extension.__doc__
@@ -1062,12 +1022,12 @@ class EncryptedExtensions(HandshakeMessage):
     def __init__(self) -> None:
         self.extensions: List[ext.Extension] = []
 
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         # TODO for server side implementation
         return bytearray()
 
-    def _deserialize_msg_body(self, fragment, offset, conn):
-        _deserialize_extensions(self.extensions, fragment, offset)
+    def _deserialize_msg_body(self, fragment, offset, session):
+        ext.deserialize_extensions(self.extensions, fragment, offset)
         return self
 
     def get_extension(self, ext_id):
@@ -1079,7 +1039,7 @@ class EncryptedExtensions(HandshakeMessage):
         Returns:
             The extension or None if not present.
         """
-        return get_extension(self.extensions, ext_id)
+        return ext.get_extension(self.extensions, ext_id)
 
 
 EncryptedExtensions.get_extension.__doc__ = ClientHello.get_extension.__doc__
@@ -1095,7 +1055,7 @@ class CertificateStatus(HandshakeMessage):
         self.status_type = tls.StatusType.OCSP
         self.responses: List[bytes] = []
 
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         # TODO for server side implementation
         return bytearray()
 
@@ -1105,7 +1065,7 @@ class CertificateStatus(HandshakeMessage):
         self.responses.append(response)
         return offset
 
-    def _deserialize_msg_body(self, fragment, offset, conn):
+    def _deserialize_msg_body(self, fragment, offset, session):
         status_type, offset = pdu.unpack_uint8(fragment, offset)
         self.status_type = tls.StatusType.val2enum(status_type)
         if self.status_type is tls.StatusType.OCSP:
@@ -1134,20 +1094,20 @@ class ChangeCipherSpecMessage(TlsMessage):
 
     @classmethod
     def deserialize(
-        cls, fragment: bytes, conn: "TlsConnection"
+        cls, fragment: bytes, session: client_state.SessionState
     ) -> "ChangeCipherSpecMessage":
         """Method to deserialize a handshake message.
 
         Arguments:
             fragment: The bytes which contain the serialized CCS message.
-            conn: the connection object, used to retrieve additional
+            session: the connection object, used to retrieve additional
                 information required to deserialize the CCS message.
 
         Returns:
             the deserialized message object
         """
         if len(fragment) != 1:
-            raise ServerMalfunction(
+            raise tls.ServerMalfunction(
                 tls.ServerIssue.MESSAGE_LENGTH_ERROR,
                 message=tls.CCSType.CHANGE_CIPHER_SPEC,
             )
@@ -1156,22 +1116,22 @@ class ChangeCipherSpecMessage(TlsMessage):
         msg_type = tls.CCSType.val2enum(msg_tp, alert_on_failure=True)
         cls_name = _ccs_deserialization_map[msg_type]
         msg = cls_name()
-        msg._deserialize_msg_body(conn)
+        msg._deserialize_msg_body(session)
         return msg
 
-    def serialize(self, conn: "TlsConnection") -> bytes:
+    def serialize(self, session: client_state.SessionState) -> bytes:
         """Serializes the message body.
 
         I.e., the message body only is serialized, without the common header.
         """
 
-        self._serialize_msg_body(conn)
+        self._serialize_msg_body(session)
         ccs_msg = bytearray()
         ccs_msg.extend(pdu.pack_uint8(self.msg_type.value))
         return ccs_msg
 
     @abc.abstractmethod
-    def _deserialize_msg_body(self, conn):
+    def _deserialize_msg_body(self, msg_body, offset, session):
         """Method to deserialize a CCS message.
 
         Arguments:
@@ -1179,7 +1139,7 @@ class ChangeCipherSpecMessage(TlsMessage):
                 message.
             offset (int): The offset within the bytes where the handshake message
                 starts.
-            conn (:obj:`tlsmate.connection.TlsConnection`): the connection object,
+            session (:obj:`tlsmate.client_state.SessionState`): the session object,
                 used to retrieve additional information required to deserialize
                 the handshake message.
 
@@ -1190,7 +1150,7 @@ class ChangeCipherSpecMessage(TlsMessage):
         pass
 
     @abc.abstractmethod
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         """Serializes the message body.
 
         I.e., the message body only is serialized, without the common handshake header.
@@ -1208,10 +1168,10 @@ class ChangeCipherSpec(ChangeCipherSpecMessage):
     def __init__(self) -> None:
         pass
 
-    def _deserialize_msg_body(self, conn):
+    def _deserialize_msg_body(self, session):
         pass
 
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         pass
 
 
@@ -1234,12 +1194,13 @@ class Alert(TlsMessage):
             "description", tls.AlertDescription.HANDSHAKE_FAILURE
         )
 
-    def serialize(self, conn: "TlsConnection") -> bytes:
+    def serialize(self, session: client_state.SessionState) -> bytes:
         """Serializes an alert message object into a byte stream.
 
         Arguments:
-            conn: the connection object, used to retrieve additional
-                information required to deserialize the handshake message.
+            session: The session object, needed for some odd cases, e.g. when
+                serializing a ServerKeyExchange message, as the layout purely
+                depends on the key exchange method.
 
         Returns: the serialized message
         """
@@ -1260,13 +1221,16 @@ class Alert(TlsMessage):
         return bytes(alert)
 
     @classmethod
-    def deserialize(cls, fragment: bytes, conn: "TlsConnection") -> "Alert":
+    def deserialize(
+        cls, fragment: bytes, session: client_state.SessionState
+    ) -> "Alert":
         """Method to deserialize an alert message.
 
         Arguments:
             fragment: The bytes which contain the serialized handshake message.
-            conn: the connection object, used to retrieve additional
-                information required to deserialize the handshake message.
+            session: The session object, needed for some odd cases, e.g. when
+                deserializing a ServerKeyExchange message, as the layout purely
+                depends on the key exchange method.
 
         Returns:
             the deserialized message object
@@ -1290,39 +1254,43 @@ class AppDataMessage(TlsMessage):
     """
 
     @classmethod
-    def deserialize(cls, fragment: bytes, conn: "TlsMessage") -> "AppDataMessage":
+    def deserialize(
+        cls, fragment: bytes, session: client_state.SessionState
+    ) -> "AppDataMessage":
         """Method to deserialize an application message.
 
         Arguments:
             fragment: The bytes which contain the serialized handshake message.
-            conn: the connection object, used to retrieve additional
-                information required to deserialize the handshake message.
+            session: The session object, needed for some odd cases, e.g. when
+                deserializing a ServerKeyExchange message, as the layout purely
+                depends on the key exchange method.
 
         Returns:
             the deserialized message object
         """
 
         msg = AppData()
-        msg._deserialize_msg_body(fragment, conn)
+        msg._deserialize_msg_body(fragment, session)
         return msg
 
-    def serialize(self, conn: "TlsConnection") -> bytes:
+    def serialize(self, session: client_state.SessionState) -> bytes:
         """Serializes an application message object into a byte stream.
 
         Arguments:
-            conn: the connection object, used to retrieve additional
-                information required to deserialize the application message.
+            session: The session object, needed for some odd cases, e.g. when
+                serializing a ServerKeyExchange message, as the layout purely
+                depends on the key exchange method.
 
         Returns: the serialized message
         """
-        return self._serialize_msg_body(conn)
+        return self._serialize_msg_body(session)
 
     @abc.abstractmethod
-    def _deserialize_msg_body(self, conn):
+    def _deserialize_msg_body(self, session):
         pass
 
     @abc.abstractmethod
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         pass
 
 
@@ -1338,10 +1306,10 @@ class AppData(AppDataMessage):
         for data in content:
             self.data.extend(data)
 
-    def _deserialize_msg_body(self, fragment, conn):
+    def _deserialize_msg_body(self, fragment, session):
         self.data = fragment
 
-    def _serialize_msg_body(self, conn):
+    def _serialize_msg_body(self, session):
         return bytes(self.data)
 
 
@@ -1366,13 +1334,16 @@ class HeartbeatMessage(TlsMessage):
         self.padding = padding
 
     @classmethod
-    def deserialize(cls, fragment: bytes, conn: "TlsConnection") -> "HeartbeatMessage":
+    def deserialize(
+        cls, fragment: bytes, session: client_state.SessionState
+    ) -> "HeartbeatMessage":
         """Method to deserialize a heartbeat message.
 
         Arguments:
             fragment: The bytes which contain the serialized handshake message.
-            conn: the connection object, used to retrieve additional
-                information required to deserialize the handshake message.
+            session: The session object, needed for some odd cases, e.g. when
+                deserializing a ServerKeyExchange message, as the layout purely
+                depends on the key exchange method.
 
         Returns:
             the deserialized message object
@@ -1386,12 +1357,13 @@ class HeartbeatMessage(TlsMessage):
         cls_name = _heartbeat_deserialization_map[msg_type]
         return cls_name(payload_length, payload, padding)
 
-    def serialize(self, conn: "TlsConnection") -> bytes:
+    def serialize(self, session: client_state.SessionState) -> bytes:
         """Serializes a heartbeat message object into a byte stream.
 
         Arguments:
-            conn: the connection object, used to retrieve additional
-                information required to deserialize the heartbeat message.
+            session: The session object, needed for some odd cases, e.g. when
+                serializing a ServerKeyExchange message, as the layout purely
+                depends on the key exchange method.
 
         Returns: the serialized message
         """
@@ -1436,13 +1408,16 @@ class SSL2Message(TlsMessage):
     """
 
     @classmethod
-    def deserialize(cls, fragment: bytes, conn: "TlsConnection") -> "SSL2Message":
+    def deserialize(
+        cls, fragment: bytes, session: client_state.SessionState
+    ) -> "SSL2Message":
         """Method to deserialize an SSL2 message.
 
         Arguments:
             fragment: The bytes which contain the serialized SSL2 message.
-            conn: the connection object, used to retrieve additional
-                information required to deserialize the SSL2 message.
+            session: The session object, needed for some odd cases, e.g. when
+                deserializing a ServerKeyExchange message, as the layout purely
+                depends on the key exchange method.
 
         Returns:
             the deserialized message object
@@ -1452,15 +1427,15 @@ class SSL2Message(TlsMessage):
         msg_type = tls.SSLMessagType.val2enum(msg_tp, alert_on_failure=True)
 
         cls_name = _ssl2_deserialization_map[msg_type]
-        msg = cls_name()._deserialize_msg_body(fragment, offset, conn)
+        msg = cls_name()._deserialize_msg_body(fragment, offset, session)
         return msg
 
     @abc.abstractmethod
-    def _deserialize_msg_body(self, msg_body, length, conn):
+    def _deserialize_msg_body(self, msg_body, length, session):
         pass
 
     @abc.abstractmethod
-    def serialize(self, conn):
+    def serialize(self, session):
         pass
 
 
@@ -1491,12 +1466,13 @@ class SSL2ClientHello(SSL2Message):
         self.session_id = bytes()
         self.challenge = os.urandom(16)
 
-    def serialize(self, conn: "TlsConnection") -> bytes:
+    def serialize(self, session: client_state.SessionState) -> bytes:
         """Serializes a message object into a byte stream.
 
         Arguments:
-            conn: the connection object, used to retrieve additional
-                information required to deserialize the message.
+            session: The session object, needed for some odd cases, e.g. when
+                serializing a ServerKeyExchange message, as the layout purely
+                depends on the key exchange method.
 
         Returns: the serialized message
         """
@@ -1514,7 +1490,7 @@ class SSL2ClientHello(SSL2Message):
         msg.extend(self.challenge)
         return msg
 
-    def _deserialize_msg_body(self, fragment, length, conn):
+    def _deserialize_msg_body(self, fragment, length, session):
         return self
 
 
@@ -1542,10 +1518,10 @@ class SSL2ServerHello(SSL2Message):
         self.connection_id = None
         self.certificate = None
 
-    def serialize(self, conn):
+    def serialize(self, session):
         pass
 
-    def _deserialize_msg_body(self, fragment, offset, conn):
+    def _deserialize_msg_body(self, fragment, offset, session):
         self.session_id_hit, offset = pdu.unpack_uint8(fragment, offset)
         self.cert_type, offset = pdu.unpack_uint8(fragment, offset)
         version, offset = pdu.unpack_uint16(fragment, offset)
@@ -1581,10 +1557,10 @@ class SSL2Error(SSL2Message):
     def __init__(self) -> None:
         self.error = None
 
-    def serialize(self, conn):
+    def serialize(self, session):
         pass
 
-    def _deserialize_msg_body(self, fragment, offset, conn):
+    def _deserialize_msg_body(self, fragment, offset, session):
         error, offset = pdu.unpack_uint16(fragment, offset)
         self.error = tls.SSLError.val2enum(error)
         return self
@@ -1592,7 +1568,7 @@ class SSL2Error(SSL2Message):
 
 """Map the handshake message type to the corresponding class.
 """
-_hs_deserialization_map = {
+_hs_deserialization_map: Mapping[tls.HandshakeType, Type[HandshakeMessage]] = {
     tls.HandshakeType.HELLO_REQUEST: HelloRequest,
     tls.HandshakeType.CLIENT_HELLO: ClientHello,
     tls.HandshakeType.SERVER_HELLO: ServerHello,
@@ -1628,3 +1604,130 @@ _ssl2_deserialization_map = {
 }
 """Map the SSL2 message type to the corresponding class.
 """
+
+
+def client_hello(
+    profile: client_state.ClientProfile,
+    session: client_state.SessionState,
+    recorder: rec.Recorder,
+    client_auth: client_auth.ClientAuth,
+) -> ClientHello:
+
+    """Populate a ClientHello message according to the client profile and session state.
+
+    Returns:
+        the ClientHello object
+    """
+    ch = ClientHello()
+    max_version = max(profile.versions)
+    if max_version is tls.Version.TLS13:
+        ch.version = tls.Version.TLS12
+
+    else:
+        ch.version = max_version
+
+    ch.random = None  # will be provided autonomously
+
+    if profile.support_session_ticket and session.session_state_ticket is not None:
+        ch.session_id = bytes.fromhex("dead beef")
+
+    elif profile.support_session_id and session.session_state_id is not None:
+        ch.session_id = session.session_state_id.session_id
+
+    else:
+        ch.session_id = b""
+
+    ch.cipher_suites = profile.cipher_suites[:]
+
+    ch.compression_methods = profile.compression_methods
+    if ch.version == tls.Version.SSL30:
+        ch.extensions = None  # type: ignore
+
+    else:
+        if profile.support_sni:
+            ch.extensions.append(ext.ExtServerNameIndication(host_name=session.sni))
+
+        if profile.support_extended_master_secret:
+            ch.extensions.append(ext.ExtExtendedMasterSecret())
+
+        if profile.ec_point_formats is not None:
+            ch.extensions.append(
+                ext.ExtEcPointFormats(ec_point_formats=profile.ec_point_formats)
+            )
+
+        if profile.supported_groups is not None:
+            if max_version is tls.Version.TLS13 or bool(
+                utils.filter_cipher_suites(
+                    ch.cipher_suites, key_exch=[tls.KeyExchangeType.ECDH]
+                )
+            ):
+                ch.extensions.append(
+                    ext.ExtSupportedGroups(supported_groups=profile.supported_groups)
+                )
+
+        if profile.support_status_request_v2 is not tls.StatusType.NONE:
+            ch.extensions.append(
+                ext.ExtStatusRequestV2(status_type=profile.support_status_request_v2)
+            )
+
+        if profile.support_status_request:
+            ch.extensions.append(ext.ExtStatusRequest())
+
+        # RFC5246, 7.4.1.4.1.: Clients prior to TLS12 MUST NOT send this extension
+        if (
+            profile.signature_algorithms is not None
+            and max_version >= tls.Version.TLS12
+        ):
+            ch.extensions.append(
+                ext.ExtSignatureAlgorithms(
+                    signature_algorithms=profile.signature_algorithms
+                )
+            )
+
+        if profile.support_encrypt_then_mac:
+            ch.extensions.append(ext.ExtEncryptThenMac())
+
+        if profile.support_session_ticket:
+            kwargs = {}
+            if session.session_state_ticket is not None:
+                kwargs["ticket"] = session.session_state_ticket.ticket
+
+            ch.extensions.append(ext.ExtSessionTicket(**kwargs))
+
+        if profile.heartbeat_mode:
+            ch.extensions.append(
+                ext.ExtHeartbeat(heartbeat_mode=profile.heartbeat_mode)
+            )
+
+        if tls.Version.TLS13 in profile.versions:
+            if recorder.inject(client_auth=client_auth.supported()):
+                ch.extensions.append(ext.ExtPostHandshakeAuth())
+
+            ch.extensions.append(
+                ext.ExtSupportedVersions(
+                    versions=sorted(profile.versions, reverse=True)
+                )
+            )
+            # TLS13 key shares: enforce the same sequence as in supported groups
+            if profile.key_shares and profile.supported_groups:
+                groups = [
+                    group
+                    for group in profile.supported_groups
+                    if group in profile.key_shares
+                ]
+
+            else:
+                groups = []
+
+            ch.extensions.append(ext.ExtKeyShare(groups=groups))
+
+            if profile.early_data is not None:
+                ch.extensions.append(ext.ExtEarlyData())
+
+            if profile.support_psk and session.psks:
+                ch.extensions.append(
+                    ext.ExtPskKeyExchangeMode(modes=profile.psk_key_exchange_modes)
+                )
+                ch.extensions.append(ext.ExtPreSharedKey(psks=session.psks[:1]))
+
+    return ch

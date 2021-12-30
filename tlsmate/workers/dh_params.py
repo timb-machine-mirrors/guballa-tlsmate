@@ -4,28 +4,28 @@
 # import basic stuff
 
 # import own stuff
-from tlsmate import tls
-from tlsmate.plugin import Worker
-from tlsmate import msg
-from tlsmate import utils
-from tlsmate.dh_numbers import DHNumbers, KnownDhGroups
-from tlsmate.server_profile import SPDhGroup
+import tlsmate.dh_numbers as dh
+import tlsmate.msg as msg
+import tlsmate.plugin as plg
+import tlsmate.server_profile as server_profile
+import tlsmate.tls as tls
+import tlsmate.utils as utils
 
 # import other stuff
 
 
-class ScanDhGroups(Worker):
+class ScanDhGroups(plg.Worker):
     name = "dh_groups"
     descr = "scan for supported DH groups"
     prio = 30
 
     def _update_profile(self, version, g_val, p_val):
         version_prof = self.server_profile.get_version_profile(version)
-        group = KnownDhGroups.get_known_group(g_val, p_val)
+        group = dh.KnownDhGroups.get_known_group(g_val, p_val)
         if group is None:
             size = len(p_val) * 8
-            group = DHNumbers(g_val=g_val, p_val=p_val, size=size)
-        version_prof.dh_group = SPDhGroup(
+            group = dh.DHNumbers(g_val=g_val, p_val=p_val, size=size)
+        version_prof.dh_group = server_profile.SPDhGroup(
             name=group.name, size=group.size, g_value=group.g_val, p_value=group.p_val,
         )
 

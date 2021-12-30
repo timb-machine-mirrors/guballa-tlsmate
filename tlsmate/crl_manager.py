@@ -4,16 +4,14 @@
 
 # import basic stuff
 import logging
-from typing import Optional, Dict, List, TYPE_CHECKING
+from typing import Optional, Dict, List
 import datetime
 
 # import own stuff
-from tlsmate import tls
-from tlsmate import cert_utils
-from tlsmate.cert import Certificate
-
-if TYPE_CHECKING:
-    from tlsmate.tlsmate import TlsMate
+import tlsmate.cert as crt
+import tlsmate.recorder as rec
+import tlsmate.cert_utils as cert_utils
+import tlsmate.tls as tls
 
 # import other stuff
 import requests
@@ -24,9 +22,9 @@ class CrlManager(object):
     """Handles all CRL related operations and acts as a cache as well
     """
 
-    def __init__(self, tlsmate: "TlsMate") -> None:
+    def __init__(self, recorder: rec.Recorder) -> None:
         self._crls: Dict[str, Optional[x509.CertificateRevocationList]] = {}
-        self._recorder = tlsmate.recorder
+        self._recorder = recorder
 
     def add_crl(
         self, url: str, der_crl: Optional[bytes] = None, pem_crl: Optional[bytes] = None
@@ -81,7 +79,7 @@ class CrlManager(object):
         urls: List[str],
         serial_nbr: int,
         issuer: x509.Name,
-        issuer_cert: Certificate,
+        issuer_cert: crt.Certificate,
         timestamp: datetime.datetime,
     ) -> Optional[tls.CertCrlStatus]:
         """Determines the CRL revocation status for a given cert/urls.

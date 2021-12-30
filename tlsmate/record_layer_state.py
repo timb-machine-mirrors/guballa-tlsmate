@@ -6,10 +6,9 @@ import struct
 from typing import Any
 
 # import own stuff
-from tlsmate import pdu
-from tlsmate import tls
-from tlsmate import structs
-from tlsmate.exception import ServerMalfunction
+import tlsmate.pdu as pdu
+import tlsmate.structs as structs
+import tlsmate.tls as tls
 
 # import other stuff
 from cryptography.hazmat.primitives import hmac, hashes
@@ -356,11 +355,11 @@ class RecordLayerState(object):
             bytes: The fragment appended with the MAC.
 
         Raises:
-            :obj:`tlsmate.exception.ServerMalfunction`: If the MAC is incorrect.
+            :obj:`tlsmate.tls.ServerMalfunction`: If the MAC is incorrect.
         """
 
         if len(fragment) < self._mac.mac_len:
-            raise ServerMalfunction(tls.ServerIssue.RECORD_TOO_SHORT)
+            raise tls.ServerMalfunction(tls.ServerIssue.RECORD_TOO_SHORT)
 
         msg_len = len(fragment) - self._mac.mac_len
         mac_received = fragment[msg_len:]
@@ -397,7 +396,7 @@ class RecordLayerState(object):
             mac_calculated = mac.finalize()
 
         if mac_calculated != mac_received:
-            raise ServerMalfunction(tls.ServerIssue.RECORD_MAC_INVALID)
+            raise tls.ServerMalfunction(tls.ServerIssue.RECORD_MAC_INVALID)
 
         return msg
 
@@ -411,7 +410,7 @@ class RecordLayerState(object):
             bytes: the decoded fragment.
 
         Raises:
-            :obj:`tlsmate.exception.ServerMalfunction`: If padding errors are detected.
+            :obj:`tlsmate.tls.ServerMalfunction`: If padding errors are detected.
         """
 
         if self._version <= tls.Version.TLS10:
@@ -431,7 +430,7 @@ class RecordLayerState(object):
         pad = plain_text[-1]
         pad_start = len(plain_text) - pad - 1
         if pad_start < 0:
-            raise ServerMalfunction(tls.ServerIssue.RECORD_WRONG_PADDING_LENGTH)
+            raise tls.ServerMalfunction(tls.ServerIssue.RECORD_WRONG_PADDING_LENGTH)
 
         padding = plain_text[pad_start:]
         if padding_cb:
@@ -441,7 +440,7 @@ class RecordLayerState(object):
 
         if self._version is not tls.Version.SSL30:
             if (struct.pack("!B", pad) * (pad + 1)) != padding:
-                raise ServerMalfunction(tls.ServerIssue.RECORD_WRONG_PADDING_BYTES)
+                raise tls.ServerMalfunction(tls.ServerIssue.RECORD_WRONG_PADDING_BYTES)
 
         return plain_text
 
@@ -616,7 +615,7 @@ class RecordLayerState(object):
             The unprotected record layer message (plain text).
 
         Raises:
-            :obj:`tlsmate.exception.ServerMalfunction`: If padding errors are detected.
+            :obj:`tlsmate.tls.ServerMalfunction`: If padding errors are detected.
         """
 
         aad = (
@@ -641,7 +640,7 @@ class RecordLayerState(object):
             idx -= 1
 
         if idx < 0:
-            raise ServerMalfunction(tls.ServerIssue.RECORD_WRONG_PADDING_LENGTH)
+            raise tls.ServerMalfunction(tls.ServerIssue.RECORD_WRONG_PADDING_LENGTH)
 
         self._seq_nbr += 1
         return structs.RecordLayerMsg(
