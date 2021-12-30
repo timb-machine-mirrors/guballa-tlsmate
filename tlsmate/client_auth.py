@@ -33,7 +33,7 @@ class ClientAuth(object):
         self._auth: List[Tuple[PrivateKey, cert_chain.CertChain]] = []
         self._recorder = recorder
 
-    def add_auth(self, key: PrivateKey, chain: "cert_chain.CertChain") -> None:
+    def add_auth(self, key: PrivateKey, chain: cert_chain.CertChain) -> None:
         """Add a client auth set to this object.
 
         Arguments:

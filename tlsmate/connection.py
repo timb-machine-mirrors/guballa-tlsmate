@@ -1458,7 +1458,7 @@ class TlsConnection(object):
         if method is not None:
             method(self, message, msg_bytes)
 
-    def _auto_heartbeat_request(self, message: "msg.HeartbeatRequest") -> None:
+    def _auto_heartbeat_request(self, message: msg.HeartbeatRequest) -> None:
         if self._profile.heartbeat_mode is tls.HeartbeatMode.PEER_ALLOWED_TO_SEND:
             response = msg.HeartbeatResponse()
             response.payload_length = message.payload_length

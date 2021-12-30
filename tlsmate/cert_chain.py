@@ -504,7 +504,7 @@ class CertChainCache(object):
 
         return val
 
-    def update_cached_validation_state(self, cert_chain: "CertChain") -> None:
+    def update_cached_validation_state(self, cert_chain: CertChain) -> None:
         """Updates a certificate chain entry in the cache.
 
         Arguments:
