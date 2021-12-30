@@ -61,7 +61,7 @@ class ScanResumption(plg.Worker):
         prof_features.session_id = session_id_support
         if session_ticket_support is tls.ScanState.TRUE:
             prof_features.session_ticket_lifetime = (
-                self.client.session_state_ticket.lifetime
+                self.client.session.session_state_ticket.lifetime
             )
 
     def _run_tls13(self):

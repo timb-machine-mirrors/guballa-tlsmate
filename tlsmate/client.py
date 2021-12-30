@@ -53,12 +53,8 @@ class Client(object):
         self._config.set("alert_on_invalid_cert", val)
 
     @property
-    def session_state_ticket(self) -> Optional[structs.SessionStateTicket]:
-        return self._session.session_state_ticket
-
-    @property
     def server_issues(self) -> List[structs.Malfunction]:
-        return self._session.server_issues
+        return self.session.server_issues
 
     def __init__(
         self,
@@ -75,15 +71,13 @@ class Client(object):
         self._recorder = recorder
         self._client_auth = client_auth
 
-        self.session_state_id: Optional[structs.SessionStateId] = None
-        self.psks: List[structs.Psk] = []
         self._host: str = self._config.get("host")
         self._port: int = self._config.get("port")
         self._sni: str = self._config.get("sni") or self._host
         self.profile: client_state.ClientProfile = client_state.create_profile(
             tls.Profile.MODERN
         )
-        self._session = client_state.SessionState(
+        self.session = client_state.SessionState(
             self._host, self._port, self._sni, self._recorder
         )
         self.alert_on_invalid_cert = True
@@ -175,11 +169,11 @@ class Client(object):
         if target_host != self._host or target_sni != self._sni:
             self._host = target_host
             self._sni = target_sni
-            self._session = client_state.SessionState(
+            self.session = client_state.SessionState(
                 target_host, self._port, self._sni, self._recorder,
             )
 
-        self._session.port = self._port
+        self.session.port = self._port
 
         interval = self._config.get("interval")
         if interval:
@@ -187,7 +181,7 @@ class Client(object):
 
         return conn.TlsConnection(
             profile=self.profile,
-            session=self._session,
+            session=self.session,
             config=self._config,
             recorder=self._recorder,
             client_auth=self._client_auth,
@@ -218,5 +212,5 @@ class Client(object):
 
         # TODO: remove method with the next major release
         return msg.client_hello(
-            self.profile, self._session, self._recorder, self._client_auth
+            self.profile, self.session, self._recorder, self._client_auth
         )
