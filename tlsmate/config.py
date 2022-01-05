@@ -25,6 +25,8 @@ config_client_key = structs.ConfigItem("client_key", type="file_list")
 config_client_chain = structs.ConfigItem("client_chain", type="file_list")
 config_crl = structs.ConfigItem("crl", type=bool, default=True)
 config_ocsp = structs.ConfigItem("ocsp", type=bool, default=True)
+config_plugin = structs.ConfigItem("plugin", type="str_list", default=None)
+config_recorder_delay = structs.ConfigItem("recorder_delay", type=bool, default=True)
 
 
 class Configuration(object):
@@ -59,6 +61,8 @@ class Configuration(object):
     """
 
     def __init__(self) -> None:
+        self._config_section: Optional[configparser.SectionProxy] = None
+        self._config_section_read = False
         self._config: Dict[str, Any] = {}
         self._descr: Dict[str, structs.ConfigItem] = {}
 
@@ -77,13 +81,10 @@ class Configuration(object):
             config_client_chain,
             config_crl,
             config_ocsp,
+            config_plugin,
+            config_recorder_delay,
         ]:
             self.register(item)
-
-        # special configuration item exclusively used for unit tests.
-        # if set to False, the recorder will not use any delays when replaying.
-        self.register(structs.ConfigItem("recorder_delay", type=bool, default=True))
-        self._init_environment_var("recorder_delay")
 
     def _str_to_filelist(self, string):
         """Resolves a string of files paths.
@@ -112,58 +113,50 @@ class Configuration(object):
         bool: lambda self, x: x.lower() not in ["0", "off", "no", "false"],
         int: lambda self, x: int(x),
         "file_list": _str_to_filelist,
+        "str_list": lambda self, x: [token.strip() for token in x.split(",")],
     }
 
-    def _init_from_ini_file(self, ini_file):
-        """Helper method to initialize the configuration from an ini-file.
-        """
+    def _init_config_section(self, ini_file: Optional[Union[str, Path]]) -> None:
+        if self._config_section_read:
+            return
 
+        self._config_section_read = True
         if ini_file is None:
-            ini_file = Path.home() / ".tlsmate.ini"
-            if not ini_file.is_file():
+            file_path = Path.home() / ".tlsmate.ini"
+            if not file_path.is_file():
                 return
 
         else:
-            ini_file = Path(ini_file)
-            if not ini_file.is_absolute():
-                ini_file = Path.cwd() / ini_file
+            file_path = Path(ini_file)
+            if not file_path.is_absolute():
+                file_path = Path.cwd() / ini_file
 
-        if not ini_file.is_file():
-            raise FileNotFoundError(ini_file)
+            if not file_path.is_file():
+                raise FileNotFoundError(ini_file)
 
         logging.debug(f"using config file {str(ini_file)}")
-        self._config_dir = ini_file.parent
+        self._config_dir = file_path.parent
         parser = configparser.ConfigParser()
-        parser.read(str(ini_file))
+        parser.read(str(file_path))
         if parser.has_section("tlsmate"):
-            config = parser["tlsmate"]
-            for item in self._config:
-                val = config.get(item)
-                if val is not None:
-                    self._config[item] = self._cast_item(item, val)
+            self._config_section = parser["tlsmate"]
 
-    def _init_environment_var(self, item):
-        """Helper method to initialize a single item from the environment variable.
-        """
-
-        val = os.environ.get("TLSMATE_" + item.upper())
-        if val is not None:
-            self._config[item] = self._cast_item(item, val)
-
-    def _init_from_environment(self):
-        """Helper method to initialize the configuration from environment variables.
-        """
-
-        for item in self._config:
-            self._init_environment_var(item)
-
-    def _cast_item(self, item, val):
-        """Cast the type of a configuration item into the internal format.
-        """
+    def _cast_item(self, item: str, val: Any) -> Any:
+        """Cast the type of a configuration item into the internal format."""
 
         item_type = self._descr[item].type
         if item_type in self._format_option:
             val = self._format_option[item_type](self, val)
+        return val
+
+    def _determine_value(self, item: str) -> Any:
+        val = os.environ.get("TLSMATE_" + item.upper())
+        if val is None and self._config_section:
+            val = self._config_section.get(item)  # type: ignore
+
+        if val is not None:
+            val = self._cast_item(item, val)
+
         return val
 
     def init_from_external(self, ini_file: Optional[Union[str, Path]] = None):
@@ -174,8 +167,17 @@ class Configuration(object):
                 the environment variables are taken into account.
         """
 
-        self._init_from_ini_file(ini_file)
-        self._init_from_environment()
+        self._init_config_section(ini_file)
+        for item in self._config:
+            val = self._determine_value(item)
+            if val is not None:
+                self._config[item] = val
+
+    def get_from_external(self, ini_file: Optional[str], item: str) -> Any:
+        """Gets the value for a single itemerving the ini-file and the environment."""
+
+        self._init_config_section(ini_file)
+        return self._determine_value(item)
 
     def items(self) -> ItemsView[str, structs.ConfigItem]:
         """Return the configuration items. Mimics the dict's `items` method.

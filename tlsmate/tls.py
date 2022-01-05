@@ -43,7 +43,7 @@ class ExtendedEnum(enum.Enum):
         return enum
 
     @classmethod
-    def str2enum(cls, name: str, alert_on_failure: bool = False) -> "ExtendedEnum":
+    def str2enum(cls, name: str, alert_on_failure: bool = False) -> Optional[enum.Enum]:
         """Class method to map a string to the corresponding enum.
 
         Args:
@@ -61,7 +61,6 @@ class ExtendedEnum(enum.Enum):
                 `alert_on_failure` is True
         """
 
-        # TODO: resolve type issue
         enum = cls._member_map_.get(name)  # type: ignore
         if (enum is None) and alert_on_failure:
             raise ValueError(f"Value {name} not defined for {cls}")
