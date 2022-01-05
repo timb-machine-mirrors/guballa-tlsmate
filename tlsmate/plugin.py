@@ -70,7 +70,7 @@ class Plugin(metaclass=abc.ABCMeta):
         """Helper method to retrieve the args-attribute from the attribute arguments.
 
         Returns:
-            str: the attribute name for the args object
+            the attribute name for the args object
         """
 
         assert cls.cli_args
@@ -95,23 +95,19 @@ class Plugin(metaclass=abc.ABCMeta):
         return plugin
 
     @classmethod
-    def extend_parser(
-        cls, parser: argparse.ArgumentParser, subparsers: argparse.ArgumentParser
-    ) -> None:
+    def extend_parser(cls, parser: argparse.ArgumentParser, subparsers: Any) -> None:
         """Extends the parser (subcommand, argument group, or argument)
 
         Arguments:
-            parser (:obj:`argparse.Parser`): the CLI parser object
-            subparsers: (:obj:`argparse.Parser`): the subparser object
+            parser: the CLI parser object
+            subparsers: the subparser object
         """
 
         if cls.cli_args:
             parser.add_argument(cls.cli_args.arg, **cls.cli_args.kwargs)
 
-        elif cls.subcommand:
-            parser = subparsers.add_parser(  # type: ignore
-                cls.subcommand.arg, **cls.subcommand.kwargs
-            )
+        elif cls.subcommand and subparsers:
+            parser = subparsers.add_parser(cls.subcommand.arg, **cls.subcommand.kwargs)
 
         elif cls.group:
             parser = parser.add_argument_group(**cls.group.kwargs)  # type: ignore
@@ -125,7 +121,7 @@ class Plugin(metaclass=abc.ABCMeta):
         """Registers its configuration item, if defined.
 
         Arguments:
-            config (:obj:`tlsmate.config.Configuration`): The configuration object.
+            config: The configuration object.
         """
 
         if cls.config:
@@ -149,9 +145,9 @@ class Plugin(metaclass=abc.ABCMeta):
 
         Arguments:
             args: the parsed arguments object
-            parser (:obj:`argparse.Parser`): the CLI parser object
-            subcommand(str): the subcommand that was given
-            config (:obj:`tlsmate.config.Configuration`): The configuration object.
+            parser: the CLI parser object
+            subcommand: the subcommand that was given
+            config: The configuration object.
         """
 
         if cls.subcommand and cls.subcommand.arg != subcommand:
@@ -178,15 +174,19 @@ class Plugin(metaclass=abc.ABCMeta):
                 plugin.args_parsed(args, parser, subcommand, config)
 
 
-class ArgNoPlugin(Plugin):
-    """Plugin for the "--no-plugin" argument.
+class ArgPlugin(Plugin):
+    """Plugin for specifying the plugins that shall be loaded.
     """
 
+    config = conf.config_plugin
     cli_args = Args(
-        "--no-plugin",
-        default=None,
-        help="disable loading external plugins. Must be the first argument.",
-        action="store_true",
+        "--plugin",
+        nargs="*",
+        type=str,
+        help=(
+            "list of plugins to load. The name of each plugin must start with "
+            "`tlsmate_`."
+        ),
     )
 
 
@@ -218,7 +218,7 @@ class BaseCommand(Plugin):
     """The base class for tlsmate. To be extended by plugins.
     """
 
-    plugins = [ArgNoPlugin, ArgConfig, ArgLogging]
+    plugins = [ArgPlugin, ArgConfig, ArgLogging]
 
     @classmethod
     def create_parser(cls):
