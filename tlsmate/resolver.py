@@ -65,7 +65,9 @@ def _resolve_directly(host_name: str) -> Tuple[List[str], List[str]]:
     return ipv4_addresses, ipv6_addresses
 
 
-def _resolve_rdtype_via_proxy(host_name: str, resolver: dns.resolver.Resolver, rd_type:str) -> List[str]:
+def _resolve_rdtype_via_proxy(
+    host_name: str, resolver: dns.resolver.Resolver, rd_type: str
+) -> List[str]:
     try:
         answer = resolver.resolve(host_name, rd_type)
         return [rr.address for rr in answer]
