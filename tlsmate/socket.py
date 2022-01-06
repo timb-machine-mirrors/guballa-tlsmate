@@ -7,6 +7,7 @@ import select
 import logging
 import time
 import sys
+import socks  # type: ignore
 from typing import Tuple, Optional
 
 # import own stuff
@@ -28,7 +29,7 @@ class Socket(object):
     """
 
     def __init__(self, config: conf.Configuration, recorder: rec.Recorder) -> None:
-        self._socket: Optional[socket.socket] = None
+        self._socket: Optional[socks.socksocket] = None
         self._config = config
         self._recorder = recorder
         self._fragment_max_size = 16384
@@ -57,7 +58,12 @@ class Socket(object):
             return
 
         try:
-            self._socket = socket.socket(family, socket.SOCK_STREAM)
+            self._socket = socks.socksocket(family, socket.SOCK_STREAM)
+            proxy_host = self._config.get("proxy_host")
+            if proxy_host:
+                self._socket.set_proxy(
+                    socks.HTTP, proxy_host, self._config.get("proxy_port")
+                )
             self._socket.settimeout(5.0)
             self._socket.connect(addr_info)
             self._socket.settimeout(None)

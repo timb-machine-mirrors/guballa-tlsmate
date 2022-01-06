@@ -4,6 +4,7 @@
 # import basic stuff
 from pathlib import Path
 import argparse
+import urllib.parse
 from typing import Any
 
 # import own stuff
@@ -100,6 +101,30 @@ class ArgProgress(plg.Plugin):
     )
 
 
+class ArgProxy(plg.Plugin):
+    """Argument for proxy.
+    """
+
+    config = conf.config_proxy
+    cli_args = plg.Args(
+        "--proxy",
+        type=str,
+        help=(
+            "the URL of the proxy. Must include the scheme and may include the user, "
+            "password and port, e.g.: `http://user:password@myproxy.net:3128`."
+        ),
+    )
+
+    @classmethod
+    def args_parsed(cls, args, parser, subcommand, config):
+        super().args_parsed(args, parser, subcommand, config)
+        proxy = config.get("proxy")
+        if proxy:
+            parsed = urllib.parse.urlparse(proxy)
+            config.set("proxy_host", parsed.hostname)
+            config.set("proxy_port", parsed.port)
+
+
 class ArgSni(plg.Plugin):
     """Argument for sni.
     """
@@ -140,6 +165,7 @@ class GroupBasicScan(plg.Plugin):
         ArgInterval,
         ArgKeyLogFile,
         ArgProgress,
+        ArgProxy,
         ArgSni,
         ArgHost,
     ]
