@@ -62,6 +62,10 @@ class ScanStart(plg.Worker):
         except ValueError:
             pass
 
+        proxy = self.config.get("proxy")
+        if proxy:
+            data["proxy"] = proxy
+
         self.server_profile.server = server_profile.SPServer(data=data)
 
 
