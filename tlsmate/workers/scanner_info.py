@@ -43,7 +43,7 @@ class ScanStart(plg.Worker):
         data = {"port": endp.port}
         if endp.host_type is tls.HostType.HOST:
             name_res_data = {"domain_name": endp.host}
-            ips = resolver.resolve_hostname(endp.host)
+            ips = resolver.resolve_hostname(endp.host, self.config.get("proxy"))
             if ips.ipv4_addresses:
                 name_res_data["ipv4_addresses"] = ips.ipv4_addresses
 

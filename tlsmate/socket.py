@@ -44,7 +44,7 @@ class Socket(object):
 
         addr_info: Tuple
         if l4_addr.host_type is tls.HostType.HOST:
-            l4_addr = resolver.get_ip_endpoint(l4_addr)
+            l4_addr = resolver.get_ip_endpoint(l4_addr, self._config.get("proxy"))
 
         if l4_addr.host_type is tls.HostType.IPV4:
             family = socket.AF_INET

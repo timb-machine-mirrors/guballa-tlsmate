@@ -246,6 +246,7 @@ class CertChain(object):
                     headers={"Content-Type": "application/ocsp-request"},
                     data=req.public_bytes(serialization.Encoding.DER),
                     timeout=5,
+                    proxies=self._proxies,
                 )
                 self._recorder.trace_response(
                     time.time() - start, recorder.SocketEvent.DATA, ocsp_resp
