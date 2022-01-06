@@ -332,6 +332,10 @@ class TextProfileWorker(plg.Worker):
                 addresses = ", ".join(host_info.name_resolution.ipv6_addresses)
                 table.row("IPv6 addresses", addresses)
 
+        proxy = getattr(host_info, "proxy", None)
+        if proxy:
+            table.row("HTTP-proxy", proxy)
+
         table.dump()
         print()
 
