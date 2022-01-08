@@ -2,6 +2,7 @@
 """Implement unit tests for the module recorder.
 """
 import pytest
+import subprocess
 import dns.exception
 import dns.resolver
 import tlsmate.tls as tls
@@ -13,6 +14,12 @@ import tlsmate.resolver as resolver
 def clear_cache():
     resolver._resolved = {}
 
+@pytest.fixture
+def proxy():
+    cmd = "ncat -l --proxy-type http localhost 8801"
+    proc = subprocess.Popen(cmd.split())
+    yield "http://localhost:8801"
+    proc.kill()
 
 def test_determine_l4_addr():
     l4_endpoint = resolver.determine_l4_addr("google.com", 443)
@@ -37,8 +44,8 @@ def test_resolve_hostname():
     assert resolved.ipv6_addresses == ["2606:2800:220:1:248:1893:25c8:1946"]
 
 
-def test_resolve_hostname_proxy():
-    resolved = resolver.resolve_hostname("example.com", proxy="http://localhost:8889")
+def test_resolve_hostname_proxy(proxy):
+    resolved = resolver.resolve_hostname("example.com", proxy=proxy)
     assert resolved.ipv4_addresses == ["93.184.216.34"]
     assert resolved.ipv6_addresses == ["2606:2800:220:1:248:1893:25c8:1946"]
 
