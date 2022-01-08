@@ -146,8 +146,8 @@ def get_ip_endpoint(
 
     else:
         if ips.ipv6_addresses:
-            host = ips.ipv4_addresses[0]
-            host_type = tls.HostType.IPV4
+            host = ips.ipv6_addresses[0]
+            host_type = tls.HostType.IPV6
 
         else:
             raise tls.ScanError(f"No IP address available for {l4_addr.host}")
