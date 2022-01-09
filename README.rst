@@ -50,6 +50,8 @@ The following basic features are supported:
 * configuration of ``tlsmate`` through an ini-file or through environment variables
 * slowing down a scan to circumvent rate limitings
 * several logging levels
+* HTTP-proxy support
+* HTTP-proxy support
 
 For creating customized handshake scenarios the following features are provided:
 
@@ -68,7 +70,6 @@ For creating customized handshake scenarios the following features are provided:
 The following features are currently not yet supported but will likely be added
 in the future:
 
-* proxy support
 * simulating a TLS server (thus allowing to test TLS clients)
 
 .. _`TLS features`: https://guballa.gitlab.io/tlsmate/tlsfeatures.html

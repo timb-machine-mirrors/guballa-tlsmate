@@ -312,6 +312,7 @@ class SPScanInfoSchema(ProfileSchema):
 
     __profile_class__ = SPScanInfo
     command = fields.String()
+    proxy = fields.String()
     run_time = fields.Float()
     start_date = fields.DateTime()
     start_timestamp = fields.Float()

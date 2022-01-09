@@ -27,6 +27,7 @@ config_crl = structs.ConfigItem("crl", type=bool, default=True)
 config_ocsp = structs.ConfigItem("ocsp", type=bool, default=True)
 config_plugin = structs.ConfigItem("plugin", type="str_list", default=None)
 config_recorder_delay = structs.ConfigItem("recorder_delay", type=bool, default=True)
+config_proxy = structs.ConfigItem("proxy", type=str, default=None)
 
 
 class Configuration(object):
@@ -83,6 +84,7 @@ class Configuration(object):
             config_ocsp,
             config_plugin,
             config_recorder_delay,
+            config_proxy,
         ]:
             self.register(item)
 

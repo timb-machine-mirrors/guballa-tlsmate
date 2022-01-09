@@ -6,8 +6,20 @@ import pathlib
 import pem
 import os
 import datetime
+import subprocess
+import time
 
 import tlsmate.tlsmate as tm
+
+
+@pytest.fixture
+def proxy():
+    port = os.environ.get("TLSMATE_PROXY_PORT", 8801)
+    cmd = f"ncat -l --proxy-type http localhost {port}"
+    proc = subprocess.Popen(cmd.split())
+    time.sleep(1)
+    yield f"http://localhost:{port}"
+    proc.kill()
 
 
 @pytest.fixture
@@ -41,6 +53,11 @@ def quo_vadis_root_ca3(fixturefiles_dir):
 
 
 @pytest.fixture
+def digi_cert_global_root_ca_file(fixturefiles_dir):
+    return fixturefiles_dir / "DigiCertGlobalRootCA.pem"
+
+
+@pytest.fixture
 def ca_dir(fixturefiles_dir):
     return fixturefiles_dir / "../ca"
 
@@ -55,28 +72,10 @@ def ca_rsa_crl_file(ca_dir):
     return ca_dir / "crl/ca-rsa.crl.pem"
 
 
-def init_crl(ca_dir, crl_manager, ca, port=44400):
-
-    if "TLSMATE_CA_PORT" in os.environ:
-        port = os.environ["TLSMATE_CA_PORT"]
-
-    pem_file = ca_dir / f"crl/{ca}.crl.pem"
-    with open(pem_file, "rb") as fd:
-        crl = fd.read()
-    crl_manager.add_crl(f"http://crl.localhost:{port}/crl/{ca}.crl", pem_crl=crl)
-
-
 @pytest.fixture
-def tlsmate(ca_dir, trust_store_file):
+def tlsmate(ca_dir, trust_store_file, digi_cert_global_root_ca_file):
     mate = tm.TlsMate()
-    mate.trust_store.set_ca_files([trust_store_file])
-    init_crl(ca_dir, mate.crl_manager, "root-rsa")
-    init_crl(ca_dir, mate.crl_manager, "root-ecdsa")
-    init_crl(ca_dir, mate.crl_manager, "ca-rsa")
-    init_crl(ca_dir, mate.crl_manager, "ca-ecdsa")
-    mate.config.set("ocsp", False)
-    mate.config.set("crl", True)
-    mate.config.set("endpoint", "localhost")
+    mate.trust_store.set_ca_files([trust_store_file, digi_cert_global_root_ca_file])
     return mate
 
 

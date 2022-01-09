@@ -48,7 +48,7 @@ class CrlManager(object):
 
         self._crls[url] = crl
 
-    def _get_crl_obj(self, url):
+    def _get_crl_obj(self, url, proxies):
         """Get the plain CRL object for a given URL.
         """
 
@@ -60,7 +60,7 @@ class CrlManager(object):
                     bin_crl = self._recorder.inject(crl=None)
 
                 else:
-                    crl_resp = requests.get(url, timeout=5)
+                    crl_resp = requests.get(url, timeout=5, proxies=proxies)
                     if crl_resp.ok:
                         bin_crl = crl_resp.content
 
@@ -81,6 +81,7 @@ class CrlManager(object):
         issuer: x509.Name,
         issuer_cert: crt.Certificate,
         timestamp: datetime.datetime,
+        proxies: Dict[str, str],
     ) -> Optional[tls.CertCrlStatus]:
         """Determines the CRL revocation status for a given cert/urls.
 
@@ -101,7 +102,7 @@ class CrlManager(object):
         status = None
         for url in urls:
             logging.debug(f"downloading CRL from {url}")
-            crl = self._get_crl_obj(url)
+            crl = self._get_crl_obj(url, proxies)
             if crl is None:
                 status = tls.CertCrlStatus.CRL_DOWNLOAD_FAILED
                 continue
