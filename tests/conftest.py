@@ -7,6 +7,7 @@ import pem
 import os
 import datetime
 import subprocess
+import time
 
 import tlsmate.tlsmate as tm
 
@@ -16,6 +17,7 @@ def proxy():
     port = os.environ.get("TLSMATE_PROXY_PORT", 8801)
     cmd = f"ncat -l --proxy-type http localhost {port}"
     proc = subprocess.Popen(cmd.split())
+    time.sleep(1)
     yield f"http://localhost:{port}"
     proc.kill()
 
