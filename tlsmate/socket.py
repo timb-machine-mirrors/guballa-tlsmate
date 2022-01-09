@@ -8,6 +8,7 @@ import logging
 import time
 import sys
 import socks  # type: ignore
+import urllib.parse
 from typing import Tuple, Optional
 
 # import own stuff
@@ -59,11 +60,10 @@ class Socket(object):
 
         try:
             self._socket = socks.socksocket(family, socket.SOCK_STREAM)
-            proxy_host = self._config.get("proxy_host")
-            if proxy_host:
-                self._socket.set_proxy(
-                    socks.HTTP, proxy_host, self._config.get("proxy_port")
-                )
+            proxy = self._config.get("proxy")
+            if proxy:
+                parsed = urllib.parse.urlparse(proxy)
+                self._socket.set_proxy(socks.HTTP, parsed.hostname, parsed.port)
             self._socket.settimeout(5.0)
             self._socket.connect(addr_info)
             self._socket.settimeout(None)

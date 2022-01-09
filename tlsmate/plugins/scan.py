@@ -4,7 +4,6 @@
 # import basic stuff
 from pathlib import Path
 import argparse
-import urllib.parse
 from typing import Any
 
 # import own stuff
@@ -114,15 +113,6 @@ class ArgProxy(plg.Plugin):
             "password and port, e.g.: `http://user:password@myproxy.net:3128`."
         ),
     )
-
-    @classmethod
-    def args_parsed(cls, args, parser, subcommand, config):
-        super().args_parsed(args, parser, subcommand, config)
-        proxy = config.get("proxy")
-        if proxy:
-            parsed = urllib.parse.urlparse(proxy)
-            config.set("proxy_host", parsed.hostname)
-            config.set("proxy_port", parsed.port)
 
 
 class ArgSni(plg.Plugin):
