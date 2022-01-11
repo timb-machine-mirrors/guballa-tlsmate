@@ -21,7 +21,15 @@ def openssl_ipv6_port(server_rsa_key_file, server_rsa_cert_file, server_rsa_chai
         stdin=subprocess.PIPE,
         stdout=sys.stdout,
     )
-    time.sleep(5)
+    try:
+        proc.wait(5)
+
+    except subprocess.TimeoutExpired:
+        pass
+
+    else:
+        raise ChildProcessError("openssl did not startup cleanly")
+
     yield port
     proc.kill()
 
