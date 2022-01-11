@@ -6,6 +6,7 @@ import pytest
 import subprocess
 import sys
 import time
+import tlsmate.msg as msg
 import tlsmate.tls as tls
 
 
