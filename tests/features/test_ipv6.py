@@ -36,9 +36,12 @@ def openssl_ipv6_port(server_rsa_key_file, server_rsa_cert_file, server_rsa_chai
 
 def test_main(tlsmate, openssl_ipv6_port):
     tlsmate.client.set_profile(tls.Profile.INTEROPERABILITY)
+    connection_completed = False
     with tlsmate.client.create_connection(
         host="::1", port=openssl_ipv6_port, sni="localhost"
     ) as conn:
-        conn.handshake()
+        conn.send(msg.ClientHello)
+        conn.wait(msg.ServerHello)
+        connection_completed = True
 
-    assert conn.handshake_completed
+    assert connection_completed
