@@ -45,15 +45,18 @@ class Socket(object):
 
         addr_info: Tuple
         if l4_addr.host_type is tls.HostType.HOST:
-            l4_addr = resolver.get_ip_endpoint(l4_addr, self._config.get("proxy"))
+            l4_addr = resolver.get_ip_endpoint(
+                l4_addr,
+                proxy=self._config.get("proxy"),
+                ipv6_preference=self._config.get("ipv6_preference"),
+            )
 
-        if l4_addr.host_type is tls.HostType.IPV4:
-            family = socket.AF_INET
-            addr_info = (l4_addr.host, l4_addr.port)
-
-        else:
-            family = socket.AF_INET6
-            addr_info = (l4_addr.host, l4_addr.port, 0, 0)
+        addr_info = (l4_addr.host, l4_addr.port)
+        family = (
+            socket.AF_INET
+            if l4_addr.host_type is tls.HostType.IPV4
+            else socket.AF_INET6
+        )
 
         if self._recorder.is_injecting():
             return
