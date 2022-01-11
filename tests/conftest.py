@@ -73,6 +73,21 @@ def ca_rsa_crl_file(ca_dir):
 
 
 @pytest.fixture
+def server_rsa_cert_file(ca_dir):
+    return ca_dir / "certs/server-rsa.pem"
+
+
+@pytest.fixture
+def server_rsa_key_file(ca_dir):
+    return ca_dir / "private/server-rsa.key"
+
+
+@pytest.fixture
+def server_rsa_chain_file(ca_dir):
+    return ca_dir / "chains/server-rsa.chn"
+
+
+@pytest.fixture
 def tlsmate(ca_dir, trust_store_file, digi_cert_global_root_ca_file):
     mate = tm.TlsMate()
     mate.trust_store.set_ca_files([trust_store_file, digi_cert_global_root_ca_file])

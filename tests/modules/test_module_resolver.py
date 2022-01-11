@@ -91,3 +91,13 @@ def test_get_ip_endpoint_host_ipv6():
     assert resolved.host == "2001:470:1:18::115"
     assert resolved.port == 443
     assert resolved.host_type is tls.HostType.IPV6
+
+
+def test_get_ip_endpoint_ipv6_preference():
+    endpoint = structs.TransportEndpoint(
+        host="example.com", port=443, host_type=tls.HostType.HOST
+    )
+    resolved = resolver.get_ip_endpoint(endpoint, ipv6_preference=True)
+    assert resolved.host == "2606:2800:220:1:248:1893:25c8:1946"
+    assert resolved.port == 443
+    assert resolved.host_type is tls.HostType.IPV6
