@@ -28,6 +28,7 @@ config_ocsp = structs.ConfigItem("ocsp", type=bool, default=True)
 config_plugin = structs.ConfigItem("plugin", type="str_list", default=None)
 config_recorder_delay = structs.ConfigItem("recorder_delay", type=bool, default=True)
 config_proxy = structs.ConfigItem("proxy", type=str, default=None)
+config_ipv6_preference = structs.ConfigItem("ipv6_preference", type=bool, default=False)
 
 
 class Configuration(object):

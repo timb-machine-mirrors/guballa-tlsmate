@@ -73,6 +73,18 @@ class ArgInterval(plg.Plugin):
     )
 
 
+class ArgIpv6Preference(plg.Plugin):
+    """Argument for IPv6 preference.
+    """
+
+    config = conf.config_ipv6_preference
+    cli_args = plg.Args(
+        "--ipv6-preference",
+        help="prefers resolved IPv6 addresses over IPv4. Defaults to False.",
+        action=utils.BooleanOptionalAction,
+    )
+
+
 class ArgKeyLogFile(plg.Plugin):
     """Argument for key logging file.
     """
@@ -153,6 +165,7 @@ class GroupBasicScan(plg.Plugin):
     plugins = [
         ArgPort,
         ArgInterval,
+        ArgIpv6Preference,
         ArgKeyLogFile,
         ArgProgress,
         ArgProxy,

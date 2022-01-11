@@ -80,9 +80,6 @@ def _resolve_rdtype_via_proxy(
 
 
 def _resolve_via_proxy(host_name: str, proxy: str) -> Tuple[List[str], List[str]]:
-    # set environment for dnspython (resp. the underlying lib)
-    os.environ["http_proxy"] = proxy
-    os.environ["https_proxy"] = proxy
     resolver = dns.resolver.Resolver(configure=False)
     resolver.nameservers = _DOH_SERVER
     ipv4_addresses = _resolve_rdtype_via_proxy(host_name, resolver, "A")
@@ -124,7 +121,9 @@ def resolve_hostname(
 
 
 def get_ip_endpoint(
-    l4_addr: structs.TransportEndpoint, proxy: Optional[str] = None
+    l4_addr: structs.TransportEndpoint,
+    proxy: Optional[str] = None,
+    ipv6_preference: bool = False,
 ) -> structs.TransportEndpoint:
     """Resolve the hostname, if applicable.
 
@@ -140,16 +139,22 @@ def get_ip_endpoint(
         return l4_addr
 
     ips = resolve_hostname(l4_addr.host, proxy)
-    if ips.ipv4_addresses:
-        host = ips.ipv4_addresses[0]
-        host_type = tls.HostType.IPV4
+
+    ipv4_present = bool(ips.ipv4_addresses)
+    ipv6_present = bool(ips.ipv6_addresses)
+    if not ipv4_present and not ipv6_present:
+        raise tls.ScanError(f"No IP address available for {l4_addr.host}")
+
+    if ipv4_present and ipv6_present:
+        host_type = tls.HostType.IPV6 if ipv6_preference else tls.HostType.IPV4
 
     else:
-        if ips.ipv6_addresses:
-            host = ips.ipv6_addresses[0]
-            host_type = tls.HostType.IPV6
+        host_type = tls.HostType.IPV4 if ipv4_present else tls.HostType.IPV6
 
-        else:
-            raise tls.ScanError(f"No IP address available for {l4_addr.host}")
+    host = (
+        ips.ipv4_addresses[0]
+        if host_type is tls.HostType.IPV4
+        else ips.ipv6_addresses[0]
+    )
 
     return structs.TransportEndpoint(host=host, port=l4_addr.port, host_type=host_type)
