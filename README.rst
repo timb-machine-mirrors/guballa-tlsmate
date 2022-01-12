@@ -118,10 +118,10 @@ is named ``ca-certificates.crt``, on CentOS the name is ``ca-bundle.crt``.
 
 This file needs to be configured in the tlsmate-ini file, `see below`_.
 
-Download the Mozialla root CA certificates
-------------------------------------------
+Download the Mozilla root CA certificates
+-----------------------------------------
 
-As an alternative the root CA certificates used by Modzilla can be used.
+As an alternative the root CA certificates used by Mozilla can be used.
 Download the file and calculate its SHA256 checksum:
 
 .. code-block:: console
