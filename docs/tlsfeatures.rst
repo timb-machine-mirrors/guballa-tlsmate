@@ -39,6 +39,7 @@ SSLv2 is not supported.
 For the other protocol versions the following messages are supported:
 
 * HelloRequest
+* HelloRetryRequest
 * ClientHello
 * ServerHello
 * NewSessionTicket
@@ -147,12 +148,35 @@ Extensions
 
 The following TLS extensions are supported:
 
-SERVER_NAME
+* :ref:`ext_server_name`
+* :ref:`ext_supported_groups`
+* :ref:`ext_ec_point_formats`
+* :ref:`ext_signature_algorithms`
+* :ref:`ext_encrypt_then_mac`
+* :ref:`ext_extended_master_secret`
+* :ref:`ext_session_ticket`
+* :ref:`ext_pre_shared_key`
+* :ref:`ext_early_data`
+* :ref:`ext_supported_versions`
+* :ref:`ext_certificate_authorities`
+* :ref:`ext_post_handshake_auth`
+* :ref:`ext_key_share`
+* :ref:`ext_renegotiation_info`
+* :ref:`ext_heartbeat`
+* :ref:`ext_status_request`
+* :ref:`ext_status_request_v2`
+* :ref:`ext_cookie`
+
+.. _ext_server_name:
+
+server_name
 ^^^^^^^^^^^
 
 Any server name can be used.
 
-SUPPORTED_GROUPS
+.. _ext_supported_groups:
+
+supported_groups
 ^^^^^^^^^^^^^^^^
 
 All supported groups can be negotiated, but only the following ones can be
@@ -185,7 +209,9 @@ used for a successful handshake completion:
 * FFDHE6144
 * FFDHE8192
 
-EC_POINT_FORMATS
+.. _ext_ec_point_formats:
+
+ec_point_formats
 ^^^^^^^^^^^^^^^^
 
 All EC point formats can be negotiated, but only the following one can be
@@ -193,7 +219,9 @@ used for a successful handshake completion:
 
 * UNCOMPRESSED
 
-SIGNATURE_ALGORITHMS
+.. _ext_signature_algorithms:
+
+signature_algorithms
 ^^^^^^^^^^^^^^^^^^^^
 
 All signature algorithms can be negotiated, but only the following one can be
@@ -222,22 +250,30 @@ used for signing or signature validation:
 * RSA_PSS_RSAE_SHA384
 * RSA_PSS_RSAE_SHA512
 
-ENCRYPT_THEN_MAC
+.. _ext_encrypt_then_mac:
+
+encrypt_then_mac
 ^^^^^^^^^^^^^^^^
 
 A full handshake is supported with this extension.
 
-EXTENDED_MASTER_SECRET
+.. _ext_extended_master_secret:
+
+extended_master_secret
 ^^^^^^^^^^^^^^^^^^^^^^
 
 A full handshake is supported with this extension.
 
-SESSION_TICKET
+.. _ext_session_ticket:
+
+session_ticket
 ^^^^^^^^^^^^^^
 
 Sessions resumption using a previously received session ticket is supported.
 
-PRE_SHARED_KEY
+.. _ext_pre_shared_key:
+
+pre_shared_key
 ^^^^^^^^^^^^^^
 
 All pre shared key exchange modes are supported:
@@ -245,27 +281,37 @@ All pre shared key exchange modes are supported:
 * PSK_KE
 * PSK_DHE_KE
 
-EARLY_DATA
+.. _ext_early_data:
+
+early_data
 ^^^^^^^^^^
 
 Sending early data is supported.
 
-SUPPORTED_VERSIONS
+.. _ext_supported_versions:
+
+supported_versions
 ^^^^^^^^^^^^^^^^^^
 
 All supported versions are supported.
 
-CERTIFICATE_AUTHORITIES
+.. _ext_certificate_authorities:
+
+certificate_authorities
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 This extension is currently supported rudimentary only.
 
-POST_HANDSHAKE_AUTH
+.. _ext_post_handshake_auth:
+
+post_handshake_auth
 ^^^^^^^^^^^^^^^^^^^
 
 Post-handshake client authentication is supported (TLS1.3)
 
-KEY_SHARE
+.. _ext_key_share:
+
+key_share
 ^^^^^^^^^
 
 All TLS1.3 named groups are supported:
@@ -281,17 +327,23 @@ All TLS1.3 named groups are supported:
 * FFDHE6144
 * FFDHE8192
 
-RENEGOTIATION_INFO
+.. _ext_renegotiation_info:
+
+renegotiation_info
 ^^^^^^^^^^^^^^^^^^
 
 Renegotiation (secure and insecure and server-initiated) is supported.
 
-HEARTBEAT
+.. _ext_heartbeat:
+
+heartbeat
 ^^^^^^^^^
 
 Sending and receiving Heartbeat messages (requests and responses) is supported.
 
-STATUS_REQUEST
+.. _ext_status_request:
+
+status_request
 ^^^^^^^^^^^^^^
 
 Requesting OCSP stapling is supported. The stapled response from the server is
@@ -302,12 +354,21 @@ check for validity. This extension is supported for TLS version 1.0 - 1.3.
    while for TLS1.3 the response is provided in an TLS extensions associated
    with the certificate in the Certificate message.
 
-STATUS_REQUEST_V2
+.. _ext_status_request_v2:
+
+status_request_v2
 ^^^^^^^^^^^^^^^^^
 
 Requesting single responses (status_type = ocsp) and requesting multi stapling
 (status_type = ocsp_multi) is supported (TLS versions 1.0 - 1.2)
 
+.. _ext_cookie:
+
+cookie
+^^^^^^
+
+If received with a HelloRetryRequest message, it will be mirrowed back in the
+ClientHello.
 
 Certificates and certificate chains
 -----------------------------------

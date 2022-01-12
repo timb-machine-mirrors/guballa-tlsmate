@@ -6,9 +6,10 @@ import abc
 import math
 import struct
 import logging
+from typing import Optional
 
 # import own stuff
-from tlsmate import pdu
+import tlsmate.pdu as pdu
 
 # import other stuff
 from cryptography.hazmat.primitives import hashes, hmac
@@ -24,7 +25,7 @@ class _Backend(metaclass=abc.ABCMeta):
     """
 
     @abc.abstractmethod
-    def __init__(self, algo):
+    def __init__(self, algo: Optional[hashes.Hash]):
         raise NotImplementedError
 
     @staticmethod
@@ -270,22 +271,22 @@ class Kdf(object):
     """Implements several cryptographic functions, mainly intended to derive keys.
     """
 
-    def __init__(self):
-        self._backend = None
+    def __init__(self) -> None:
+        self._backend: Optional[_Backend] = None
 
-    def start_msg_digest(self):
+    def start_msg_digest(self) -> None:
         """Get ready to add messages to the message digest
 
         We start with the client hello, but backend is not defined yet.
         """
-        self._msg_digest_queue = None
+        self._msg_digest_queue: Optional[bytearray] = None
         self._msg_digest = None
         self._msg_digest_active = True
         self._backend = None
-        self._empty_msg_digest = None
+        self._empty_msg_digest: Optional[bytes] = None
         self._all_msgs = bytearray()
 
-    def set_msg_digest_algo(self, hash_algo):
+    def set_msg_digest_algo(self, hash_algo: Optional[hashes.Hash]) -> None:
         """Function to set the hash algo for the message digest.
 
         Note:
@@ -294,9 +295,8 @@ class Kdf(object):
             means at least the ClientHello must be queued.
 
         Arguments:
-            hash_algo (:obj:`cryptography.hazmat.primitives.hashes.HashPrimitive`): The
-                negotiated hash algorithm implementation, determined with the
-                reception of the ServerHello.
+            hash_algo: The negotiated hash algorithm implementation, determined
+                with the reception of the ServerHello.
         """
 
         if hash_algo is None:
@@ -310,7 +310,7 @@ class Kdf(object):
             self._backend.update_msg_digest(self._msg_digest_queue)
             self._msg_digest_queue = None
 
-    def update_msg_digest(self, msg):
+    def update_msg_digest(self, msg: bytes) -> None:
         """Add a message to the message digest.
 
         Note:
@@ -318,7 +318,7 @@ class Kdf(object):
             determined (reception of the ServerHello).
 
         Arguments:
-            msg (bytes): The message to add.
+            msg: The message to add.
         """
 
         if not self._msg_digest_active:
@@ -336,99 +336,103 @@ class Kdf(object):
         else:
             self._backend.update_msg_digest(msg)
 
-    def get_handshake_messages(self):
+    def get_handshake_messages(self) -> bytearray:
         """Get all messages received/sent so far.
 
         Returns:
-            bytes: the concatenation of all messages.
+            the concatenation of all messages.
         """
 
         return self._all_msgs
 
-    def empty_msg_digest(self):
+    def empty_msg_digest(self) -> Optional[bytes]:
         """Return the message digest for an emty message array.
 
         Returns:
-            bytes: The message digest for no given messages.
+            The message digest for no given messages.
         """
 
         return self._empty_msg_digest
 
-    def current_msg_digest(self, suspend=False):
+    def current_msg_digest(self, suspend: bool = False) -> Optional[bytes]:
         """Gets the message digest.
 
         Arguments:
-            suspend (bool): If set to False, provide the message digest in the
-                current state, but allow to add more messages to the digest later on.
+            suspend: If set to False, provide the message digest in the current
+                state, but allow to add more messages to the digest later on.
                 If set to True, provide the message digest, but do not consider
                 further messages.
 
         Returns:
-            bytes: The calculated message digest, output has the same length than
-            the hash length.
+            The calculated message digest, output has the same length than the
+            hash length.
         """
 
         if suspend:
             self._msg_digest_active = False
 
-        return self._backend.current_msg_digest()
+        return self._backend.current_msg_digest()  # type: ignore
 
-    def msg_digest_active(self):
+    def msg_digest_active(self) -> bool:
         """Returns the state of the message digest.
 
         Returns:
-            bool: an indication if the message digest is suspended or active.
+            an indication if the message digest is suspended or active.
         """
 
         return self._msg_digest_active
 
-    def resume_msg_digest(self):
+    def resume_msg_digest(self) -> None:
         """Change the state of the message digest to active
         """
 
         self._msg_digest_active = True
 
-    def prf(self, secret, label, seed, size):
+    def prf(self, secret: bytes, label: bytes, seed: bytes, size: int) -> bytes:
         """Implements a pseudo random function.
 
         Arguments:
-            secret (bytes): The secret used for the PRF.
-            label (bytes): The label as a bytestring.
-            seed (bytes): The seed for the function.
-            size (int): The desired number of bytes for the output
+            secret: The secret used for the PRF.
+            label: The label as a bytestring.
+            seed: The seed for the function.
+            size: The desired number of bytes for the output
 
         Returns:
-            bytes: A bytearray as long as specified by the size parameter.
+            A bytearray as long as specified by the size parameter.
         """
 
-        return self._backend.prf(secret, label, seed, size)
+        return self._backend.prf(secret, label, seed, size)  # type: ignore
 
-    def hkdf_extract(self, secret, salt):
+    def hkdf_extract(self, secret: bytes, salt: bytes) -> bytes:
         """HKDF-extract function for TLS1.3
 
         Arguments:
-            secret (bytes): The secret used for the extract function.
-            salt (bytes): The salt for the extract function.
+            secret: The secret used for the extract function.
+            salt: The salt for the extract function.
 
         Returns:
-            bytes: The byte sequence generated having the same length than the
-            hash algorithm used in the underlying hash function.
+            The byte sequence generated having the same length than the hash
+            algorithm used in the underlying hash function.
         """
 
-        return self._backend.hkdf_extract(secret, salt)
+        return self._backend.hkdf_extract(secret, salt)  # type: ignore
 
-    def hkdf_expand_label(self, secret, label, msg_digest, length):
+    def hkdf_expand_label(
+        self, secret: bytes, label: bytes, msg_digest: bytes, length: int
+    ) -> bytes:
         """HKDF-expand-label function for TLS1.3
 
         Arguments:
-            secret (bytes): The secret used for the expand function.
-            label (bytes): The label as a bytestring.
-            msg_digest (bytes): The message digest value having the same length than
+            secret: The secret used for the expand function.
+            label: The label as a bytestring.
+            msg_digest: The message digest value having the same length than
                 the underlying hash function.
-            length (int): The desired number of bytes for the output
+            length: The desired number of bytes for the output
 
         Returns:
-            bytes: A bytearray as long as specified by the length parameter.
+            A bytearray as long as specified by the length parameter.
         """
 
-        return self._backend.hkdf_expand_label(secret, label, msg_digest, length)
+        return self._backend.hkdf_expand_label(  # type: ignore
+            secret, label, msg_digest, length
+        )

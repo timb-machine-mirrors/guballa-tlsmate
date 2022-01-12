@@ -3,10 +3,12 @@
 """
 # import basic stuff
 import logging
+from typing import List, Any, Optional
 
 # import own stuff
-from tlsmate.cert import Certificate
-from tlsmate import cert_utils
+import tlsmate.cert as crt
+import tlsmate.cert_utils as cert_utils
+import tlsmate.recorder as rec
 
 # import other stuff
 import pem
@@ -23,18 +25,18 @@ class TrustStore(object):
             PEM-format.
     """
 
-    def __init__(self, tlsmate=None):
-        self._recorder = tlsmate.recorder
-        self._ca_files = None
-        self._cert_cache = []
-        self._fingerprint_cache = []
+    def __init__(self, recorder: rec.Recorder) -> None:
+        self._recorder = recorder
+        self._ca_files: Optional[List[str]] = None
+        self._cert_cache: List[crt.Certificate] = []
+        self._fingerprint_cache: List[bytes] = []
 
-    def set_ca_files(self, ca_files):
+    def set_ca_files(self, ca_files: List[str]) -> None:
         """Store the CA files containing certs in PEM format
 
         Arguments:
-            ca_files (list of str): A list of file names. Each file can contain
-                multiple certificates in PEM format.
+            ca_files: A list of file names. Each file can contain multiple
+                certificates in PEM format.
         """
 
         if ca_files:
@@ -55,13 +57,13 @@ class TrustStore(object):
                 for pem_item in pem_list:
                     if not isinstance(pem_item, pem.Certificate):
                         continue
-                    yield Certificate(pem=pem_item.as_bytes())
+                    yield crt.Certificate(pem=pem_item.as_bytes())
 
-    def add_cert(self, cert):
+    def add_cert(self, cert: crt.Certificate) -> None:
         """Add a certificate to the trust store if not yet present.
 
         Arguments:
-            cert (:obj:`tlsmate.cert.Certificate`): The certificate to add
+            The certificate to add
         """
 
         if cert.fingerprint_sha256 not in self._fingerprint_cache:
@@ -69,20 +71,22 @@ class TrustStore(object):
                 f'adding certificate "{cert.parsed.subject.rfc4514_string()}" '
                 f"to trust store cache"
             )
+            # TODO: resolve type issue
+            assert cert.fingerprint_sha256
             self._fingerprint_cache.append(cert.fingerprint_sha256)
             self._cert_cache.append(cert)
             if self._recorder.is_recording():
                 cert_pem = cert.parsed.public_bytes(Encoding.DER).hex()
                 self._recorder.trace(trust_store=cert_pem)
 
-    def cert_in_trust_store(self, cert):
+    def cert_in_trust_store(self, cert: crt.Certificate) -> bool:
         """Checks if a given certificate is present in the trust store.
 
         Arguments:
-            cert (:obj:`tlsmate.cert.Certificate`): the certificate to check
+            cert: the certificate to check
 
         Returns:
-            bool: True, if the given certificate is present in the trust store
+            True, if the given certificate is present in the trust store
         """
 
         if self._ca_files is None and not self._cert_cache:
@@ -95,14 +99,14 @@ class TrustStore(object):
 
         return False
 
-    def issuer_in_trust_store(self, issuer_name):
+    def issuer_in_trust_store(self, issuer_name: Any) -> Optional[crt.Certificate]:
         """Returns the certificate for a given issuer name from the trust store.
 
         Arguments:
-            issuer_name (:obj:`cryptography.x509.Name`): the name of the issuer
+            issuer_name: the name of the issuer
 
         Returns:
-            :obj:`tlsmate.cert.Certificate` or None if the certificate is not found.
+            the issuer certificate or None if the certificate is not found.
         """
 
         for cert in self:

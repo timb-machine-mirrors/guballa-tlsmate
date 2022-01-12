@@ -4,13 +4,13 @@
 # import basic stuff
 
 # import own stuff
-from tlsmate import tls
-from tlsmate.plugin import Worker
+import tlsmate.plugin as plg
+import tlsmate.tls as tls
 
 # import other stuff
 
 
-class ScanOcspStapling(Worker):
+class ScanOcspStapling(plg.Worker):
     name = "ocsp_stapling"
     descr = "scan for OCSP stapling"
     prio = 30

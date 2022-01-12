@@ -4,26 +4,26 @@
 # import basic stuff
 
 # import own stuff
-from tlsmate.plugin import BaseCommand, Plugin, Args, Worker
-from tlsmate.version import __version__
+import tlsmate.plugin as plg
+import tlsmate.version as version
 
 # import other stuff
 
 
-class VersionWorker(Worker):
+class VersionWorker(plg.Worker):
     """Worker to print the version of tlsmate.
     """
 
     name = "version"
 
     def run(self):
-        print(__version__)
+        print(version.__version__)
 
 
-@BaseCommand.extend
-class SubcommandVersion(Plugin):
+@plg.BaseCommand.extend
+class SubcommandVersion(plg.Plugin):
     """CLI plugin to print the version of ``tlsmate``.
     """
 
-    subcommand = Args("version", help="prints the version of tlsmate")
+    subcommand = plg.Args("version", help="prints the version of tlsmate")
     workers = [VersionWorker]

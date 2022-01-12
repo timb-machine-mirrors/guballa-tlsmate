@@ -8,12 +8,13 @@ import json
 import os
 import sys
 import argparse
+from typing import List, Optional, Type, Any, Tuple, Union
 
 # import own stuff
-from tlsmate import tls
-from tlsmate import mappings
-from tlsmate import structs
-from tlsmate import pdu
+import tlsmate.mappings as mappings
+import tlsmate.pdu as pdu
+import tlsmate.structs as structs
+import tlsmate.tls as tls
 
 # import other stuff
 import yaml
@@ -28,15 +29,15 @@ class BooleanOptionalAction(argparse.Action):
 
     def __init__(
         self,
-        option_strings,
-        dest,
-        default=None,
-        type=None,
-        choices=None,
-        required=False,
-        help=None,
-        metavar=None,
-    ):
+        option_strings: List[str],
+        dest: str,
+        default: Optional[str] = None,
+        type: Type = None,
+        choices: List[str] = None,
+        required: bool = False,
+        help: Optional[str] = None,
+        metavar: Optional[str] = None,
+    ) -> None:
 
         _option_strings = []
         for option_string in option_strings:
@@ -65,21 +66,27 @@ class BooleanOptionalAction(argparse.Action):
         if option_string in self.option_strings:
             setattr(namespace, self.dest, not option_string.startswith("--no-"))
 
-    def format_usage(self):
+    def format_usage(self) -> str:
         return " | ".join(self.option_strings)
 
 
-def serialize_data(data, file_name=None, replace=True, use_json=False, indent=4):
+def serialize_data(
+    data: Any,
+    file_name: Optional[str] = None,
+    replace: bool = True,
+    use_json: bool = False,
+    indent: int = 4,
+) -> None:
     """Serialize the data object to JSON or yaml.
 
     Arguments:
         data: the serializable data structure
-        file_name (str or :obj:`pathlib.Path`): the file to write the serialized
-            data to. If not given, the serialized object is printed on STDOUT.
-        replace (bool): If True, allow overwriting an existing file. Defaults to True.
+        file_name: the file to write the serialized data to. If not given, the
+            serialized object is printed on STDOUT.
+        replace: If True, allow overwriting an existing file. Defaults to True.
             This argument is only evaluated if a file_name is given.
-        json (bool): If True, use JSON, else use Yaml.
-        indent (int): The indentation to apply.
+        json: If True, use JSON, else use Yaml.
+        indent: The indentation to apply.
     """
 
     if file_name is not None:
@@ -102,34 +109,34 @@ def serialize_data(data, file_name=None, replace=True, use_json=False, indent=4)
             print(yaml.dump(data, indent=indent))
 
 
-def deserialize_data(file_name):
+def deserialize_data(file_name: str) -> Any:
     """Deserialize from a JSON- or Yaml-file.
 
     Arguments:
-        file_name (str or :obj:`pathlib.Path`): the full file name
+        file_name: the full file name
 
     Returns:
-        object: the deserialized object
+        the deserialized object
     """
 
     with open(file_name) as fd:
         return yaml.safe_load(fd)
 
 
-def fold_string(text, max_length, sep=" "):
+def fold_string(text: str, max_length: int, sep: str = " ") -> List[str]:
     """Splits a string into lines of the given length.
 
     Arguments:
-        text (str): the string to split
-        length (int): the maximum length of the line
-        sep (str): the separator where splitting the text is allowed
+        text: the string to split
+        length: the maximum length of the line
+        sep: the separator where splitting the text is allowed
 
     Returns:
         list: the list of strings
     """
 
     ret_lines = []
-    tokens = []
+    tokens: List[str] = []
     length = 0
     sep_len = len(sep)
 
@@ -156,14 +163,15 @@ def fold_string(text, max_length, sep=" "):
     return ret_lines
 
 
-def get_cipher_suite_details(cipher_suite):
+def get_cipher_suite_details(
+    cipher_suite: tls.CipherSuite,
+) -> Optional[structs.CipherSuiteDetails]:
     """Get details for a given cipher suite
 
     Arguments:
-        cipher_suite (:class:`tlsmate.tls.CipherSuite`): The given cipher suite.
+        cipher_suite: The given cipher suite.
 
     Returns:
-        :obj:`tlsmate.structs.CipherSuiteDetails`:
         The structure with the detailed info regarding the given cipher suite.
     """
 
@@ -195,20 +203,19 @@ def get_cipher_suite_details(cipher_suite):
 
 
 def filter_cipher_suites(
-    cs_list,
-    key_exch=None,
-    key_auth=None,
-    key_algo=None,
-    cipher_type=None,
-    cipher_prim=None,
-    cipher=None,
-    cipher_mode=None,
-    mac=None,
-    version=None,
-    full_hs=None,
-    key_exchange_supported=None,
-    remove=False,
-):
+    cs_list: List[tls.CipherSuite],
+    key_exch: Optional[List[tls.KeyExchangeType]] = None,
+    key_auth: Optional[List[tls.KeyAuthentication]] = None,
+    key_algo: Optional[List[tls.KeyExchangeAlgorithm]] = None,
+    cipher_type: Optional[List[tls.CipherType]] = None,
+    cipher_prim: Optional[List[tls.CipherPrimitive]] = None,
+    cipher: Optional[List[tls.SymmetricCipher]] = None,
+    mac: Optional[List[tls.HashPrimitive]] = None,
+    version: Optional[tls.Version] = None,
+    full_hs: Optional[bool] = None,
+    key_exchange_supported: Optional[bool] = None,
+    remove: bool = False,
+) -> List[tls.CipherSuite]:
     """Filters a list of cipher suites.
 
     Various match conditions can be specified. A cipher suite is filtered, if all
@@ -216,77 +223,73 @@ def filter_cipher_suites(
     a list.
 
     Arguments:
-        cs_list (list of :class:`tlsmate.tls.CipherSuite`): A list of cipher
-            suites to be filtered.
-        key_algo (list of :class:`tlsmate.tls.KeyExchangeAlgorithm`): Optional
-            match condition. If the key_algo (a combination of key_exch and key_auth,
-            e.g. "DHE_RSA") of a cipher suite is in the given list, it is a match.
-        key_exch (list of :class:`tlsmate.tls.KeyExchangeType`): Optional
-            match condition. If the key_exch (e.g. "ECDH") of a cipher suite is in
-            the given list, it is a match.
-        key_auth (list of :class:`tlsmate.tls.KeyAuthentication`): Optional
-            match condition. If the key_auth (e.g. "ECDSA") of a cipher suite is in
-            the given list, it is a match.
-        cipher_type (list of :class:`tlsmate.tls.CipherType`): Optional
-            match condition. If the cipher_type (e.g. "STREAM") of a cipher suite
-            is in the list, it is a match.
-        cipher_prim (list of :class:`tlsmate.tls.CipherPrimitive`): Optional
-            match condition. If the cipher_prim (e.g. "AES") of a cipher suite is in
-            the given list, it is a match.
-        cipher (list of :class:`tlsmate.tls.SymmetricCipher`): Optional
-            match condition. If the cipher (e.g. "AES_256_CCM_8") of a cipher suite
-            is in the given list, it is a match.
-        mac (list of :class:`tlsmate.tls.HashPrimitive`): Optional match
-            condition. If the mac (e.g. "SHA384") of a cipher suite is in the give
-            list, it is a match.
-        version (:class:`tlsmate.tls.Version`): Optional match condition.
-            Cipher suites supported by the given TLS version are a match. This is
-            rather rudimentary implemented: AEAD ciphers only for TLS1.2, specific
-            ciphers only for TLS1.3.
-        full_hs (bool): Optional match condition. If the implementation supports a
-            full handshake with a cipher suite, i.e. an encrypted connection can
-            successfully established, it is a match. It means the key exchange,
-            the symmetric cipher and the hash primitive are all supported.
-        key_exchange_supported (bool): Optional match condition. If the key exchange
-            for a cipher suite is supported, it is a match. Note, that this does not
-            mean that the symmetric cipher is supported as well.
-        remove (bool): An indication if the filtered cipher suites shall be removed
+        cs_list: A list of cipher suites to be filtered.
+        key_algo: Optional match condition. If the key_algo (a combination of
+            key_exch and key_auth, e.g. "DHE_RSA") of a cipher suite is in the
+            given list, it is a match.
+        key_exch: Optional match condition. If the key_exch (e.g. "ECDH") of a
+            cipher suite is in the given list, it is a match.
+        key_auth: Optional match condition. If the key_auth (e.g. "ECDSA") of a
+            cipher suite is in the given list, it is a match.
+        cipher_type: Optional match condition. If the cipher_type (e.g.
+            "STREAM") of a cipher suite is in the list, it is a match.
+        cipher_prim: Optional match condition. If the cipher_prim (e.g. "AES")
+            of a cipher suite is in the given list, it is a match.
+        cipher: Optional match condition. If the cipher (e.g. "AES_256_CCM_8")
+            of a cipher suite is in the given list, it is a match.
+        mac: Optional match condition. If the mac (e.g. "SHA384") of a cipher
+            suite is in the give list, it is a match.
+        version: Optional match condition. Cipher suites supported by the given
+            TLS version are a match. This is rather rudimentary implemented:
+            AEAD ciphers only for TLS1.2, specific ciphers only for TLS1.3.
+        full_hs: Optional match condition. If the implementation supports a
+            full handshake with a cipher suite, i.e. an encrypted connection
+            can successfully established, it is a match. It means the key
+            exchange, the symmetric cipher and the hash primitive are all
+            supported.
+        key_exchange_supported: Optional match condition. If the key exchange
+            for a cipher suite is supported, it is a match. Note, that this
+            does not mean that the symmetric cipher is supported as well.
+        remove: An indication if the filtered cipher suites shall be removed
             from the original list of cipher suites. Defaults to False.
 
     Returns:
-        list of :class:`tlsmate.tls.CipherSuite`:
         The list of cipher suites that match all the given conditions.
     """
 
     filter_funcs = []
     if key_algo is not None:
-        filter_funcs.append(lambda cs: cs.key_algo in key_algo)
+        filter_funcs.append(lambda cs: cs.key_algo in key_algo)  # type: ignore
 
     if key_exch is not None:
         filter_funcs.append(
-            lambda cs: getattr(cs.key_algo_struct, "key_ex_type", None) in key_exch
+            lambda cs: getattr(cs.key_algo_struct, "key_ex_type", None)
+            in key_exch  # type: ignore
         )
 
     if key_auth is not None:
         filter_funcs.append(
-            lambda cs: getattr(cs.key_algo_struct, "key_auth", None) in key_auth
+            lambda cs: getattr(cs.key_algo_struct, "key_auth", None)
+            in key_auth  # type: ignore
         )
 
     if cipher_type is not None:
         filter_funcs.append(
-            lambda cs: getattr(cs.cipher_struct, "c_type", None) in cipher_type
+            lambda cs: getattr(cs.cipher_struct, "c_type", None)
+            in cipher_type  # type: ignore
         )
 
     if cipher_prim is not None:
         filter_funcs.append(
-            lambda cs: getattr(cs.cipher_struct, "primitive", None) in cipher_prim
+            lambda cs: getattr(cs.cipher_struct, "primitive", None)
+            in cipher_prim  # type: ignore
         )
 
     if cipher is not None:
-        filter_funcs.append(lambda cs: cs.cipher in cipher)
+        filter_funcs.append(lambda cs: cs.cipher in cipher)  # type: ignore
 
     if mac is not None:
-        filter_funcs.append(lambda cs: cs.mac in mac)
+        filter_funcs.append(lambda cs: cs.mac in mac)  # type: ignore
 
     if version in [tls.Version.SSL30, tls.Version.TLS10, tls.Version.TLS11]:
         filter_funcs.append(
@@ -343,14 +346,14 @@ def filter_cipher_suites(
     return filtered
 
 
-def int_to_bytes(number):
+def int_to_bytes(number: int) -> bytes:
     """Convert an integer to a byte string
 
     Arguments:
-        number (int): the integer to convert
+        number: the integer to convert
 
     Returns:
-        bytes: just as many bytes as needed to represent the integer as an octet string
+        just as many bytes as needed to represent the integer as an octet string
     """
 
     if number:
@@ -360,18 +363,18 @@ def int_to_bytes(number):
         return b"\0"
 
 
-def set_logging_format():
+def set_logging_format() -> None:
     """Initializes the format of log messages
     """
 
     logging.basicConfig(format="%(levelname)s: %(message)s")
 
 
-def set_logging_level(level):
+def set_logging_level(level: str) -> None:
     """Sets the logging level
 
     Arguments:
-        level (str): The logging level to use.
+        level: The logging level to use.
     """
 
     logging.getLogger().setLevel(level.upper())
@@ -384,11 +387,11 @@ class Log(object):
     start_time = None
 
     @classmethod
-    def time(cls):
+    def time(cls) -> str:
         """returns a time stamp relative to the time of the first call to this method.
 
         Returns:
-            str: the time in seconds with 3 positions after the decimal point.
+            the time in seconds with 3 positions after the decimal point.
         """
 
         timestamp = time.time()
@@ -403,28 +406,28 @@ class Table(object):
     """Helper class for printing text in a table
 
     Attributes:
-        indent (int): the indentation level, i.e. how many blanks shall be added
-            on the left side of the table
-        sep (str): the separator to print between adjacent columns within a row
+        indent: the indentation level, i.e. how many blanks shall be added on
+            the left side of the table
+        sep: the separator to print between adjacent columns within a row
     """
 
-    def __init__(self, indent=0, sep=": "):
+    def __init__(self, indent: int = 0, sep: str = ": ") -> None:
         self._indent = indent
         self._sep = sep
         self._nbr_columns = 0
-        self._rows = []
+        self._rows: List[List[Tuple[str, int]]] = []
 
-    def row(self, *args):
+    def row(self, *args: Union[Tuple[str, int], str]) -> None:
         """Register a row
 
         Arguments:
-            args (str): a complete row, one string for each column
+            args: a complete row, one string for each column
         """
         self._nbr_columns = max(self._nbr_columns, len(args))
         cols = [col if type(col) is tuple else (col, len(col)) for col in args]
-        self._rows.append(cols)
+        self._rows.append(cols)  # type: ignore
 
-    def dump(self):
+    def dump(self) -> None:
         """Print the table
         """
 
@@ -449,11 +452,11 @@ class Table(object):
             )
 
 
-def get_random_value():
+def get_random_value() -> bytes:
     """Get a value suitable for a ClientHello or ServerHello
 
     Returns:
-        bytes: 32 bytes of almost random data
+        32 bytes of almost random data
     """
 
     random = bytearray()
@@ -462,23 +465,11 @@ def get_random_value():
     return random
 
 
-def log_extensions(extensions):
-    """Log extensions
-
-    Arguments:
-        extensions: the list of extensions to iterate over
-    """
-
-    for extension in extensions:
-        extension = extension.extension_id
-        logging.debug(f"extension {extension.value} {extension}")
-
-
-def exit_with_error(error):
+def exit_with_error(error: str) -> None:
     """Abort tlsmate with an error message
 
     Arguments:
-        error (str): the error message to print on stderr
+        error: the error message to print on stderr
     """
 
     sys.stderr.write(f"Error: {error}\n")

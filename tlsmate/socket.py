@@ -7,13 +7,17 @@ import select
 import logging
 import time
 import sys
+import socks  # type: ignore
+import urllib.parse
+from typing import Tuple, Optional
 
 # import own stuff
-from tlsmate import utils
-from tlsmate import tls
-from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
-from tlsmate import recorder
-from tlsmate import resolver
+import tlsmate.config as conf
+import tlsmate.recorder as rec
+import tlsmate.resolver as resolver
+import tlsmate.structs as structs
+import tlsmate.tls as tls
+import tlsmate.utils as utils
 
 # import other stuff
 
@@ -22,41 +26,47 @@ class Socket(object):
     """Class implementing the socket interface.
 
     Arguments:
-        server (str): The name of server to connect to.
-        port (int): The port number to connect to.
-        recorder (:obj:`tlsmate.recorder.Recorder`): The recorder object
+        tlsmate: the application object
     """
 
-    def __init__(self, tlsmate):
-        self._socket = None
-        self._config = tlsmate.config
-        self._recorder = tlsmate.recorder
+    def __init__(self, config: conf.Configuration, recorder: rec.Recorder) -> None:
+        self._socket: Optional[socks.socksocket] = None
+        self._config = config
+        self._recorder = recorder
         self._fragment_max_size = 16384
 
-    def open_socket(self, l4_addr):
+    def open_socket(self, l4_addr: structs.TransportEndpoint) -> None:
         """Opens a socket.
 
         Arguments:
-            l4_addr (:obj:`tlsmate.structs.TransportEndpoint`): The L4-endpoint,
-                consisting of the IP-address and the port.
+            l4_addr: The L4-endpoint, consisting of the IP-address and the
+                port.
         """
 
+        addr_info: Tuple
         if l4_addr.host_type is tls.HostType.HOST:
-            l4_addr = resolver.get_ip_endpoint(l4_addr)
+            l4_addr = resolver.get_ip_endpoint(
+                l4_addr,
+                proxy=self._config.get("proxy"),
+                ipv6_preference=self._config.get("ipv6_preference"),
+            )
 
-        if l4_addr.host_type is tls.HostType.IPV4:
-            family = socket.AF_INET
-            addr_info = (l4_addr.host, l4_addr.port)
-
-        else:
-            family = socket.AF_INET6
-            addr_info = (l4_addr.host, l4_addr.port, 0, 0)
+        addr_info = (l4_addr.host, l4_addr.port)
+        family = (
+            socket.AF_INET
+            if l4_addr.host_type is tls.HostType.IPV4
+            else socket.AF_INET6
+        )
 
         if self._recorder.is_injecting():
             return
 
         try:
-            self._socket = socket.socket(family, socket.SOCK_STREAM)
+            self._socket = socks.socksocket(family, socket.SOCK_STREAM)
+            proxy = self._config.get("proxy")
+            if proxy:
+                parsed = urllib.parse.urlparse(proxy)
+                self._socket.set_proxy(socks.HTTP, parsed.hostname, parsed.port)
             self._socket.settimeout(5.0)
             self._socket.connect(addr_info)
             self._socket.settimeout(None)
@@ -78,7 +88,7 @@ class Socket(object):
         logging.info(f"local address: {laddr}:{lport}")
         logging.info(f"remote address: {raddr}:{rport}")
 
-    def close_socket(self):
+    def close_socket(self) -> None:
         """Closes a socket.
         """
 
@@ -87,11 +97,11 @@ class Socket(object):
             self._socket.close()
             self._socket = None
 
-    def sendall(self, data):
+    def sendall(self, data: bytes) -> None:
         """Sends data to the network.
 
         Arguments:
-            data (bytes): The data to send.
+            data: The data to send.
         """
 
         cont = self._recorder.trace_socket_sendall(data)
@@ -101,14 +111,14 @@ class Socket(object):
 
             self._socket.sendall(data)
 
-    def recv_data(self, timeout=5):
+    def recv_data(self, timeout: float = 5) -> bytes:
         """Wait for data from the network.
 
         Arguments:
-            timeout (float): The maximum time to wait in seconds.
+            timeout: The maximum time to wait in seconds.
 
         Returns:
-            bytes: The bytes received or None if the timeout expired.
+            The bytes received or None if the timeout expired.
 
         Raises:
             TlsMsgTimeoutError: If no data is received within the given timeout
@@ -117,29 +127,26 @@ class Socket(object):
 
         data = self._recorder.inject_socket_recv()
         if data is None:
-            if self._socket is None:
-                self.open_socket()
+            assert self._socket
 
             start = time.time()
             rfds, wfds, efds = select.select([self._socket], [], [], timeout)
             timeout = time.time() - start
             if not rfds:
-                self._recorder.trace_socket_recv(timeout, recorder.SocketEvent.TIMEOUT)
-                raise TlsMsgTimeoutError
+                self._recorder.trace_socket_recv(timeout, rec.SocketEvent.TIMEOUT)
+                raise tls.TlsMsgTimeoutError
 
             try:
                 data = self._socket.recv(self._fragment_max_size)
 
             except ConnectionResetError as exc:
-                self._recorder.trace_socket_recv(timeout, recorder.SocketEvent.CLOSURE)
+                self._recorder.trace_socket_recv(timeout, rec.SocketEvent.CLOSURE)
                 self.close_socket()
-                raise TlsConnectionClosedError(exc)
+                raise tls.TlsConnectionClosedError(exc)
 
-            self._recorder.trace_socket_recv(
-                timeout, recorder.SocketEvent.DATA, data=data
-            )
+            self._recorder.trace_socket_recv(timeout, rec.SocketEvent.DATA, data=data)
         if data == b"":
             self.close_socket()
-            raise TlsConnectionClosedError()
+            raise tls.TlsConnectionClosedError()
 
         return data

@@ -3,56 +3,76 @@
 """
 # import basic stuff
 import importlib
-import pkgutil
-import sys
+import argparse
+import logging
 
 # import own stuff
-from tlsmate.config import Configuration
-from tlsmate.tlsmate import TlsMate
-from tlsmate.plugin import BaseCommand
-from tlsmate import utils
-from tlsmate.plugin import WorkManager
+import tlsmate.config as conf
+import tlsmate.plugin as plg
+import tlsmate.tlsmate as tm
+import tlsmate.utils as utils
 
 # import other stuff
 
 
-def build_parser():
+class _PreParser(plg.Plugin):
+    plugins = [plg.ArgConfig, plg.ArgPlugin, plg.ArgLogging]
+
+
+def build_parser() -> argparse.ArgumentParser:
     """Creates the parser object
 
     Returns:
-        :obj:`argparse.ArgumentParser`: the parser object as created with argparse
+        the parser object as created with argparse
     """
 
-    return BaseCommand.create_parser()
+    return plg.BaseCommand.create_parser()
 
 
-def main():
-    """The entry point for the command line interface
-    """
+def _load_plugins(config: conf.Configuration) -> None:
+
+    pre_parser = argparse.ArgumentParser(add_help=False)
+    _PreParser.extend_parser(pre_parser, None)
+    pre_args, _ = pre_parser.parse_known_args()
+
+    # logging should be setup as early as possible
+    utils.set_logging_level(pre_args.logging)
+
+    if pre_args.plugin:
+        plugins = pre_args.plugin
+
+    else:
+        plugins = config.get_from_external(pre_args.config_file, "plugin")
+
+    if plugins:
+        for plugin in plugins:
+            if plugin.startswith("tlsmate_"):
+                try:
+                    importlib.import_module(plugin)
+                    logging.debug(f"Plugin module {plugin} successfully loaded")
+
+                except ModuleNotFoundError:
+                    pass
+
+
+def main() -> None:
+    """The entry point for the command line interface"""
 
     utils.set_logging_format()
+    config = conf.Configuration()
+    _load_plugins(config)
 
     parser = build_parser()
     args = parser.parse_args()
 
-    # logging should be setup as early as possible
-    utils.set_logging_level(args.logging)
-
-    config = Configuration()
-    BaseCommand.register_config(config)
+    plg.BaseCommand.register_config(config)
     config.init_from_external(args.config_file)
     config.set("logging", args.logging)
-    work_manager = WorkManager()
-    BaseCommand.args_parsed(args, parser, None, config)
-    tlsmate = TlsMate(config=config)
+    work_manager = plg.WorkManager()
+    plg.BaseCommand.args_parsed(args, parser, None, config)
+    tlsmate = tm.TlsMate(config=config)
     work_manager.run(tlsmate)
 
 
 # And now load the plugins which are shipped by default with tlsmate...
 from tlsmate.plugins import scan, version  # NOQA
-
-# And now look for additional user provided plugins
-if len(sys.argv) < 2 or sys.argv[1] != "--no-plugin":
-    for finder, name, ispkg in pkgutil.iter_modules():
-        if name.startswith("tlsmate_"):
-            importlib.import_module(name)

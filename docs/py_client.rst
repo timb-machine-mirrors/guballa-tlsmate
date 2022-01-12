@@ -1,7 +1,7 @@
 Module client
 -------------
 
-.. autoclass:: tlsmate.client.ClientProfile
+.. autoclass:: tlsmate.client_state.ClientProfile
    :members:
    :show-inheritance:
 

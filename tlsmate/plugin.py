@@ -6,8 +6,11 @@ import logging
 import abc
 import sys
 import argparse
+from typing import List, Optional, Type, Any
 
 # import own stuff
+import tlsmate.config as conf
+import tlsmate.structs as structs
 
 # import other stuff
 
@@ -20,7 +23,7 @@ class Args(object):
         kwargs: any number of named arguments
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         self.arg = args[0] if args else None
         self.kwargs = kwargs
 
@@ -46,31 +49,31 @@ class Plugin(metaclass=abc.ABCMeta):
     The default plugin behavior can be overruled by specific class methods.
 
     Attributes:
-        config(:obj:`tlsmate.structs.ConfigItem`): an optional associated
-            configuration item
-        group(:obj:`Args`): parameters for the add_argument_group method (argparse)
-        subcommand(:obj:`Args`): parameters for the add_subparsers method
-        cli_args(:obj:`Args`): parameters for the add_argument method (argparse)
-        plugins(list(:class:`Plugin`)): A list of plugin classes which are plugged in
-            into this plugin.
-        workers(list(:class:`Worker`)): a list of worker classes to be registered
+        config: an optional associated configuration item
+        group: parameters for the add_argument_group method (argparse)
+        subcommand: parameters for the add_subparsers method
+        cli_args: parameters for the add_argument method (argparse)
+        plugins: A list of plugin classes which are plugged in into this
+            plugin.
+        workers: a list of worker classes to be registered
     """
 
-    config = None
-    group = None
-    subcommand = None
-    cli_args = None
-    plugins = None
-    workers = None
+    config: Optional[structs.ConfigItem] = None
+    group: Optional[Args] = None
+    subcommand: Optional[Args] = None
+    cli_args: Optional[Args] = None
+    plugins: Optional[List[Type["Plugin"]]] = None
+    workers: Optional[List[Type["Worker"]]] = None
 
     @classmethod
-    def args_name(cls):
+    def args_name(cls) -> str:
         """Helper method to retrieve the args-attribute from the attribute arguments.
 
         Returns:
-            str: the attribute name for the args object
+            the attribute name for the args object
         """
 
+        assert cls.cli_args
         if "dest" in cls.cli_args.kwargs:
             return cls.cli_args.kwargs["dest"]
 
@@ -81,7 +84,7 @@ class Plugin(metaclass=abc.ABCMeta):
         return name.replace("-", "_")
 
     @classmethod
-    def extend(cls, plugin):
+    def extend(cls, plugin: Type["Plugin"]) -> Type["Plugin"]:
         """Decorator to extend a plugin
         """
 
@@ -92,33 +95,33 @@ class Plugin(metaclass=abc.ABCMeta):
         return plugin
 
     @classmethod
-    def extend_parser(cls, parser, subparsers):
+    def extend_parser(cls, parser: argparse.ArgumentParser, subparsers: Any) -> None:
         """Extends the parser (subcommand, argument group, or argument)
 
         Arguments:
-            parser (:obj:`argparse.Parser`): the CLI parser object
-            subparsers: (:obj:`argparse.Parser`): the subparser object
+            parser: the CLI parser object
+            subparsers: the subparser object
         """
 
         if cls.cli_args:
             parser.add_argument(cls.cli_args.arg, **cls.cli_args.kwargs)
 
-        elif cls.subcommand:
+        elif cls.subcommand and subparsers:
             parser = subparsers.add_parser(cls.subcommand.arg, **cls.subcommand.kwargs)
 
         elif cls.group:
-            parser = parser.add_argument_group(**cls.group.kwargs)
+            parser = parser.add_argument_group(**cls.group.kwargs)  # type: ignore
 
         if cls.plugins is not None:
             for plugin in cls.plugins:
                 plugin.extend_parser(parser, subparsers)
 
     @classmethod
-    def register_config(cls, config):
+    def register_config(cls, config: conf.Configuration) -> None:
         """Registers its configuration item, if defined.
 
         Arguments:
-            config (:obj:`tlsmate.config.Configuration`): The configuration object.
+            config: The configuration object.
         """
 
         if cls.config:
@@ -129,16 +132,22 @@ class Plugin(metaclass=abc.ABCMeta):
                 plugin.register_config(config)
 
     @classmethod
-    def args_parsed(cls, args, parser, subcommand, config):
+    def args_parsed(
+        cls,
+        args: Any,
+        parser: argparse.ArgumentParser,
+        subcommand: str,
+        config: conf.Configuration,
+    ) -> None:
         """Callback after the arguments are parsed.
 
         Provides the configuration (based on the argument) and registers the workers.
 
         Arguments:
             args: the parsed arguments object
-            parser (:obj:`argparse.Parser`): the CLI parser object
-            subcommand(str): the subcommand that was given
-            config (:obj:`tlsmate.config.Configuration`): The configuration object.
+            parser: the CLI parser object
+            subcommand: the subcommand that was given
+            config: The configuration object.
         """
 
         if cls.subcommand and cls.subcommand.arg != subcommand:
@@ -165,15 +174,19 @@ class Plugin(metaclass=abc.ABCMeta):
                 plugin.args_parsed(args, parser, subcommand, config)
 
 
-class ArgNoPlugin(Plugin):
-    """Plugin for the "--no-plugin" argument.
+class ArgPlugin(Plugin):
+    """Plugin for specifying the plugins that shall be loaded.
     """
 
+    config = conf.config_plugin
     cli_args = Args(
-        "--no-plugin",
-        default=None,
-        help="disable loading external plugins. Must be the first argument.",
-        action="store_true",
+        "--plugin",
+        nargs="*",
+        type=str,
+        help=(
+            "list of plugins to load. The name of each plugin must start with "
+            "`tlsmate_`."
+        ),
     )
 
 
@@ -205,7 +218,7 @@ class BaseCommand(Plugin):
     """The base class for tlsmate. To be extended by plugins.
     """
 
-    plugins = [ArgNoPlugin, ArgConfig, ArgLogging]
+    plugins = [ArgPlugin, ArgConfig, ArgLogging]
 
     @classmethod
     def create_parser(cls):

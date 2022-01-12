@@ -5,10 +5,13 @@
 import enum
 import datetime
 import time
+from typing import List, Any, Dict, Tuple, Optional
 
 # import own stuff
-from tlsmate.exception import TlsConnectionClosedError, TlsMsgTimeoutError
-from tlsmate import utils
+import tlsmate.config as conf
+import tlsmate.tls as tls
+import tlsmate.utils as utils
+
 
 # import other stuff
 import requests
@@ -100,18 +103,18 @@ class Recorder(object):
         "response": "response",
     }
 
-    def __init__(self, tlsmate=None):
+    def __init__(self, config: Optional[conf.Configuration] = None) -> None:
         self.reset()
         self._delay = True
-        if tlsmate:
-            self._delay = tlsmate.config.get("recorder_delay")
+        if config:
+            self._delay = config.get("recorder_delay")
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset the recorder to an initial state.
         """
         self._state = RecorderState.INACTIVE
         self._add_delay = None
-        self.data = {}
+        self.data: Dict[str, Any] = {}
         for key in self._attr.keys():
             self.data[key] = []
 
@@ -193,64 +196,64 @@ class Recorder(object):
 
         return self._deserialize_val(self.data[name].pop(0), self._attr[name])
 
-    def deactivate(self):
+    def deactivate(self) -> None:
         """Deactivate the recorder.
         """
 
         self._state = RecorderState.INACTIVE
 
-    def record(self):
+    def record(self) -> None:
         """Activate the recorder to record a test case.
         """
 
         self._state = RecorderState.RECORDING
 
-    def replay(self):
+    def replay(self) -> None:
         """Activate the recorder to replay a test case.
         """
 
         self._state = RecorderState.REPLAYING
 
-    def is_injecting(self):
+    def is_injecting(self) -> bool:
         """Check if the recorder is currently replaying (i.e. injecting data)
 
         Returns:
-            bool: True if the recorder is replaying
+            True if the recorder is replaying
         """
 
         return self._state is RecorderState.REPLAYING
 
-    def is_recording(self):
+    def is_recording(self) -> bool:
         """Check if the recorder is currently recording.
 
         Returns:
-            bool: True, if the recorder is recording
+            True, if the recorder is recording
         """
 
         return self._state is RecorderState.RECORDING
 
-    def get_trust_store(self):
+    def get_trust_store(self) -> List[str]:
         """Provide the data for the trust store
 
         Returns:
-            list: A list of certificates in the trust store. These are strings
+            A list of certificates in the trust store. These are strings
             representing the certificates in DER-format.
         """
 
         return self.data["trust_store"]
 
-    def trace_client_auth(self, cl_auth):
+    def trace_client_auth(self, cl_auth: Tuple[str, List[str]]) -> None:
         """Add a set of client authentication data to the recorder.
 
         Arguments:
-            cl_auth (list): the key and the certificate chain to add to the recorder.
+            cl_auth: the key and the certificate chain to add to the recorder.
                 Both must be provided as strings.
         """
 
         if self._state is RecorderState.RECORDING:
             self.data["client_key_chain"].append(cl_auth)
 
-    def get_client_auth(self):
+    def get_client_auth(self) -> List[Tuple[bytes, bytes]]:
         """Provide access to a list of client authentication sets.
 
         Returns:
@@ -259,13 +262,15 @@ class Recorder(object):
 
         return self.data["client_key_chain"]
 
-    def trace_socket_recv(self, timeout, event_type, data=None):
+    def trace_socket_recv(
+        self, timeout: float, event_type: SocketEvent, data: Optional[bytes] = None
+    ) -> None:
         """Trace a message received from a socket (if state is recording).
 
         Arguments:
-            timeout (float): the timeout after that the event occurred in seconds
-            event_type (:obj:`SocketEvent`): the event that occurred
-            data (bytes): the message in raw format (if event_type is data)
+            timeout: the timeout after that the event occurred in seconds
+            event_type: the event that occurred
+            data: the message in raw format (if event_type is data)
         """
 
         if self._state is RecorderState.RECORDING:
@@ -275,11 +280,11 @@ class Recorder(object):
 
             self._store_value("msg_recv", (timeout, event_type, data))
 
-    def inject_socket_recv(self):
+    def inject_socket_recv(self) -> Optional[bytes]:
         """If the recorder is replaying, inject the previously recorded message.
 
         Returns:
-            bytes: the message previously recorded
+            the message previously recorded
         """
 
         if self._state is RecorderState.REPLAYING:
@@ -288,37 +293,37 @@ class Recorder(object):
                 time.sleep(timeout)
 
             if event_type is SocketEvent.CLOSURE:
-                raise TlsConnectionClosedError
+                raise tls.TlsConnectionClosedError
 
             elif event_type is SocketEvent.TIMEOUT:
-                raise TlsMsgTimeoutError
+                raise tls.TlsMsgTimeoutError
 
             return data
 
         return None
 
-    def additional_delay(self, delay):
+    def additional_delay(self, delay: float) -> None:
         """Indicate that there is an additional delay when waiting to inject a message.
 
         Arguments:
-            delay (float): The additional delay to take into account when injecting
-                a received message the next time.
+            delay: The additional delay to take into account when injecting a
+                received message the next time.
         """
 
         if self._add_delay is None:
-            self._add_delay = delay
+            self._add_delay = delay  # type: ignore
 
         else:
             self._add_delay += delay
 
-    def trace_socket_sendall(self, msg):
+    def trace_socket_sendall(self, msg: bytes) -> bool:
         """Interface for the sendall socket function.
 
         Arguments:
-            msg (bytes): the message to send over the socket
+            msg: the message to send over the socket
 
         Returns:
-            bool: True, if the message is sent externally.
+            True, if the message is sent externally.
         """
 
         if self._state is RecorderState.RECORDING:
@@ -326,7 +331,7 @@ class Recorder(object):
 
         return self._state != RecorderState.REPLAYING
 
-    def trace(self, **kwargs):
+    def trace(self, **kwargs: Any) -> None:
         """Interface to trace any data
 
         Arguments:
@@ -344,7 +349,7 @@ class Recorder(object):
             else:
                 self._store_value(name, val)
 
-    def inject(self, **kwargs):
+    def inject(self, **kwargs: Any) -> Any:
         """Interface to potentially inject recorded data
 
         If recording, the data provided is stored in the recorder object.
@@ -354,8 +359,8 @@ class Recorder(object):
             **kwargs: the name and value of the data
 
         Returns:
-            value: If recording: the data provided via kwargs, if replaying: the
-            data previously recorded.
+            If recording: the data provided via kwargs, if replaying: the data
+            previously recorded.
         """
 
         name, val = kwargs.popitem()
@@ -371,13 +376,13 @@ class Recorder(object):
 
         return val
 
-    def inject_response(self):
+    def inject_response(self) -> Optional[Any]:
         """Inject a :obj:`requests.Response` object
 
         Only minimal ducktyping is supported.
 
         Returns:
-            (object): an object with the attributes ok, status_code and content
+            an object with the attributes ok, status_code and content
         """
 
         class _Response:
@@ -395,35 +400,37 @@ class Recorder(object):
                 raise requests.Timeout
 
             response = _Response()
-            response.ok, response.content, response.status_code = data
+            response.ok, response.content, response.status_code = data  # type: ignore
             return response
 
         return None
 
-    def trace_response(self, timeout, event_type, data=None):
+    def trace_response(
+        self, timeout: float, event_type: SocketEvent, data: Optional[bytes] = None
+    ) -> None:
         """Trace the result of a post/get/... request.
 
         Arguments:
-            timeout (float): the timeout after which the response was received.
-            event_type (:obj:`SocketEvent`): the event that occurred
-            data (bytes): the response object from which only
-                the most relevant attributes are recorded (ok, status_code, content).
-                Only present if event_type is SocketEvent.DATA.
+            timeout: the timeout after which the response was received.
+            event_type: the event that occurred
+            data: the response object from which only the most relevant
+                attributes are recorded (ok, status_code, content). Only
+                present if event_type is SocketEvent.DATA.
         """
 
         if self._state is RecorderState.RECORDING:
             self._store_value("response", (timeout, event_type, data))
 
-    def serialize(self, filename):
+    def serialize(self, filename: str) -> None:
         """Serialize the recorded data to a file using YAML
 
         Arguments:
-            filename (pathlib.Path): the file name to store the data in
+            filename: the file name to store the data in
         """
 
         utils.serialize_data(self.data, file_name=filename, replace=False, indent=2)
 
-    def deserialize(self, filename):
+    def deserialize(self, filename: str) -> None:
         """Deserialize the recorded data from a file
 
         Arguments:
@@ -432,7 +439,7 @@ class Recorder(object):
 
         self.data = utils.deserialize_data(filename)
 
-    def get_timestamp(self):
+    def get_timestamp(self) -> datetime.datetime:
         """Return an appropriate timestamp
 
         Returns:

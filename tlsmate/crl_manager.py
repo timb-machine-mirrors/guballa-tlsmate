@@ -4,10 +4,14 @@
 
 # import basic stuff
 import logging
+from typing import Optional, Dict, List
+import datetime
 
 # import own stuff
-from tlsmate import tls
-from tlsmate import cert_utils
+import tlsmate.cert as crt
+import tlsmate.recorder as rec
+import tlsmate.cert_utils as cert_utils
+import tlsmate.tls as tls
 
 # import other stuff
 import requests
@@ -18,20 +22,23 @@ class CrlManager(object):
     """Handles all CRL related operations and acts as a cache as well
     """
 
-    def __init__(self, tlsmate=None):
-        self._crls = {}
-        self._recorder = tlsmate.recorder
+    def __init__(self, recorder: rec.Recorder) -> None:
+        self._crls: Dict[str, Optional[x509.CertificateRevocationList]] = {}
+        self._recorder = recorder
 
-    def add_crl(self, url, der_crl=None, pem_crl=None):
+    def add_crl(
+        self, url: str, der_crl: Optional[bytes] = None, pem_crl: Optional[bytes] = None
+    ) -> None:
         """Adds a URL and the CRL to the cache.
 
         Either der_crl or pem_crl must be given.
 
         Arguments:
-            url (str): the URL of the CRL
-            der_crl(bytes): the CRL in DER format given as bytes
-            pem_crl(bytes): the CRL in PEM format given as bytes
+            url: the URL of the CRL
+            der_crl: the CRL in DER format given as bytes
+            pem_crl: the CRL in PEM format given as bytes
         """
+
         crl = None
         if der_crl is not None:
             crl = x509.load_der_x509_crl(der_crl)
@@ -41,7 +48,7 @@ class CrlManager(object):
 
         self._crls[url] = crl
 
-    def _get_crl_obj(self, url):
+    def _get_crl_obj(self, url, proxies):
         """Get the plain CRL object for a given URL.
         """
 
@@ -53,7 +60,7 @@ class CrlManager(object):
                     bin_crl = self._recorder.inject(crl=None)
 
                 else:
-                    crl_resp = requests.get(url, timeout=5)
+                    crl_resp = requests.get(url, timeout=5, proxies=proxies)
                     if crl_resp.ok:
                         bin_crl = crl_resp.content
 
@@ -67,7 +74,15 @@ class CrlManager(object):
 
         return self._crls[url]
 
-    def get_crl_status(self, urls, serial_nbr, issuer, issuer_cert, timestamp):
+    def get_crl_status(
+        self,
+        urls: List[str],
+        serial_nbr: int,
+        issuer: x509.Name,
+        issuer_cert: crt.Certificate,
+        timestamp: datetime.datetime,
+        proxies: Dict[str, str],
+    ) -> Optional[tls.CertCrlStatus]:
         """Determines the CRL revocation status for a given cert/urls.
 
         Downloads the CRL (if a download fails, the next url is tried), if not yet
@@ -75,18 +90,19 @@ class CrlManager(object):
         the certificate is present in the CRL or not.
 
         Arguments:
-            urls (list of str): a list of CRL-urls
-            serial_nbr (int): the serial number of the certificate to check
-            issuer (:obj:`x509.Name`): the issuer name of the cert to check
-            issuer_cert (:obj:`tlsmate.cert.Certificate`): the certificate of the issuer
+            urls: a list of CRL-urls
+            serial_nbr: the serial number of the certificate to check
+            issuer: the issuer name of the cert to check
+            issuer_cert: the certificate of the issuer
+            timestamp: the time stamp to check the validity of the crl
 
         Returns:
-            :obj:`tlsmate.tls.CertCrlStatus`: the final status.
+            the final status.
         """
         status = None
         for url in urls:
             logging.debug(f"downloading CRL from {url}")
-            crl = self._get_crl_obj(url)
+            crl = self._get_crl_obj(url, proxies)
             if crl is None:
                 status = tls.CertCrlStatus.CRL_DOWNLOAD_FAILED
                 continue

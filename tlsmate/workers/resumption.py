@@ -4,19 +4,19 @@
 # import basic stuff
 
 # import own stuff
-from tlsmate import tls
-from tlsmate.plugin import Worker
-from tlsmate import msg
+import tlsmate.msg as msg
+import tlsmate.plugin as plg
+import tlsmate.tls as tls
 
 # import other stuff
 
 
-class ScanResumption(Worker):
+class ScanResumption(plg.Worker):
     name = "resumption"
     descr = "scan for resumption support (session_id and ticket)"
     prio = 30
 
-    def resumption_tls12(self, prof_vals, session_ticket=False):
+    def _resumption_tls12(self, prof_vals, session_ticket=False):
         if not prof_vals.cipher_suites:
             # no cipher suite, for which a hull handshake is supported.
             state = tls.ScanState.UNDETERMINED
@@ -44,7 +44,7 @@ class ScanResumption(Worker):
                         state = tls.ScanState.TRUE
         return state
 
-    def run_tls12(self):
+    def _run_tls12(self):
         versions = [tls.Version.TLS10, tls.Version.TLS11, tls.Version.TLS12]
         prof_vals = self.server_profile.get_profile_values(versions, full_hs=True)
         prof_features = self.server_profile.features
@@ -52,8 +52,8 @@ class ScanResumption(Worker):
         session_id_support = tls.ScanState.NA
         session_ticket_support = tls.ScanState.NA
         if prof_vals.versions:
-            session_id_support = self.resumption_tls12(prof_vals, session_ticket=False)
-            session_ticket_support = self.resumption_tls12(
+            session_id_support = self._resumption_tls12(prof_vals, session_ticket=False)
+            session_ticket_support = self._resumption_tls12(
                 prof_vals, session_ticket=True
             )
 
@@ -61,10 +61,10 @@ class ScanResumption(Worker):
         prof_features.session_id = session_id_support
         if session_ticket_support is tls.ScanState.TRUE:
             prof_features.session_ticket_lifetime = (
-                self.client.session_state_ticket.lifetime
+                self.client.session.session_state_ticket.lifetime
             )
 
-    def run_tls13(self):
+    def _run_tls13(self):
         resumption_psk = tls.ScanState.NA
         early_data = tls.ScanState.NA
         psk_lifetime = None
@@ -105,5 +105,5 @@ class ScanResumption(Worker):
 
     def run(self):
         self.server_profile.allocate_features()
-        self.run_tls12()
-        self.run_tls13()
+        self._run_tls12()
+        self._run_tls13()

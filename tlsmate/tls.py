@@ -3,11 +3,13 @@
 """
 # import basic stuff
 import enum
+from typing import List, TypeVar, Type, Optional, Union
 
 # import own stuff
-from tlsmate.exception import ServerMalfunction
 
 # import other stuff
+
+_T = TypeVar("_T")
 
 
 class ExtendedEnum(enum.Enum):
@@ -15,14 +17,14 @@ class ExtendedEnum(enum.Enum):
     """
 
     @classmethod
-    def val2enum(cls, value, alert_on_failure=False):
+    def val2enum(cls: Type[_T], value: int, alert_on_failure: bool = False) -> _T:
         """Class method to map a value to the corresponding enum.
 
         Args:
-            value (int): The enum value which is used to map to an enum
-            alert_on_failure (bool, optional): If set to True and the value is
-                not a valid enum value, an :obj:`ServerMalfunction` exception will be
-                raised. Defaults to False.
+            value: The enum value which is used to map to an enum
+            alert_on_failure: If set to True and the value is not a valid enum
+                value, an :obj:`ServerMalfunction` exception will be raised.
+                Defaults to False.
 
         Returns:
             The corresponding enum or None, if the mapping fails and
@@ -33,14 +35,15 @@ class ExtendedEnum(enum.Enum):
                 `alert_on_failure` is True
         """
 
-        enum = cls._value2member_map_.get(value)
+        # TODO: resolve type issue
+        enum = cls._value2member_map_.get(value)  # type: ignore
         if (enum is None) and alert_on_failure:
             raise ServerMalfunction(ServerIssue.ILLEGAL_PARAMETER_VALUE)
 
         return enum
 
     @classmethod
-    def str2enum(cls, name, alert_on_failure=False):
+    def str2enum(cls, name: str, alert_on_failure: bool = False) -> Optional[enum.Enum]:
         """Class method to map a string to the corresponding enum.
 
         Args:
@@ -58,14 +61,14 @@ class ExtendedEnum(enum.Enum):
                 `alert_on_failure` is True
         """
 
-        enum = cls._member_map_.get(name)
+        enum = cls._member_map_.get(name)  # type: ignore
         if (enum is None) and alert_on_failure:
             raise ValueError(f"Value {name} not defined for {cls}")
 
         return enum
 
     @classmethod
-    def all(cls):
+    def all(cls) -> List["ExtendedEnum"]:
         """Get all enum items
 
         Returns:
@@ -74,7 +77,7 @@ class ExtendedEnum(enum.Enum):
 
         return list(cls.__members__.values())
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Use the name as a string representation
 
         Returns:
@@ -126,7 +129,7 @@ class Version(ExtendedIntEnum):
     TLS13 = 0x0304
 
     @classmethod
-    def tls_only(cls):
+    def tls_only(cls) -> List["Version"]:
         """Comfortable method to get all TLS versions 1.0 .. 1.3, excluding SSLv2/v3.
         """
 
@@ -722,7 +725,7 @@ class SupportedGroups(ExtendedEnum):
     ARBITRARY_EXPLICIT_CHAR2_CURVES = 65282
 
     @classmethod
-    def all_tls13(cls):
+    def all_tls13(cls) -> List["SupportedGroups"]:
         """Get all supported groups defined for TLS1.3 (RFC8446, 4.2.7)
 
         Returns:
@@ -1238,3 +1241,109 @@ class Logjam(ExtendedEnum):
     PRIME512 = enum.auto()
     PRIME1024_COMMON = enum.auto()
     PRIME1024_CUSTOMIZED = enum.auto()
+
+
+##############
+# Exceptions #
+##############
+
+
+class TlsmateException(Exception):
+    """A class all exception for tlsmate are based on.
+    """
+
+
+class ServerMalfunction(TlsmateException):
+    """Exception raised in case the server response contains unrecoverable errors.
+
+    This exception basically indicates a specification violation by the server.
+
+    Attributes:
+        issue: the reason for the exception
+        message: the message, if applicable
+        extension: the extension, if applicable
+    """
+
+    def __init__(
+        self,
+        issue: ServerIssue,
+        message: Optional[Union[HandshakeType, CCSType]] = None,
+        extension: Optional[Extension] = None,
+    ) -> None:
+        super().__init__(issue.value)
+        self.issue = issue
+        self.message = message
+        self.extension = extension
+
+
+class TlsConnectionClosedError(TlsmateException):
+    """Exception raised when the TLS connection is closed unexpectedly.
+
+    Attributes:
+        exc: the original exception
+    """
+
+    def __init__(self, exc: Optional[Exception] = None) -> None:
+        self.exc = exc
+
+
+class TlsMsgTimeoutError(TlsmateException):
+    """Exception raised when a message is not received within a given timeout.
+    """
+
+    pass
+
+
+class CurveNotSupportedError(TlsmateException):
+    """Exception raised when a curve is negotiated which is not supported.
+
+    Attributes:
+        message: A human readable string providing the cause
+        curve: The curve has been offered by the client, and selected by the
+            server, but it is not supported for a full key exchange.
+    """
+
+    def __init__(self, message: str, curve: SupportedGroups) -> None:
+        self.message = message
+        self.curve = curve
+
+
+class ScanError(TlsmateException):
+    """Exception which might occur during a scan.
+
+    The exception will be raised if an abnormal condition during a scan is
+    detected.
+
+    Attributes:
+        message: A human readable string describing the cause.
+    """
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+
+
+class OcspError(TlsmateException):
+    """Exception for OCSP errors
+
+    Attributes:
+        issue: A human readable string describing the cause.
+    """
+
+    def __init__(self, issue: str) -> None:
+        self.issue = issue
+
+
+class UntrustedCertificate(TlsmateException):
+    """Exception for unsuccessful certificate (chain) validation.
+
+    Attributes:
+        issue: A human readable string describing the cause.
+    """
+
+    def __init__(self, issue: str) -> None:
+        self.issue = issue
+
+
+class ServerParmsSignatureInvalid(TlsmateException):
+    """More user friendly exception than cryptography.exception.InvalidSignature
+    """

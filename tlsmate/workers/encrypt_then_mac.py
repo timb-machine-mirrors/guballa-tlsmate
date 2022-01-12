@@ -4,14 +4,14 @@
 # import basic stuff
 
 # import own stuff
-from tlsmate import tls
-from tlsmate.plugin import Worker
-from tlsmate import utils
+import tlsmate.plugin as plg
+import tlsmate.tls as tls
+import tlsmate.utils as utils
 
 # import other stuff
 
 
-class ScanEncryptThenMac(Worker):
+class ScanEncryptThenMac(plg.Worker):
     name = "encrypt_then_mac"
     descr = "scan for extension encrypt_then_mac support"
     prio = 30

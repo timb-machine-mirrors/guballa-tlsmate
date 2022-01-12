@@ -86,7 +86,7 @@ def test_closed_port(capsys):
 def test_all_defaults(monkeypatch, tlsmate_empty_ini):
     monkeypatch.setattr(WorkManager, "run", work_manager_run)
 
-    cmd = f"tlsmate --no-plugin --config {tlsmate_empty_ini} scan 127.0.0.1"
+    cmd = f"tlsmate --config {tlsmate_empty_ini} scan 127.0.0.1"
     sys.argv = cmd.split()
     # import pudb; pudb.set_trace()
     command.main()
@@ -169,7 +169,7 @@ def test_all_defaults(monkeypatch, tlsmate_empty_ini):
 def test_format_text(monkeypatch):
     monkeypatch.setattr(WorkManager, "run", work_manager_run)
 
-    cmd = "tlsmate --no-plugin scan --port=1000 127.0.0.1 --format=text"
+    cmd = "tlsmate scan --port=1000 127.0.0.1 --format=text"
     sys.argv = cmd.split()
     command.main()
     config = TlsMate.instance.config
@@ -184,7 +184,7 @@ def test_format_text(monkeypatch):
 def test_format_yaml(monkeypatch):
     monkeypatch.setattr(WorkManager, "run", work_manager_run)
 
-    cmd = "tlsmate --no-plugin scan --port=1000 127.0.0.1 --format=yaml"
+    cmd = "tlsmate scan --port=1000 127.0.0.1 --format=yaml"
     sys.argv = cmd.split()
     command.main()
     config = TlsMate.instance.config
@@ -197,7 +197,7 @@ def test_format_yaml(monkeypatch):
 
 
 def test_client_chain_no_key(capsys):
-    cmd = "tlsmate --no-plugin scan --port=1000 127.0.0.1 --client-chain=xxx"
+    cmd = "tlsmate scan --port=1000 127.0.0.1 --client-chain=xxx"
     sys.argv = cmd.split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         command.main()
@@ -208,8 +208,7 @@ def test_client_chain_no_key(capsys):
 
 def test_client_chain_key_wrong(capsys):
     cmd = (
-        "tlsmate --no-plugin scan --port=1000 127.0.0.1 "
-        "--client-chain=xxx --client-key yyy zzz"
+        "tlsmate scan --port=1000 127.0.0.1 " "--client-chain=xxx --client-key yyy zzz"
     )
     sys.argv = cmd.split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
@@ -219,9 +218,26 @@ def test_client_chain_key_wrong(capsys):
     assert pytest_wrapped_e.value.code == 2
 
 
+def test_client_key_set(
+    monkeypatch, client_rsa_key_filename, client_rsa_chain_filename
+):
+    monkeypatch.setattr(WorkManager, "run", work_manager_run)
+
+    cmd = (
+        f"tlsmate scan --port=1000 127.0.0.1 "
+        f"--client-chain={client_rsa_chain_filename} "
+        f"--client-key={client_rsa_key_filename}"
+    )
+    sys.argv = cmd.split()
+    command.main()
+    config = TlsMate.instance.config
+    assert config.get("client_key") == [client_rsa_key_filename]
+    assert config.get("client_chain") == [client_rsa_chain_filename]
+
+
 def test_no_version(capsys):
     cmd = (
-        "tlsmate --no-plugin scan --port=1000 127.0.0.1 "
+        "tlsmate scan --port=1000 127.0.0.1 "
         "--no-sslv2 --no-sslv3 --no-tls10 --no-tls11 --no-tls12 --no-tls13"
     )
     sys.argv = cmd.split()
@@ -235,7 +251,7 @@ def test_no_version(capsys):
 def test_versions(monkeypatch):
     monkeypatch.setattr(WorkManager, "run", work_manager_run)
 
-    cmd = "tlsmate --no-plugin scan --port=1000 127.0.0.1 --tls10 --tls12"
+    cmd = "tlsmate scan --port=1000 127.0.0.1 --tls10 --tls12"
     sys.argv = cmd.split()
     command.main()
     config = TlsMate.instance.config
@@ -253,7 +269,7 @@ def test_versions(monkeypatch):
 def test_no_features(monkeypatch):
     monkeypatch.setattr(WorkManager, "run", work_manager_run)
 
-    cmd = "tlsmate --no-plugin scan --port=1000 127.0.0.1 --no-features"
+    cmd = "tlsmate scan --port=1000 127.0.0.1 --no-features"
     sys.argv = cmd.split()
     command.main()
     config = TlsMate.instance.config
@@ -296,7 +312,7 @@ def test_no_features2(monkeypatch):
     monkeypatch.setattr(WorkManager, "run", work_manager_run)
 
     cmd = (
-        "tlsmate --no-plugin scan --port=1000 127.0.0.1 "
+        "tlsmate scan --port=1000 127.0.0.1 "
         "--no-features "
         "--no-compression "
         "--no-dh-groups "
@@ -351,10 +367,7 @@ def test_no_features2(monkeypatch):
 def test_some_features(monkeypatch):
     monkeypatch.setattr(WorkManager, "run", work_manager_run)
 
-    cmd = (
-        "tlsmate --no-plugin scan --port=1000 127.0.0.1 --no-features "
-        "--compression --fallback"
-    )
+    cmd = "tlsmate scan --port=1000 127.0.0.1 --no-features " "--compression --fallback"
     sys.argv = cmd.split()
     command.main()
     config = TlsMate.instance.config
@@ -398,10 +411,7 @@ def test_some_features(monkeypatch):
 def test_not_some_features(monkeypatch):
     monkeypatch.setattr(WorkManager, "run", work_manager_run)
 
-    cmd = (
-        "tlsmate --no-plugin scan --port=1000 127.0.0.1 "
-        "--no-compression --no-fallback"
-    )
+    cmd = "tlsmate scan --port=1000 127.0.0.1 " "--no-compression --no-fallback"
     sys.argv = cmd.split()
     command.main()
     config = TlsMate.instance.config
@@ -445,7 +455,7 @@ def test_not_some_features(monkeypatch):
 def test_no_vulnerabilities(monkeypatch):
     monkeypatch.setattr(WorkManager, "run", work_manager_run)
 
-    cmd = "tlsmate --no-plugin scan --port=1000 127.0.0.1 --no-vulnerabilities"
+    cmd = "tlsmate scan --port=1000 127.0.0.1 --no-vulnerabilities"
     sys.argv = cmd.split()
     command.main()
     config = TlsMate.instance.config
@@ -473,7 +483,7 @@ def test_no_vulnerabilities2(monkeypatch):
     monkeypatch.setattr(WorkManager, "run", work_manager_run)
 
     cmd = (
-        "tlsmate --no-plugin scan --port=1000 127.0.0.1 "
+        "tlsmate scan --port=1000 127.0.0.1 "
         "--no-ccs-injection "
         "--no-heartbleed "
         "--no-padding-oracle "
@@ -506,7 +516,7 @@ def test_some_vulnerabilities2(monkeypatch):
     monkeypatch.setattr(WorkManager, "run", work_manager_run)
 
     cmd = (
-        "tlsmate --no-plugin scan --port=1000 127.0.0.1 --no-vulnerabilities "
+        "tlsmate scan --port=1000 127.0.0.1 --no-vulnerabilities "
         "--heartbleed "
         "--padding-oracle "
     )
@@ -533,9 +543,7 @@ def test_not_some_vulnerabilities(monkeypatch):
     monkeypatch.setattr(WorkManager, "run", work_manager_run)
 
     cmd = (
-        "tlsmate --no-plugin scan --port=1000 127.0.0.1 "
-        "--no-heartbleed "
-        "--no-padding-oracle "
+        "tlsmate scan --port=1000 127.0.0.1 " "--no-heartbleed " "--no-padding-oracle "
     )
     sys.argv = cmd.split()
     command.main()

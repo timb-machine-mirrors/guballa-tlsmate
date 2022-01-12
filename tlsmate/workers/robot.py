@@ -9,10 +9,10 @@ Padding oracle for RSA-based key transport, refer to https://robotattack.org
 import math
 
 # import own stuff
-from tlsmate import msg
-from tlsmate import tls
-from tlsmate import utils
-from tlsmate.plugin import Worker
+import tlsmate.msg as msg
+import tlsmate.plugin as plg
+import tlsmate.tls as tls
+import tlsmate.utils as utils
 
 # import other stuff
 
@@ -21,7 +21,7 @@ def _rsa_encrypt(msg, e, n, mod_bytes):
     return int(pow(msg, e, n)).to_bytes(mod_bytes, byteorder="big")
 
 
-class ScanRobot(Worker):
+class ScanRobot(plg.Worker):
     name = "robot"
     descr = "scan for ROBOT vulnerability"
     prio = 41

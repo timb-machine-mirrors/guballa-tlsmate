@@ -4,14 +4,13 @@
 from tlsmate import tls
 from tlsmate import msg
 from tlsmate import utils
-from tlsmate.exception import ServerMalfunction
 import pytest
 
 
 def test_message_length_error():
     data = bytes.fromhex("01 00 00 02 01")
     with pytest.raises(
-        ServerMalfunction, match=tls.ServerIssue.MESSAGE_LENGTH_ERROR.value
+        tls.ServerMalfunction, match=tls.ServerIssue.MESSAGE_LENGTH_ERROR.value
     ):
         msg.HandshakeMessage.deserialize(data, None)
 
@@ -19,7 +18,7 @@ def test_message_length_error():
 def test_hello_reques_wrong_length():
     data = bytes.fromhex("00 00 00 02  01 02")
     with pytest.raises(
-        ServerMalfunction, match=tls.ServerIssue.MESSAGE_LENGTH_ERROR.value
+        tls.ServerMalfunction, match=tls.ServerIssue.MESSAGE_LENGTH_ERROR.value
     ):
         msg.HandshakeMessage.deserialize(data, None)
 
@@ -33,7 +32,7 @@ def test_decode_hello_retry_request():
         "00 "
     )
     message = msg.HandshakeMessage.deserialize(data, None)
-    assert type(message) is msg.ServerHello
+    assert type(message) is msg.HelloRetryRequest
     assert message.msg_type is tls.HandshakeType.HELLO_RETRY_REQUEST
 
 
@@ -165,7 +164,7 @@ def test_server_key_exchange_invalid_kex_type(tlsmate):
     data = bytes.fromhex("0c 00 00 01 01")
 
     with pytest.raises(
-        ServerMalfunction, match=tls.ServerIssue.INCOMPATIBLE_KEY_EXCHANGE.value
+        tls.ServerMalfunction, match=tls.ServerIssue.INCOMPATIBLE_KEY_EXCHANGE.value
     ):
         msg.HandshakeMessage.deserialize(data, conn)
 
@@ -173,7 +172,7 @@ def test_server_key_exchange_invalid_kex_type(tlsmate):
 def test_server_hello_done_invalid_length():
     data = bytes.fromhex("0e 00 00 01 01")
     with pytest.raises(
-        ServerMalfunction, match=tls.ServerIssue.MESSAGE_LENGTH_ERROR.value
+        tls.ServerMalfunction, match=tls.ServerIssue.MESSAGE_LENGTH_ERROR.value
     ):
         msg.HandshakeMessage.deserialize(data, None)
 
@@ -188,7 +187,7 @@ def test_end_of_early_data_ok():
 def test_end_of_early_data_invalid_length():
     data = bytes.fromhex("05 00 00 01 01")
     with pytest.raises(
-        ServerMalfunction, match=tls.ServerIssue.MESSAGE_LENGTH_ERROR.value
+        tls.ServerMalfunction, match=tls.ServerIssue.MESSAGE_LENGTH_ERROR.value
     ):
         msg.HandshakeMessage.deserialize(data, None)
 
@@ -209,7 +208,7 @@ def test_certificate_request(tlsmate):
 def test_change_cipher_spec():
     data = bytes.fromhex("00 02 01 02")
     with pytest.raises(
-        ServerMalfunction, match=tls.ServerIssue.MESSAGE_LENGTH_ERROR.value
+        tls.ServerMalfunction, match=tls.ServerIssue.MESSAGE_LENGTH_ERROR.value
     ):
         msg.ChangeCipherSpecMessage.deserialize(data, None)
 

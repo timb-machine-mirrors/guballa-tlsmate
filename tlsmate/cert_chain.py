@@ -4,13 +4,14 @@
 # import basic stuff
 import logging
 import time
+import datetime
+from typing import List, Optional
 
 # import own stuff
-from tlsmate import tls
-from tlsmate.cert import Certificate
-from tlsmate import cert_utils
-from tlsmate import recorder
-from tlsmate.exception import UntrustedCertificate
+import tlsmate.cert as crt
+import tlsmate.cert_utils as cert_utils
+import tlsmate.recorder as recorder
+import tlsmate.tls as tls
 
 # import other stuff
 import requests
@@ -18,49 +19,6 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.x509.oid import AuthorityInformationAccessOID
 from cryptography.exceptions import InvalidSignature
-
-
-class CertChainCache(object):
-    """Caches the validation state for a given certificate chain
-    """
-
-    _CACHE_SIZE = 100
-
-    def __init__(self):
-        self._cache = {}
-
-    def get_cached_validation_state(self, cert_chain):
-        """Returns the validation state of a certificate chain from the cache.
-
-        If not present in the cache, the certificate chain is added with the status
-        False.
-
-        Arguments:
-            cert_chain (:obj:`CertChain`): the certificate chain object
-
-        Returns:
-            bool: the validation status of the certificate chain from the cache or
-            None if the certificate chain is not found.
-        """
-
-        val = self._cache.get(cert_chain.digest)
-        if val is None:
-            # Here keep cache at a reasonable size
-            if len(self._cache) >= self._CACHE_SIZE:
-                del self._cache[next(iter(self._cache))]
-
-            self._cache[cert_chain.digest] = False
-
-        return val
-
-    def update_cached_validation_state(self, cert_chain):
-        """Updates a certificate chain entry in the cache.
-
-        Arguments:
-            cert_chain (:obj:`CertChain`): the certificate chain object
-        """
-
-        self._cache[cert_chain.digest] = cert_chain.successful_validation
 
 
 class CertChain(object):
@@ -87,23 +45,27 @@ class CertChain(object):
         self._trust_store = tlsmate.trust_store
         self._crl_manager = tlsmate.crl_manager
         self._trust_path = None
+        self._proxies = None
+        proxy = self._config.get("proxy")
+        if proxy:
+            self._proxies = dict(http=proxy, https=proxy)
 
-    def append_bin_cert(self, bin_cert):
+    def append_bin_cert(self, bin_cert: bytes) -> None:
         """Append the chain by a certificate given in raw format.
 
         Arguments:
-            bin_cert (bytes): the certificate to append in raw format
+            bin_cert: the certificate to append in raw format
         """
-        self.certificates.append(Certificate(der=bin_cert, parse=True))
+        self.certificates.append(crt.Certificate(der=bin_cert, parse=True))
         self._digest.update(bin_cert)
 
-    def append_pem_cert(self, pem_cert):
+    def append_pem_cert(self, pem_cert: bytes) -> None:
         """Append the chain by a certificate given in pem format.
 
         Arguments:
-            pem_cert (bytes): the certificate to append in pem format
+            pem_cert: the certificate to append in pem format
         """
-        cert = Certificate(pem=pem_cert)
+        cert = crt.Certificate(pem=pem_cert)
         self.certificates.append(cert)
         self._digest.update(cert.bytes)
 
@@ -144,6 +106,7 @@ class CertChain(object):
             cert.parsed.issuer,
             issuer_cert,
             timestamp,
+            self._proxies,
         )
         logging.debug(f'CRL status is {cert.crl_status} for certificate "{cert}"')
         if cert.crl_status is not tls.CertCrlStatus.NOT_REVOKED:
@@ -162,7 +125,9 @@ class CertChain(object):
             return tls.OcspStatus.INVALID_RESPONSE
 
         if ocsp_decoded.certificates:
-            sig_cert = Certificate(x509_cert=ocsp_decoded.certificates[0], parse=True)
+            sig_cert = crt.Certificate(
+                x509_cert=ocsp_decoded.certificates[0], parse=True
+            )
             self._determine_trust_path(sig_cert, -1, timestamp, None, False)
             if sig_cert.trusted is tls.ScanState.FALSE:
                 return tls.OcspStatus.INVALID_ISSUER_CERT
@@ -202,21 +167,23 @@ class CertChain(object):
         else:
             return tls.OcspStatus.UNKNOWN
 
-    def verify_ocsp_stapling(self, responses, raise_on_failure):
+    def verify_ocsp_stapling(
+        self, responses: List[bytes], raise_on_failure: bool
+    ) -> List[Optional[tls.OcspStatus]]:
         """Check the status for a OCSP response
 
         Arguments:
-            responses (list of bytes): the OCSP response
-            raise_on_failure (bool): An indication, if the validation shall abort
+            responses: the OCSP response
+            raise_on_failure: An indication, if the validation shall abort
                 in case exceptional cases are detected. Normally set to False for
                 server scans.
 
         Returns:
-            list of :obj:`tlsmate.tls.OcspStatus`: the status, one for each response.
-            An list element can be None, if an empty response is provided.
+            the status, one for each response. An list element can be None, if
+            an empty response is provided.
         """
 
-        ret_status = []
+        ret_status: List[Optional[tls.OcspStatus]] = []
         for idx, resp in enumerate(responses):
             if not resp:
                 ret_status.append(None)
@@ -234,7 +201,7 @@ class CertChain(object):
             issue = f"OCSP stapling status {ocsp_status} for certificate {cert}"
             logging.debug(issue)
             if ocsp_status is not tls.OcspStatus.NOT_REVOKED and raise_on_failure:
-                raise UntrustedCertificate(issue)
+                raise tls.UntrustedCertificate(issue)
 
         return ret_status
 
@@ -279,6 +246,7 @@ class CertChain(object):
                     headers={"Content-Type": "application/ocsp-request"},
                     data=req.public_bytes(serialization.Encoding.DER),
                     timeout=5,
+                    proxies=self._proxies,
                 )
                 self._recorder.trace_response(
                     time.time() - start, recorder.SocketEvent.DATA, ocsp_resp
@@ -425,21 +393,23 @@ class CertChain(object):
 
         return trust_path + issuer_trust_path
 
-    def validate(self, timestamp, domain_name, raise_on_failure):
+    def validate(
+        self, timestamp: datetime.datetime, domain_name: str, raise_on_failure: bool
+    ) -> None:
         """Validates the certificate chain. Only the minimal checks are supported.
 
         If a discrepancy is found, an exception is raised (depending on
         raise_on_failure).
 
         Arguments:
-            timestamp (datetime.datetime): the timestamp to check against
-            domain_name (str): the domain name to validate the host certificate against
-            raise_on_failure (bool): whether an exception shall be raised if the
-                validation fails or not. Useful for a TLS scan, as the scan shall
-                continue.
+            timestamp: the timestamp to check against
+            domain_name: the domain name to validate the host certificate against
+            raise_on_failure: whether an exception shall be raised if the
+                validation fails or not. Useful for a TLS scan, as the scan
+                shall continue.
 
         Raises:
-            UntrustedCertificate: in case a certificate within the chain cannot be
+            tls.UntrustedCertificate: in case a certificate within the chain cannot be
                 validated and `raise_on_failure` is True.
         """
 
@@ -450,7 +420,7 @@ class CertChain(object):
                 f"using certificate chain validation status {valid} from cache"
             )
             if not valid and raise_on_failure:
-                raise UntrustedCertificate(
+                raise tls.UntrustedCertificate(
                     f"cached status for {self.certificates[0]} is not valid"
                 )
             return
@@ -471,7 +441,7 @@ class CertChain(object):
                     issue = self.certificates[idx].issues[0]
                     break
 
-            raise UntrustedCertificate(f"certificate {server_cert}: {issue}")
+            raise tls.UntrustedCertificate(f"certificate {server_cert}: {issue}")
 
         # And now check for gratuitous certificate in the chain
         if not raise_on_failure and trust_path:
@@ -487,16 +457,16 @@ class CertChain(object):
                             "certificate part of untrusted alternate trust path"
                         )
 
-    def serialize(self):
+    def serialize(self) -> List[str]:
         """Serialize the certificate chain
 
         Returns:
-            list of str: A list of certificates which build the chain. The format is
-            a str, representing the DER-format for each certificate.
+            A list of certificates which build the chain. The format is a str,
+            representing the DER-format for each certificate.
         """
         return [cert.bytes.hex() for cert in self.certificates]
 
-    def deserialize(self, chain):
+    def deserialize(self, chain: List[str]) -> None:
         """Deserializes a certificate chain.
 
         Arguments:
@@ -505,3 +475,46 @@ class CertChain(object):
         """
         for cert in chain:
             self.append_bin_cert(bytes.fromhex(cert))
+
+
+class CertChainCache(object):
+    """Caches the validation state for a given certificate chain
+    """
+
+    _CACHE_SIZE = 100
+
+    def __init__(self):
+        self._cache = {}
+
+    def get_cached_validation_state(self, cert_chain: CertChain) -> bool:
+        """Returns the validation state of a certificate chain from the cache.
+
+        If not present in the cache, the certificate chain is added with the status
+        False.
+
+        Arguments:
+            cert_chain: the certificate chain object
+
+        Returns:
+            the validation status of the certificate chain from the cache or
+            None if the certificate chain is not found.
+        """
+
+        val = self._cache.get(cert_chain.digest)
+        if val is None:
+            # Here keep cache at a reasonable size
+            if len(self._cache) >= self._CACHE_SIZE:
+                del self._cache[next(iter(self._cache))]
+
+            self._cache[cert_chain.digest] = False
+
+        return val
+
+    def update_cached_validation_state(self, cert_chain: CertChain) -> None:
+        """Updates a certificate chain entry in the cache.
+
+        Arguments:
+            cert_chain: the certificate chain object
+        """
+
+        self._cache[cert_chain.digest] = cert_chain.successful_validation

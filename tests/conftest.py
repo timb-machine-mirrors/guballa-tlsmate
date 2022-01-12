@@ -6,8 +6,20 @@ import pathlib
 import pem
 import os
 import datetime
+import subprocess
+import time
 
-from tlsmate.tlsmate import TlsMate
+import tlsmate.tlsmate as tm
+
+
+@pytest.fixture
+def proxy():
+    port = os.environ.get("TLSMATE_PROXY_PORT", 8801)
+    cmd = f"ncat -l --proxy-type http localhost {port}"
+    proc = subprocess.Popen(cmd.split())
+    time.sleep(1)
+    yield f"http://localhost:{port}"
+    proc.kill()
 
 
 @pytest.fixture
@@ -41,6 +53,11 @@ def quo_vadis_root_ca3(fixturefiles_dir):
 
 
 @pytest.fixture
+def digi_cert_global_root_ca_file(fixturefiles_dir):
+    return fixturefiles_dir / "DigiCertGlobalRootCA.pem"
+
+
+@pytest.fixture
 def ca_dir(fixturefiles_dir):
     return fixturefiles_dir / "../ca"
 
@@ -55,28 +72,25 @@ def ca_rsa_crl_file(ca_dir):
     return ca_dir / "crl/ca-rsa.crl.pem"
 
 
-def init_crl(ca_dir, crl_manager, ca, port=44400):
-
-    if "TLSMATE_CA_PORT" in os.environ:
-        port = os.environ["TLSMATE_CA_PORT"]
-
-    pem_file = ca_dir / f"crl/{ca}.crl.pem"
-    with open(pem_file, "rb") as fd:
-        crl = fd.read()
-    crl_manager.add_crl(f"http://crl.localhost:{port}/crl/{ca}.crl", pem_crl=crl)
+@pytest.fixture
+def server_rsa_cert_file(ca_dir):
+    return ca_dir / "certs/server-rsa.pem"
 
 
 @pytest.fixture
-def tlsmate(ca_dir, trust_store_file):
-    mate = TlsMate()
-    mate.trust_store.set_ca_files([trust_store_file])
-    init_crl(ca_dir, mate.crl_manager, "root-rsa")
-    init_crl(ca_dir, mate.crl_manager, "root-ecdsa")
-    init_crl(ca_dir, mate.crl_manager, "ca-rsa")
-    init_crl(ca_dir, mate.crl_manager, "ca-ecdsa")
-    mate.config.set("ocsp", False)
-    mate.config.set("crl", True)
-    mate.config.set("endpoint", "localhost")
+def server_rsa_key_file(ca_dir):
+    return ca_dir / "private/server-rsa.key"
+
+
+@pytest.fixture
+def server_rsa_chain_file(ca_dir):
+    return ca_dir / "chains/server-rsa.chn"
+
+
+@pytest.fixture
+def tlsmate(ca_dir, trust_store_file, digi_cert_global_root_ca_file):
+    mate = tm.TlsMate()
+    mate.trust_store.set_ca_files([trust_store_file, digi_cert_global_root_ca_file])
     return mate
 
 
@@ -148,6 +162,16 @@ def root_rsa_key(ca_dir):
 @pytest.fixture
 def root_ecdsa_cert(ca_dir):
     return pem.parse_file(ca_dir / "certs/root-ecdsa.pem")[0]
+
+
+@pytest.fixture
+def client_rsa_key_filename(ca_dir):
+    return str(ca_dir / "private/client-rsa.key")
+
+
+@pytest.fixture
+def client_rsa_chain_filename(ca_dir):
+    return str(ca_dir / "chains/client-rsa.chn")
 
 
 @pytest.fixture

@@ -3,21 +3,18 @@
 """
 # import basic stuff
 import abc
-from typing import NamedTuple
 import os
+from typing import Optional, Any, Type, Union, NamedTuple
 
 # import own stuff
-from tlsmate import dh_numbers
-from tlsmate import tls
-from tlsmate import pdu
-from tlsmate.exception import ServerMalfunction, CurveNotSupportedError
-from tlsmate import kdf
+import tlsmate.dh_numbers as dh_numbers
+import tlsmate.pdu as pdu
+import tlsmate.recorder as rec
+import tlsmate.tls as tls
 
 # import other stuff
 from cryptography.hazmat.primitives.asymmetric import ec, x25519, x448, dh
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives import hashes
-from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
     PublicFormat,
@@ -27,153 +24,15 @@ from cryptography.hazmat.primitives.serialization import (
 )
 
 
-def verify_signed_params(prefix, params, cert, default_scheme, version):
-    """Verify the signed parameters from a ServerKeyExchange message.
-
-    Arguments:
-        prefix (bytes): the bytes to prepend to the data
-        params: the parameter block from the ServerKeyExchange message
-        cert (:obj:`tlsmate.cert.Certificate`): the certificate used to validate
-            the data
-        default_scheme (:class:`tlsmate.tls.SignatureScheme`): the default
-            signature scheme to use (if not present in the message)
-        version (:class:`tlsmate.tls.Version`): the TLS version. For TLS1.1 and below
-            the signature is constructed differently (using SHA1 + MD digests)
-    Raises:
-        cryptography.exceptions.InvalidSignature: If the signature does not
-            validate.
-    """
-
-    data = prefix + params.signed_params
-
-    if (
-        default_scheme is tls.SignatureScheme.RSA_PKCS1_SHA1
-        and version is not tls.Version.TLS12
-    ):
-        # Digest is a combination of MD5 and SHA1
-        digest = kdf.Kdf()
-        digest.start_msg_digest()
-        digest.set_msg_digest_algo(None)
-        digest.update_msg_digest(data)
-        hashed1 = digest.current_msg_digest(suspend=True)
-        key = cert.parsed.public_key()
-        hashed2 = key.recover_data_from_signature(
-            params.signature, padding.PKCS1v15(), None
-        )
-        if hashed1 != hashed2:
-            raise InvalidSignature
-
-    else:
-        sig_scheme = params.sig_scheme or default_scheme
-        cert.validate_signature(sig_scheme, data, params.signature)
-
-
-def verify_certificate_verify(cert_ver, msgs, msg_digest):
-    """Validates the CertificateVerify message.
-
-    Arguments:
-        cert_ver (:obj:`tlsmate.msg.CertificateVerify`): the CertificateVerify
-            message to verify
-        msgs (:obj:`tlsmate.connection.TlsConnectionMsgs`): the object storing
-            received/sent messages
-        msg_digest (bytes): the message digest used to construct the data to validate
-
-    Raises:
-        cryptography.exceptions.InvalidSignature: If the signature does not
-            validate.
-    """
-
-    data = (b" " * 64) + b"TLS 1.3, server CertificateVerify" + b"\0" + msg_digest
-    cert = msgs.server_certificate.chain.certificates[0]
-    cert.validate_signature(cert_ver.signature_scheme, data, cert_ver.signature)
-
-
-def _verify_rsa_pkcs(pub_key, signature, data, hash_algo):
-    pub_key.verify(signature, data, padding.PKCS1v15(), hash_algo())
-
-
-def _verify_dsa(pub_key, signature, data, hash_algo):
-    pub_key.verify(signature, data, hash_algo())
-
-
-def _verify_ecdsa(pub_key, signature, data, hash_algo):
-    pub_key.verify(signature, data, ec.ECDSA(hash_algo()))
-
-
-def _verify_xcurve(pub_key, signature, data, hash_algo):
-    pub_key.verify(signature, data)
-
-
-def _verify_rsae_pss(pub_key, signature, data, hash_algo):
-    pub_key.verify(
-        signature,
-        data,
-        padding.PSS(mgf=padding.MGF1(hash_algo()), salt_length=hash_algo.digest_size),
-        hash_algo(),
-    )
-
-
-_sig_schemes = {
-    tls.SignatureScheme.RSA_PKCS1_MD5: (_verify_rsa_pkcs, hashes.MD5),
-    tls.SignatureScheme.RSA_PKCS1_SHA1: (_verify_rsa_pkcs, hashes.SHA1),
-    tls.SignatureScheme.RSA_PKCS1_SHA224: (_verify_rsa_pkcs, hashes.SHA224),
-    tls.SignatureScheme.RSA_PKCS1_SHA256: (_verify_rsa_pkcs, hashes.SHA256),
-    tls.SignatureScheme.RSA_PKCS1_SHA384: (_verify_rsa_pkcs, hashes.SHA384),
-    tls.SignatureScheme.RSA_PKCS1_SHA512: (_verify_rsa_pkcs, hashes.SHA512),
-    tls.SignatureScheme.DSA_MD5: (_verify_dsa, hashes.MD5),
-    tls.SignatureScheme.DSA_SHA1: (_verify_dsa, hashes.SHA1),
-    tls.SignatureScheme.DSA_SHA224: (_verify_dsa, hashes.SHA224),
-    tls.SignatureScheme.DSA_SHA256: (_verify_dsa, hashes.SHA256),
-    tls.SignatureScheme.DSA_SHA384: (_verify_dsa, hashes.SHA384),
-    tls.SignatureScheme.DSA_SHA512: (_verify_dsa, hashes.SHA512),
-    tls.SignatureScheme.ECDSA_SHA1: (_verify_ecdsa, hashes.SHA1),
-    tls.SignatureScheme.ECDSA_SECP256R1_SHA256: (_verify_ecdsa, hashes.SHA256),
-    tls.SignatureScheme.ECDSA_SECP384R1_SHA384: (_verify_ecdsa, hashes.SHA384),
-    tls.SignatureScheme.ECDSA_SECP521R1_SHA512: (_verify_ecdsa, hashes.SHA512),
-    tls.SignatureScheme.RSA_PSS_RSAE_SHA256: (_verify_rsae_pss, hashes.SHA256),
-    tls.SignatureScheme.RSA_PSS_RSAE_SHA384: (_verify_rsae_pss, hashes.SHA384),
-    tls.SignatureScheme.RSA_PSS_RSAE_SHA512: (_verify_rsae_pss, hashes.SHA512),
-    tls.SignatureScheme.ED25519: (_verify_xcurve, None),
-    tls.SignatureScheme.ED448: (_verify_xcurve, None),
-}
-
-
-def instantiate_named_group(group_name, conn, recorder):
-    """Create a KeyExchange object according to the given group name.
-
-    Arguments:
-        group_name (:class:`tlsmate.tls.SupportedGroups`): the group name
-        conn (:obj:`tlsmate.connection.TlsConnection`): a connection object
-        recorder (:obj:`tlsmate.recorder.Recorder`): the recorder object
-
-    Returns:
-        :obj:`KeyExchange`: the created object
-    """
-
-    group = _supported_groups.get(group_name)
-    if group is None:
-        raise CurveNotSupportedError(
-            f"the group {group_name} is not supported", group_name
-        )
-
-    kwargs = {"group_name": group_name}
-    if group.algo is not None:
-        kwargs["algo"] = group.algo
-
-    return group.cls(conn, recorder, **kwargs)
-
-
 class KeyExchange(metaclass=abc.ABCMeta):
     """The abstract class to derive different key exchange classes from
     """
 
-    def __init__(self, conn, recorder, **kwargs):
-        self._group_name = kwargs.get("group_name")
-        self._conn = conn
+    def __init__(self, recorder: rec.Recorder, **kwargs: Any) -> None:
         self._recorder = recorder
 
     @abc.abstractmethod
-    def set_remote_key(self, rem_pub_key, **kwargs):
+    def set_remote_key(self, rem_pub_key: bytes) -> None:
         """Store the remote public key
         """
 
@@ -193,13 +52,26 @@ class KeyExchange(metaclass=abc.ABCMeta):
 
         raise NotImplementedError
 
+    def get_key_share(self) -> bytes:
+        """To be implemented by classes which are applicable for TLS1.3
+        """
+        raise NotImplementedError
+
+    def set_params(self, **kwargs: Any) -> None:
+        """Sets parameter specific to the type of key exchange
+        """
+
+        pass
+
 
 class RsaKeyExchange(KeyExchange):
     """Implement an RSA based key transport
     """
 
-    def __init__(self, *args, **kwargs):
-        self._pms = None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self._pms: Optional[bytearray] = None
+        self._version: Optional[tls.Version] = None
+        self._rem_pub_key: Optional[rsa.RSAPublicKey] = None
         super().__init__(*args, **kwargs)
 
     def set_remote_key(self, rem_pub_key, **kwargs):
@@ -208,71 +80,75 @@ class RsaKeyExchange(KeyExchange):
 
         raise NotImplementedError
 
-    def _create_pms(self):
+    def _create_pms(self) -> None:
         """Build the premaster secret
 
         The client selects a random number, preceded by the TLS version as sent in
         the ClientHello.
         """
+
+        assert self._version
         pms = bytearray()
-        version = self._conn.client_version_sent
-        val = getattr(version, "value", version)
-        pms.extend(pdu.pack_uint16(val))
+        pms.extend(pdu.pack_uint16(self._version.value))
         random = self._recorder.inject(pms_rsa=os.urandom(46))
         pms.extend(random)
         self._pms = pms
 
-    def get_transferable_key(self):
+    def get_transferable_key(self) -> bytes:
         """Returns an RSA-encrypted key
 
         Returns:
-            bytes: the encrypted key
+            the encrypted key
         """
 
         if self._pms is None:
             self._create_pms()
+            assert self._pms
 
-        cert = self._conn.msg.server_certificate.chain.certificates[0]
-        rem_pub_key = cert.parsed.public_key()
-        ciphered_key = rem_pub_key.encrypt(bytes(self._pms), padding.PKCS1v15())
+        assert self._rem_pub_key
+        ciphered_key = self._rem_pub_key.encrypt(bytes(self._pms), padding.PKCS1v15())
         # injecting the encrypted key to the recorder is required, as the
         # padding scheme PKCS1v15 produces non-deterministic cipher text.
         return self._recorder.inject(rsa_enciphered=ciphered_key)
 
-    def get_shared_secret(self):
+    def get_shared_secret(self) -> bytes:
         """Get the shared key, i.e., the premaster secret.
 
         Returns:
-            bytes: the premaster secret
+            the premaster secret
         """
 
         if self._pms is None:
             self._create_pms()
+            assert self._pms
 
         return self._pms
+
+    def set_params(
+        self,
+        version: Optional[tls.Version] = None,
+        rem_public_key: Optional[rsa.RSAPublicKey] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Sets the versions and the remote public key
+        """
+
+        if version:
+            self._version = version
+
+        if rem_public_key:
+            self._rem_pub_key = rem_public_key
 
 
 class DhKeyExchange(KeyExchange):
     """Implement Diffie-Hellman key exchange
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self._group_name is not None:
-            dh_nbrs = dh_numbers.dh_numbers.get(self._group_name)
-            if dh_nbrs is None:
-                raise ValueError(
-                    f"No numbers defined for DH-group {self._group_name.name}"
-                )
-
-            self._gval = dh_nbrs.g_val
-            self._pval = int.from_bytes(dh_nbrs.p_val, "big")
-
-        else:
-            self._pval = None
-            self._gval = None
-
-        self._rem_pub_key = None
+    def __init__(self, *args: Any) -> None:
+        super().__init__(*args)
+        self._pval: Optional[int] = None
+        self._gval: Optional[int] = None
+        self._rem_pub_key: Optional[int] = None
         self._priv_key = None
         self._pub_key = None
         self._dh_group = None
@@ -292,192 +168,232 @@ class DhKeyExchange(KeyExchange):
             )
             self._recorder.trace(x_val=x)
 
-    def get_shared_secret(self):
+    def get_shared_secret(self) -> bytes:
         """Get the shared key, i.e., the premaster secret.
 
         Returns:
-            bytes: the premaster secret
+            the premaster secret
         """
 
         if self._priv_key is None:
             self._create_key_pair()
+            assert self._priv_key
 
         rem_pub_numbers = dh.DHPublicNumbers(self._rem_pub_key, self._dh_group)
         rem_pub_key = rem_pub_numbers.public_key()
         return self._priv_key.exchange(rem_pub_key).lstrip(b"\0")
 
-    def set_remote_key(self, rem_pub_key, g_val=None, p_val=None, group=None):
+    def set_remote_key(
+        self,
+        rem_pub_key: bytes,
+        g_val: Optional[int] = None,
+        p_val: Optional[bytes] = None,
+        group: Optional[tls.SupportedGroups] = None,
+    ) -> None:
         """Sets the remote public key
 
         Arguments:
-            rem_pub_key (bytes): the raw remote public key
-            g_val (int): the generator value
-            p_val (bytes): the p-value as a byte string
-            group (:class:`tlsmate.tls.SupportedGroups`): the supported group
+            rem_pub_key: the raw remote public key
+            g_val: the generator value
+            p_val: the p-value as a byte string
+            group: the supported group
         """
 
         if group is not None:
             dh_nbrs = dh_numbers.dh_numbers.get(group)
             if dh_nbrs is None:
-                raise ServerMalfunction(tls.ServerIssue.FFDH_GROUP_UNKNOWN)
+                raise tls.ServerMalfunction(tls.ServerIssue.FFDH_GROUP_UNKNOWN)
 
             p_val = dh_nbrs.p_val
             g_val = dh_nbrs.g_val
 
+        assert p_val
         self._pval = int.from_bytes(p_val, "big")
         self._gval = g_val
         self._rem_pub_key = int.from_bytes(rem_pub_key, "big")
 
-    def get_transferable_key(self):
+    def get_transferable_key(self) -> bytes:
         """Get the raw bytes of the key to be sent to the peer.
 
         Returns:
-            bytes: the key to be sent to the peer.
+            the key to be sent to the peer.
         """
 
         if self._pub_key is None:
             self._create_key_pair()
+            assert self._pub_key
 
         y_val = self._pub_key.public_numbers().y
         return y_val.to_bytes(int(self._pub_key.key_size / 8), "big")
 
-    def get_key_share(self):
+    def get_key_share(self) -> bytes:
         """TLS1.3 alias for get_transferable_key.
         """
 
         return self.get_transferable_key()
+
+    def set_params(
+        self, group_name: Optional[tls.SupportedGroups] = None, **kwargs: Any,
+    ) -> None:
+        """Sets the group name
+        """
+
+        if group_name:
+            dh_nbrs = dh_numbers.dh_numbers.get(group_name)
+            if dh_nbrs is None:
+                raise ValueError(f"No numbers defined for DH-group {group_name.name}")
+
+            self._gval = dh_nbrs.g_val
+            self._pval = int.from_bytes(dh_nbrs.p_val, "big")
 
 
 class EcdhKeyExchange(KeyExchange):
     """Implement an ECDHE key exchange
     """
 
-    def __init__(self, *args, **kwargs):
-        self._algo = kwargs.get("algo")
-        self._priv_key = None
-        self._pub_key = None
-        self._rem_pub_key = None
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        self._algo: Optional[Type[ec.EllipticCurve]] = kwargs.get("algo")
+        self._priv_key: Optional[ec.EllipticCurvePrivateKey] = None
+        self._pub_key: Optional[bytes] = None
+        self._rem_pub_key: Optional[bytes] = None
         super().__init__(*args, **kwargs)
 
-    def _create_key_pair(self):
+    def _create_key_pair(self) -> None:
         seed = int.from_bytes(os.urandom(10), "big")
         seed = self._recorder.inject(ec_seed=seed)
+        assert self._algo
         self._priv_key = ec.derive_private_key(seed, self._algo())
         pub_key = self._priv_key.public_key()
         self._pub_key = pub_key.public_bytes(
             Encoding.X962, PublicFormat.UncompressedPoint
         )
 
-    def get_shared_secret(self):
+    def get_shared_secret(self) -> bytes:
         """Get the shared key, i.e., the premaster secret.
 
         Returns:
-            bytes: the premaster secret
+            the premaster secret
         """
 
         if self._priv_key is None:
             self._create_key_pair()
 
+        assert self._algo and self._rem_pub_key and self._priv_key
         rem_pub_key = ec.EllipticCurvePublicKey.from_encoded_point(
             self._algo(), bytes(self._rem_pub_key)
         )
         return self._priv_key.exchange(ec.ECDH(), rem_pub_key)
 
-    def set_remote_key(self, rem_pub_key, **kwargs):
+    def set_remote_key(self, rem_pub_key: bytes, **kwargs: Any) -> None:
         """Sets the remote public key
 
         Arguments:
-            rem_pub_key (bytes): the raw remote public key
+            rem_pub_key: the raw remote public key
             **kwargs: unused
         """
 
         self._rem_pub_key = rem_pub_key
 
-    def get_transferable_key(self):
+    def get_transferable_key(self) -> bytes:
         """Get the raw bytes of the key to be sent to the peer.
 
         Returns:
-            bytes: the key to be sent to the peer.
+            the key to be sent to the peer.
         """
 
         if self._pub_key is None:
             self._create_key_pair()
+            assert self._pub_key
 
         return self._pub_key
 
-    def get_key_share(self):
+    def get_key_share(self) -> bytes:
         """TLS1.3 alias for get_transferable_key.
         """
 
         if self._pub_key is None:
             self._create_key_pair()
+            assert self._pub_key
 
         return self._pub_key
 
+    def set_params(
+        self,
+        group_name: Optional[tls.SupportedGroups] = None,
+        algo: Optional[Type[ec.EllipticCurve]] = None,
+        **kwargs: Any,
+    ) -> None:
+        """Sets the versions and the remote public key
+        """
 
-class EcdhKeyExchangeCertificate(object):
+        if group_name:
+            self._group_name = group_name
+
+        if algo:
+            self._algo = algo
+
+
+class EcdhKeyExchangeCertificate(KeyExchange):
     """Implement the key exchange for ECDHE.
     """
 
-    def __init__(self, conn, recorder):
-        cert = conn.msg.server_certificate.chain.certificates[0]
-        rem_pub_key = cert.parsed.public_key()
-        seed = recorder.inject(ec_seed=int.from_bytes(os.urandom(10), "big"))
-        priv_key = ec.derive_private_key(seed, rem_pub_key.curve)
-        pub_key = priv_key.public_key()
-        self._pub_key = pub_key.public_bytes(
-            Encoding.X962, PublicFormat.UncompressedPoint
-        )
-        self._shared_secret = priv_key.exchange(ec.ECDH(), rem_pub_key)
-
-    def set_remote_key(self, rem_pub_key, **kwargs):
+    def set_remote_key(self, rem_pub_key: bytes, **kwargs: Any) -> None:
         """Sets the remote public key
 
         Arguments:
-            rem_pub_key (bytes): the raw remote public key
+            rem_pub_key: the raw remote public key
             **kwargs: unused
         """
 
         pass
 
-    def get_transferable_key(self):
+    def get_transferable_key(self) -> bytes:
         """Get the raw bytes of the key to be sent to the peer.
 
         Returns:
-            bytes: the key to be sent to the peer.
+            the key to be sent to the peer.
         """
 
         return self._pub_key
 
-    def get_shared_secret(self):
+    def get_shared_secret(self) -> bytes:
         """Get the shared key, i.e., the premaster secret.
 
         Returns:
-            bytes: the premaster secret
+            the premaster secret
         """
 
         return self._shared_secret
+
+    def set_params(self, rem_public_key: Optional[Any] = None, **kwargs: Any,) -> None:
+        """Sets the remote public key
+        """
+
+        if rem_public_key:
+            seed = self._recorder.inject(ec_seed=int.from_bytes(os.urandom(10), "big"))
+            priv_key = ec.derive_private_key(seed, rem_public_key.curve)
+            pub_key = priv_key.public_key()
+            self._pub_key: bytes = pub_key.public_bytes(
+                Encoding.X962, PublicFormat.UncompressedPoint
+            )
+            self._shared_secret: bytes = priv_key.exchange(ec.ECDH(), rem_public_key)
 
 
 class XKeyExchange(KeyExchange):
     """Implement the key exchange for X25519 and X448.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._priv_key = None
         self._pub_key = None
-        self._rem_pub_key = None
-        if self._group_name is tls.SupportedGroups.X25519:
-            self._private_key_lib = x25519.X25519PrivateKey
-            self._public_key_lib = x25519.X25519PublicKey
-
-        elif self._group_name is tls.SupportedGroups.X448:
-            self._private_key_lib = x448.X448PrivateKey
-            self._public_key_lib = x448.X448PublicKey
-
-        else:
-            raise ValueError(f"the group name {self._group_name.name} is not expected")
+        self._rem_pub_key: Optional[bytes] = None
+        self._private_key_lib: Union[
+            Type[x25519.X25519PrivateKey], Type[x448.X448PrivateKey]
+        ]
+        self._public_key_lib: Union[
+            Type[x25519.X25519PublicKey], Type[x448.X448PublicKey]
+        ]
 
     def _create_key_pair(self):
         if self._recorder.is_injecting():
@@ -497,46 +413,92 @@ class XKeyExchange(KeyExchange):
         pub_key = self._priv_key.public_key()
         self._pub_key = pub_key.public_bytes(Encoding.Raw, PublicFormat.Raw)
 
-    def get_shared_secret(self):
+    def get_shared_secret(self) -> bytes:
         """Get the shared key, i.e., the premaster secret.
 
         Returns:
-            bytes: the premaster secret
+            the premaster secret
         """
 
         if self._priv_key is None:
             self._create_key_pair()
+            assert self._priv_key
 
         rem_pub_key = self._public_key_lib.from_public_bytes(bytes(self._rem_pub_key))
         return self._priv_key.exchange(rem_pub_key)
 
-    def set_remote_key(self, rem_pub_key, **kwargs):
+    def set_remote_key(self, rem_pub_key: bytes, **kwargs: Any) -> None:
         """Sets the remote public key
 
         Arguments:
-            rem_pub_key (bytes): the raw remote public key
+            rem_pub_key: the raw remote public key
             **kwargs: unused
         """
 
         self._rem_pub_key = rem_pub_key
 
-    def get_transferable_key(self):
+    def get_transferable_key(self) -> bytes:
         """Get the raw bytes of the key to be sent to the peer.
 
         Returns:
-            bytes: the key to be sent to the peer.
+            the key to be sent to the peer.
         """
 
         if self._priv_key is None:
             self._create_key_pair()
+            assert self._pub_key
 
         return self._pub_key
 
-    def get_key_share(self):
+    def get_key_share(self) -> bytes:
         """TLS1.3 alias for get_transferable_key.
         """
 
         return self.get_transferable_key()
+
+    def set_params(
+        self, group_name: Optional[tls.SupportedGroups] = None, **kwargs: Any,
+    ) -> None:
+        """Sets the group name
+        """
+
+        if group_name is tls.SupportedGroups.X25519:
+            self._private_key_lib = x25519.X25519PrivateKey
+            self._public_key_lib = x25519.X25519PublicKey
+
+        elif group_name is tls.SupportedGroups.X448:
+            self._private_key_lib = x448.X448PrivateKey
+            self._public_key_lib = x448.X448PublicKey
+
+        elif group_name:
+            raise ValueError(f"the group name {group_name.name} is not expected")
+
+
+def instantiate_named_group(
+    recorder: rec.Recorder, group_name: tls.SupportedGroups
+) -> KeyExchange:
+    """Create a KeyExchange object according to the given group name.
+
+    Arguments:
+        recorder: the recorder object
+        group_name: the group name
+
+    Returns:
+        the created object
+    """
+
+    group = _supported_groups.get(group_name)
+    if group is None:
+        raise tls.CurveNotSupportedError(
+            f"the group {group_name} is not supported", group_name
+        )
+
+    key_exchange = group.cls(recorder)
+    key_exchange.set_params(group_name=group_name)
+    if group.algo:
+        key_exchange.set_params(algo=group.algo)
+
+    return key_exchange
 
 
 class _Group(NamedTuple):
@@ -544,7 +506,7 @@ class _Group(NamedTuple):
     """
 
     cls: type
-    algo: type
+    algo: Optional[type]
 
 
 _supported_groups = {

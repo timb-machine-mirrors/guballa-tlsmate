@@ -26,17 +26,24 @@ Here is the expected output::
 
     Negotiated cipher suite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
 
-Locating plugins
-----------------
+Loading plugins
+---------------
 
-``tlsmate`` has a simple mechanism to load plugins: all python modules starting
-with ``tlsmate_`` are imported. I.e., all we have to do is to create a file
-like ``tlsmate_myplugin.py``, and add the directory where it resides to the
+Plugins are python modules whose name start with ``tlsmate_``. These modules must
+be located in directories that are searched by python when importing modules.
+
+Thus, our plugin will reside in the file ``~/myplugin/tlsmate_myplugin.py``.
+To make it visible for python, we will add the directory ``~/myplugin`` to the
 environment variable ``PYTHONPATH``.
 
 For our example this means we need to use the following command (bash assumed)::
 
     $ export PYTHONPATH=$PYTHONPATH:~/myplugin
+
+Next, we need to tell ``tlsmate`` that it shall load the plugin. We will do this
+by using an environment variable::
+
+    $ export TLSMATE_PLUGIN=tlsmate_myplugin
 
 Now let's create the file ``~/myplugin/tlsmate_myplugin.py`` with the following content:
 
@@ -93,6 +100,16 @@ Perfect.
 
 .. note::
    The name of the cipher suite may differ, depending on the server you are using.
+
+.. note::
+   In the example we used the environment variables ``TLSMATE_PLUGIN`` and
+   ``TLSMATE_CA_CERTS`` for demo purposes. For real life use cases it might be
+   more appropriate to define these settings in an ini-file. The content of the
+   corresponding ini-file (``~/.tlsmate.ini``) would be as follows::
+
+        [tlsmate]
+        ca_certs = /etc/ssl/certs/ca-certificates.crt
+        plugin = tlsmate_myplugin
 
 Let's have a closer look at the classes involved.
 

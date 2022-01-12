@@ -1,5 +1,5 @@
 .PHONY: clean clean-test clean-pyc clean-build docs help lint black test \
-	test-all dist install install-dev uninstall tags certs
+	test-all dist install install-dev uninstall tags certs, type, check
 .DEFAULT_GOAL := help
 
 COVERAGE= --cov=tlsmate --cov=tlsmate/workers --cov=tlsmate/plugins
@@ -56,6 +56,12 @@ black-diff: ## provide the changes black would do as a diff
 
 black-reformat: ## let black reformat the python code
 	black tlsmate tests
+
+type: ## check type annotations
+	mypy -p tlsmate
+
+check: ## perform static checks (black, flake, mypy)
+	$(MAKE) black && $(MAKE) lint && $(MAKE) type
 
 certs: ## create certificates using private ca
 	(cd ca && $(MAKE) all)

@@ -9,12 +9,14 @@ import time
 import enum
 import os
 import logging
+import pathlib
+from typing import Optional
 
 # import own stuff
-from tlsmate.tlsmate import TlsMate, TLSMATE_DIR
-from tlsmate import utils
-from tlsmate.config import Configuration
-from tlsmate.structs import ConfigItem
+import tlsmate.config as conf
+import tlsmate.structs as structs
+import tlsmate.tlsmate as tm
+import tlsmate.utils as utils
 
 # import other stuff
 
@@ -55,20 +57,25 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
     """
 
     recorder_yaml = None
-    sp_in_yaml = None
+    sp_in_yaml: Optional[str] = None
     sp_out_yaml = None
     path = None
+    server_cmd: Optional[str] = None
+
+    @abc.abstractmethod
+    def run(self, tlsmate: tm.TlsMate, is_replaying: bool) -> None:
+        pass
 
     def _start_server(self):
 
-        ca_cmd = TLSMATE_DIR / "utils/start_ca_servers"
+        ca_cmd = tm.TLSMATE_DIR / "utils/start_ca_servers"
         logging.debug(f'starting CA servers with command "{ca_cmd}"')
-        exit_code = os.system(TLSMATE_DIR / "utils/start_ca_servers")
+        exit_code = os.system(tm.TLSMATE_DIR / "utils/start_ca_servers")
         if exit_code != 0:
             raise ValueError(f"Could not start CA servers, exit code: {exit_code}")
 
         cmd = (
-            str(TLSMATE_DIR)
+            str(tm.TLSMATE_DIR)
             + "/"
             + self.server_cmd.format(
                 library=self.library.name, server_port=self.config.get("port"),
@@ -84,12 +91,12 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         )
         time.sleep(2)  # give the TLS server some time for a clean startup
 
-    def server_input(self, input_str, timeout=None):
+    def server_input(self, input_str: str, timeout: Optional[int] = None) -> None:
         """Feed a string to the server process' STDIN pipe
 
         Arguments:
-            input_str (str): the string to provide on the STDIN pipe
-            timeout (int): the timeout to wait before providing the input in
+            input_str: the string to provide on the STDIN pipe
+            timeout: the timeout to wait before providing the input in
                 milliseconds.
         """
 
@@ -102,7 +109,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
 
         print(input_str, file=self.server_proc.stdin, flush=True)
 
-    def get_yaml_file(self, name):
+    def get_yaml_file(self, name: Optional[str]) -> Optional[pathlib.Path]:
         """Determine the file where an object is serialized to.
 
         Arguments:
@@ -116,9 +123,11 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         if name is None:
             return None
 
-        return self.path.resolve().parent / "recordings" / (name + ".yaml")
+        return (
+            self.path.resolve().parent / "recordings" / (name + ".yaml")  # type: ignore
+        )
 
-    def entry(self, is_replaying=False):
+    def entry(self, is_replaying: bool = False) -> None:
         """Entry point for a test case.
 
         Arguments:
@@ -132,16 +141,16 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
             ini_file = None
 
         else:
-            ini_file = TLSMATE_DIR / "tests/tlsmate.ini"
+            ini_file = tm.TLSMATE_DIR / "tests/tlsmate.ini"
             if not ini_file.is_file():
                 ini_file = None
 
-        self.config = Configuration()
-        self.config.register(ConfigItem("pytest_recorder_file", type=str))
-        self.config.register(ConfigItem("pytest_recorder_replaying", type=str))
+        self.config = conf.Configuration()
+        self.config.register(structs.ConfigItem("pytest_recorder_file", type=str))
+        self.config.register(structs.ConfigItem("pytest_recorder_replaying", type=str))
 
         if not is_replaying:
-            self.config.init_from_external(ini_file)
+            self.config.init_from_external(ini_file)  # type: ignore
 
         self.config.set("progress", False)
         self.config.set("read_profile", self.get_yaml_file(self.sp_in_yaml))
@@ -149,7 +158,7 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
         self.config.set("pytest_recorder_replaying", is_replaying)
         utils.set_logging_level(self.config.get("logging"))
 
-        self.tlsmate = TlsMate(self.config)
+        self.tlsmate = tm.TlsMate(self.config)
         self.recorder = self.tlsmate.recorder
 
         if not is_replaying:

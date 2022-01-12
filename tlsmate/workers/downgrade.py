@@ -4,14 +4,14 @@
 # import basic stuff
 
 # import own stuff
-from tlsmate import tls
-from tlsmate import msg
-from tlsmate.plugin import Worker
+import tlsmate.msg as msg
+import tlsmate.plugin as plg
+import tlsmate.tls as tls
 
 # import other stuff
 
 
-class ScanDowngrade(Worker):
+class ScanDowngrade(plg.Worker):
     name = "downgrade"
     descr = "scan for downgrade attack prevention"
     prio = 30
