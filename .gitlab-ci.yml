@@ -75,6 +75,10 @@ pypi:
   - pip install twine
   - python setup.py sdist bdist_wheel
   - python -m twine upload dist/*
+  artifacts:
+    paths:
+      - dist/*.whl
+    expire_in: 1 week
 
 docker:
   stage: build_docker
