@@ -2,6 +2,35 @@ Changelog
 #########
 
 
+v1.2.0 (2022-01-12)
+===================
+
+Bugfix
+------
+
+* Client certificates provided via command line were ignored (#115)
+
+* Connections over IPv6 were not working (#124)
+
+Added
+-----
+
+* Added support for HelloRetryRequest message (TLS1.3) (#113, #114)
+
+* Scanning over an HTTP-proxy is now supported (#122)
+
+* Command line argument added to prefer the use IPv6 addresses after resolving the host name (#124)
+
+* Documentation extended on how to configure the trust store (#125)
+
+* Provide a Docker image (#126)
+
+Changed
+-------
+
+* Plugins must be enabled now explicitly (#119)
+
+
 v1.1.2 (2021-12-02)
 ===================
 
