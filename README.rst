@@ -51,7 +51,6 @@ The following basic features are supported:
 * slowing down a scan to circumvent rate limitings
 * several logging levels
 * HTTP-proxy support
-* HTTP-proxy support
 
 For creating customized handshake scenarios the following features are provided:
 
@@ -87,6 +86,73 @@ This package requires Python3.6 or higher. The recommended way installing
 .. code-block:: console
 
     $ pip install tlsmate
+
+In case this does not work, check if the problem is caused by the cryptographic
+library `cryptography <https://cryptography.io/en/latest/>`_, and refer to
+`Installation of cryptography <https://cryptography.io/en/latest/installation/>`_.
+
+
+Minimal configuration
+=====================
+
+By default ``tlsmate`` comes with an empty trust store, and thus all
+certificate chain validations will fail.
+
+There are two different ways recommended to configure the trust store.
+
+Using the system's set of root certificates
+-------------------------------------------
+
+In case the root CA certificates are installed on the system, their location
+depend on the OS. If ``openssl`` is installed on the system, use the following
+command:
+
+.. code-block:: console
+
+    $ openssl version -d
+
+This will print the openssl directory, e.g. ``/usr/lib/ssl``. The certificates
+are located in the subdirectory ``certs``, and there typically a file is
+provided which contains all certificates concatenated. On Ubuntu, this file
+is named ``ca-certificates.crt``, on CentOS the name is ``ca-bundle.crt``.
+
+This file needs to be configured in the tlsmate-ini file, `see below`_.
+
+Download the Mozilla root CA certificates
+-----------------------------------------
+
+As an alternative the root CA certificates used by Mozilla can be used.
+Download the file and calculate its SHA256 checksum:
+
+.. code-block:: console
+
+    $ curl -s -o cacert.pem https://curl.se/ca/cacert.pem && sha256sum cacert.pem
+
+Compare the SHA256 hash value with the value provided at `<https://curl.se/ca/cacert.pem.sha256>`_.
+
+If the value matches, configure the downloaded file in the tlsmate-ini file, see below.
+
+.. _see below:
+
+Configuring the trust store in the .tlsmate.ini file
+----------------------------------------------------
+
+Let's assume the name of the trust store file is ``/usr/lib/ssl/certs/ca-certificates.crt``.
+Now create a new ini file in your home directory:
+
+.. code-block:: console
+
+    $ echo -e "[tlsmate]\nca_certs = /usr/lib/ssl/certs/ca-certificates.crt" > ~/.tlsmate.ini
+    $ cat ~/.tlsmate.ini
+    [tlsmate]
+    ca_certs = /usr/lib/ssl/certs/ca-certificates.crt
+
+.. note::
+
+    This command will overwrite an existing ini file. Adapt the command or
+    use your favorite editor if you want to keep the existing file.
+
+More information on the use of ini-files is provided `here <https://guballa.gitlab.io/tlsmate/cli_config.html>`_.
 
 .. inclusion-marker-end-installation
 
