@@ -51,6 +51,7 @@ The following basic features are supported:
 * slowing down a scan to circumvent rate limitings
 * several logging levels
 * HTTP-proxy support
+* Docker image provided
 
 For creating customized handshake scenarios the following features are provided:
 
@@ -181,6 +182,18 @@ given. Use the ``tlsmate --help`` command to get all supported subcommands.
 This command will perform a TLS scan against the domain ``mytlsmatedomain.net``, and the
 result will be displayed as colored console output. For an example refer to the
 `output of the scan command`_.
+
+If you want to use the provided Docker container instead, use the following
+command:
+
+.. code-block:: console
+
+   $ docker run -it guballa/tlsmate tlsmate scan --progress mytlsmatedomain.net
+
+.. note::
+
+    The docker image has the trust store preconfigured, therefore the
+    configuration as described above is not required.
 
 Using the tlsmate library from other python applications is described in the
 `Python API documentation`_.

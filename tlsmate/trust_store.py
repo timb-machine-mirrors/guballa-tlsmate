@@ -2,7 +2,9 @@
 """Module defining a class representing the trust store
 """
 # import basic stuff
+import contextlib
 import logging
+import os
 from typing import List, Any, Optional
 
 # import own stuff
@@ -52,12 +54,13 @@ class TrustStore(object):
             yield cert
 
         if self._ca_files:
-            for file_name in self._ca_files:
-                pem_list = pem.parse_file(file_name)
-                for pem_item in pem_list:
-                    if not isinstance(pem_item, pem.Certificate):
-                        continue
-                    yield crt.Certificate(pem=pem_item.as_bytes())
+            with contextlib.redirect_stderr(open(os.devnull, "w")):
+                for file_name in self._ca_files:
+                    pem_list = pem.parse_file(file_name)
+                    for pem_item in pem_list:
+                        if not isinstance(pem_item, pem.Certificate):
+                            continue
+                        yield crt.Certificate(pem=pem_item.as_bytes())
 
     def add_cert(self, cert: crt.Certificate) -> None:
         """Add a certificate to the trust store if not yet present.
