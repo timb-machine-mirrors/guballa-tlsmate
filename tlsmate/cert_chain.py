@@ -16,6 +16,7 @@ import tlsmate.tls as tls
 # import other stuff
 import requests
 from cryptography import x509
+from cryptography.x509 import ocsp
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.x509.oid import AuthorityInformationAccessOID
 from cryptography.exceptions import InvalidSignature
@@ -119,9 +120,9 @@ class CertChain(object):
         if not response:
             return None
 
-        ocsp_decoded = x509.ocsp.load_der_ocsp_response(response)
+        ocsp_decoded = ocsp.load_der_ocsp_response(response)
 
-        if ocsp_decoded.response_status is not x509.ocsp.OCSPResponseStatus.SUCCESSFUL:
+        if ocsp_decoded.response_status is not ocsp.OCSPResponseStatus.SUCCESSFUL:
             return tls.OcspStatus.INVALID_RESPONSE
 
         if ocsp_decoded.certificates:
@@ -158,10 +159,10 @@ class CertChain(object):
         if ocsp_decoded.next_update and ocsp_decoded.next_update < timestamp:
             return tls.OcspStatus.INVALID_TIMESTAMP
 
-        if ocsp_decoded.certificate_status == x509.ocsp.OCSPCertStatus.GOOD:
+        if ocsp_decoded.certificate_status == ocsp.OCSPCertStatus.GOOD:
             return tls.OcspStatus.NOT_REVOKED
 
-        elif ocsp_decoded.certificate_status == x509.ocsp.OCSPCertStatus.REVOKED:
+        elif ocsp_decoded.certificate_status == ocsp.OCSPCertStatus.REVOKED:
             return tls.OcspStatus.REVOKED
 
         else:
@@ -227,7 +228,7 @@ class CertChain(object):
             return True
 
         ocsp_url = ocsps[0].access_location.value
-        builder = x509.ocsp.OCSPRequestBuilder()
+        builder = ocsp.OCSPRequestBuilder()
 
         # Hm, some OCSP servers do not support SHA256, so let's use SHA1 until we
         # are told otherwise.
