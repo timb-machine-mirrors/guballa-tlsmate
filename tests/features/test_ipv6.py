@@ -5,7 +5,6 @@ import os
 import pytest
 import subprocess
 import sys
-import time
 import tlsmate.msg as msg
 import tlsmate.tls as tls
 
@@ -17,11 +16,7 @@ def openssl_ipv6_port(server_rsa_key_file, server_rsa_cert_file, server_rsa_chai
         f"openssl s_server -key {server_rsa_key_file} -cert {server_rsa_cert_file} "
         f"-cert_chain {server_rsa_chain_file} -accept {port} -6"
     )
-    proc = subprocess.Popen(
-        cmd.split(),
-        stdin=subprocess.PIPE,
-        stdout=sys.stdout,
-    )
+    proc = subprocess.Popen(cmd.split(), stdin=subprocess.PIPE, stdout=sys.stdout,)
     try:
         proc.wait(5)
 
