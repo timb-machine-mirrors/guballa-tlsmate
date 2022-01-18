@@ -2,6 +2,7 @@
 """Module providing infos about the scanner
 """
 # import basic stuff
+import os
 import sys
 import time
 import datetime
@@ -43,14 +44,14 @@ class ScanStart(plg.Worker):
         data = {"port": endp.port}
         if endp.host_type is tls.HostType.HOST:
             name_res_data = {"domain_name": endp.host}
-            ips = resolver.resolve_hostname(endp.host, self.config.get("proxy"))
+            ips = self.resolver.resolve_hostname(endp.host)
             if ips.ipv4_addresses:
                 name_res_data["ipv4_addresses"] = ips.ipv4_addresses
 
             if ips.ipv6_addresses:
                 name_res_data["ipv6_addresses"] = ips.ipv6_addresses
 
-            endp = resolver.get_ip_endpoint(endp)
+            endp = self.resolver.get_ip_endpoint(endp)
             data["name_resolution"] = server_profile.SPNameResolution(
                 data=name_res_data
             )
@@ -62,7 +63,7 @@ class ScanStart(plg.Worker):
         except ValueError:
             pass
 
-        proxy = self.config.get("proxy")
+        proxy = os.environ.get("http_proxy")
         if proxy:
             data["proxy"] = proxy
 

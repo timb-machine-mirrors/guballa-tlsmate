@@ -264,6 +264,7 @@ class Worker(metaclass=abc.ABCMeta):
         self.server_profile = tlsmate.server_profile
         self.client = tlsmate.client
         self.config = tlsmate.config
+        self.resolver = tlsmate.resolver
 
     @abc.abstractmethod
     def run(self):

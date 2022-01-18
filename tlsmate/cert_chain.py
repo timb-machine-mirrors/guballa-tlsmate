@@ -46,10 +46,6 @@ class CertChain(object):
         self._trust_store = tlsmate.trust_store
         self._crl_manager = tlsmate.crl_manager
         self._trust_path = None
-        self._proxies = None
-        proxy = self._config.get("proxy")
-        if proxy:
-            self._proxies = dict(http=proxy, https=proxy)
 
     def append_bin_cert(self, bin_cert: bytes) -> None:
         """Append the chain by a certificate given in raw format.
@@ -107,7 +103,6 @@ class CertChain(object):
             cert.parsed.issuer,
             issuer_cert,
             timestamp,
-            self._proxies,
         )
         logging.debug(f'CRL status is {cert.crl_status} for certificate "{cert}"')
         if cert.crl_status is not tls.CertCrlStatus.NOT_REVOKED:
@@ -247,7 +242,6 @@ class CertChain(object):
                     headers={"Content-Type": "application/ocsp-request"},
                     data=req.public_bytes(serialization.Encoding.DER),
                     timeout=5,
-                    proxies=self._proxies,
                 )
                 self._recorder.trace_response(
                     time.time() - start, recorder.SocketEvent.DATA, ocsp_resp

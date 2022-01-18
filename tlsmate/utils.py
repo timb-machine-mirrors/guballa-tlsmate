@@ -8,7 +8,7 @@ import json
 import os
 import sys
 import argparse
-from typing import List, Optional, Type, Any, Tuple, Union
+from typing import List, Optional, Type, Any, Tuple, Union, NoReturn
 
 # import own stuff
 import tlsmate.mappings as mappings
@@ -465,7 +465,7 @@ def get_random_value() -> bytes:
     return random
 
 
-def exit_with_error(error: str) -> None:
+def exit_with_error(error: str) -> NoReturn:
     """Abort tlsmate with an error message
 
     Arguments:

@@ -13,11 +13,12 @@ import tlsmate.client as client
 import tlsmate.client_auth as client_auth
 import tlsmate.config as conf
 import tlsmate.crl_manager as crl_manager
+import tlsmate.platform as platform
 import tlsmate.recorder as rec
+import tlsmate.resolver as resolver
 import tlsmate.server_profile as server_profile
 import tlsmate.trust_store as trust_store
 
-# from tlsmate.plugin import WorkManager
 from tlsmate.key_logging import KeyLogger
 from tlsmate import utils
 
@@ -70,6 +71,7 @@ class TlsMate(object):
         self.client_auth = client_auth.ClientAuth(recorder=self.recorder)
         self.crl_manager = crl_manager.CrlManager(recorder=self.recorder)
         self.cert_chain_cache = cert_chain.CertChainCache()
+        self.resolver = resolver.Resolver()
         key_log_file = config.get("key_log_file")
         if key_log_file:
             KeyLogger.open_file(key_log_file)
@@ -110,5 +112,13 @@ class TlsMate(object):
                 self.client_auth.deserialize_key_chain(key_chain)  # type: ignore
 
         self.client = client.Client(
-            config=config, recorder=self.recorder, client_auth=self.client_auth
+            platform.Platform(
+                client_auth=self.client_auth,
+                config=self.config,
+                crl_manager=self.crl_manager,
+                recorder=self.recorder,
+                resolver=self.resolver,
+                server_profile=self.server_profile,
+                trust_store=self.trust_store,
+            )
         )
