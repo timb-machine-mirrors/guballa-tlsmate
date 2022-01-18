@@ -74,7 +74,7 @@ def test_invalid_domain(capsys):
 
 
 def test_closed_port(capsys):
-    cmd = "tlsmate scan --port=0 localhost"
+    cmd = "tlsmate scan --port=0 127.0.0.1"
     sys.argv = cmd.split()
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         command.main()
