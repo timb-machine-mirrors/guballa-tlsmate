@@ -175,9 +175,7 @@ class Client(object):
             time.sleep(interval / 1000)
 
         return conn.TlsConnection(
-            profile=self.profile,
-            session=self.session,
-            platform=self._platform,
+            profile=self.profile, session=self.session, platform=self._platform,
         )
 
     def get_sni(self) -> str:

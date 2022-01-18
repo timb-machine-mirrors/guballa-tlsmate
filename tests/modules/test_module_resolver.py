@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Implement unit tests for the module recorder.
 """
-import pytest
 import dns.exception
 import dns.resolver
 import tlsmate.tls as tls

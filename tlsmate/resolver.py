@@ -5,10 +5,9 @@
 import socket
 import logging
 import os
-from typing import List, Tuple, Dict
+from typing import List, Dict
 
 # import own stuff
-import tlsmate.config as conf
 import tlsmate.structs as structs
 import tlsmate.tls as tls
 import tlsmate.utils as utils
@@ -105,8 +104,7 @@ class Resolver(object):
         return self._resolved[host_name]
 
     def get_ip_endpoint(
-        self,
-        l4_addr: structs.TransportEndpoint, ipv6_preference: bool = False,
+        self, l4_addr: structs.TransportEndpoint, ipv6_preference: bool = False,
     ) -> structs.TransportEndpoint:
         """Resolve the hostname, if applicable.
 

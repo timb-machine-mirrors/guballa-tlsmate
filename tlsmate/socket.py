@@ -47,8 +47,7 @@ class Socket(object):
         addr_info: Tuple
         if l4_addr.host_type is tls.HostType.HOST:
             l4_addr = self._resolver.get_ip_endpoint(
-                l4_addr,
-                ipv6_preference=self._config.get("ipv6_preference"),
+                l4_addr, ipv6_preference=self._config.get("ipv6_preference"),
             )
 
         addr_info = (l4_addr.host, l4_addr.port)
