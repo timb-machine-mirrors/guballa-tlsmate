@@ -13,9 +13,7 @@ from typing import Optional, Any, Type, Dict, Callable, Tuple, Union, cast
 
 # import own stuff
 import tlsmate.cert as crt
-import tlsmate.client_auth as client_auth
 import tlsmate.client_state as client_state
-import tlsmate.config as conf
 import tlsmate.ext as ext
 import tlsmate.kdf as key_derivation
 import tlsmate.key_exchange as kex
@@ -23,8 +21,8 @@ import tlsmate.key_logging as kl
 import tlsmate.mappings as mappings
 import tlsmate.msg as msg
 import tlsmate.pdu as pdu
+import tlsmate.platform as platform
 import tlsmate.record_layer as rl
-import tlsmate.recorder as rec
 import tlsmate.resolver as resolver
 import tlsmate.structs as structs
 import tlsmate.tls as tls
@@ -335,17 +333,15 @@ class TlsConnection(object):
         self,
         profile: client_state.ClientProfile,
         session: client_state.SessionState,
-        config: conf.Configuration,
-        recorder: rec.Recorder,
-        client_auth: client_auth.ClientAuth,
+        platform: platform.Platform,
     ) -> None:
 
-        self._client_auth = client_auth
+        self._client_auth = platform.client_auth
         self._session = session
         self._profile = profile
         self._server_l4 = resolver.determine_l4_addr(session.host, session.port)
         self.msg = TlsConnectionMsgs()
-        self._record_layer = rl.RecordLayer(config=config, recorder=recorder)
+        self._record_layer = rl.RecordLayer(platform=platform)
         self._defragmenter = TlsDefragmenter(self._record_layer)
         self._awaited_msg: Union[Type[msg.TlsMessage], msg.Timeout, Any] = None
         self._queued_msg = None
@@ -354,7 +350,7 @@ class TlsConnection(object):
         self._msg_hash = None
         self._msg_hash_queue = None
         self._msg_hash_active = False
-        self.recorder = recorder
+        self.recorder = platform.recorder
         self._kdf = key_derivation.Kdf()
         self._new_session_id = None
         self._finished_treated = False
@@ -382,7 +378,7 @@ class TlsConnection(object):
         self._encrypt_then_mac = False
         self._key_shares: Dict[tls.SupportedGroups, kex.KeyExchange] = {}
         self.res_ms = None
-        self._alert_on_invalid_cert = config.get("alert_on_invalid_cert")
+        self._alert_on_invalid_cert = platform.config.get("alert_on_invalid_cert")
 
         # key exchange
         self.client_random = None

@@ -6,12 +6,10 @@ import time
 from typing import List, Optional
 
 # import own stuff
-import tlsmate.client_auth as client_auth
 import tlsmate.client_state as client_state
-import tlsmate.config as conf
 import tlsmate.connection as conn
 import tlsmate.msg as msg
-import tlsmate.recorder as rec
+import tlsmate.platform as platform
 import tlsmate.structs as structs
 import tlsmate.tls as tls
 
@@ -56,20 +54,17 @@ class Client(object):
     def server_issues(self) -> List[structs.Malfunction]:
         return self.session.server_issues
 
-    def __init__(
-        self,
-        config: conf.Configuration,
-        recorder: rec.Recorder,
-        client_auth: client_auth.ClientAuth,
-    ) -> None:
+    def __init__(self, platform: platform.Platform) -> None:
         """Initialize the client object
 
         Args:
             tlsmate: the tlsmate application object.
         """
-        self._config = config
-        self._recorder = recorder
-        self._client_auth = client_auth
+
+        self._platform = platform
+        self._config = platform.config
+        self._recorder = platform.recorder
+        self._client_auth = platform.client_auth
 
         self._host: str = self._config.get("host")
         self._port: int = self._config.get("port")
@@ -182,9 +177,7 @@ class Client(object):
         return conn.TlsConnection(
             profile=self.profile,
             session=self.session,
-            config=self._config,
-            recorder=self._recorder,
-            client_auth=self._client_auth,
+            platform=self._platform,
         )
 
     def get_sni(self) -> str:

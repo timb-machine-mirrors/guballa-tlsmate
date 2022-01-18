@@ -2,19 +2,19 @@
 """Module containing a classes to abstract the socket
 """
 # import basic stuff
-import socket
-import select
 import logging
-import time
-import sys
+import os
+import select
+import socket
 import socks  # type: ignore
-import urllib.parse
+import sys
+import time
+import urllib
 from typing import Tuple, Optional
 
 # import own stuff
-import tlsmate.config as conf
+import tlsmate.platform as platform
 import tlsmate.recorder as rec
-import tlsmate.resolver as resolver
 import tlsmate.structs as structs
 import tlsmate.tls as tls
 import tlsmate.utils as utils
@@ -29,10 +29,11 @@ class Socket(object):
         tlsmate: the application object
     """
 
-    def __init__(self, config: conf.Configuration, recorder: rec.Recorder) -> None:
+    def __init__(self, platform: platform.Platform) -> None:
         self._socket: Optional[socks.socksocket] = None
-        self._config = config
-        self._recorder = recorder
+        self._config = platform.config
+        self._recorder = platform.recorder
+        self._resolver = platform.resolver
         self._fragment_max_size = 16384
 
     def open_socket(self, l4_addr: structs.TransportEndpoint) -> None:
@@ -45,9 +46,8 @@ class Socket(object):
 
         addr_info: Tuple
         if l4_addr.host_type is tls.HostType.HOST:
-            l4_addr = resolver.get_ip_endpoint(
+            l4_addr = self._resolver.get_ip_endpoint(
                 l4_addr,
-                proxy=self._config.get("proxy"),
                 ipv6_preference=self._config.get("ipv6_preference"),
             )
 
@@ -63,7 +63,7 @@ class Socket(object):
 
         try:
             self._socket = socks.socksocket(family, socket.SOCK_STREAM)
-            proxy = self._config.get("proxy")
+            proxy = os.environ.get("http_proxy")
             if proxy:
                 parsed = urllib.parse.urlparse(proxy)
                 self._socket.set_proxy(socks.HTTP, parsed.hostname, parsed.port)
