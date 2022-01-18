@@ -112,21 +112,6 @@ class ArgProgress(plg.Plugin):
     )
 
 
-class ArgProxy(plg.Plugin):
-    """Argument for proxy.
-    """
-
-    config = conf.config_proxy
-    cli_args = plg.Args(
-        "--proxy",
-        type=str,
-        help=(
-            "the URL of the proxy. Must include the scheme and may include the user, "
-            "password and port, e.g.: `http://user:password@myproxy.net:3128`."
-        ),
-    )
-
-
 class ArgSni(plg.Plugin):
     """Argument for sni.
     """
@@ -168,7 +153,6 @@ class GroupBasicScan(plg.Plugin):
         ArgIpv6Preference,
         ArgKeyLogFile,
         ArgProgress,
-        ArgProxy,
         ArgSni,
         ArgHost,
     ]
