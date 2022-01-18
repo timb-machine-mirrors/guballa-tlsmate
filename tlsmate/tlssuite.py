@@ -160,6 +160,12 @@ class TlsSuiteTester(metaclass=abc.ABCMeta):
 
         self.tlsmate = tm.TlsMate(self.config)
         self.recorder = self.tlsmate.recorder
+        if is_replaying:
+            self.tlsmate.resolver._resolved = dict(
+                localhost=structs.ResolvedHost(
+                    ipv4_addresses=["127.0.0.1"], ipv6_addresses=[]
+                )
+            )
 
         if not is_replaying:
             if self.server_cmd is not None:
